@@ -1,0 +1,45 @@
+{
+  "name": "mellow-vaults-v2",
+  "license": "UNLICENSED",
+  "version": "1.0.0",
+  "files": [
+    "src/**/*.sol"
+  ],
+  "repository": "https://github.com/mellow-finance/mellow-vaults-v2",
+  "devDependencies": {
+    "prettier": "^2.3.1",
+    "prettier-plugin-solidity": "^1.0.0-beta.13"
+  },
+  "scripts": {
+    "prettier": "prettier --write ./src/** && prettier --write ./test/**",
+    "prettier:check": "prettier --check ./src/** && prettier --check ./test/**",
+    "prettier:changed": "prettier --write $(git status | grep '.sol' | grep -v 'deleted:' | cut -d ' ' -f 4)",
+    "test:mainnet": "forge test -vvv --fork-url $(grep MAINNET_RPC .env | cut -d '=' -f2) --match-path ./test/mainnet/\\*",
+    "test:swapper": "forge test -vvv --fork-url $(grep MAINNET_RPC .env | cut -d '=' -f2) --match-path ./test/mainnet/Swapper\\*",
+    "test:polygon": "forge test -vvv --fork-url $(grep POLYGON_RPC .env | cut -d '=' -f2) --match-path ./test/polygon/\\*",
+    "test:moonbeam": "forge test -vvv --fork-url $(grep MOONBEAM_RPC .env | cut -d '=' -f2) --match-path ./test/moonbeam/\\*",
+    "test:arbitrum": "forge test -vvv --fork-url $(grep ARBITRUM_RPC .env | cut -d '=' -f2) --match-path ./test/arbitrum/\\*",
+    "test:optimism": "forge test -vvv --fork-url $(grep OPTIMISM_RPC .env | cut -d '=' -f2) --match-path ./test/optimism/\\*",
+    "test:msp": "forge test -vvv --fork-url $(grep MAINNET_RPC .env | cut -d '=' -f2) --match-path ./test/mainnet/MellowStakingPool.t.sol",
+    "test:verify-slot": "forge test -vvv --fork-url $(grep MAINNET_RPC .env | cut -d '=' -f2) --match-path ./test/mainnet/VerifySlot.t.sol  --use 0.8.20 --fork-block-number 18658055",
+    "size": "forge build --sizes --force",
+    "compile": "forge build --use 0.8.20",
+    "deploy:token:mainnet": "forge script ./src/scripts/deploy/mainnet/MellowTokenDeploy.s.sol:MellowTokenDeploy --rpc-url $(grep MAINNET_RPC .env | cut -d '=' -f2)  --broadcast --slow --verify --etherscan-api-key $(grep ETHERSCAN_API_KEY .env | cut -d '=' -f2) -vvvv",
+    "deploy:collectors:polygon": "forge script ./src/scripts/deploy/polygon/CollectorDeploy.s.sol:CollectorDeploy --rpc-url $(grep POLYGON_RPC .env | cut -d '=' -f2) --broadcast --slow --verify --etherscan-api-key $(grep POLYGON_API_KEY .env | cut -d '=' -f2) -vvvv",
+    "redeploy:pulse-v2:polygon": "forge script ./src/scripts/deploy/polygon/PulseStrategyV2Redeploy.s.sol:PulseStrategyV2Redeploy --rpc-url $(grep POLYGON_RPC .env | cut -d '=' -f2) --broadcast --slow --verify --etherscan-api-key $(grep POLYGON_API_KEY .env | cut -d '=' -f2) -vvvv",
+    "run:pulse-v2:polygon": "forge script ./src/scripts/deploy/polygon/PulseV2Scripts.s.sol:PulseV2Scripts --rpc-url $(grep POLYGON_RPC .env | cut -d '=' -f2) --broadcast --slow --verify --etherscan-api-key $(grep POLYGON_API_KEY .env | cut -d '=' -f2) -vvvv",
+    "deploy:pulse-v2:polygon": "forge script ./src/scripts/deploy/polygon/PulseStrategyV2Deploy.s.sol:PulseStrategyV2Deploy --rpc-url $(grep POLYGON_RPC .env | cut -d '=' -f2) --broadcast --slow --verify --etherscan-api-key $(grep POLYGON_API_KEY .env | cut -d '=' -f2) -vvvv",
+    "deploy:polygon:mps": "forge script ./src/scripts/deploy/polygon/MultiPoolStrategy.s.sol:Deploy --rpc-url $(grep POLYGON_RPC .env | cut -d '=' -f2) --broadcast --slow --verify --etherscan-api-key $(grep POLYGON_API_KEY .env | cut -d '=' -f2) -vvvv --use 0.8.20",
+    "deploy:collectors:arbitrum": "forge script ./src/scripts/deploy/arbitrum/CollectorDeploy.s.sol:CollectorDeploy --rpc-url $(grep ARBITRUM_RPC .env | cut -d '=' -f2)  --broadcast --slow --verify --etherscan-api-key $(grep ARBITRUM_API_KEY .env | cut -d '=' -f2) -vvvv --use 0.8.20",
+    "deploy:collectors:base": "forge script ./src/scripts/deploy/base/CollectorDeploy.s.sol:CollectorDeploy --rpc-url $(grep BASE_RPC .env | cut -d '=' -f2,3,4,5)  --broadcast --slow --verify --etherscan-api-key $(grep BASE_API_KEY .env | cut -d '=' -f2) -vvvv",
+    "deploy:collectors:polygonzkevm": "forge script ./src/scripts/deploy/polygonzkevm/CollectorDeploy.s.sol:CollectorDeploy --rpc-url $(grep POLYGON_ZKEVM_RPC .env | cut -d '=' -f2,3,4,5,6)  --broadcast --slow --verify --etherscan-api-key $(grep POLYGON_ZKEVM_API_KEY .env | cut -d '=' -f2) -vvvv",
+    "deploy:pancake-pulse-v2:polygonzkevm": "forge script ./src/scripts/deploy/polygonzkevm/PancakePulseStrategyV2Deploy.s.sol:Deploy --rpc-url $(grep POLYGON_ZKEVM_RPC .env | cut -d '=' -f2,3,4,5,6)  --broadcast --slow --verify --etherscan-api-key $(grep POLYGON_ZKEVM_API_KEY .env | cut -d '=' -f2) -vvvv",
+    "deploy:pancake-pulse-v2:base": "forge script ./src/scripts/deploy/base/PancakePulseStrategyV2Deploy.s.sol:Deploy --rpc-url $(grep BASE_RPC .env | cut -d '=' -f2,3,4,5,6)  --broadcast --slow --verify --etherscan-api-key $(grep BASE_API_KEY .env | cut -d '=' -f2) -vvvv",
+    "deploy:collectors:optimism": "forge script ./src/scripts/deploy/optimism/CollectorDeploy.s.sol:CollectorDeploy --rpc-url $(grep OPTIMISM_RPC .env | cut -d '=' -f2) --broadcast --slow --verify --etherscan-api-key $(grep OPTIMISM_API_KEY .env | cut -d '=' -f2) -vvvv",
+    "deploy:collectors:moonbeam": "forge script ./src/scripts/deploy/moonbeam/CollectorDeploy.s.sol:CollectorDeploy --rpc-url $(grep MOONBEAM_RPC .env | cut -d '=' -f2)--broadcast --slow --verify --etherscan-api-key $(grep MOONBEAM_API_KEY .env | cut -d '=' -f2) -vvvv",
+    "deploy:collectors:mainnet": "forge script ./src/scripts/deploy/mainnet/CollectorDeploy.s.sol:CollectorDeploy --rpc-url $(grep MAINNET_RPC .env | cut -d '=' -f2) --broadcast --slow --verify --etherscan-api-key $(grep ETHERSCAN_API_KEY .env | cut -d '=' -f2) -vvvv",
+    "deploy:swapper:mainnet": "forge script ./src/scripts/deploy/mainnet/SwapperDeploy.s.sol:SwapperDeploy --rpc-url $(grep MAINNET_RPC .env | cut -d '=' -f2) --broadcast --slow --verify --etherscan-api-key $(grep ETHERSCAN_API_KEY .env | cut -d '=' -f2) -vvvv",
+    "deploy:msp:mainnet": "forge script ./src/scripts/deploy/mainnet/MellowStakingPoolDeploy.s.sol:Deploy --rpc-url $(grep MAINNET_RPC .env | cut -d '=' -f2) --broadcast --slow --verify --etherscan-api-key $(grep ETHERSCAN_API_KEY .env | cut -d '=' -f2) -vvvv",
+    "deploy:pancake-collectors:mainnet": "forge script ./src/scripts/deploy/mainnet/PancakeCollectorDeploy.s.sol:CollectorDeploy --rpc-url $(grep MAINNET_RPC .env | cut -d '=' -f2) --broadcast --slow --verify --etherscan-api-key $(grep ETHERSCAN_API_KEY .env | cut -d '=' -f2) -vvvv"
+  }
+}

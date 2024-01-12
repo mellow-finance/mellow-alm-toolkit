@@ -1,0 +1,70 @@
+on: ["push", "pull_request"]
+
+name: tests
+
+jobs:
+  test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    concurrency:
+      group: test-${{ github.ref }}
+      cancel-in-progress: true
+    env:
+      MAINNET_RPC: ${{ secrets.mainnet_rpc }}
+      GOERLI_RPC: ${{ secrets.goerli_rpc }}
+    steps:
+      - uses: actions/checkout@v1
+
+      - name: Use Node.js 14.x
+        uses: actions/setup-node@v1
+        with:
+          node-version: 14.x
+
+      - name: Get yarn cache directory path
+        id: yarn-cache-dir-path
+        run: echo "::set-output name=dir::$(yarn cache dir)"
+
+      - name: Yarn cache
+        uses: actions/cache@v2
+        id: yarn-cache
+        with:
+          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
+
+      - name: Cache Compiler Installations
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.solcx
+            ~/.vvm
+            ~/cache
+          key: compiler-cache
+          
+      - name: Install yarn dependencies
+        run: yarn
+
+      - name: Check prettier
+        run: yarn prettier:check
+
+      - name: Compile contracts
+        run: yarn compile
+
+      - name: Check size
+        run: yarn size
+
+      - name: Run coverage
+        run: yarn coverage:fast
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Run foundry tests
+        run: cd test/foundry && forge install && forge build --sizes && forge test -vv --fork-block-number=15867000 --fork-url=${{secrets.MAINNET_RPC}} --match-path='test/mainnet/*.sol'
+        id: test
+
+      - name: Count LOC
+        run: find contracts -name "*.sol" | xargs wc -l
