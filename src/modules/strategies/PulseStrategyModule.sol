@@ -26,17 +26,14 @@ contract PulseStrategyModule is IStrategyModule {
     }
 
     function getTarget(
-        IAmmIntent.NftInfo memory info,
+        ICore.NftInfo memory info,
         IAmmModule ammModule,
         IOracle oracle
     )
         external
         view
         override
-        returns (
-            bool isRebalanceRequired,
-            IAmmIntent.TargetNftInfo memory target
-        )
+        returns (bool isRebalanceRequired, ICore.TargetNftInfo memory target)
     {
         uint160 sqrtRatioX96;
         {

@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./utils/IAmmIntentCallback.sol";
 
-interface IAmmIntent {
+interface ICore {
     struct NftInfo {
         int24 tickLower;
         int24 tickUpper;

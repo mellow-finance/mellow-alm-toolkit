@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
-import "./interfaces/IAmmIntent.sol";
+import "./interfaces/ICore.sol";
 
 import "./interfaces/modules/IAmmModule.sol";
 import "./interfaces/modules/IStrategyModule.sol";
@@ -12,7 +12,7 @@ import "./interfaces/oracles/IOracle.sol";
 
 import "./utils/DefaultAccessControl.sol";
 
-contract AmmIntent is DefaultAccessControl, IAmmIntent {
+contract Core is DefaultAccessControl, ICore {
     using EnumerableSet for EnumerableSet.UintSet;
 
     error DelegateCallFailed();

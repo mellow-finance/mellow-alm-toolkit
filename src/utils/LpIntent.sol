@@ -6,24 +6,24 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "../interfaces/modules/IAmmModule.sol";
 import "../interfaces/modules/IAmmDepositWithdrawModule.sol";
 
-import "../interfaces/IAmmIntent.sol";
+import "../interfaces/ICore.sol";
 
 import "../libraries/external/FullMath.sol";
 
 contract LpIntent is ERC20 {
     IAmmDepositWithdrawModule public immutable ammDepositWithdrawModule;
     IAmmModule public immutable ammModule;
-    IAmmIntent public immutable ammIntent;
+    ICore public immutable core;
     uint256 public tokenId;
 
     constructor(
-        IAmmIntent ammIntent_,
+        ICore core_,
         IAmmModule ammModule_,
         IAmmDepositWithdrawModule ammDepositWithdrawModule_,
         string memory name,
         string memory symbol
     ) ERC20(name, symbol) {
-        ammIntent = ammIntent_;
+        core = core_;
         ammModule = ammModule_;
         ammDepositWithdrawModule = ammDepositWithdrawModule_;
     }
@@ -42,8 +42,8 @@ contract LpIntent is ERC20 {
         external
         returns (uint256 actualAmount0, uint256 actualAmount1, uint256 lpAmount)
     {
-        IAmmIntent.NftInfo memory info = ammIntent.nfts(tokenId);
-        ammIntent.withdraw(tokenId, address(this));
+        ICore.NftInfo memory info = core.nfts(tokenId);
+        core.withdraw(tokenId, address(this));
 
         IAmmModule.Position memory positionBefore = ammModule.getPositionInfo(
             info.tokenId
@@ -84,8 +84,8 @@ contract LpIntent is ERC20 {
 
         _mint(to, lpAmount);
 
-        tokenId = ammIntent.deposit(
-            IAmmIntent.DepositParams({
+        tokenId = core.deposit(
+            ICore.DepositParams({
                 tokenId: info.tokenId,
                 owner: info.owner,
                 farm: info.farm,
@@ -105,8 +105,8 @@ contract LpIntent is ERC20 {
         external
         returns (uint256 amount0, uint256 amount1, uint256 actualLpAmount)
     {
-        IAmmIntent.NftInfo memory info = ammIntent.nfts(tokenId);
-        ammIntent.withdraw(tokenId, address(this));
+        ICore.NftInfo memory info = core.nfts(tokenId);
+        core.withdraw(tokenId, address(this));
 
         {
             uint256 userBalance = balanceOf(msg.sender);
@@ -147,8 +147,8 @@ contract LpIntent is ERC20 {
 
         _burn(to, actualLpAmount);
 
-        tokenId = ammIntent.deposit(
-            IAmmIntent.DepositParams({
+        tokenId = core.deposit(
+            ICore.DepositParams({
                 tokenId: info.tokenId,
                 owner: info.owner,
                 farm: info.farm,
