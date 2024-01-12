@@ -372,7 +372,10 @@ contract UniIntentBot is IUniIntentCallback {
             if (
                 IERC20(tokenIn).allowance(address(this), address(router)) == 0
             ) {
-                IERC20(tokenIn).safeApprove(address(router), type(uint256).max);
+                IERC20(tokenIn).forceApprove(
+                    address(router),
+                    type(uint256).max
+                );
             }
             router.exactInputSingle(swapParams[i]);
         }
