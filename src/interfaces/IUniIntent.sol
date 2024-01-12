@@ -1,13 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-
-import "../external/univ3/IUniswapV3Pool.sol";
-import "../external/univ3/IUniswapV3Factory.sol";
-import "../external/univ3/INonfungiblePositionManager.sol";
-
-import "../utils/IUniIntentCallback.sol";
+import "./utils/IUniIntentCallback.sol";
 
 interface IUniIntent {
     struct NftInfo {

@@ -3,14 +3,14 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "../../interfaces/utils/IUniIntentCallback.sol";
-import "../../interfaces/external/univ3/IUniswapV3Pool.sol";
-import "../../interfaces/external/univ3/IQuoterV2.sol";
-import "../../interfaces/external/univ3/ISwapRouter.sol";
-import "../../interfaces/external/univ3/INonfungiblePositionManager.sol";
+import "../interfaces/utils/IUniIntentCallback.sol";
+import "../interfaces/external/univ3/IUniswapV3Pool.sol";
+import "../interfaces/external/univ3/IQuoterV2.sol";
+import "../interfaces/external/univ3/ISwapRouter.sol";
+import "../interfaces/external/univ3/INonfungiblePositionManager.sol";
 
-import "../../libraries/external/LiquidityAmounts.sol";
-import "../../libraries/external/TickMath.sol";
+import "../libraries/external/LiquidityAmounts.sol";
+import "../libraries/external/TickMath.sol";
 
 import "forge-std/Test.sol";
 

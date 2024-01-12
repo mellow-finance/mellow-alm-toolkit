@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "../strategies/IAmmIntent.sol";
+import "../IAmmIntent.sol";
 
 interface IAmmIntentCallback {
     function call(

@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "../interfaces/strategies/IAmmIntent.sol";
+import "../oracles/IOracle.sol";
+import "../IAmmIntent.sol";
+
 import "./IAmmModule.sol";
-import "./IOracleModule.sol";
 
 interface IStrategyModule {
     function validateStrategyParams(bytes memory params) external view;
@@ -11,7 +12,7 @@ interface IStrategyModule {
     function getTarget(
         IAmmIntent.NftInfo memory info,
         IAmmModule module,
-        IOracleModule oracleModule
+        IOracle oracleModule
     )
         external
         view

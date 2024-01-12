@@ -8,8 +8,8 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
-import "../../src/strategies/UniIntent.sol";
-import "../../src/strategies/bots/UniIntentBot.sol";
+import "../../src/UniIntent.sol";
+import "../../src/bots/UniIntentBot.sol";
 
 import "../../src/libraries/external/PositionValue.sol";
 

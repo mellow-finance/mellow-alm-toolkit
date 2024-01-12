@@ -2,14 +2,14 @@
 pragma solidity ^0.8.0;
 
 import "../interfaces/external/univ3/IUniswapV3Pool.sol";
+import "../interfaces/oracles/IOracle.sol";
+
+import "../libraries/external/FullMath.sol";
 import "../libraries/external/TickMath.sol";
 
 import "../libraries/CommonLibrary.sol";
-import "../libraries/external/FullMath.sol";
 
-import "./IOracleModule.sol";
-
-contract UniV3OracleModule is IOracleModule {
+contract UniV3OracleModule is IOracle {
     error NotEnoughObservations();
     error InvalidParams();
     error PriceManipulationDetected();

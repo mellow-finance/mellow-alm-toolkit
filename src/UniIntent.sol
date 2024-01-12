@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "../interfaces/strategies/IUniIntent.sol";
+import "./interfaces/external/univ3/IUniswapV3Factory.sol";
 
-import "../libraries/external/OracleLibrary.sol";
-import "../libraries/external/PositionValue.sol";
+import "./interfaces/IUniIntent.sol";
 
-import "../utils/DefaultAccessControl.sol";
+import "./libraries/external/OracleLibrary.sol";
+import "./libraries/external/PositionValue.sol";
+
+import "./utils/DefaultAccessControl.sol";
 
 contract UniIntent is DefaultAccessControl, IUniIntent {
     using EnumerableSet for EnumerableSet.UintSet;

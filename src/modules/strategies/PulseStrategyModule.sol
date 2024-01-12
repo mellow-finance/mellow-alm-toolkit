@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "./IStrategyModule.sol";
+import "../../interfaces/modules/IStrategyModule.sol";
 
-import "../libraries/external/FullMath.sol";
+import "../../libraries/external/FullMath.sol";
 
 contract PulseStrategyModule is IStrategyModule {
     uint256 public constant Q96 = 2 ** 96;
@@ -28,7 +28,7 @@ contract PulseStrategyModule is IStrategyModule {
     function getTarget(
         IAmmIntent.NftInfo memory info,
         IAmmModule ammModule,
-        IOracleModule oracleModule
+        IOracle oracle
     )
         external
         view
@@ -45,7 +45,7 @@ contract PulseStrategyModule is IStrategyModule {
                 (StrategyParams)
             );
             int24 tick;
-            (sqrtRatioX96, tick) = oracleModule.getOraclePrice(
+            (sqrtRatioX96, tick) = oracle.getOraclePrice(
                 info.pool,
                 info.securityParams
             );

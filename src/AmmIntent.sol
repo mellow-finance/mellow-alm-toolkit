@@ -3,13 +3,14 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
-import "../interfaces/strategies/IAmmIntent.sol";
+import "./interfaces/IAmmIntent.sol";
 
-import "../modules/IAmmModule.sol";
-import "../modules/IOracleModule.sol";
-import "../modules/IStrategyModule.sol";
+import "./interfaces/modules/IAmmModule.sol";
+import "./interfaces/modules/IStrategyModule.sol";
 
-import "../utils/DefaultAccessControl.sol";
+import "./interfaces/oracles/IOracle.sol";
+
+import "./utils/DefaultAccessControl.sol";
 
 contract AmmIntent is DefaultAccessControl, IAmmIntent {
     using EnumerableSet for EnumerableSet.UintSet;
@@ -20,7 +21,7 @@ contract AmmIntent is DefaultAccessControl, IAmmIntent {
     uint256 public constant D4 = 1e4;
 
     IAmmModule public immutable ammModule;
-    IOracleModule public immutable oracleModule;
+    IOracle public immutable oracleModule;
     IStrategyModule public immutable strategyModule;
     address public immutable positionManager;
 
@@ -31,7 +32,7 @@ contract AmmIntent is DefaultAccessControl, IAmmIntent {
 
     constructor(
         IAmmModule ammModule_,
-        IOracleModule oracleModule_,
+        IOracle oracleModule_,
         IStrategyModule strategyModule_,
         address positionManager_,
         address admin_

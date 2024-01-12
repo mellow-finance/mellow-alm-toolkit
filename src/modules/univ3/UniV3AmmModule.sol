@@ -3,15 +3,15 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "./IAmmModule.sol";
+import "../../interfaces/modules/IAmmModule.sol";
 
-import "../interfaces/external/univ3/IUniswapV3Pool.sol";
-import "../interfaces/external/univ3/IUniswapV3Factory.sol";
-import "../interfaces/external/univ3/INonfungiblePositionManager.sol";
+import "../../interfaces/external/univ3/IUniswapV3Pool.sol";
+import "../../interfaces/external/univ3/IUniswapV3Factory.sol";
+import "../../interfaces/external/univ3/INonfungiblePositionManager.sol";
 
-import "../libraries/external/LiquidityAmounts.sol";
-import "../libraries/external/PositionValue.sol";
-import "../libraries/external/TickMath.sol";
+import "../../libraries/external/LiquidityAmounts.sol";
+import "../../libraries/external/PositionValue.sol";
+import "../../libraries/external/TickMath.sol";
 
 contract UniV3AmmModule is IAmmModule {
     using SafeERC20 for IERC20;
