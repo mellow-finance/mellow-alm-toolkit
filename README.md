@@ -1,2 +1,2 @@
-# mellow-vaults-v2
-Second version of mellow vaults
+# mellow-alm-toolkit
+Strategy builder for amm protocols
