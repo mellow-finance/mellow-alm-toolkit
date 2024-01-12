@@ -10,7 +10,7 @@ import "../interfaces/ICore.sol";
 
 import "../libraries/external/FullMath.sol";
 
-contract LpIntent is ERC20 {
+contract LpWrapper is ERC20 {
     IAmmDepositWithdrawModule public immutable ammDepositWithdrawModule;
     IAmmModule public immutable ammModule;
     ICore public immutable core;

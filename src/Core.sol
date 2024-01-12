@@ -190,7 +190,7 @@ contract Core is DefaultAccessControl, ICore {
             mstore(targets, iterator)
         }
 
-        uint256[] memory newTokenIds = IAmmIntentCallback(params.callback).call(
+        uint256[] memory newTokenIds = IRebalanceCallback(params.callback).call(
             params.data,
             targets
         );

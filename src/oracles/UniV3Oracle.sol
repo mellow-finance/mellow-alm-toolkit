@@ -9,7 +9,7 @@ import "../libraries/external/TickMath.sol";
 
 import "../libraries/CommonLibrary.sol";
 
-contract UniV3OracleModule is IOracle {
+contract UniV3Oracle is IOracle {
     error NotEnoughObservations();
     error InvalidParams();
     error PriceManipulationDetected();
