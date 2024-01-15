@@ -427,7 +427,7 @@ contract UniIntentTest is Test {
             positionManager
         );
 
-        for (uint256 i = 0; i < 1; i++) {
+        for (uint256 i = 0; i < 10; i++) {
             ICore.TargetNftInfo memory target;
             while (true) {
                 movePrice(true);

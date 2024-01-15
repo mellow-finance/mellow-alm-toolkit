@@ -12,8 +12,6 @@ import "../interfaces/external/univ3/INonfungiblePositionManager.sol";
 import "../libraries/external/LiquidityAmounts.sol";
 import "../libraries/external/TickMath.sol";
 
-import "forge-std/Test.sol";
-
 contract UniswapBot is IRebalanceCallback {
     using SafeERC20 for IERC20;
 
@@ -141,7 +139,7 @@ contract UniswapBot is IRebalanceCallback {
             swapParams.fee = data.pool.fee();
             unchecked {
                 int256 left = 1;
-                int256 right = int256(data.amount0);
+                int256 right = int256(data.amount1);
                 int256 mid;
                 while (left <= right) {
                     mid = (left + right) >> 1;
@@ -337,7 +335,6 @@ contract UniswapBot is IRebalanceCallback {
         // getting liquidity from all position
         for (uint256 i = 0; i < targets.length; i++) {
             uint256 tokenId = targets[i].nftInfo.tokenId;
-            // positionManager.transferFrom(msg.sender, address(this), tokenId);
             (, , , , , , , uint128 liquidity, , , , ) = positionManager
                 .positions(tokenId);
             positionManager.decreaseLiquidity(
@@ -395,7 +392,6 @@ contract UniswapBot is IRebalanceCallback {
                 );
 
             address token0 = pool.token0();
-            address token1 = pool.token1();
             if (
                 IERC20(token0).allowance(
                     address(this),
@@ -407,6 +403,7 @@ contract UniswapBot is IRebalanceCallback {
                     type(uint256).max
                 );
             }
+            address token1 = pool.token1();
             if (
                 IERC20(token1).allowance(
                     address(this),
@@ -418,13 +415,6 @@ contract UniswapBot is IRebalanceCallback {
                     type(uint256).max
                 );
             }
-
-            console2.log(
-                "Balance:",
-                IERC20(token0).balanceOf(address(this)),
-                IERC20(token1).balanceOf(address(this))
-            );
-            console2.log("Required:", amount0, amount1);
 
             (uint256 tokenId, uint128 actualLiquidity, , ) = positionManager
                 .mint(
