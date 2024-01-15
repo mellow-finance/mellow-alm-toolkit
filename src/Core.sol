@@ -21,7 +21,7 @@ contract Core is DefaultAccessControl, ICore {
     uint256 public constant D4 = 1e4;
 
     IAmmModule public immutable ammModule;
-    IOracle public immutable oracleModule;
+    IOracle public immutable oracle;
     IStrategyModule public immutable strategyModule;
     address public immutable positionManager;
 
@@ -32,14 +32,14 @@ contract Core is DefaultAccessControl, ICore {
 
     constructor(
         IAmmModule ammModule_,
-        IOracle oracleModule_,
         IStrategyModule strategyModule_,
+        IOracle oracle_,
         address positionManager_,
         address admin_
     ) DefaultAccessControl(admin_) {
         ammModule = ammModule_;
-        oracleModule = oracleModule_;
         strategyModule = strategyModule_;
+        oracle = oracle_;
         positionManager = positionManager_;
     }
 
@@ -67,7 +67,7 @@ contract Core is DefaultAccessControl, ICore {
         NftInfo memory info = _nfts[id];
         if (info.owner != msg.sender) revert Forbidden();
         strategyModule.validateStrategyParams(strategyParams);
-        oracleModule.validateSecurityParams(securityParams);
+        oracle.validateSecurityParams(securityParams);
         info.strategyParams = strategyParams;
         info.securityParams = securityParams;
         info.slippageD4 = slippageD4;
@@ -81,7 +81,7 @@ contract Core is DefaultAccessControl, ICore {
             params.tokenId
         );
         strategyModule.validateStrategyParams(params.strategyParams);
-        oracleModule.validateSecurityParams(params.securityParams);
+        oracle.validateSecurityParams(params.securityParams);
         if (params.slippageD4 * 4 > D4 || params.slippageD4 == 0)
             revert InvalidParameters();
         address pool = ammModule.getPool(
@@ -159,11 +159,11 @@ contract Core is DefaultAccessControl, ICore {
         for (uint256 i = 0; i < params.ids.length; i++) {
             uint256 id = params.ids[i];
             NftInfo memory nftInfo = _nfts[id];
-            oracleModule.ensureNoMEV(nftInfo.pool, nftInfo.securityParams);
+            oracle.ensureNoMEV(nftInfo.pool, nftInfo.securityParams);
             (bool flag, TargetNftInfo memory target) = strategyModule.getTarget(
                 nftInfo,
                 ammModule,
-                oracleModule
+                oracle
             );
             if (!flag) continue;
             target.id = id;

@@ -3,6 +3,10 @@ pragma solidity ^0.8.0;
 
 import "./utils/IRebalanceCallback.sol";
 
+import "./modules/IAmmModule.sol";
+import "./modules/IStrategyModule.sol";
+import "./oracles/IOracle.sol";
+
 interface ICore {
     struct NftInfo {
         int24 tickLower;
@@ -60,4 +64,16 @@ interface ICore {
     function withdraw(uint256 id, address to) external;
 
     function rebalance(RebalanceParams memory params) external;
+
+    function D4() external view returns (uint256);
+
+    function ammModule() external view returns (IAmmModule);
+
+    function oracle() external view returns (IOracle);
+
+    function strategyModule() external view returns (IStrategyModule);
+
+    function positionManager() external view returns (address);
+
+    function operatorFlag() external view returns (bool);
 }

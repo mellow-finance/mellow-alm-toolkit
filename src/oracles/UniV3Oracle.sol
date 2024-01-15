@@ -60,7 +60,7 @@ contract UniV3Oracle is IOracle {
             int56 previousTickCumulative,
             ,
 
-        ) = IUniswapV3Pool(pool).observations(observationIndex);
+        ) = IUniswapV3Pool(pool).observations(previousObservationIndex);
         int56 tickCumulativesDelta = tickCumulative - previousTickCumulative;
         int24 tick = int24(
             tickCumulativesDelta /
