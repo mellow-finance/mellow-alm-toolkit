@@ -396,7 +396,7 @@ contract UniIntentTest is Test {
         uint32[] memory timespans = new uint32[](2);
         timespans[0] = 20;
         timespans[1] = 30;
-        depositParams.tokenId = mint(USDT, WETH, 500, 120, 1e19);
+        depositParams.tokenId = mint(USDT, WETH, 500, 120, 1e17);
         depositParams.owner = owner;
 
         depositParams.strategyParams = abi.encode(
@@ -413,7 +413,7 @@ contract UniIntentTest is Test {
             })
         );
 
-        depositParams.slippageD4 = 50;
+        depositParams.slippageD4 = 10;
         positionManager.approve(address(core), depositParams.tokenId);
         uint256 nftId = core.deposit(depositParams);
         core.withdraw(nftId, owner);
@@ -489,7 +489,7 @@ contract UniIntentTest is Test {
                 uint256 capital = FullMath.mulDiv(amount0, priceX96, 2 ** 96) +
                     amount1;
                 console2.log(
-                    "Capital weth:",
+                    "Capital usdt:",
                     capital /
                         10 **
                             IERC20Metadata(IUniswapV3Pool(info.pool).token1())
