@@ -4,3 +4,6 @@
 [submodule "lib/openzeppelin-contracts"]
 	path = lib/openzeppelin-contracts
 	url = https://github.com/openzeppelin/openzeppelin-contracts
+[submodule "lib/zodiac"]
+	path = lib/zodiac
+	url = https://github.com/gnosisguild/zodiac
