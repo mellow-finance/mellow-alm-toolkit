@@ -7,3 +7,6 @@
 [submodule "lib/zodiac"]
 	path = lib/zodiac
 	url = https://github.com/gnosisguild/zodiac
+[submodule "lib/safe-contracts"]
+	path = lib/safe-contracts
+	url = https://github.com/safe-global/safe-contracts
