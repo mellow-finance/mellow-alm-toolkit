@@ -205,13 +205,16 @@ contract Core is DefaultAccessControl, ICore {
             uint256 id = params.ids[i];
             NftsInfo memory info = _nfts[id];
             oracle.ensureNoMEV(info.pool, info.securityParams);
-            bool flag;
-            (flag, targets[iterator]) = strategyModule.getTargets(
-                info,
-                ammModule,
-                oracle
-            );
-            if (!flag) continue;
+            TargetNftsInfo memory target;
+            {
+                bool flag;
+                (flag, target) = strategyModule.getTargets(
+                    info,
+                    ammModule,
+                    oracle
+                );
+                if (!flag) continue;
+            }
             (uint160 sqrtPriceX96, ) = oracle.getOraclePrice(
                 info.pool,
                 info.securityParams
@@ -234,8 +237,8 @@ contract Core is DefaultAccessControl, ICore {
                 (bool success, ) = address(ammModule).delegatecall(
                     abi.encodeWithSelector(
                         IAmmModule.beforeRebalance.selector,
-                        targets[iterator].info.farm,
-                        targets[iterator].info.vault,
+                        target.info.farm,
+                        target.info.vault,
                         tokenId
                     )
                 );
@@ -248,33 +251,29 @@ contract Core is DefaultAccessControl, ICore {
             }
 
             uint256 targetCapitalInToken1X96 = _calculateTargetCapitalX96(
-                targets[iterator],
+                target,
                 sqrtPriceX96,
                 priceX96
             );
-            targets[iterator].minLiquidities = new uint256[](
-                targets[iterator].liquidityRatiosX96.length
+            target.minLiquidities = new uint256[](
+                target.liquidityRatiosX96.length
             );
-            for (
-                uint256 j = 0;
-                j < targets[iterator].minLiquidities.length;
-                j++
-            ) {
-                targets[iterator].minLiquidities[j] = FullMath.mulDiv(
-                    targets[iterator].liquidityRatiosX96[j],
+            for (uint256 j = 0; j < target.minLiquidities.length; j++) {
+                target.minLiquidities[j] = FullMath.mulDiv(
+                    target.liquidityRatiosX96[j],
                     capitalInToken1,
                     targetCapitalInToken1X96
                 );
-                targets[iterator].minLiquidities[j] = FullMath.mulDiv(
-                    targets[iterator].minLiquidities[j],
+                target.minLiquidities[j] = FullMath.mulDiv(
+                    target.minLiquidities[j],
                     D4 - info.slippageD4,
                     D4
                 );
             }
 
-            targets[iterator].id = id;
-            targets[iterator].info = info;
-            iterator++;
+            target.id = id;
+            target.info = info;
+            targets[iterator++] = target;
         }
 
         assembly {
@@ -324,8 +323,7 @@ contract Core is DefaultAccessControl, ICore {
                     if (!success) revert DelegateCallFailed();
                 }
             }
-            target.info.tokenIds = tokenIds;
-            _nfts[target.id] = target.info;
+            _nfts[target.id].tokenIds = tokenIds;
         }
     }
 }
