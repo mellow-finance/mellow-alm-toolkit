@@ -127,6 +127,7 @@ contract Core is DefaultAccessControl, ICore {
                     abi.encodeWithSelector(
                         IAmmModule.afterRebalance.selector,
                         params.farm,
+                        params.vault,
                         tokenId
                     )
                 );
@@ -141,6 +142,7 @@ contract Core is DefaultAccessControl, ICore {
                 tokenIds: params.tokenIds,
                 pool: pool,
                 farm: params.farm,
+                vault: params.vault,
                 property: ammModule.getProperty(pool),
                 slippageD4: params.slippageD4,
                 strategyParams: params.strategyParams,
@@ -161,6 +163,7 @@ contract Core is DefaultAccessControl, ICore {
                 abi.encodeWithSelector(
                     IAmmModule.beforeRebalance.selector,
                     info.farm,
+                    info.vault,
                     tokenId
                 )
             );
@@ -169,11 +172,11 @@ contract Core is DefaultAccessControl, ICore {
         }
     }
 
-    function _calculateTargetCapitalQ96(
+    function _calculateTargetCapitalX96(
         TargetNftsInfo memory target,
         uint160 sqrtPriceX96,
         uint256 priceX96
-    ) private view returns (uint256 targetCapitalInToken1Q96) {
+    ) private view returns (uint256 targetCapitalInToken1X96) {
         for (uint256 j = 0; j < target.lowerTicks.length; j++) {
             {
                 (uint256 amount0, uint256 amount1) = ammModule
@@ -183,7 +186,7 @@ contract Core is DefaultAccessControl, ICore {
                         target.lowerTicks[j],
                         target.upperTicks[j]
                     );
-                targetCapitalInToken1Q96 +=
+                targetCapitalInToken1X96 +=
                     FullMath.mulDiv(amount0, priceX96, Q96) +
                     amount1;
             }
@@ -231,7 +234,8 @@ contract Core is DefaultAccessControl, ICore {
                 (bool success, ) = address(ammModule).delegatecall(
                     abi.encodeWithSelector(
                         IAmmModule.beforeRebalance.selector,
-                        targets[iterator].farm,
+                        targets[iterator].info.farm,
+                        targets[iterator].info.vault,
                         tokenId
                     )
                 );
@@ -243,7 +247,7 @@ contract Core is DefaultAccessControl, ICore {
                 );
             }
 
-            uint256 targetCapitalInToken1Q96 = _calculateTargetCapitalQ96(
+            uint256 targetCapitalInToken1X96 = _calculateTargetCapitalX96(
                 targets[iterator],
                 sqrtPriceX96,
                 priceX96
@@ -259,7 +263,7 @@ contract Core is DefaultAccessControl, ICore {
                 targets[iterator].minLiquidities[j] = FullMath.mulDiv(
                     targets[iterator].liquidityRatiosX96[j],
                     capitalInToken1,
-                    targetCapitalInToken1Q96
+                    targetCapitalInToken1X96
                 );
                 targets[iterator].minLiquidities[j] = FullMath.mulDiv(
                     targets[iterator].minLiquidities[j],
@@ -313,6 +317,7 @@ contract Core is DefaultAccessControl, ICore {
                         abi.encodeWithSelector(
                             IAmmModule.afterRebalance.selector,
                             target.info.farm,
+                            target.info.vault,
                             tokenId
                         )
                     );

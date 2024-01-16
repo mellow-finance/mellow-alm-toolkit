@@ -14,6 +14,7 @@ interface ICore {
         address owner;
         address pool;
         address farm;
+        address vault;
         uint256[] tokenIds;
         bytes securityParams;
         bytes strategyParams;
@@ -25,8 +26,6 @@ interface ICore {
         uint256[] liquidityRatiosX96;
         uint256[] minLiquidities;
         uint256 id;
-        address farm;
-        address pool;
         NftsInfo info;
     }
 
@@ -34,6 +33,7 @@ interface ICore {
         uint256[] tokenIds;
         address owner;
         address farm;
+        address vault;
         uint16 slippageD4;
         bytes strategyParams;
         bytes securityParams;
