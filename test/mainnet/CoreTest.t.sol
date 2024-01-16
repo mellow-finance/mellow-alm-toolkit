@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import "../../src/Core.sol";
-import "../../src/bots/UniswapBot.sol";
+import "../../src/bots/PulseUniBot.sol";
 
 import "../../src/modules/univ3/UniV3AmmModule.sol";
 import "../../src/modules/strategies/PulseStrategyModule.sol";
@@ -218,15 +218,15 @@ contract UniIntentTest is Test {
 
     function determineSwapAmounts(
         Core core,
-        UniswapBot bot,
+        PulseUniBot bot,
         uint256 id
-    ) public returns (UniswapBot.SwapParams memory) {
-        ICore.NftInfo memory nftInfo = core.nfts(id);
-        IUniswapV3Pool pool = IUniswapV3Pool(nftInfo.pool);
-        (bool flag, ICore.TargetNftInfo memory target) = core
+    ) public returns (PulseUniBot.SwapParams memory) {
+        ICore.NftsInfo memory info = core.nfts(id);
+        IUniswapV3Pool pool = IUniswapV3Pool(info.pool);
+        (bool flag, ICore.TargetNftsInfo memory target) = core
             .strategyModule()
-            .getTarget(nftInfo, core.ammModule(), core.oracle());
-        uint256 tokenId = nftInfo.tokenId;
+            .getTargets(info, core.ammModule(), core.oracle());
+        uint256 tokenId = info.tokenIds[0];
         if (tokenId == 0) revert("Invalid token id");
         if (!flag) revert("Rebalance is not necessary");
         (
@@ -236,16 +236,16 @@ contract UniIntentTest is Test {
             uint256 liquidityAmount1
         ) = removePosition(core, tokenId, pool);
 
-        UniswapBot.SwapParams memory swapParams = bot
+        PulseUniBot.SwapParams memory swapParams = bot
             .calculateSwapAmountsPreciselySingle(
-                UniswapBot.SingleIntervalData({
+                PulseUniBot.SingleIntervalData({
                     amount0: amount0,
                     amount1: amount1,
                     sqrtLowerRatioX96: TickMath.getSqrtRatioAtTick(
-                        target.tickLower
+                        target.lowerTicks[0]
                     ),
                     sqrtUpperRatioX96: TickMath.getSqrtRatioAtTick(
-                        target.tickUpper
+                        target.upperTicks[0]
                     ),
                     pool: pool
                 })
@@ -270,9 +270,9 @@ contract UniIntentTest is Test {
 
     function determineSwapAmountsMultiple(
         Core core,
-        UniswapBot bot,
+        PulseUniBot bot,
         uint256[] memory ids
-    ) public returns (UniswapBot.SwapParams memory) {
+    ) public returns (PulseUniBot.SwapParams memory) {
         Data memory data;
 
         data.liq0 = new uint256[](ids.length);
@@ -293,13 +293,13 @@ contract UniIntentTest is Test {
         }
         data.cumulative = 0;
         for (uint256 i = 0; i < ids.length; i++) {
-            ICore.NftInfo memory nftInfo = core.nfts(ids[i]);
-            IUniswapV3Pool pool = IUniswapV3Pool(nftInfo.pool);
-            (bool flag, ICore.TargetNftInfo memory target) = core
+            ICore.NftsInfo memory info = core.nfts(ids[i]);
+            IUniswapV3Pool pool = IUniswapV3Pool(info.pool);
+            (bool flag, ICore.TargetNftsInfo memory target) = core
                 .strategyModule()
-                .getTarget(nftInfo, core.ammModule(), core.oracle());
+                .getTargets(info, core.ammModule(), core.oracle());
 
-            uint256 tokenId = nftInfo.tokenId;
+            uint256 tokenId = info.tokenIds[0];
             if (tokenId == 0) revert("Invalid token id");
             if (!flag) revert("Rebalance is not necessary");
             uint256 amount0_;
@@ -312,10 +312,10 @@ contract UniIntentTest is Test {
             data.amount0 += amount0_;
             data.amount1 += amount1_;
             data.sqrtLowerRatiosX96[i] = TickMath.getSqrtRatioAtTick(
-                target.tickLower
+                target.lowerTicks[0]
             );
             data.sqrtUpperRatiosX96[i] = TickMath.getSqrtRatioAtTick(
-                target.tickUpper
+                target.upperTicks[0]
             );
             data.ratiosX96[i] =
                 FullMath.mulDiv(amount0_, data.priceX96, 2 ** 96) +
@@ -347,9 +347,9 @@ contract UniIntentTest is Test {
             console2.log("Ratios:", (data.ratiosX96[i] * 100) / 2 ** 96);
         }
 
-        UniswapBot.SwapParams memory swapParams = bot
+        PulseUniBot.SwapParams memory swapParams = bot
             .calculateSwapAmountsPreciselyMultiple(
-                UniswapBot.MultipleIntervalsData({
+                PulseUniBot.MultipleIntervalsData({
                     amount0: data.amount0,
                     amount1: data.amount1,
                     ratiosX96: data.ratiosX96,
@@ -360,10 +360,10 @@ contract UniIntentTest is Test {
             );
 
         for (uint256 i = 0; i < ids.length; i++) {
-            ICore.NftInfo memory nftInfo = core.nfts(ids[i]);
+            ICore.NftsInfo memory nftInfo = core.nfts(ids[i]);
             addPosition(
                 core,
-                nftInfo.tokenId,
+                nftInfo.tokenIds[0],
                 IUniswapV3Pool(nftInfo.pool),
                 data.liq0[i],
                 data.liq1[i]
@@ -396,7 +396,8 @@ contract UniIntentTest is Test {
         uint32[] memory timespans = new uint32[](2);
         timespans[0] = 20;
         timespans[1] = 30;
-        depositParams.tokenId = mint(USDT, WETH, 500, 120, 1e17);
+        depositParams.tokenIds = new uint256[](1);
+        depositParams.tokenIds[0] = mint(USDT, WETH, 500, 120, 1e17);
         depositParams.owner = owner;
 
         depositParams.strategyParams = abi.encode(
@@ -414,27 +415,27 @@ contract UniIntentTest is Test {
         );
 
         depositParams.slippageD4 = 10;
-        positionManager.approve(address(core), depositParams.tokenId);
+        positionManager.approve(address(core), depositParams.tokenIds[0]);
         uint256 nftId = core.deposit(depositParams);
         core.withdraw(nftId, owner);
-        positionManager.approve(address(core), depositParams.tokenId);
+        positionManager.approve(address(core), depositParams.tokenIds[0]);
         uint256 nftId2 = core.deposit(depositParams);
         IUniswapV3Pool pool = IUniswapV3Pool(factory.getPool(USDT, WETH, 500));
 
-        UniswapBot bot = new UniswapBot(
+        PulseUniBot bot = new PulseUniBot(
             IQuoterV2(quoter),
             ISwapRouter(swapRouter),
             positionManager
         );
 
         for (uint256 i = 0; i < 10; i++) {
-            ICore.TargetNftInfo memory target;
+            ICore.TargetNftsInfo memory target;
             while (true) {
                 movePrice(true);
                 uint256[] memory ids = new uint256[](1);
                 ids[0] = nftId2;
                 bool flag;
-                (flag, target) = core.strategyModule().getTarget(
+                (flag, target) = core.strategyModule().getTargets(
                     core.nfts(nftId2),
                     core.ammModule(),
                     core.oracle()
@@ -443,7 +444,7 @@ contract UniIntentTest is Test {
                 if (flag) break;
             }
 
-            UniswapBot.SwapParams memory swapParams = determineSwapAmounts(
+            PulseUniBot.SwapParams memory swapParams = determineSwapAmounts(
                 core,
                 bot,
                 nftId2
@@ -471,13 +472,13 @@ contract UniIntentTest is Test {
 
             core.rebalance(rebalanceParams);
             {
-                ICore.NftInfo memory info = core.nfts(nftId2);
+                ICore.NftsInfo memory info = core.nfts(nftId2);
                 uint160 sqrtPriceX96;
                 (sqrtPriceX96, , , , , , ) = pool.slot0();
 
                 (uint256 amount0, uint256 amount1) = PositionValue.total(
                     positionManager,
-                    info.tokenId,
+                    info.tokenIds[0],
                     sqrtPriceX96,
                     IUniswapV3Pool(info.pool)
                 );
@@ -497,9 +498,7 @@ contract UniIntentTest is Test {
                 );
                 console2.log(
                     "New position params:",
-                    vm.toString(info.tickLower),
-                    vm.toString(info.tickUpper),
-                    vm.toString(info.tokenId)
+                    vm.toString(info.tokenIds[0])
                 );
             }
         }

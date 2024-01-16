@@ -9,12 +9,12 @@ import "./IAmmModule.sol";
 interface IStrategyModule {
     function validateStrategyParams(bytes memory params) external view;
 
-    function getTarget(
-        ICore.NftInfo memory info,
-        IAmmModule module,
+    function getTargets(
+        ICore.NftsInfo memory info,
+        IAmmModule ammModule,
         IOracle oracleModule
     )
         external
         view
-        returns (bool isRebalanceRequired, ICore.TargetNftInfo memory target);
+        returns (bool isRebalanceRequired, ICore.TargetNftsInfo memory targets);
 }

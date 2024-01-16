@@ -25,73 +25,47 @@ contract PulseStrategyModule is IStrategyModule {
         require(strategyParams.tickSpacing != 0);
     }
 
-    function getTarget(
-        ICore.NftInfo memory info,
+    function getTargets(
+        ICore.NftsInfo memory info,
         IAmmModule ammModule,
         IOracle oracle
     )
         external
         view
         override
-        returns (bool isRebalanceRequired, ICore.TargetNftInfo memory target)
+        returns (bool isRebalanceRequired, ICore.TargetNftsInfo memory target)
     {
-        uint160 sqrtRatioX96;
         {
             StrategyParams memory strategyParams = abi.decode(
                 info.strategyParams,
                 (StrategyParams)
             );
             int24 tick;
-            (sqrtRatioX96, tick) = oracle.getOraclePrice(
-                info.pool,
-                info.securityParams
+            (, tick) = oracle.getOraclePrice(info.pool, info.securityParams);
+            require(info.tokenIds.length == 1);
+            uint256 tokenId = info.tokenIds[0];
+            IAmmModule.Position memory position = ammModule.getPositionInfo(
+                tokenId
             );
             if (
-                tick >= info.tickLower + strategyParams.tickNeighborhood &&
-                tick <= info.tickUpper - strategyParams.tickNeighborhood
+                tick >= position.tickLower + strategyParams.tickNeighborhood &&
+                tick <= position.tickUpper - strategyParams.tickNeighborhood
             ) {
                 return (false, target);
             }
 
-            int24 width = info.tickUpper - info.tickLower;
-            target.tickLower = tick - width / 2;
-            int24 remainder = target.tickLower % strategyParams.tickSpacing;
+            target.lowerTicks = new int24[](1);
+            target.upperTicks = new int24[](1);
+            target.liquidityRatiosX96 = new uint256[](1);
+
+            int24 width = position.tickUpper - position.tickLower;
+            target.lowerTicks[0] = tick - width / 2;
+            int24 remainder = target.lowerTicks[0] % strategyParams.tickSpacing;
             if (remainder < 0) remainder += strategyParams.tickSpacing;
-            target.tickLower -= remainder;
-            target.tickUpper = target.tickLower + width;
+            target.lowerTicks[0] -= remainder;
+            target.upperTicks[0] = target.lowerTicks[0] + width;
         }
         isRebalanceRequired = true;
-        uint256 priceX96 = FullMath.mulDiv(sqrtRatioX96, sqrtRatioX96, Q96);
-
-        uint256 targetCapitalQ96;
-        {
-            (uint256 target0, uint256 target1) = ammModule
-                .getAmountsForLiquidity(
-                    uint128(Q96),
-                    sqrtRatioX96,
-                    target.tickLower,
-                    target.tickUpper
-                );
-            targetCapitalQ96 =
-                FullMath.mulDiv(target0, priceX96, Q96) +
-                target1;
-        }
-
-        uint256 currentCapital;
-        {
-            (uint256 amount0, uint256 amount1) = ammModule.tvl(
-                info.tokenId,
-                sqrtRatioX96,
-                info.pool,
-                info.farm
-            );
-            currentCapital = FullMath.mulDiv(amount0, priceX96, Q96) + amount1;
-        }
-        target.minLiquidity = uint128(
-            FullMath.mulDiv(Q96, currentCapital, targetCapitalQ96)
-        );
-        target.minLiquidity = uint128(
-            FullMath.mulDiv(target.minLiquidity, D4 - info.slippageD4, D4)
-        );
+        target.liquidityRatiosX96[0] = Q96;
     }
 }

@@ -12,7 +12,7 @@ import "../interfaces/external/univ3/INonfungiblePositionManager.sol";
 import "../libraries/external/LiquidityAmounts.sol";
 import "../libraries/external/TickMath.sol";
 
-contract UniswapBot is IRebalanceCallback {
+contract PulseUniBot is IRebalanceCallback {
     using SafeERC20 for IERC20;
 
     struct SwapParams {
@@ -326,15 +326,15 @@ contract UniswapBot is IRebalanceCallback {
 
     function call(
         bytes memory data,
-        ICore.TargetNftInfo[] memory targets
-    ) external returns (uint256[] memory newTokenIds) {
+        ICore.TargetNftsInfo[] memory targets
+    ) external returns (uint256[][] memory newTokenIds) {
         ISwapRouter.ExactInputSingleParams[] memory swapParams = abi.decode(
             data,
             (ISwapRouter.ExactInputSingleParams[])
         );
         // getting liquidity from all position
         for (uint256 i = 0; i < targets.length; i++) {
-            uint256 tokenId = targets[i].nftInfo.tokenId;
+            uint256 tokenId = targets[i].info.tokenIds[0];
             (, , , , , , , uint128 liquidity, , , , ) = positionManager
                 .positions(tokenId);
             positionManager.decreaseLiquidity(
@@ -379,16 +379,16 @@ contract UniswapBot is IRebalanceCallback {
         }
 
         // creating new positions with minimal liquidity
-        newTokenIds = new uint256[](targets.length);
+        newTokenIds = new uint256[][](targets.length);
         for (uint256 i = 0; i < targets.length; i++) {
-            IUniswapV3Pool pool = IUniswapV3Pool(targets[i].nftInfo.pool);
+            IUniswapV3Pool pool = IUniswapV3Pool(targets[i].info.pool);
             (uint160 sqrtPriceX96, , , , , , ) = pool.slot0();
             (uint256 amount0, uint256 amount1) = LiquidityAmounts
                 .getAmountsForLiquidity(
                     sqrtPriceX96,
-                    TickMath.getSqrtRatioAtTick(targets[i].tickLower),
-                    TickMath.getSqrtRatioAtTick(targets[i].tickUpper),
-                    uint128((targets[i].minLiquidity * (D6 + 1)) / D6) + 1
+                    TickMath.getSqrtRatioAtTick(targets[i].lowerTicks[0]),
+                    TickMath.getSqrtRatioAtTick(targets[i].upperTicks[0]),
+                    uint128((targets[i].minLiquidities[0] * (D6 + 1)) / D6) + 1
                 );
 
             address token0 = pool.token0();
@@ -422,8 +422,8 @@ contract UniswapBot is IRebalanceCallback {
                         token0: token0,
                         token1: token1,
                         fee: pool.fee(),
-                        tickLower: targets[i].tickLower,
-                        tickUpper: targets[i].tickUpper,
+                        tickLower: targets[i].lowerTicks[0],
+                        tickUpper: targets[i].upperTicks[0],
                         amount0Desired: amount0,
                         amount1Desired: amount1,
                         amount0Min: 0,
@@ -433,11 +433,12 @@ contract UniswapBot is IRebalanceCallback {
                     })
                 );
             require(
-                actualLiquidity >= targets[i].minLiquidity,
-                "Invalid liquidity amount"
+                actualLiquidity >= targets[i].minLiquidities[0],
+                "Insufficient amount of liquidity"
             );
             positionManager.approve(msg.sender, tokenId);
-            newTokenIds[i] = tokenId;
+            newTokenIds[i] = new uint256[](1);
+            newTokenIds[i][0] = tokenId;
         }
     }
 }

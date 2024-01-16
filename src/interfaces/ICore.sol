@@ -8,29 +8,30 @@ import "./modules/IStrategyModule.sol";
 import "./oracles/IOracle.sol";
 
 interface ICore {
-    struct NftInfo {
-        int24 tickLower;
-        int24 tickUpper;
+    struct NftsInfo {
+        uint16 slippageD4;
         uint24 property;
         address owner;
-        uint16 slippageD4;
-        uint80 tokenId;
         address pool;
         address farm;
+        uint256[] tokenIds;
         bytes securityParams;
         bytes strategyParams;
     }
 
-    struct TargetNftInfo {
-        int24 tickLower;
-        int24 tickUpper;
-        uint128 minLiquidity;
+    struct TargetNftsInfo {
+        int24[] lowerTicks;
+        int24[] upperTicks;
+        uint256[] liquidityRatiosX96;
+        uint256[] minLiquidities;
         uint256 id;
-        NftInfo nftInfo;
+        address farm;
+        address pool;
+        NftsInfo info;
     }
 
     struct DepositParams {
-        uint256 tokenId;
+        uint256[] tokenIds;
         address owner;
         address farm;
         uint16 slippageD4;
@@ -44,7 +45,7 @@ interface ICore {
         bytes data;
     }
 
-    function nfts(uint256 index) external view returns (NftInfo memory);
+    function nfts(uint256 index) external view returns (NftsInfo memory);
 
     function getUserIds(
         address user
