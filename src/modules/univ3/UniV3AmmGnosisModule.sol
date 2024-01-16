@@ -23,14 +23,6 @@ contract UniV3AmmGnosisModule is UniV3AmmModule, Module {
         address vault,
         uint256 tokenId
     ) external override {
-        positionManager.transferFrom(address(this), address(vault), tokenId);
-    }
-
-    function afterRebalance(
-        address,
-        address vault,
-        uint256 tokenId
-    ) external override {
         if (msg.sender != address(this)) revert();
         (bool success, ) = execAndReturnData(
             vault,
@@ -44,5 +36,13 @@ contract UniV3AmmGnosisModule is UniV3AmmModule, Module {
         );
         if (!success) revert InvalidState();
         positionManager.transferFrom(vault, address(this), tokenId);
+    }
+
+    function afterRebalance(
+        address,
+        address vault,
+        uint256 tokenId
+    ) external override {
+        positionManager.transferFrom(address(this), address(vault), tokenId);
     }
 }
