@@ -90,7 +90,7 @@ contract UniV3AmmModule is IAmmModule {
         address,
         address,
         uint256 tokenId
-    ) external pure virtual {}
+    ) external virtual {}
 
-    function afterRebalance(address, address, uint256) external pure virtual {}
+    function afterRebalance(address, address, uint256) external virtual {}
 }

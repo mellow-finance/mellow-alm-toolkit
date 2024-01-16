@@ -17,7 +17,7 @@ contract UniV3AmmGnosisModule is UniV3AmmModule {
         address,
         address vault,
         uint256 tokenId
-    ) external pure override {
+    ) external override {
         positionManager.transferFrom(address(this), address(vault), tokenId);
     }
 
@@ -25,5 +25,5 @@ contract UniV3AmmGnosisModule is UniV3AmmModule {
         address,
         address vault,
         uint256
-    ) external pure override {}
+    ) external override {}
 }
