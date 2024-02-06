@@ -10,6 +10,8 @@ import "./interfaces/modules/IStrategyModule.sol";
 
 import "./interfaces/oracles/IOracle.sol";
 
+import "./libraries/external/FullMath.sol";
+
 import "./utils/DefaultAccessControl.sol";
 
 contract Core is DefaultAccessControl, ICore {
@@ -17,33 +19,37 @@ contract Core is DefaultAccessControl, ICore {
 
     error DelegateCallFailed();
     error InvalidParameters();
+    error InvalidLength();
 
     uint256 public constant D4 = 1e4;
+    uint256 public constant Q96 = 2 ** 96;
 
     IAmmModule public immutable ammModule;
-    IOracle public immutable oracleModule;
+    IOracle public immutable oracle;
     IStrategyModule public immutable strategyModule;
     address public immutable positionManager;
 
     bool public operatorFlag;
 
-    NftInfo[] private _nfts;
+    NftsInfo[] private _nfts;
     mapping(address => EnumerableSet.UintSet) private _userIds;
 
     constructor(
         IAmmModule ammModule_,
-        IOracle oracleModule_,
         IStrategyModule strategyModule_,
+        IOracle oracle_,
         address positionManager_,
         address admin_
     ) DefaultAccessControl(admin_) {
         ammModule = ammModule_;
-        oracleModule = oracleModule_;
         strategyModule = strategyModule_;
+        oracle = oracle_;
         positionManager = positionManager_;
     }
 
-    function nfts(uint256 index) public view override returns (NftInfo memory) {
+    function nfts(
+        uint256 index
+    ) public view override returns (NftsInfo memory) {
         return _nfts[index];
     }
 
@@ -64,10 +70,10 @@ contract Core is DefaultAccessControl, ICore {
         bytes memory strategyParams,
         bytes memory securityParams
     ) external override {
-        NftInfo memory info = _nfts[id];
+        NftsInfo memory info = _nfts[id];
         if (info.owner != msg.sender) revert Forbidden();
         strategyModule.validateStrategyParams(strategyParams);
-        oracleModule.validateSecurityParams(securityParams);
+        oracle.validateSecurityParams(securityParams);
         info.strategyParams = strategyParams;
         info.securityParams = securityParams;
         info.slippageD4 = slippageD4;
@@ -77,48 +83,67 @@ contract Core is DefaultAccessControl, ICore {
     function deposit(
         DepositParams memory params
     ) external override returns (uint256 id) {
-        IAmmModule.Position memory position = ammModule.getPositionInfo(
-            params.tokenId
-        );
         strategyModule.validateStrategyParams(params.strategyParams);
-        oracleModule.validateSecurityParams(params.securityParams);
+        oracle.validateSecurityParams(params.securityParams);
         if (params.slippageD4 * 4 > D4 || params.slippageD4 == 0)
             revert InvalidParameters();
-        address pool = ammModule.getPool(
-            position.token0,
-            position.token1,
-            position.property
-        );
-        if (pool == address(0)) revert InvalidParameters();
-        if (params.tokenId == 0 || params.tokenId > type(uint80).max)
-            revert InvalidParameters();
-        if (position.liquidity == 0) revert InvalidParameters();
-        IERC721(positionManager).transferFrom(
-            params.owner,
-            address(this),
-            params.tokenId
-        );
-        {
-            (bool success, ) = address(ammModule).delegatecall(
-                abi.encodeWithSelector(
-                    IAmmModule.afterRebalance.selector,
-                    params.farm,
-                    params.tokenId
-                )
+
+        address pool;
+        for (uint256 i = 0; i < params.tokenIds.length; i++) {
+            uint256 tokenId = params.tokenIds[i];
+            if (tokenId == 0 || tokenId > type(uint80).max) {
+                revert InvalidParameters();
+            }
+
+            IAmmModule.Position memory position = ammModule.getPositionInfo(
+                tokenId
             );
-            if (!success) revert DelegateCallFailed();
+
+            if (position.liquidity == 0) revert InvalidParameters();
+            address positionPool = ammModule.getPool(
+                position.token0,
+                position.token1,
+                position.property
+            );
+
+            if (positionPool == address(0)) {
+                revert InvalidParameters();
+            }
+
+            if (pool == address(0)) {
+                pool = positionPool;
+            } else if (pool != positionPool) {
+                revert InvalidParameters();
+            }
+
+            IERC721(positionManager).transferFrom(
+                params.owner,
+                address(this),
+                tokenId
+            );
+
+            {
+                (bool success, ) = address(ammModule).delegatecall(
+                    abi.encodeWithSelector(
+                        IAmmModule.afterRebalance.selector,
+                        params.farm,
+                        params.vault,
+                        tokenId
+                    )
+                );
+                if (!success) revert DelegateCallFailed();
+            }
         }
         id = _nfts.length;
         _userIds[params.owner].add(id);
         _nfts.push(
-            NftInfo({
+            NftsInfo({
                 owner: params.owner,
-                tokenId: uint80(params.tokenId),
+                tokenIds: params.tokenIds,
                 pool: pool,
                 farm: params.farm,
+                vault: params.vault,
                 property: ammModule.getProperty(pool),
-                tickLower: position.tickLower,
-                tickUpper: position.tickUpper,
                 slippageD4: params.slippageD4,
                 strategyParams: params.strategyParams,
                 securityParams: params.securityParams
@@ -127,111 +152,178 @@ contract Core is DefaultAccessControl, ICore {
     }
 
     function withdraw(uint256 id, address to) external override {
-        NftInfo memory nftInfo = _nfts[id];
-        if (nftInfo.tokenId == 0) revert();
-        require(nftInfo.owner == msg.sender);
-        _userIds[nftInfo.owner].remove(id);
+        NftsInfo memory info = _nfts[id];
+        if (info.tokenIds.length == 0) revert();
+        require(info.owner == msg.sender);
+        _userIds[info.owner].remove(id);
         delete _nfts[id];
-        {
+        for (uint256 i = 0; i < info.tokenIds.length; i++) {
+            uint256 tokenId = info.tokenIds[i];
             (bool success, ) = address(ammModule).delegatecall(
                 abi.encodeWithSelector(
                     IAmmModule.beforeRebalance.selector,
-                    nftInfo.farm,
-                    nftInfo.tokenId
+                    info.farm,
+                    info.vault,
+                    tokenId
                 )
             );
             if (!success) revert DelegateCallFailed();
+            IERC721(positionManager).transferFrom(address(this), to, tokenId);
         }
-        IERC721(positionManager).transferFrom(
-            address(this),
-            to,
-            nftInfo.tokenId
-        );
+    }
+
+    function _calculateTargetCapitalX96(
+        TargetNftsInfo memory target,
+        uint160 sqrtPriceX96,
+        uint256 priceX96
+    ) private view returns (uint256 targetCapitalInToken1X96) {
+        for (uint256 j = 0; j < target.lowerTicks.length; j++) {
+            {
+                (uint256 amount0, uint256 amount1) = ammModule
+                    .getAmountsForLiquidity(
+                        uint128(target.liquidityRatiosX96[j]),
+                        sqrtPriceX96,
+                        target.lowerTicks[j],
+                        target.upperTicks[j]
+                    );
+                targetCapitalInToken1X96 +=
+                    FullMath.mulDiv(amount0, priceX96, Q96) +
+                    amount1;
+            }
+        }
     }
 
     function rebalance(RebalanceParams memory params) external override {
         if (operatorFlag) {
             _requireAtLeastOperator();
         }
-
-        TargetNftInfo[] memory targets = new TargetNftInfo[](params.ids.length);
+        TargetNftsInfo[] memory targets = new TargetNftsInfo[](
+            params.ids.length
+        );
         uint256 iterator = 0;
         for (uint256 i = 0; i < params.ids.length; i++) {
             uint256 id = params.ids[i];
-            NftInfo memory nftInfo = _nfts[id];
-            oracleModule.ensureNoMEV(nftInfo.pool, nftInfo.securityParams);
-            (bool flag, TargetNftInfo memory target) = strategyModule.getTarget(
-                nftInfo,
-                ammModule,
-                oracleModule
-            );
-            if (!flag) continue;
-            target.id = id;
-            target.nftInfo = nftInfo;
-            targets[iterator++] = target;
+            NftsInfo memory info = _nfts[id];
+            oracle.ensureNoMEV(info.pool, info.securityParams);
+            TargetNftsInfo memory target;
             {
+                bool flag;
+                (flag, target) = strategyModule.getTargets(
+                    info,
+                    ammModule,
+                    oracle
+                );
+                if (!flag) continue;
+            }
+            (uint160 sqrtPriceX96, ) = oracle.getOraclePrice(
+                info.pool,
+                info.securityParams
+            );
+            uint256 priceX96 = FullMath.mulDiv(sqrtPriceX96, sqrtPriceX96, Q96);
+            uint256 capitalInToken1 = 0;
+            for (uint256 j = 0; j < info.tokenIds.length; j++) {
+                uint256 tokenId = info.tokenIds[j];
+                {
+                    (uint256 amount0, uint256 amount1) = ammModule.tvl(
+                        tokenId,
+                        sqrtPriceX96,
+                        info.pool,
+                        info.farm
+                    );
+                    capitalInToken1 +=
+                        FullMath.mulDiv(amount0, priceX96, Q96) +
+                        amount1;
+                }
                 (bool success, ) = address(ammModule).delegatecall(
                     abi.encodeWithSelector(
                         IAmmModule.beforeRebalance.selector,
-                        nftInfo.farm,
-                        nftInfo.tokenId
+                        target.info.farm,
+                        target.info.vault,
+                        tokenId
                     )
                 );
                 if (!success) revert DelegateCallFailed();
+                IERC721(positionManager).transferFrom(
+                    address(this),
+                    params.callback,
+                    tokenId
+                );
             }
-            IERC721(positionManager).transferFrom(
-                address(this),
-                params.callback,
-                nftInfo.tokenId
+
+            uint256 targetCapitalInToken1X96 = _calculateTargetCapitalX96(
+                target,
+                sqrtPriceX96,
+                priceX96
             );
+            target.minLiquidities = new uint256[](
+                target.liquidityRatiosX96.length
+            );
+            for (uint256 j = 0; j < target.minLiquidities.length; j++) {
+                target.minLiquidities[j] = FullMath.mulDiv(
+                    target.liquidityRatiosX96[j],
+                    capitalInToken1,
+                    targetCapitalInToken1X96
+                );
+                target.minLiquidities[j] = FullMath.mulDiv(
+                    target.minLiquidities[j],
+                    D4 - info.slippageD4,
+                    D4
+                );
+            }
+
+            target.id = id;
+            target.info = info;
+            targets[iterator++] = target;
         }
 
         assembly {
             mstore(targets, iterator)
         }
 
-        uint256[] memory newTokenIds = IRebalanceCallback(params.callback).call(
-            params.data,
-            targets
-        );
+        uint256[][] memory newTokenIds = IRebalanceCallback(params.callback)
+            .call(params.data, targets);
         if (newTokenIds.length != iterator) revert InvalidParameters();
         for (uint256 i = 0; i < iterator; i++) {
-            TargetNftInfo memory target = targets[i];
-            IAmmModule.Position memory position = ammModule.getPositionInfo(
-                newTokenIds[i]
-            );
-            if (
-                position.liquidity < target.minLiquidity ||
-                position.tickLower != target.tickLower ||
-                position.tickUpper != target.tickUpper ||
-                ammModule.getPool(
-                    position.token0,
-                    position.token1,
-                    position.property
-                ) !=
-                target.nftInfo.pool
-            ) revert InvalidParameters();
-            IERC721(positionManager).transferFrom(
-                params.callback,
-                address(this),
-                newTokenIds[i]
-            );
-            uint256 id = target.id;
-            NftInfo memory nftInfo = _nfts[id];
-            {
-                (bool success, ) = address(ammModule).delegatecall(
-                    abi.encodeWithSelector(
-                        IAmmModule.afterRebalance.selector,
-                        nftInfo.farm,
-                        newTokenIds[i]
-                    )
-                );
-                if (!success) revert DelegateCallFailed();
+            TargetNftsInfo memory target = targets[i];
+            uint256[] memory tokenIds = newTokenIds[i];
+
+            if (tokenIds.length != target.liquidityRatiosX96.length) {
+                revert InvalidLength();
             }
-            nftInfo.tickLower = position.tickLower;
-            nftInfo.tickUpper = position.tickUpper;
-            nftInfo.tokenId = uint80(newTokenIds[i]);
-            _nfts[id] = nftInfo;
+            for (uint256 j = 0; j < tokenIds.length; j++) {
+                uint256 tokenId = tokenIds[j];
+                IAmmModule.Position memory position = ammModule.getPositionInfo(
+                    tokenId
+                );
+                if (
+                    position.liquidity < target.minLiquidities[j] ||
+                    position.tickLower != target.lowerTicks[j] ||
+                    position.tickUpper != target.upperTicks[j] ||
+                    ammModule.getPool(
+                        position.token0,
+                        position.token1,
+                        position.property
+                    ) !=
+                    target.info.pool
+                ) revert InvalidParameters();
+                IERC721(positionManager).transferFrom(
+                    params.callback,
+                    address(this),
+                    tokenId
+                );
+                {
+                    (bool success, ) = address(ammModule).delegatecall(
+                        abi.encodeWithSelector(
+                            IAmmModule.afterRebalance.selector,
+                            target.info.farm,
+                            target.info.vault,
+                            tokenId
+                        )
+                    );
+                    if (!success) revert DelegateCallFailed();
+                }
+            }
+            _nfts[target.id].tokenIds = tokenIds;
         }
     }
 }

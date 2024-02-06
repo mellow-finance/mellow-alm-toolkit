@@ -37,7 +37,7 @@ interface IAmmModule {
 
     function getProperty(address pool) external view returns (uint24);
 
-    function beforeRebalance(address, uint256) external;
+    function beforeRebalance(address, address, uint256) external;
 
-    function afterRebalance(address, uint256) external;
+    function afterRebalance(address, address, uint256) external;
 }

@@ -86,7 +86,11 @@ contract UniV3AmmModule is IAmmModule {
         return IUniswapV3Pool(pool).fee();
     }
 
-    function beforeRebalance(address, uint256 tokenId) external pure override {}
+    function beforeRebalance(
+        address,
+        address,
+        uint256 tokenId
+    ) external virtual {}
 
-    function afterRebalance(address, uint256) external pure override {}
+    function afterRebalance(address, address, uint256) external virtual {}
 }

@@ -60,14 +60,17 @@ contract UniV3Oracle is IOracle {
             int56 previousTickCumulative,
             ,
 
-        ) = IUniswapV3Pool(pool).observations(observationIndex);
-        int56 tickCumulativesDelta = tickCumulative - previousTickCumulative;
-        int24 tick = int24(
-            tickCumulativesDelta /
-                int56(uint56(blockTimestamp - previousBlockTimestamp))
-        );
-        uint160 sqrtPriceX96 = TickMath.getSqrtRatioAtTick(tick);
-        return (sqrtPriceX96, tick);
+        ) = IUniswapV3Pool(pool).observations(previousObservationIndex);
+        unchecked {
+            int56 tickCumulativesDelta = tickCumulative -
+                previousTickCumulative;
+            int24 tick = int24(
+                tickCumulativesDelta /
+                    int56(uint56(blockTimestamp - previousBlockTimestamp))
+            );
+            uint160 sqrtPriceX96 = TickMath.getSqrtRatioAtTick(tick);
+            return (sqrtPriceX96, tick);
+        }
     }
 
     function ensureNoMEV(
@@ -103,10 +106,12 @@ contract UniV3Oracle is IOracle {
         int24[] memory ticks = new int24[](timestamps.length);
         ticks[0] = spotTick;
         for (uint256 i = 0; i + 1 < timestamps.length - 1; i++) {
-            ticks[i + 1] = int24(
-                (tickCumulatives[i] - tickCumulatives[i + 1]) /
-                    int56(uint56(timestamps[i] - timestamps[i + 1]))
-            );
+            unchecked {
+                ticks[i + 1] = int24(
+                    (tickCumulatives[i] - tickCumulatives[i + 1]) /
+                        int56(uint56(timestamps[i] - timestamps[i + 1]))
+                );
+            }
         }
 
         uint256[] memory deltas = new uint256[](

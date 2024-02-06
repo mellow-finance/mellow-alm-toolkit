@@ -3,32 +3,37 @@ pragma solidity ^0.8.0;
 
 import "./utils/IRebalanceCallback.sol";
 
+import "./modules/IAmmModule.sol";
+import "./modules/IStrategyModule.sol";
+import "./oracles/IOracle.sol";
+
 interface ICore {
-    struct NftInfo {
-        int24 tickLower;
-        int24 tickUpper;
+    struct NftsInfo {
+        uint16 slippageD4;
         uint24 property;
         address owner;
-        uint16 slippageD4;
-        uint80 tokenId;
         address pool;
         address farm;
+        address vault;
+        uint256[] tokenIds;
         bytes securityParams;
         bytes strategyParams;
     }
 
-    struct TargetNftInfo {
-        int24 tickLower;
-        int24 tickUpper;
-        uint128 minLiquidity;
+    struct TargetNftsInfo {
+        int24[] lowerTicks;
+        int24[] upperTicks;
+        uint256[] liquidityRatiosX96;
+        uint256[] minLiquidities;
         uint256 id;
-        NftInfo nftInfo;
+        NftsInfo info;
     }
 
     struct DepositParams {
-        uint256 tokenId;
+        uint256[] tokenIds;
         address owner;
         address farm;
+        address vault;
         uint16 slippageD4;
         bytes strategyParams;
         bytes securityParams;
@@ -40,7 +45,7 @@ interface ICore {
         bytes data;
     }
 
-    function nfts(uint256 index) external view returns (NftInfo memory);
+    function nfts(uint256 index) external view returns (NftsInfo memory);
 
     function getUserIds(
         address user
@@ -60,4 +65,16 @@ interface ICore {
     function withdraw(uint256 id, address to) external;
 
     function rebalance(RebalanceParams memory params) external;
+
+    function D4() external view returns (uint256);
+
+    function ammModule() external view returns (IAmmModule);
+
+    function oracle() external view returns (IOracle);
+
+    function strategyModule() external view returns (IStrategyModule);
+
+    function positionManager() external view returns (address);
+
+    function operatorFlag() external view returns (bool);
 }
