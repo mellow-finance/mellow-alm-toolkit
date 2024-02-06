@@ -9,11 +9,21 @@ import "../libraries/external/TickMath.sol";
 
 import "../libraries/CommonLibrary.sol";
 
+/**
+ * @title UniV3Oracle
+ * @dev A contract that implements the IOracle interface for Uniswap V3 pools.
+ */
 contract UniV3Oracle is IOracle {
     error NotEnoughObservations();
     error InvalidParams();
     error PriceManipulationDetected();
 
+    /**
+     * @dev Struct defining the security parameters for the UniV3Oracle.
+     * @param anomalyLookback The number of blocks to look back for anomaly detection.
+     * @param anomalyOrder The order of the polynomial used for anomaly detection.
+     * @param anomalyFactorD9 The factor used to determine the anomaly threshold.
+     */
     struct SecurityParams {
         uint16 anomalyLookback;
         uint16 anomalyOrder;
@@ -22,6 +32,11 @@ contract UniV3Oracle is IOracle {
 
     uint256 public constant D9 = 1e9;
 
+    /**
+     * @dev Validates the security parameters.
+     * @param params The encoded security parameters.
+     * @notice throws InvalidParams if the security parameters are invalid.
+     */
     function validateSecurityParams(
         bytes memory params
     ) external pure override {
@@ -34,9 +49,15 @@ contract UniV3Oracle is IOracle {
         if (securityParams.anomalyFactorD9 > D9 * 10) revert InvalidParams();
     }
 
+    /**
+     * @dev Retrieves the price from a Uniswap V3 oracle.
+     * @param pool The address of the Uniswap V3 pool.
+     * @return The spot sqrt price and tick of the oracle.
+     * @notice throws NotEnoughObservations if there are not enough observations in the pool.
+     */
     function getOraclePrice(
         address pool,
-        bytes memory
+        bytes memory /* params */
     ) external view override returns (uint160, int24) {
         (
             uint160 spotSqrtPriceX96,
@@ -73,6 +94,14 @@ contract UniV3Oracle is IOracle {
         }
     }
 
+    /**
+     * @dev Ensures that no Miner Extractable Value (MEV) is present in the given Uniswap V3 pool.
+     * MEV refers to the ability of miners to manipulate the order of transactions in a block to their advantage.
+     * This function calculates the tick deltas between observations in the pool and checks if any anomaly exceeds the specified threshold.
+     * If an anomaly is detected, it reverts with a PriceManipulationDetected error.
+     * @param pool The address of the Uniswap V3 pool to check for MEV.
+     * @param params The encoded security parameters used for anomaly detection.
+     */
     function ensureNoMEV(
         address pool,
         bytes memory params
