@@ -93,7 +93,9 @@ contract AgniAmmModule is IAmmModule {
         address vault,
         uint256 tokenId
     ) external virtual {
-        IMasterChefV3(farm).withdraw(tokenId, vault);
+        if (farm != address(0)) {
+            IMasterChefV3(farm).withdraw(tokenId, vault);
+        }
     }
 
     function afterRebalance(
@@ -101,6 +103,8 @@ contract AgniAmmModule is IAmmModule {
         address vault,
         uint256 tokenId
     ) external virtual {
-        positionManager.safeTransferFrom(vault, address(farm), tokenId);
+        if (farm != address(0)) {
+            positionManager.safeTransferFrom(vault, address(farm), tokenId);
+        }
     }
 }

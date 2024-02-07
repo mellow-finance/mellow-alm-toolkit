@@ -14,9 +14,9 @@
     "prettier": "prettier --write ./src/** && prettier --write ./test/**",
     "prettier:check": "prettier --check ./src/** && prettier --check ./test/**",
     "prettier:changed": "prettier --write $(git status | grep '.sol' | grep -v 'deleted:' | cut -d ' ' -f 4)",
-    "test:mainnet": "forge test -vvv --fork-url $(grep MAINNET_RPC .env | cut -d '=' -f2) --match-path ./test/mainnet/\\*",
+    "test:mainnet": "forge test -vvv --fork-url $(grep MAINNET_RPC .env | cut -d '=' -f2,3,4,5) --match-path ./test/mainnet/\\*",
+    "test:mantle": "forge test -vvv --fork-url $(grep MANTLE_RPC .env | cut -d '=' -f2,3,4,5,6) --match-path ./test/mantle/\\*",
     "size": "forge build --sizes --force",
-    "compile": "forge build",
-    "deploy:token:mainnet": "forge script ./src/scripts/deploy/mainnet/Deploy.s.sol:Deploy --rpc-url $(grep MAINNET_RPC .env | cut -d '=' -f2)  --broadcast --slow --verify --etherscan-api-key $(grep ETHERSCAN_API_KEY .env | cut -d '=' -f2) -vvvv"
+    "compile": "forge build"
   }
 }

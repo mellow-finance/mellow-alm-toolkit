@@ -377,7 +377,58 @@ contract IntentTest is Test {
 
     function test() external {
         vm.startPrank(owner);
+        IAgniPool pool = IAgniPool(factory.getPool(USDC, WETH, FEE));
+        {
+            pool.increaseObservationCardinalityNext(10);
+            {
+                (
+                    ,
+                    ,
+                    ,
+                    uint16 observationCardinality,
+                    uint16 observationCardinalityNext,
+                    ,
 
+                ) = pool.slot0();
+                console2.log(
+                    observationCardinality,
+                    observationCardinalityNext
+                );
+            }
+            uint256 amountIn = 1e3 * 1e6;
+            deal(USDC, owner, amountIn);
+            IERC20(USDC).safeIncreaseAllowance(swapRouter, amountIn);
+            ISwapRouter(swapRouter).exactInputSingle(
+                ISwapRouter.ExactInputSingleParams({
+                    tokenIn: USDC,
+                    tokenOut: WETH,
+                    fee: FEE,
+                    deadline: type(uint256).max,
+                    recipient: owner,
+                    sqrtPriceLimitX96: 0,
+                    amountOutMinimum: 0,
+                    amountIn: amountIn
+                })
+            );
+
+            {
+                (
+                    ,
+                    ,
+                    ,
+                    uint16 observationCardinality,
+                    uint16 observationCardinalityNext,
+                    ,
+
+                ) = pool.slot0();
+                console2.log(
+                    observationCardinality,
+                    observationCardinalityNext
+                );
+            }
+
+            console2.log("Pool tickSpacing:", vm.toString(pool.tickSpacing()));
+        }
         ammModule = new AgniAmmModule(
             INonfungiblePositionManager(positionManager)
         );
@@ -396,31 +447,37 @@ contract IntentTest is Test {
         timespans[0] = 20;
         timespans[1] = 30;
         depositParams.tokenIds = new uint256[](1);
-        depositParams.tokenIds[0] = mint(USDC, WETH, FEE, 120, 1e17);
+        depositParams.tokenIds[0] = mint(
+            USDC,
+            WETH,
+            FEE,
+            pool.tickSpacing() * 8,
+            1e13
+        );
         depositParams.owner = owner;
         depositParams.farm = address(0);
 
         depositParams.strategyParams = abi.encode(
             PulseStrategyModule.StrategyParams({
-                tickNeighborhood: 20,
-                tickSpacing: 10
+                tickNeighborhood: pool.tickSpacing() * 2,
+                tickSpacing: pool.tickSpacing()
             })
         );
-        depositParams.securityParams = abi.encode(
-            AgniOracle.SecurityParams({
-                anomalyLookback: 5,
-                anomalyOrder: 3,
-                anomalyFactorD9: 2e9
-            })
-        );
+        depositParams.securityParams = new bytes(0);
+        //  abi.encode(
+        //     AgniOracle.SecurityParams({
+        //         anomalyLookback: 5,
+        //         anomalyOrder: 3,
+        //         anomalyFactorD9: 2e9
+        //     })
+        // );
 
-        depositParams.slippageD4 = 10;
+        depositParams.slippageD4 = 100;
         positionManager.approve(address(core), depositParams.tokenIds[0]);
         uint256 nftId = core.deposit(depositParams);
         core.withdraw(nftId, owner);
         positionManager.approve(address(core), depositParams.tokenIds[0]);
         uint256 nftId2 = core.deposit(depositParams);
-        IAgniPool pool = IAgniPool(factory.getPool(USDC, WETH, FEE));
 
         PulseAgniBot bot = new PulseAgniBot(
             IQuoterV2(quoter),
