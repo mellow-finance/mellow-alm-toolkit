@@ -2,9 +2,11 @@
 pragma solidity ^0.8.0;
 pragma abicoder v2;
 
+import "./callback/IAgniSwapCallback.sol";
+
 /// @title Router token swapping functionality
-/// @notice Functions for swapping tokens via Uniswap V3
-interface ISwapRouter {
+/// @notice Functions for swapping tokens via Agni
+interface ISwapRouter is IAgniSwapCallback {
     struct ExactInputSingleParams {
         address tokenIn;
         address tokenOut;
