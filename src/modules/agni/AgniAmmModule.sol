@@ -8,7 +8,7 @@ import "../../interfaces/modules/IAmmModule.sol";
 import "../../interfaces/external/agni/IAgniPool.sol";
 import "../../interfaces/external/agni/IAgniFactory.sol";
 import "../../interfaces/external/agni/INonfungiblePositionManager.sol";
-import "../../interfaces/external/agni/IMasterChef.sol";
+import "../../interfaces/external/agni/IMasterChefV3.sol";
 
 import "../../libraries/external/LiquidityAmounts.sol";
 import "../../libraries/external/agni/PositionValue.sol";
@@ -93,7 +93,7 @@ contract AgniAmmModule is IAmmModule {
         address vault,
         uint256 tokenId
     ) external virtual {
-        IMasterChef(masterChef).withdraw(tokenId, vault);
+        IMasterChefV3(farm).withdraw(tokenId, vault);
     }
 
     function afterRebalance(
@@ -101,6 +101,6 @@ contract AgniAmmModule is IAmmModule {
         address vault,
         uint256 tokenId
     ) external virtual {
-        positionManager.safeTransferFrom(vault, address(masterChef), tokenId);
+        positionManager.safeTransferFrom(vault, address(farm), tokenId);
     }
 }
