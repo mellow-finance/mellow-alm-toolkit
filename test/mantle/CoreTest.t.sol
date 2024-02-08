@@ -426,8 +426,6 @@ contract IntentTest is Test {
                     observationCardinalityNext
                 );
             }
-
-            console2.log("Pool tickSpacing:", vm.toString(pool.tickSpacing()));
         }
         ammModule = new AgniAmmModule(
             INonfungiblePositionManager(positionManager)

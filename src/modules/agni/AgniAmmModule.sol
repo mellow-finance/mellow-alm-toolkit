@@ -90,21 +90,24 @@ contract AgniAmmModule is IAmmModule {
 
     function beforeRebalance(
         address farm,
-        address vault,
+        address synthetixFarm,
         uint256 tokenId
     ) external virtual {
-        if (farm != address(0)) {
-            IMasterChefV3(farm).withdraw(tokenId, vault);
-        }
+        if (farm == address(0)) return;
+        require(
+            synthetixFarm != address(0),
+            "AgniAmmModule: synthetixFarm is zero"
+        );
+        IMasterChefV3(farm).harvest(tokenId, synthetixFarm);
+        IMasterChefV3(farm).withdraw(tokenId, address(this));
     }
 
     function afterRebalance(
         address farm,
-        address vault,
+        address,
         uint256 tokenId
     ) external virtual {
-        if (farm != address(0)) {
-            positionManager.safeTransferFrom(vault, address(farm), tokenId);
-        }
+        if (farm == address(0)) return;
+        positionManager.safeTransferFrom(address(this), address(farm), tokenId);
     }
 }
