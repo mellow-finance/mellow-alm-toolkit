@@ -33,7 +33,7 @@ contract LpWrapper is ERC20 {
     }
 
     function initialize(uint256 tokenId_, uint256 initialTotalSupply) external {
-        if (tokenId != 0) revert();
+        if (tokenId != 0) revert("Already initialized");
         tokenId = tokenId_;
         _mint(address(this), initialTotalSupply);
     }
@@ -104,7 +104,7 @@ contract LpWrapper is ERC20 {
                             msg.sender
                         )
                     );
-                if (!success) revert();
+                if (!success) revert("Deposit call failed");
                 (uint256 amount0_, uint256 amount1_) = abi.decode(
                     response,
                     (uint256, uint256)
@@ -139,9 +139,7 @@ contract LpWrapper is ERC20 {
             }
         }
 
-        if (lpAmount < minLpAmount) {
-            revert();
-        }
+        require(lpAmount >= minLpAmount, "Insufficient LP amount");
 
         _mint(to, lpAmount);
 
@@ -215,7 +213,7 @@ contract LpWrapper is ERC20 {
         }
 
         if (amount0 < minAmount0 || amount1 < minAmount1) {
-            revert("LIMU");
+            revert("Insufficient amounts");
         }
 
         tokenId = core.deposit(
