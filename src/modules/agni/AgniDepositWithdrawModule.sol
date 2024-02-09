@@ -9,6 +9,10 @@ import "../../interfaces/modules/IAmmDepositWithdrawModule.sol";
 import "../../interfaces/external/agni/INonfungiblePositionManager.sol";
 import "../../interfaces/external/agni/IAgniPool.sol";
 
+/**
+ * @title AgniDepositWithdrawModule
+ * @dev A contract that implements the IAmmDepositWithdrawModule interface for Agni pools.
+ */
 contract AgniDepositWithdrawModule is IAmmDepositWithdrawModule {
     using SafeERC20 for IERC20;
 
