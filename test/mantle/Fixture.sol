@@ -181,7 +181,7 @@ contract Fixture is Test {
         vm.startPrank(address(core));
         IERC20(pool.token0()).safeIncreaseAllowance(
             address(positionManager),
-            liquidityAmamount0ount0
+            amount0
         );
         IERC20(pool.token1()).safeIncreaseAllowance(
             address(positionManager),

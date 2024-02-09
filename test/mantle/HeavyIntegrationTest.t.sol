@@ -56,8 +56,10 @@ contract Integration is Fixture {
         );
 
         vm.startPrank(Constants.DEPOSITOR);
-        deal(Constants.USDC, Constants.DEPOSITOR, 1e6 * 1e6);
-        deal(Constants.WETH, Constants.DEPOSITOR, 500 ether);
+        uint256 usdcAmount = 1e6 * 1e6;
+        uint256 wethAmount = 500 ether;
+        deal(Constants.USDC, Constants.DEPOSITOR, usdcAmount);
+        deal(Constants.WETH, Constants.DEPOSITOR, wethAmount);
         IERC20(Constants.USDC).safeApprove(
             address(lpWrapper),
             type(uint256).max
@@ -68,12 +70,12 @@ contract Integration is Fixture {
         );
         {
             (, , uint256 lpAmount) = lpWrapper.deposit(
-                1e6,
-                500 ether,
-                1e3,
+                usdcAmount / 1e6,
+                wethAmount / 1e6,
+                1e8,
                 Constants.DEPOSITOR
             );
-            require(lpAmount > 0, "Invalid lp amount");
+            require(lpAmount > 1e8, "Invalid lp amount");
             console2.log("Actual lp amount:", lpAmount);
             lpWrapper.approve(address(stakingRewards), type(uint256).max);
             stakingRewards.stake(
@@ -83,92 +85,52 @@ contract Integration is Fixture {
         }
         vm.stopPrank();
 
-        for (uint256 i = 0; i < 2; i++) {
-            {
-                vm.startPrank(Constants.DEPOSITOR);
-                stakingRewards.withdraw(
-                    stakingRewards.balanceOf(Constants.DEPOSITOR) / 2
-                );
-                (
-                    uint256 amount0,
-                    uint256 amount1,
-                    uint256 actualAmountLp
-                ) = lpWrapper.withdraw(1e6, 0, 0, Constants.DEPOSITOR);
-
-                console2.log(
-                    "Actual withdrawal amounts for depositor:",
-                    amount0,
-                    amount1,
-                    actualAmountLp
-                );
-
-                vm.stopPrank();
-            }
-
-            ICore.TargetNftsInfo memory target;
-            while (true) {
-                movePrice(true);
-                uint256[] memory ids = new uint256[](1);
-                ids[0] = lpWrapper.tokenId();
-                bool flag;
-                (flag, target) = core.strategyModule().getTargets(
-                    core.nfts(lpWrapper.tokenId()),
-                    core.ammModule(),
-                    core.oracle()
-                );
-                skip(5 * 60);
-                if (flag) break;
-            }
-
-            PulseAgniBot.SwapParams memory swapParams = determineSwapAmounts(
-                lpWrapper.tokenId()
+        for (uint256 i = 0; i < 5; i++) {
+            vm.startPrank(Constants.DEPOSITOR);
+            stakingRewards.withdraw(
+                stakingRewards.balanceOf(Constants.DEPOSITOR) / 2
             );
-            ICore.RebalanceParams memory rebalanceParams;
+            uint256 lpAmount = lpWrapper.balanceOf(Constants.DEPOSITOR);
+            (
+                uint256 amount0,
+                uint256 amount1,
+                uint256 actualAmountLp
+            ) = lpWrapper.withdraw(lpAmount, 0, 0, Constants.DEPOSITOR);
 
-            rebalanceParams.ids = new uint256[](1);
-            rebalanceParams.ids[0] = lpWrapper.tokenId();
-            rebalanceParams.callback = address(bot);
-            ISwapRouter.ExactInputSingleParams[]
-                memory ammParams = new ISwapRouter.ExactInputSingleParams[](1);
-            ammParams[0] = ISwapRouter.ExactInputSingleParams({
-                tokenIn: swapParams.tokenIn,
-                tokenOut: swapParams.tokenOut,
-                fee: swapParams.fee,
-                amountIn: swapParams.amountIn,
-                amountOutMinimum: (swapParams.expectedAmountOut * 9999) / 10000,
-                deadline: type(uint256).max,
-                recipient: address(bot),
-                sqrtPriceLimitX96: 0
-            });
-            rebalanceParams.data = abi.encode(ammParams);
+            console2.log(
+                "Actual withdrawal amounts for depositor:",
+                amount0,
+                amount1,
+                actualAmountLp
+            );
+            vm.stopPrank();
+        }
 
-            vm.prank(Constants.OWNER);
-            core.rebalance(rebalanceParams);
+        uint256 balance0 = IERC20(Constants.USDC).balanceOf(
+            Constants.DEPOSITOR
+        );
+        uint256 balance1 = IERC20(Constants.WETH).balanceOf(
+            Constants.DEPOSITOR
+        );
 
-            {
-                ICore.NftsInfo memory info = core.nfts(lpWrapper.tokenId());
-                uint160 sqrtPriceX96;
-                (sqrtPriceX96, , , , , , ) = pool.slot0();
+        for (uint256 i = 1; i <= 5; i++) {
+            vm.startPrank(Constants.DEPOSITOR);
+            uint256 amount0 = balance0 / 2 ** i;
+            uint256 amount1 = balance1 / 2 ** i;
 
-                (uint256 amount0, uint256 amount1) = PositionValue.total(
-                    positionManager,
-                    info.tokenIds[0],
-                    sqrtPriceX96,
-                    IAgniPool(info.pool)
-                );
-                uint256 priceX96 = FullMath.mulDiv(
-                    sqrtPriceX96,
-                    sqrtPriceX96,
-                    2 ** 96
-                );
-                uint256 capital = FullMath.mulDiv(amount0, priceX96, 2 ** 96) +
-                    amount1;
-                console2.log("Capital usdc:", capital);
-                console2.log(
-                    "New position params:",
-                    vm.toString(info.tokenIds[0])
-                );
-            }
+            (
+                uint256 actualAmount0,
+                uint256 actualAmount1,
+                uint256 lpAmount
+            ) = lpWrapper.deposit(amount0, amount1, 0, Constants.DEPOSITOR);
+
+            console2.log(
+                "Actual deposit amounts for depositor:",
+                actualAmount0,
+                actualAmount1,
+                lpAmount
+            );
+            vm.stopPrank();
         }
     }
 }
