@@ -37,7 +37,14 @@ contract StakingRewards is
 
     /* ========== CONSTRUCTOR ========== */
 
-    constructor(address _owner, address _rewardsDistribution) Owned(_owner) {
+    constructor(
+        address _owner,
+        address _rewardsDistribution,
+        address _rewardsToken,
+        address _stakingToken
+    ) Owned(_owner) {
+        rewardsToken = IERC20(_rewardsToken);
+        stakingToken = IERC20(_stakingToken);
         rewardsDistribution = _rewardsDistribution;
     }
 

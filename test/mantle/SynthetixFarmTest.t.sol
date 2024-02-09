@@ -24,8 +24,9 @@ import "../../src/libraries/external/agni/PositionValue.sol";
 import "../../src/libraries/external/LiquidityAmounts.sol";
 
 import "../../src/utils/LpWrapper.sol";
+import "../../src/utils/external/synthetix/StakingRewards.sol";
 
-contract IntentTest is Test {
+contract Integration is Test {
     using SafeERC20 for IERC20;
 
     address public constant USDC = 0x09Bc4E0D864854c6aFB6eB9A9cdF58aC190D0dF9;
@@ -50,7 +51,6 @@ contract IntentTest is Test {
         uint128 liquidity
     ) public returns (uint256) {
         if (token0 > token1) (token0, token1) = (token1, token0);
-        IAgniPool pool = IAgniPool(factory.getPool(token0, token1, fee));
         (uint160 sqrtRatioX96, int24 spotTick, , , , , ) = pool.slot0();
         {
             int24 remainder = spotTick % pool.tickSpacing();
@@ -136,9 +136,7 @@ contract IntentTest is Test {
     }
 
     function removePosition(
-        Core intent,
-        uint256 tokenId,
-        IAgniPool pool
+        uint256 tokenId
     )
         public
         returns (
@@ -150,7 +148,7 @@ contract IntentTest is Test {
     {
         (uint160 sqrtRatioX96, , , , , , ) = pool.slot0();
         vm.stopPrank();
-        vm.startPrank(address(intent));
+        vm.startPrank(address(core));
         (, , , , , , , uint128 liquidity, , , , ) = positionManager.positions(
             tokenId
         );
@@ -174,7 +172,7 @@ contract IntentTest is Test {
 
         positionManager.collect(
             INonfungiblePositionManager.CollectParams({
-                recipient: address(intent),
+                recipient: address(core),
                 tokenId: tokenId,
                 amount0Max: uint128(liquidityAmount0),
                 amount1Max: uint128(liquidityAmount1)
@@ -186,14 +184,12 @@ contract IntentTest is Test {
     }
 
     function addPosition(
-        Core intent,
         uint256 tokenId,
-        IAgniPool pool,
         uint256 liquidityAmount0,
         uint256 liquidityAmount1
     ) public {
         vm.stopPrank();
-        vm.startPrank(address(intent));
+        vm.startPrank(address(core));
 
         IERC20(pool.token0()).safeIncreaseAllowance(
             address(positionManager),
@@ -219,12 +215,10 @@ contract IntentTest is Test {
     }
 
     function determineSwapAmounts(
-        Core core,
         PulseAgniBot bot,
         uint256 id
     ) public returns (PulseAgniBot.SwapParams memory) {
         ICore.NftsInfo memory info = core.nfts(id);
-        IAgniPool pool = IAgniPool(info.pool);
         (bool flag, ICore.TargetNftsInfo memory target) = core
             .strategyModule()
             .getTargets(info, core.ammModule(), core.oracle());
@@ -236,7 +230,7 @@ contract IntentTest is Test {
             uint256 amount1,
             uint256 liquidityAmount0,
             uint256 liquidityAmount1
-        ) = removePosition(core, tokenId, pool);
+        ) = removePosition(tokenId);
 
         PulseAgniBot.SwapParams memory swapParams = bot
             .calculateSwapAmountsPreciselySingle(
@@ -253,7 +247,7 @@ contract IntentTest is Test {
                 })
             );
 
-        addPosition(core, tokenId, pool, liquidityAmount0, liquidityAmount1);
+        addPosition(tokenId, liquidityAmount0, liquidityAmount1);
 
         return swapParams;
     }
@@ -271,7 +265,6 @@ contract IntentTest is Test {
     }
 
     function determineSwapAmountsMultiple(
-        Core core,
         PulseAgniBot bot,
         uint256[] memory ids
     ) public returns (PulseAgniBot.SwapParams memory) {
@@ -296,7 +289,6 @@ contract IntentTest is Test {
         data.cumulative = 0;
         for (uint256 i = 0; i < ids.length; i++) {
             ICore.NftsInfo memory info = core.nfts(ids[i]);
-            IAgniPool pool = IAgniPool(info.pool);
             (bool flag, ICore.TargetNftsInfo memory target) = core
                 .strategyModule()
                 .getTargets(info, core.ammModule(), core.oracle());
@@ -307,9 +299,7 @@ contract IntentTest is Test {
             uint256 amount0_;
             uint256 amount1_;
             (amount0_, amount1_, data.liq0[i], data.liq1[i]) = removePosition(
-                core,
-                tokenId,
-                pool
+                tokenId
             );
             data.amount0 += amount0_;
             data.amount1 += amount1_;
@@ -363,13 +353,7 @@ contract IntentTest is Test {
 
         for (uint256 i = 0; i < ids.length; i++) {
             ICore.NftsInfo memory nftInfo = core.nfts(ids[i]);
-            addPosition(
-                core,
-                nftInfo.tokenIds[0],
-                IAgniPool(nftInfo.pool),
-                data.liq0[i],
-                data.liq1[i]
-            );
+            addPosition(nftInfo.tokenIds[0], data.liq0[i], data.liq1[i]);
         }
         return swapParams;
     }
@@ -380,9 +364,16 @@ contract IntentTest is Test {
     AgniDepositWithdrawModule public dwModule;
     LpWrapper public lpWrapper;
 
+    address public depositor = address(bytes20(keccak256("depositor")));
+    IAgniPool public pool = IAgniPool(factory.getPool(USDC, WETH, FEE));
+
+    Core public core;
+
+    address public farm;
+    StakingRewards public stakingRewards;
+
     function test() external {
         vm.startPrank(owner);
-        IAgniPool pool = IAgniPool(factory.getPool(USDC, WETH, FEE));
         {
             pool.increaseObservationCardinalityNext(10);
             {
@@ -437,7 +428,7 @@ contract IntentTest is Test {
         );
         strategyModule = new PulseStrategyModule();
         oracle = new AgniOracle();
-        Core core = new Core(
+        core = new Core(
             ammModule,
             strategyModule,
             oracle,
@@ -453,9 +444,7 @@ contract IntentTest is Test {
         lpWrapper = new LpWrapper(core, dwModule, "lp wrapper", "LPWR");
 
         ICore.DepositParams memory depositParams;
-        uint32[] memory timespans = new uint32[](2);
-        timespans[0] = 20;
-        timespans[1] = 30;
+
         depositParams.tokenIds = new uint256[](1);
         depositParams.tokenIds[0] = mint(
             USDC,
@@ -474,23 +463,27 @@ contract IntentTest is Test {
             })
         );
         depositParams.securityParams = new bytes(0);
-        //  abi.encode(
-        //     AgniOracle.SecurityParams({
-        //         anomalyLookback: 5,
-        //         anomalyOrder: 3,
-        //         anomalyFactorD9: 2e9
-        //     })
-        // );
 
         depositParams.slippageD4 = 100;
         positionManager.approve(address(core), depositParams.tokenIds[0]);
-        uint256 nftId = core.deposit(depositParams);
-        core.withdraw(nftId, owner);
+        {
+            uint256 nftId = core.deposit(depositParams);
+            core.withdraw(nftId, owner);
+        }
         positionManager.approve(address(core), depositParams.tokenIds[0]);
+        stakingRewards = new StakingRewards(
+            owner,
+            owner,
+            address(lpWrapper), // replace with AGNI address
+            address(lpWrapper)
+        );
+
         depositParams.owner = address(lpWrapper);
+        depositParams.vault = address(stakingRewards);
+
         uint256 nftId2 = core.deposit(depositParams);
 
-        lpWrapper.initialize(nftId2, 1e9);
+        lpWrapper.initialize(nftId2, 5e5);
 
         PulseAgniBot bot = new PulseAgniBot(
             IQuoterV2(quoter),
@@ -498,23 +491,53 @@ contract IntentTest is Test {
             positionManager
         );
 
-        address depositor = address(bytes20(keccak256("depositor")));
+        deal(USDC, depositor, 1e6 * 1e6);
+        deal(WETH, depositor, 500 ether);
 
         vm.stopPrank();
         vm.startPrank(depositor);
 
-        deal(USDC, depositor, 1e6 * 1e6);
-        deal(WETH, depositor, 500 ether);
-
         IERC20(USDC).safeApprove(address(lpWrapper), type(uint256).max);
         IERC20(WETH).safeApprove(address(lpWrapper), type(uint256).max);
-
-        lpWrapper.deposit(1e6, 500 ether, 0, depositor);
-
+        {
+            (, , uint256 lpAmount) = lpWrapper.deposit(
+                1e6,
+                500 ether,
+                1e3,
+                depositor
+            );
+            require(lpAmount > 0, "Invalid lp amount");
+            console2.log("Actual lp amount:", lpAmount);
+            lpWrapper.approve(address(stakingRewards), type(uint256).max);
+            stakingRewards.stake(lpWrapper.balanceOf(depositor), depositor);
+        }
         vm.stopPrank();
         vm.startPrank(owner);
 
         for (uint256 i = 0; i < 2; i++) {
+            {
+                vm.stopPrank();
+                vm.startPrank(depositor);
+                stakingRewards.withdraw(
+                    stakingRewards.balanceOf(depositor) / 2
+                );
+                (
+                    uint256 amount0,
+                    uint256 amount1,
+                    uint256 actualAmountLp
+                ) = lpWrapper.withdraw(1e6, 0, 0, depositor);
+
+                console2.log(
+                    "Actual withdrawal amounts for depositor:",
+                    amount0,
+                    amount1,
+                    actualAmountLp
+                );
+
+                vm.stopPrank();
+                vm.startPrank(owner);
+            }
+
             ICore.TargetNftsInfo memory target;
             while (true) {
                 movePrice(true);
@@ -531,7 +554,6 @@ contract IntentTest is Test {
             }
 
             PulseAgniBot.SwapParams memory swapParams = determineSwapAmounts(
-                core,
                 bot,
                 lpWrapper.tokenId()
             );
@@ -573,13 +595,7 @@ contract IntentTest is Test {
                 );
                 uint256 capital = FullMath.mulDiv(amount0, priceX96, 2 ** 96) +
                     amount1;
-                console2.log(
-                    "Capital usdc:",
-                    capital /
-                        10 **
-                            IERC20Metadata(IAgniPool(info.pool).token1())
-                                .decimals()
-                );
+                console2.log("Capital usdc:", capital);
                 console2.log(
                     "New position params:",
                     vm.toString(info.tokenIds[0])

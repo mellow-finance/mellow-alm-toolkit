@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 
 import "../interfaces/modules/IAmmModule.sol";
 import "../interfaces/modules/IAmmDepositWithdrawModule.sol";
@@ -11,6 +12,7 @@ import "../interfaces/ICore.sol";
 import "../libraries/external/FullMath.sol";
 
 contract LpWrapper is ERC20 {
+    address public immutable positionManager;
     IAmmDepositWithdrawModule public immutable ammDepositWithdrawModule;
     ICore public immutable core;
     IAmmModule public immutable ammModule;
@@ -24,14 +26,16 @@ contract LpWrapper is ERC20 {
         string memory symbol
     ) ERC20(name, symbol) {
         core = core_;
+        positionManager = core.positionManager();
         ammModule = core.ammModule();
         oracle = core.oracle();
         ammDepositWithdrawModule = ammDepositWithdrawModule_;
     }
 
-    function initialize(uint256 tokenId_) external {
+    function initialize(uint256 tokenId_, uint256 initialTotalSupply) external {
         if (tokenId != 0) revert();
         tokenId = tokenId_;
+        _mint(address(this), initialTotalSupply);
     }
 
     function deposit(
@@ -119,8 +123,11 @@ contract LpWrapper is ERC20 {
         }
 
         uint256 totalSupply_ = totalSupply();
-        lpAmount = type(uint256).max;
+        for (uint256 i = 0; i < positionsAfter.length; i++) {
+            IERC721(positionManager).approve(address(core), info.tokenIds[i]);
+        }
 
+        lpAmount = type(uint256).max;
         for (uint256 i = 0; i < positionsAfter.length; i++) {
             uint256 currentLpAmount = FullMath.mulDiv(
                 positionsAfter[i].liquidity - positionsBefore[i].liquidity,
@@ -173,6 +180,10 @@ contract LpWrapper is ERC20 {
 
         {
             for (uint256 i = 0; i < info.tokenIds.length; i++) {
+                IERC721(positionManager).approve(
+                    address(core),
+                    info.tokenIds[i]
+                );
                 IAmmModule.Position memory position = ammModule.getPositionInfo(
                     info.tokenIds[i]
                 );
@@ -181,6 +192,7 @@ contract LpWrapper is ERC20 {
                     actualLpAmount,
                     totalSupply_
                 );
+                if (liquidity == 0) continue;
                 (bool success, bytes memory response) = address(
                     ammDepositWithdrawModule
                 ).delegatecall(
@@ -191,7 +203,7 @@ contract LpWrapper is ERC20 {
                             to
                         )
                     );
-                if (!success) revert();
+                if (!success) revert("Withdraw call failed");
                 (uint256 actualAmount0, uint256 actualAmount1) = abi.decode(
                     response,
                     (uint256, uint256)
@@ -203,7 +215,7 @@ contract LpWrapper is ERC20 {
         }
 
         if (amount0 < minAmount0 || amount1 < minAmount1) {
-            revert();
+            revert("LIMU");
         }
 
         tokenId = core.deposit(

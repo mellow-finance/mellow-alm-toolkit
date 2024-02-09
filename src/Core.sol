@@ -156,7 +156,7 @@ contract Core is DefaultAccessControl, ICore {
             }
 
             IERC721(positionManager).transferFrom(
-                params.owner,
+                msg.sender,
                 address(this),
                 tokenId
             );
