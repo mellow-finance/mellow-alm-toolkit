@@ -70,10 +70,7 @@ contract LpWrapper is ERC20 {
             uint256 totalAmount0 = 0;
             uint256 totalAmount1 = 0;
             {
-                (uint160 sqrtPriceX96, ) = oracle.getOraclePrice(
-                    info.pool,
-                    info.securityParams
-                );
+                (uint160 sqrtPriceX96, ) = oracle.getOraclePrice(info.pool);
                 for (uint256 i = 0; i < n; i++) {
                     (amounts0[i], amounts1[i]) = ammModule
                         .getAmountsForLiquidity(

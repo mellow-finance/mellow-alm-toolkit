@@ -41,7 +41,7 @@ contract PulseStrategyModule is IStrategyModule {
                 (StrategyParams)
             );
             int24 tick;
-            (, tick) = oracle.getOraclePrice(info.pool, info.securityParams);
+            (, tick) = oracle.getOraclePrice(info.pool);
             require(info.tokenIds.length == 1);
             uint256 tokenId = info.tokenIds[0];
             IAmmModule.Position memory position = ammModule.getPositionInfo(

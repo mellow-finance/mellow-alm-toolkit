@@ -14,51 +14,78 @@ import "../libraries/CommonLibrary.sol";
  * @dev A contract that implements the IOracle interface for Agni pools.
  */
 contract AgniOracle is IOracle {
-    error NotEnoughObservations();
     error InvalidParams();
     error PriceManipulationDetected();
+    error NotEnoughObservations();
 
     /**
-     * @dev Struct defining the security parameters for the AgniOracle.
-     * @param anomalyLookback The number of blocks to look back for anomaly detection.
-     * @param anomalyOrder The order of the polynomial used for anomaly detection.
-     * @param anomalyFactorD9 The factor used to determine the anomaly threshold.
+     * @dev Struct representing the security parameters for the Agni Oracle.
      */
     struct SecurityParams {
-        uint16 anomalyLookback;
-        uint16 anomalyOrder;
-        uint256 anomalyFactorD9;
+        uint16 lookback; // Number of historical data points to consider
+        int24 maxAllowedDelta; // Maximum allowed change in the data points
     }
 
-    uint256 public constant D9 = 1e9;
-
     /**
-     * @dev Validates the security parameters.
-     * @param params The encoded security parameters.
-     * @notice throws InvalidParams if the security parameters are invalid.
+     * @dev Ensures that there is no Miner Extractable Value (MEV) manipulation in the AgniPool.
+     * @param poolAddress The address of the Agni pool.
+     * @param params The parameters for security checks.
+     * @notice throws PriceManipulationDetected if MEV manipulation is detected.
      */
-    function validateSecurityParams(
+    function ensureNoMEV(
+        address poolAddress,
         bytes memory params
-    ) external pure override {
+    ) external view {
         if (params.length == 0) return;
+        (
+            ,
+            int24 spotTick,
+            uint16 observationIndex,
+            uint16 observationCardinality,
+            ,
+            ,
+
+        ) = IAgniPool(poolAddress).slot0();
         SecurityParams memory securityParams = abi.decode(
             params,
             (SecurityParams)
         );
-        if (securityParams.anomalyLookback <= securityParams.anomalyOrder)
-            revert InvalidParams();
-        if (securityParams.anomalyFactorD9 > D9 * 10) revert InvalidParams();
+        uint16 lookback = securityParams.lookback;
+        if (observationCardinality < lookback + 1)
+            revert NotEnoughObservations();
+
+        (uint32 nextTimestamp, int56 nextCumulativeTick, , ) = IAgniPool(
+            poolAddress
+        ).observations(observationIndex);
+        int24 nextTick = spotTick;
+        int24 maxAllowedDelta = securityParams.maxAllowedDelta;
+        for (uint16 i = 1; i <= lookback; i++) {
+            uint256 index = (observationCardinality + observationIndex - i) %
+                observationCardinality;
+            (uint32 timestamp, int56 tickCumulative, , ) = IAgniPool(
+                poolAddress
+            ).observations(index);
+            int24 tick = int24(
+                (nextCumulativeTick - tickCumulative) /
+                    int56(uint56(nextTimestamp - timestamp))
+            );
+            (nextTimestamp, nextCumulativeTick) = (timestamp, tickCumulative);
+            int24 delta = nextTick - tick;
+            if (delta > maxAllowedDelta || delta < -maxAllowedDelta)
+                revert PriceManipulationDetected();
+            nextTick = tick;
+        }
     }
 
     /**
-     * @dev Retrieves the price from an Agni oracle.
+     * @dev Retrieves the price information from an Agni pool oracle.
      * @param pool The address of the Agni pool.
-     * @return The spot sqrt price and tick of the oracle.
+     * @return uint160 square root price of the Agni pool.
+     * @return int24 tick of the Agni pool.
      * @notice throws NotEnoughObservations if there are not enough observations in the pool.
      */
     function getOraclePrice(
-        address pool,
-        bytes memory /* params */
+        address pool
     ) external view override returns (uint160, int24) {
         (
             uint160 spotSqrtPriceX96,
@@ -77,91 +104,37 @@ contract AgniOracle is IOracle {
         uint16 previousObservationIndex = observationCardinality - 1;
         if (observationIndex != 0)
             previousObservationIndex = observationIndex - 1;
+        if (previousObservationIndex == observationCardinality)
+            revert NotEnoughObservations();
         (
             uint32 previousBlockTimestamp,
             int56 previousTickCumulative,
             ,
 
         ) = IAgniPool(pool).observations(previousObservationIndex);
-        unchecked {
-            int56 tickCumulativesDelta = tickCumulative -
-                previousTickCumulative;
-            int24 tick = int24(
-                tickCumulativesDelta /
-                    int56(uint56(blockTimestamp - previousBlockTimestamp))
-            );
-            uint160 sqrtPriceX96 = TickMath.getSqrtRatioAtTick(tick);
-            return (sqrtPriceX96, tick);
-        }
+        int56 tickCumulativesDelta = tickCumulative - previousTickCumulative;
+        int24 tick = int24(
+            tickCumulativesDelta /
+                int56(uint56(blockTimestamp - previousBlockTimestamp))
+        );
+        uint160 sqrtPriceX96 = TickMath.getSqrtRatioAtTick(tick);
+        return (sqrtPriceX96, tick);
     }
 
     /**
-     * @dev Ensures that no Miner Extractable Value (MEV) is present in the given Agni pool.
-     * MEV refers to the ability of miners to manipulate the order of transactions in a block to their advantage.
-     * This function calculates the tick deltas between observations in the pool and checks if any anomaly exceeds the specified threshold.
-     * If an anomaly is detected, it reverts with a PriceManipulationDetected error.
-     * @param pool The address of the Agni pool to check for MEV.
-     * @param params The encoded security parameters used for anomaly detection.
+     * @dev Validates the security parameters.
+     * @param params The security parameters to be validated.
+     * @notice This function checks if the security parameters are valid. It decodes the `params` parameter
+     * and checks if the `lookback` value is non-zero and the `maxAllowedDelta` value is greater than or equal to zero.
+     * If any of these conditions are not met, it reverts with an `InvalidParams` error.
      */
-    function ensureNoMEV(
-        address pool,
-        bytes memory params
-    ) external view override {
+    function validateSecurityParams(bytes memory params) external pure {
         if (params.length == 0) return;
         SecurityParams memory securityParams = abi.decode(
             params,
             (SecurityParams)
         );
-        uint32[] memory timestamps = new uint32[](
-            securityParams.anomalyLookback + 2
-        );
-        int56[] memory tickCumulatives = new int56[](timestamps.length);
-        (
-            ,
-            int24 spotTick,
-            uint16 observationIndex,
-            uint16 observationCardinality,
-            ,
-            ,
-
-        ) = IAgniPool(pool).slot0();
-        if (observationCardinality < timestamps.length) revert InvalidParams();
-        for (uint16 i = 0; i < timestamps.length; i++) {
-            uint16 index = (observationCardinality + observationIndex - i) %
-                observationCardinality;
-            (timestamps[i], tickCumulatives[i], , ) = IAgniPool(pool)
-                .observations(index);
-        }
-
-        int24[] memory ticks = new int24[](timestamps.length);
-        ticks[0] = spotTick;
-        for (uint256 i = 0; i + 1 < timestamps.length - 1; i++) {
-            unchecked {
-                ticks[i + 1] = int24(
-                    (tickCumulatives[i] - tickCumulatives[i + 1]) /
-                        int56(uint56(timestamps[i] - timestamps[i + 1]))
-                );
-            }
-        }
-
-        uint256[] memory deltas = new uint256[](
-            securityParams.anomalyLookback + 1
-        );
-        for (uint256 i = 0; i < deltas.length; i++) {
-            int24 delta = ticks[i] - ticks[i + 1];
-            if (delta > 0) delta = -delta;
-            deltas[i] = uint256(uint24(delta));
-        }
-        deltas = CommonLibrary.sort(deltas);
-        if (
-            deltas[deltas.length - 1] >
-            FullMath.mulDiv(
-                deltas[securityParams.anomalyOrder],
-                securityParams.anomalyFactorD9,
-                D9
-            )
-        ) {
-            revert PriceManipulationDetected();
-        }
+        if (securityParams.lookback == 0 || securityParams.maxAllowedDelta < 0)
+            revert InvalidParams();
     }
 }

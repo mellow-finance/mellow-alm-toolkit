@@ -52,12 +52,12 @@ contract UniV3Oracle is IOracle {
     /**
      * @dev Retrieves the price from a Uniswap V3 oracle.
      * @param pool The address of the Uniswap V3 pool.
-     * @return The spot sqrt price and tick of the oracle.
+     * @return uint160 spot sqrt price.
+     * @return int24 tick of the oracle.
      * @notice throws NotEnoughObservations if there are not enough observations in the pool.
      */
     function getOraclePrice(
-        address pool,
-        bytes memory /* params */
+        address pool
     ) external view override returns (uint160, int24) {
         (
             uint160 spotSqrtPriceX96,

@@ -150,7 +150,9 @@ contract Deploy is Script {
                 tickSpacing: params.tickSpacing
             })
         );
-        depositParams.securityParams = new bytes(0);
+        depositParams.securityParams = abi.encode(
+            AgniOracle.SecurityParams({lookback: 10, maxAllowedDelta: 10})
+        );
         depositParams.slippageD4 = params.slippageD4;
         depositParams.owner = address(lpWrapper);
         depositParams.vault = address(stakingRewards);

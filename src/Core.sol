@@ -275,10 +275,7 @@ contract Core is DefaultAccessControl, ICore {
                 );
                 if (!flag) continue;
             }
-            (uint160 sqrtPriceX96, ) = oracle.getOraclePrice(
-                info.pool,
-                info.securityParams
-            );
+            (uint160 sqrtPriceX96, ) = oracle.getOraclePrice(info.pool);
             uint256 priceX96 = FullMath.mulDiv(sqrtPriceX96, sqrtPriceX96, Q96);
             uint256 capitalInToken1 = 0;
             for (uint256 j = 0; j < info.tokenIds.length; j++) {
