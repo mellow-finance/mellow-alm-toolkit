@@ -94,9 +94,11 @@ contract Deploy is Script {
     function run() external {
         vm.startBroadcast(uint256(bytes32(vm.envBytes("DEPLOYER_PK"))));
 
-        ammModule = new AgniAmmModule(
-            INonfungiblePositionManager(positionManager)
-        );
+        // ammModule = new AgniAmmModule(
+        //     INonfungiblePositionManager(positionManager)
+        // );
+        ammModule = AgniAmmModule(0xCD8237f2b332e482DaEaA609D9664b739e93097d);
+
         strategyModule = new PulseStrategyModule();
         oracle = new AgniOracle();
         core = new Core(

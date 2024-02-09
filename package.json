@@ -17,7 +17,7 @@
     "test:mainnet": "forge test -vvv --fork-url $(grep MAINNET_RPC .env | cut -d '=' -f2,3,4,5) --match-path ./test/mainnet/\\*",
     "test:mantle": "forge test -vvv --fork-url $(grep MANTLE_RPC .env | cut -d '=' -f2,3,4,5) --match-path ./test/mantle/\\*",
     "size": "forge build --sizes --force",
-    "deploy:mantle": "forge script --use 0.8.21 src/scripts/deploy/mantle/Deploy.s.sol:Deploy --rpc-url $(grep MANTLE_RPC .env | cut -d '=' -f2) --broadcast --slow --verify -vvvv",
+    "deploy:mantle": "forge script --use 0.8.20 src/scripts/deploy/mantle/Deploy.s.sol:Deploy --rpc-url $(grep MANTLE_RPC .env | cut -d '=' -f2) --broadcast --slow --verify -vvvv",
     "compile": "forge build"
   }
 }
