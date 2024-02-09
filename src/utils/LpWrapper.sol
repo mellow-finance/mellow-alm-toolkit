@@ -12,11 +12,18 @@ import "../interfaces/ICore.sol";
 import "../libraries/external/FullMath.sol";
 
 contract LpWrapper is ERC20 {
+    error InsufficientAmounts();
+    error InsufficientLpAmount();
+    error AlreadyInitialized();
+    error DepositCallFailed();
+    error WithdrawCallFailed();
+
     address public immutable positionManager;
     IAmmDepositWithdrawModule public immutable ammDepositWithdrawModule;
     ICore public immutable core;
     IAmmModule public immutable ammModule;
     IOracle public immutable oracle;
+
     uint256 public tokenId;
 
     constructor(
@@ -33,7 +40,7 @@ contract LpWrapper is ERC20 {
     }
 
     function initialize(uint256 tokenId_, uint256 initialTotalSupply) external {
-        if (tokenId != 0) revert("Already initialized");
+        if (tokenId != 0) revert AlreadyInitialized();
         tokenId = tokenId_;
         _mint(address(this), initialTotalSupply);
     }
@@ -50,35 +57,36 @@ contract LpWrapper is ERC20 {
         ICore.NftsInfo memory info = core.nfts(tokenId);
         core.withdraw(tokenId, address(this));
 
+        uint256 n = info.tokenIds.length;
         IAmmModule.Position[]
-            memory positionsBefore = new IAmmModule.Position[](
-                info.tokenIds.length
-            );
-        for (uint256 i = 0; i < positionsBefore.length; i++) {
+            memory positionsBefore = new IAmmModule.Position[](n);
+        for (uint256 i = 0; i < n; i++) {
             positionsBefore[i] = ammModule.getPositionInfo(info.tokenIds[i]);
         }
 
-        uint256[] memory amounts0 = new uint256[](positionsBefore.length);
-        uint256[] memory amounts1 = new uint256[](positionsBefore.length);
-
+        uint256[] memory amounts0 = new uint256[](n);
+        uint256[] memory amounts1 = new uint256[](n);
         {
-            (uint160 sqrtPriceX96, ) = oracle.getOraclePrice(
-                info.pool,
-                info.securityParams
-            );
             uint256 totalAmount0 = 0;
             uint256 totalAmount1 = 0;
-            for (uint256 i = 0; i < positionsBefore.length; i++) {
-                (amounts0[i], amounts1[i]) = ammModule.getAmountsForLiquidity(
-                    positionsBefore[i].liquidity,
-                    sqrtPriceX96,
-                    positionsBefore[i].tickLower,
-                    positionsBefore[i].tickUpper
+            {
+                (uint160 sqrtPriceX96, ) = oracle.getOraclePrice(
+                    info.pool,
+                    info.securityParams
                 );
-                totalAmount0 += amounts0[i];
-                totalAmount1 += amounts1[i];
+                for (uint256 i = 0; i < n; i++) {
+                    (amounts0[i], amounts1[i]) = ammModule
+                        .getAmountsForLiquidity(
+                            positionsBefore[i].liquidity,
+                            sqrtPriceX96,
+                            positionsBefore[i].tickLower,
+                            positionsBefore[i].tickUpper
+                        );
+                    totalAmount0 += amounts0[i];
+                    totalAmount1 += amounts1[i];
+                }
             }
-            for (uint256 i = 0; i < positionsBefore.length; i++) {
+            for (uint256 i = 0; i < n; i++) {
                 amounts0[i] = FullMath.mulDiv(
                     amount0,
                     amounts0[i],
@@ -92,7 +100,7 @@ contract LpWrapper is ERC20 {
             }
         }
         if (amount0 > 0 || amount1 > 0) {
-            for (uint256 i = 0; i < positionsBefore.length; i++) {
+            for (uint256 i = 0; i < n; i++) {
                 (bool success, bytes memory response) = address(
                     ammDepositWithdrawModule
                 ).delegatecall(
@@ -104,7 +112,7 @@ contract LpWrapper is ERC20 {
                             msg.sender
                         )
                     );
-                if (!success) revert("Deposit call failed");
+                if (!success) revert DepositCallFailed();
                 (uint256 amount0_, uint256 amount1_) = abi.decode(
                     response,
                     (uint256, uint256)
@@ -116,19 +124,19 @@ contract LpWrapper is ERC20 {
         }
 
         IAmmModule.Position[] memory positionsAfter = new IAmmModule.Position[](
-            positionsBefore.length
+            n
         );
-        for (uint256 i = 0; i < positionsAfter.length; i++) {
+        for (uint256 i = 0; i < n; i++) {
             positionsAfter[i] = ammModule.getPositionInfo(info.tokenIds[i]);
         }
 
         uint256 totalSupply_ = totalSupply();
-        for (uint256 i = 0; i < positionsAfter.length; i++) {
+        for (uint256 i = 0; i < n; i++) {
             IERC721(positionManager).approve(address(core), info.tokenIds[i]);
         }
 
         lpAmount = type(uint256).max;
-        for (uint256 i = 0; i < positionsAfter.length; i++) {
+        for (uint256 i = 0; i < n; i++) {
             uint256 currentLpAmount = FullMath.mulDiv(
                 positionsAfter[i].liquidity - positionsBefore[i].liquidity,
                 totalSupply_,
@@ -139,8 +147,7 @@ contract LpWrapper is ERC20 {
             }
         }
 
-        require(lpAmount >= minLpAmount, "Insufficient LP amount");
-
+        if (lpAmount < minLpAmount) revert InsufficientLpAmount();
         _mint(to, lpAmount);
 
         tokenId = core.deposit(
@@ -201,7 +208,7 @@ contract LpWrapper is ERC20 {
                             to
                         )
                     );
-                if (!success) revert("Withdraw call failed");
+                if (!success) revert WithdrawCallFailed();
                 (uint256 actualAmount0, uint256 actualAmount1) = abi.decode(
                     response,
                     (uint256, uint256)
@@ -213,7 +220,7 @@ contract LpWrapper is ERC20 {
         }
 
         if (amount0 < minAmount0 || amount1 < minAmount1) {
-            revert("Insufficient amounts");
+            revert InsufficientAmounts();
         }
 
         tokenId = core.deposit(

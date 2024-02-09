@@ -200,7 +200,7 @@ contract Core is DefaultAccessControl, ICore {
     function withdraw(uint256 id, address to) external override {
         NftsInfo memory info = _nfts[id];
         if (info.tokenIds.length == 0) revert();
-        require(info.owner == msg.sender);
+        if (info.owner != msg.sender) revert Forbidden();
         _userIds[info.owner].remove(id);
         delete _nfts[id];
         for (uint256 i = 0; i < info.tokenIds.length; i++) {
@@ -342,7 +342,7 @@ contract Core is DefaultAccessControl, ICore {
 
         uint256[][] memory newTokenIds = IRebalanceCallback(params.callback)
             .call(params.data, targets);
-        if (newTokenIds.length != iterator) revert InvalidParameters();
+        if (newTokenIds.length != iterator) revert InvalidLength();
         for (uint256 i = 0; i < iterator; i++) {
             TargetNftsInfo memory target = targets[i];
             uint256[] memory tokenIds = newTokenIds[i];

@@ -1,47 +1,19 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "forge-std/Test.sol";
-import "forge-std/Vm.sol";
-
-import "@openzeppelin/contracts/utils/Strings.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-
-import "../../src/Core.sol";
-import "../../src/bots/PulseAgniBot.sol";
-
-import "../../src/modules/agni/AgniAmmModule.sol";
-import "../../src/modules/agni/AgniDepositWithdrawModule.sol";
-import "../../src/modules/strategies/PulseStrategyModule.sol";
-import "../../src/oracles/AgniOracle.sol";
-
-import "../../src/interfaces/external/agni/IAgniFactory.sol";
-import "../../src/interfaces/external/agni/IAgniPool.sol";
-import "../../src/interfaces/external/agni/INonfungiblePositionManager.sol";
-
-import "../../src/libraries/external/agni/PositionValue.sol";
-import "../../src/libraries/external/LiquidityAmounts.sol";
-
-import "../../src/utils/LpWrapper.sol";
-import "../../src/utils/external/synthetix/StakingRewards.sol";
+import "./Constants.sol";
 
 contract Integration is Test {
     using SafeERC20 for IERC20;
+    using Constants for Integration;
 
-    address public constant USDC = 0x09Bc4E0D864854c6aFB6eB9A9cdF58aC190D0dF9;
-    address public constant WETH = 0xdEAddEaDdeadDEadDEADDEAddEADDEAddead1111;
     uint24 public constant FEE = 2500;
 
     INonfungiblePositionManager public positionManager =
-        INonfungiblePositionManager(0x218bf598D1453383e2F4AA7b14fFB9BfB102D637);
+        INonfungiblePositionManager(Constants.NONFUNGIBLE_POSITION_MANAGER);
 
-    IAgniFactory public factory =
-        IAgniFactory(0x25780dc8Fc3cfBD75F33bFDAB65e969b603b2035);
-    address public swapRouter = 0x319B69888b0d11cEC22caA5034e25FfFBDc88421;
-    address public quoter = 0xc4aaDc921E1cdb66c5300Bc158a313292923C0cb;
-
-    address public owner = address(0x7ee9247b6199877F86703644c97784495549aC5E);
+    IAgniFactory public factory = IAgniFactory(Constants.AGNI_FACTORY);
+    address public owner = address(Constants.DEPLOYER);
 
     function mint(
         address token0,
@@ -102,12 +74,15 @@ contract Integration is Test {
     function movePrice(bool flag) public {
         if (flag) {
             uint256 amountIn = 1e6 * 1e6;
-            deal(USDC, owner, amountIn);
-            IERC20(USDC).safeIncreaseAllowance(swapRouter, amountIn);
-            ISwapRouter(swapRouter).exactInputSingle(
+            deal(Constants.USDC, owner, amountIn);
+            IERC20(Constants.USDC).safeIncreaseAllowance(
+                Constants.AGNI_SWAP_ROUTER,
+                amountIn
+            );
+            ISwapRouter(Constants.AGNI_SWAP_ROUTER).exactInputSingle(
                 ISwapRouter.ExactInputSingleParams({
-                    tokenIn: USDC,
-                    tokenOut: WETH,
+                    tokenIn: Constants.USDC,
+                    tokenOut: Constants.WETH,
                     fee: FEE,
                     deadline: type(uint256).max,
                     recipient: owner,
@@ -118,12 +93,15 @@ contract Integration is Test {
             );
         } else {
             uint256 amountIn = 500 ether;
-            deal(WETH, owner, amountIn);
-            IERC20(WETH).safeIncreaseAllowance(swapRouter, amountIn);
-            ISwapRouter(swapRouter).exactInputSingle(
+            deal(Constants.WETH, owner, amountIn);
+            IERC20(Constants.WETH).safeIncreaseAllowance(
+                Constants.AGNI_SWAP_ROUTER,
+                amountIn
+            );
+            ISwapRouter(Constants.AGNI_SWAP_ROUTER).exactInputSingle(
                 ISwapRouter.ExactInputSingleParams({
-                    tokenIn: WETH,
-                    tokenOut: USDC,
+                    tokenIn: Constants.WETH,
+                    tokenOut: Constants.USDC,
                     fee: FEE,
                     deadline: type(uint256).max,
                     recipient: owner,
@@ -365,7 +343,8 @@ contract Integration is Test {
     LpWrapper public lpWrapper;
 
     address public depositor = address(bytes20(keccak256("depositor")));
-    IAgniPool public pool = IAgniPool(factory.getPool(USDC, WETH, FEE));
+    IAgniPool public pool =
+        IAgniPool(factory.getPool(Constants.USDC, Constants.WETH, FEE));
 
     Core public core;
 
@@ -392,12 +371,15 @@ contract Integration is Test {
                 );
             }
             uint256 amountIn = 1e3 * 1e6;
-            deal(USDC, owner, amountIn);
-            IERC20(USDC).safeIncreaseAllowance(swapRouter, amountIn);
-            ISwapRouter(swapRouter).exactInputSingle(
+            deal(Constants.USDC, owner, amountIn);
+            IERC20(Constants.USDC).safeIncreaseAllowance(
+                Constants.AGNI_SWAP_ROUTER,
+                amountIn
+            );
+            ISwapRouter(Constants.AGNI_SWAP_ROUTER).exactInputSingle(
                 ISwapRouter.ExactInputSingleParams({
-                    tokenIn: USDC,
-                    tokenOut: WETH,
+                    tokenIn: Constants.USDC,
+                    tokenOut: Constants.WETH,
                     fee: FEE,
                     deadline: type(uint256).max,
                     recipient: owner,
@@ -447,8 +429,8 @@ contract Integration is Test {
 
         depositParams.tokenIds = new uint256[](1);
         depositParams.tokenIds[0] = mint(
-            USDC,
-            WETH,
+            Constants.USDC,
+            Constants.WETH,
             FEE,
             pool.tickSpacing() * 8,
             1e9
@@ -486,19 +468,25 @@ contract Integration is Test {
         lpWrapper.initialize(nftId2, 5e5);
 
         PulseAgniBot bot = new PulseAgniBot(
-            IQuoterV2(quoter),
-            ISwapRouter(swapRouter),
+            IQuoterV2(Constants.AGNI_QUOTER_V2),
+            ISwapRouter(Constants.AGNI_SWAP_ROUTER),
             positionManager
         );
 
-        deal(USDC, depositor, 1e6 * 1e6);
-        deal(WETH, depositor, 500 ether);
+        deal(Constants.USDC, depositor, 1e6 * 1e6);
+        deal(Constants.WETH, depositor, 500 ether);
 
         vm.stopPrank();
         vm.startPrank(depositor);
 
-        IERC20(USDC).safeApprove(address(lpWrapper), type(uint256).max);
-        IERC20(WETH).safeApprove(address(lpWrapper), type(uint256).max);
+        IERC20(Constants.USDC).safeApprove(
+            address(lpWrapper),
+            type(uint256).max
+        );
+        IERC20(Constants.WETH).safeApprove(
+            address(lpWrapper),
+            type(uint256).max
+        );
         {
             (, , uint256 lpAmount) = lpWrapper.deposit(
                 1e6,
