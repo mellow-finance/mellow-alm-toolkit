@@ -44,12 +44,12 @@ contract Integration is Fixture {
         return nftId;
     }
 
-    function testHeavy() external {
+    function testDepositWithdraw() external {
         int24 tickSpacing = pool.tickSpacing();
         makeDeposit(
             DepositParams({
                 tickSpacing: tickSpacing,
-                width: tickSpacing * 10,
+                width: tickSpacing * 4,
                 tickNeighborhood: tickSpacing,
                 slippageD4: 100
             })
@@ -132,5 +132,116 @@ contract Integration is Fixture {
             );
             vm.stopPrank();
         }
+    }
+
+    function testDepositRebalanceWithdraw() external {
+        int24 tickSpacing = pool.tickSpacing();
+        makeDeposit(
+            DepositParams({
+                tickSpacing: tickSpacing,
+                width: tickSpacing * 10,
+                tickNeighborhood: tickSpacing,
+                slippageD4: 100
+            })
+        );
+
+        vm.startPrank(Constants.DEPOSITOR);
+        uint256 usdcAmount = 1e6 * 1e6;
+        uint256 wethAmount = 500 ether;
+        deal(Constants.USDC, Constants.DEPOSITOR, usdcAmount);
+        deal(Constants.WETH, Constants.DEPOSITOR, wethAmount);
+        IERC20(Constants.USDC).safeApprove(
+            address(lpWrapper),
+            type(uint256).max
+        );
+        IERC20(Constants.WETH).safeApprove(
+            address(lpWrapper),
+            type(uint256).max
+        );
+        uint256 depositedAmount0;
+        uint256 depositedAmount1;
+
+        {
+            uint256 lpAmount;
+            (depositedAmount0, depositedAmount1, lpAmount) = lpWrapper.deposit(
+                usdcAmount / 1e6,
+                wethAmount / 1e6,
+                1e8,
+                Constants.DEPOSITOR
+            );
+            require(lpAmount > 1e8, "Invalid lp amount");
+            console2.log("Actual lp amount:", lpAmount);
+            lpWrapper.approve(address(stakingRewards), type(uint256).max);
+            stakingRewards.stake(
+                lpWrapper.balanceOf(Constants.DEPOSITOR),
+                Constants.DEPOSITOR
+            );
+        }
+        vm.stopPrank();
+        {
+            (, int24 tick, , , , , ) = pool.slot0();
+            console2.log("Tick before:", vm.toString(tick));
+        }
+        movePrice();
+        skip(5 * 60);
+        {
+            (, int24 tick, , , , , ) = pool.slot0();
+            console2.log("Tick after:", vm.toString(tick));
+        }
+
+        {
+            PulseAgniBot.SwapParams memory swapParams = determineSwapAmounts(
+                lpWrapper.tokenId()
+            );
+            ICore.RebalanceParams memory rebalanceParams;
+
+            rebalanceParams.ids = new uint256[](1);
+            rebalanceParams.ids[0] = lpWrapper.tokenId();
+            rebalanceParams.callback = address(bot);
+            ISwapRouter.ExactInputSingleParams[]
+                memory ammParams = new ISwapRouter.ExactInputSingleParams[](1);
+            ammParams[0] = ISwapRouter.ExactInputSingleParams({
+                tokenIn: swapParams.tokenIn,
+                tokenOut: swapParams.tokenOut,
+                fee: swapParams.fee,
+                amountIn: swapParams.amountIn,
+                amountOutMinimum: (swapParams.expectedAmountOut * 9999) / 10000,
+                deadline: type(uint256).max,
+                recipient: address(bot),
+                sqrtPriceLimitX96: 0
+            });
+            rebalanceParams.data = abi.encode(ammParams);
+
+            vm.prank(Constants.OWNER);
+            core.rebalance(rebalanceParams);
+        }
+        uint256 withdrawAmount0;
+        uint256 withdrawAmount1;
+        {
+            vm.startPrank(Constants.DEPOSITOR);
+            stakingRewards.withdraw(
+                stakingRewards.balanceOf(Constants.DEPOSITOR)
+            );
+            uint256 lpAmount = lpWrapper.balanceOf(Constants.DEPOSITOR);
+            (withdrawAmount0, withdrawAmount1, ) = lpWrapper.withdraw(
+                lpAmount,
+                0,
+                0,
+                Constants.DEPOSITOR
+            );
+            vm.stopPrank();
+        }
+        console2.log(
+            "Actual withdrawal amounts for depositor:",
+            withdrawAmount0,
+            withdrawAmount1
+        );
+        console2.log(
+            "Actual deposited amounts for depositor:",
+            depositedAmount0,
+            depositedAmount1
+        );
+        assertTrue((depositedAmount0 * 95) / 100 <= withdrawAmount0);
+        assertTrue((depositedAmount1 * 95) / 100 <= withdrawAmount1);
     }
 }

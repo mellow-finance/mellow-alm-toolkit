@@ -82,47 +82,30 @@ contract Fixture is Test {
         return tokenId;
     }
 
-    function movePrice(bool flag) public {
+    function movePrice() public {
+        movePrice(1);
+    }
+
+    function movePrice(uint256 coefficient) public {
         vm.startPrank(Constants.OWNER);
-        if (flag) {
-            uint256 amountIn = 1e6 * 1e6;
-            deal(Constants.USDC, Constants.OWNER, amountIn);
-            IERC20(Constants.USDC).safeIncreaseAllowance(
-                Constants.AGNI_SWAP_ROUTER,
-                amountIn
-            );
-            ISwapRouter(Constants.AGNI_SWAP_ROUTER).exactInputSingle(
-                ISwapRouter.ExactInputSingleParams({
-                    tokenIn: Constants.USDC,
-                    tokenOut: Constants.WETH,
-                    fee: FEE,
-                    deadline: type(uint256).max,
-                    recipient: Constants.OWNER,
-                    sqrtPriceLimitX96: 0,
-                    amountOutMinimum: 0,
-                    amountIn: amountIn
-                })
-            );
-        } else {
-            uint256 amountIn = 500 ether;
-            deal(Constants.WETH, Constants.OWNER, amountIn);
-            IERC20(Constants.WETH).safeIncreaseAllowance(
-                Constants.AGNI_SWAP_ROUTER,
-                amountIn
-            );
-            ISwapRouter(Constants.AGNI_SWAP_ROUTER).exactInputSingle(
-                ISwapRouter.ExactInputSingleParams({
-                    tokenIn: Constants.WETH,
-                    tokenOut: Constants.USDC,
-                    fee: FEE,
-                    deadline: type(uint256).max,
-                    recipient: Constants.OWNER,
-                    sqrtPriceLimitX96: 0,
-                    amountOutMinimum: 0,
-                    amountIn: amountIn
-                })
-            );
-        }
+        uint256 amountIn = 1e5 * 1e6 * coefficient;
+        deal(Constants.USDC, Constants.OWNER, amountIn);
+        IERC20(Constants.USDC).safeIncreaseAllowance(
+            Constants.AGNI_SWAP_ROUTER,
+            amountIn
+        );
+        ISwapRouter(Constants.AGNI_SWAP_ROUTER).exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: Constants.USDC,
+                tokenOut: Constants.WETH,
+                fee: FEE,
+                deadline: type(uint256).max,
+                recipient: Constants.OWNER,
+                sqrtPriceLimitX96: 0,
+                amountOutMinimum: 0,
+                amountIn: amountIn
+            })
+        );
         vm.stopPrank();
     }
 

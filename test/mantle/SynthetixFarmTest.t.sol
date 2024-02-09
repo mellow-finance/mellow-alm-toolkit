@@ -93,21 +93,20 @@ contract Integration is Fixture {
                 vm.stopPrank();
             }
 
-            ICore.TargetNftsInfo memory target;
-            while (true) {
-                movePrice(true);
+            {
                 uint256[] memory ids = new uint256[](1);
                 ids[0] = lpWrapper.tokenId();
-                bool flag;
-                (flag, target) = core.strategyModule().getTargets(
-                    core.nfts(lpWrapper.tokenId()),
-                    core.ammModule(),
-                    core.oracle()
-                );
-                skip(5 * 60);
-                if (flag) break;
+                while (true) {
+                    movePrice(20);
+                    (bool flag, ) = core.strategyModule().getTargets(
+                        core.nfts(lpWrapper.tokenId()),
+                        core.ammModule(),
+                        core.oracle()
+                    );
+                    skip(5 * 60);
+                    if (flag) break;
+                }
             }
-
             PulseAgniBot.SwapParams memory swapParams = determineSwapAmounts(
                 lpWrapper.tokenId()
             );
