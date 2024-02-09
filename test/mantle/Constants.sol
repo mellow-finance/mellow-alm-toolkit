@@ -42,6 +42,8 @@ library Constants {
         0x319B69888b0d11cEC22caA5034e25FfFBDc88421;
     address public constant AGNI_QUOTER_V2 =
         0xc4aaDc921E1cdb66c5300Bc158a313292923C0cb;
-    address public constant DEPLOYER =
-        0x7ee9247b6199877F86703644c97784495549aC5E;
+    address public constant DEPLOYER = address(bytes20(keccak256("deployer")));
+    address public constant DEPOSITOR =
+        address(bytes20(keccak256("depositor")));
+    address public constant OWNER = address(bytes20(keccak256("owner")));
 }
