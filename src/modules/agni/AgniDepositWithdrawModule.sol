@@ -6,10 +6,10 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../../interfaces/modules/IAmmModule.sol";
 import "../../interfaces/modules/IAmmDepositWithdrawModule.sol";
 
-import "../../interfaces/external/univ3/INonfungiblePositionManager.sol";
-import "../../interfaces/external/univ3/IUniswapV3Pool.sol";
+import "../../interfaces/external/agni/INonfungiblePositionManager.sol";
+import "../../interfaces/external/agni/IAgniPool.sol";
 
-contract UniV3AmmDepositWithdrawModule is IAmmDepositWithdrawModule {
+contract AgniDepositWithdrawModule is IAmmDepositWithdrawModule {
     using SafeERC20 for IERC20;
 
     INonfungiblePositionManager public immutable positionManager;

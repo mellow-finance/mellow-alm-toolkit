@@ -45,9 +45,8 @@ contract AgniAmmModule is IAmmModule {
         uint256 tokenId,
         uint160 sqrtRatioX96,
         address pool,
-        address farm
+        address
     ) external view override returns (uint256, uint256) {
-        require(address(farm) == address(0));
         return
             PositionValue.total(
                 positionManager,

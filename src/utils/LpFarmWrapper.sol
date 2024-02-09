@@ -10,7 +10,9 @@ import "../interfaces/ICore.sol";
 
 import "../libraries/external/FullMath.sol";
 
-contract LpWrapper is ERC20 {
+// import "./external/StakingRewards.sol";
+
+contract LpFarmWrapper is ERC20 {
     IAmmDepositWithdrawModule public immutable ammDepositWithdrawModule;
     ICore public immutable core;
     IAmmModule public immutable ammModule;
@@ -22,11 +24,19 @@ contract LpWrapper is ERC20 {
         IAmmDepositWithdrawModule ammDepositWithdrawModule_,
         string memory name,
         string memory symbol
-    ) ERC20(name, symbol) {
+    )
+        // ,
+        // address farmOwner,
+        // address farmOperator,
+        // address rewardToken
+        ERC20(name, symbol)
+    // StakingRewards(farmOwner, farmOperator, rewardToken, address(this))
+    {
         core = core_;
         ammModule = core.ammModule();
         oracle = core.oracle();
         ammDepositWithdrawModule = ammDepositWithdrawModule_;
+        // IERC20(address(this)).safeApprove(address(this), type(uint256).max);
     }
 
     function initialize(uint256 tokenId_) external {

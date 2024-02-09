@@ -10,8 +10,8 @@ import "../libraries/external/TickMath.sol";
 import "../libraries/CommonLibrary.sol";
 
 /**
- * @title UniV3Oracle
- * @dev A contract that implements the IOracle interface for Uniswap V3 pools.
+ * @title AgniOracle
+ * @dev A contract that implements the IOracle interface for Agni pools.
  */
 contract AgniOracle is IOracle {
     error NotEnoughObservations();
@@ -19,7 +19,7 @@ contract AgniOracle is IOracle {
     error PriceManipulationDetected();
 
     /**
-     * @dev Struct defining the security parameters for the UniV3Oracle.
+     * @dev Struct defining the security parameters for the AgniOracle.
      * @param anomalyLookback The number of blocks to look back for anomaly detection.
      * @param anomalyOrder The order of the polynomial used for anomaly detection.
      * @param anomalyFactorD9 The factor used to determine the anomaly threshold.
@@ -51,8 +51,8 @@ contract AgniOracle is IOracle {
     }
 
     /**
-     * @dev Retrieves the price from a Uniswap V3 oracle.
-     * @param pool The address of the Uniswap V3 pool.
+     * @dev Retrieves the price from an Agni oracle.
+     * @param pool The address of the Agni pool.
      * @return The spot sqrt price and tick of the oracle.
      * @notice throws NotEnoughObservations if there are not enough observations in the pool.
      */
@@ -96,11 +96,11 @@ contract AgniOracle is IOracle {
     }
 
     /**
-     * @dev Ensures that no Miner Extractable Value (MEV) is present in the given Uniswap V3 pool.
+     * @dev Ensures that no Miner Extractable Value (MEV) is present in the given Agni pool.
      * MEV refers to the ability of miners to manipulate the order of transactions in a block to their advantage.
      * This function calculates the tick deltas between observations in the pool and checks if any anomaly exceeds the specified threshold.
      * If an anomaly is detected, it reverts with a PriceManipulationDetected error.
-     * @param pool The address of the Uniswap V3 pool to check for MEV.
+     * @param pool The address of the Agni pool to check for MEV.
      * @param params The encoded security parameters used for anomaly detection.
      */
     function ensureNoMEV(
