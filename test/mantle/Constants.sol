@@ -44,6 +44,12 @@ library Constants {
         0xc4aaDc921E1cdb66c5300Bc158a313292923C0cb;
     address public constant DEPLOYER = address(bytes20(keccak256("deployer")));
     address public constant DEPOSITOR =
-        address(bytes20(keccak256("depositor")));
+        address(bytes20(keccak256("depositor-1")));
+    address public constant DEPOSITOR_2 =
+        address(bytes20(keccak256("depositor-2")));
+    address public constant DEPOSITOR_3 =
+        address(bytes20(keccak256("depositor-3")));
+    address public constant DEPOSITOR_4 =
+        address(bytes20(keccak256("depositor-4")));
     address public constant OWNER = address(bytes20(keccak256("owner")));
 }

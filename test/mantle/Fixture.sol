@@ -175,30 +175,28 @@ contract Fixture is Test {
 
     function addPosition(
         uint256 tokenId,
-        uint256 liquidityAmount0,
-        uint256 liquidityAmount1
+        uint256 amount0,
+        uint256 amount1
     ) public {
         vm.startPrank(address(core));
-
         IERC20(pool.token0()).safeIncreaseAllowance(
             address(positionManager),
-            liquidityAmount0
+            liquidityAmamount0ount0
         );
         IERC20(pool.token1()).safeIncreaseAllowance(
             address(positionManager),
-            liquidityAmount1
+            amount1
         );
         positionManager.increaseLiquidity(
             INonfungiblePositionManager.IncreaseLiquidityParams({
                 tokenId: tokenId,
-                amount0Desired: liquidityAmount0,
-                amount1Desired: liquidityAmount1,
+                amount0Desired: amount0,
+                amount1Desired: amount1,
                 amount0Min: 0,
                 amount1Min: 0,
                 deadline: type(uint256).max
             })
         );
-
         vm.stopPrank();
     }
 
@@ -206,7 +204,6 @@ contract Fixture is Test {
         uint256 id
     ) public returns (PulseAgniBot.SwapParams memory) {
         vm.startPrank(Constants.OWNER);
-
         ICore.NftsInfo memory info = core.nfts(id);
         (bool flag, ICore.TargetNftsInfo memory target) = core
             .strategyModule()
@@ -246,22 +243,6 @@ contract Fixture is Test {
     function setUp() external {
         vm.startPrank(Constants.OWNER);
         {
-            pool.increaseObservationCardinalityNext(10);
-            {
-                (
-                    ,
-                    ,
-                    ,
-                    uint16 observationCardinality,
-                    uint16 observationCardinalityNext,
-                    ,
-
-                ) = pool.slot0();
-                console2.log(
-                    observationCardinality,
-                    observationCardinalityNext
-                );
-            }
             uint256 amountIn = 1e3 * 1e6;
             deal(Constants.USDC, Constants.OWNER, amountIn);
             IERC20(Constants.USDC).safeIncreaseAllowance(
@@ -280,22 +261,6 @@ contract Fixture is Test {
                     amountIn: amountIn
                 })
             );
-
-            {
-                (
-                    ,
-                    ,
-                    ,
-                    uint16 observationCardinality,
-                    uint16 observationCardinalityNext,
-                    ,
-
-                ) = pool.slot0();
-                console2.log(
-                    observationCardinality,
-                    observationCardinalityNext
-                );
-            }
         }
 
         ammModule = new AgniAmmModule(
@@ -320,7 +285,7 @@ contract Fixture is Test {
         stakingRewards = new StakingRewards(
             Constants.OWNER,
             Constants.OWNER,
-            address(lpWrapper), // replace with AGNI address
+            address(Constants.USDT), // random reward address
             address(lpWrapper)
         );
 
