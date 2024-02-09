@@ -405,7 +405,7 @@ contract Integration is Fixture {
         );
         oracle.validateSecurityParams(
             abi.encode(
-                AgniOracle.SecurityParams({lookback: 1, maxAllowedDelta: 0})
+                AgniOracle.SecurityParams({lookback: 10, maxAllowedDelta: 10})
             )
         );
     }

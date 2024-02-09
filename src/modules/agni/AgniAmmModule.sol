@@ -58,7 +58,8 @@ contract AgniAmmModule is IAmmModule {
     function tvl(
         uint256 tokenId,
         uint160 sqrtRatioX96,
-        address pool
+        address pool,
+        address
     ) external view override returns (uint256, uint256) {
         return
             PositionValue.total(
