@@ -3,44 +3,15 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "../interfaces/utils/IRebalanceCallback.sol";
-import "../interfaces/external/agni/IAgniPool.sol";
-import "../interfaces/external/agni/IQuoterV2.sol";
-import "../interfaces/external/agni/ISwapRouter.sol";
-import "../interfaces/external/agni/INonfungiblePositionManager.sol";
+import "../interfaces/bots/IPulseAgniBot.sol";
 
 import "../libraries/external/LiquidityAmounts.sol";
 import "../libraries/external/TickMath.sol";
 
 import "forge-std/Test.sol";
 
-contract PulseAgniBot is IRebalanceCallback {
+contract PulseAgniBot is IPulseAgniBot {
     using SafeERC20 for IERC20;
-
-    struct SwapParams {
-        address tokenIn;
-        address tokenOut;
-        uint24 fee;
-        uint256 amountIn;
-        uint256 expectedAmountOut;
-    }
-
-    struct SingleIntervalData {
-        uint256 amount0;
-        uint256 amount1;
-        uint160 sqrtLowerRatioX96;
-        uint160 sqrtUpperRatioX96;
-        IAgniPool pool;
-    }
-
-    struct MultipleIntervalsData {
-        uint256 amount0;
-        uint256 amount1;
-        uint256[] ratiosX96;
-        uint160[] sqrtLowerRatiosX96;
-        uint160[] sqrtUpperRatiosX96;
-        IAgniPool pool;
-    }
 
     uint256 public constant Q96 = 2 ** 96;
     uint256 public constant D6 = 1e6;

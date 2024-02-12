@@ -205,7 +205,7 @@ contract Fixture is Test {
 
         PulseAgniBot.SwapParams memory swapParams = bot
             .calculateSwapAmountsPreciselySingle(
-                PulseAgniBot.SingleIntervalData({
+                IPulseAgniBot.SingleIntervalData({
                     amount0: amount0,
                     amount1: amount1,
                     sqrtLowerRatioX96: TickMath.getSqrtRatioAtTick(
