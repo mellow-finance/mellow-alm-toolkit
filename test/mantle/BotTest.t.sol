@@ -93,15 +93,14 @@ contract Integration is Test {
         PulseAgniBot bot,
         uint256 id
     ) public returns (bool, PulseAgniBot.SwapParams memory swapParams) {
-        vm.startPrank(Constants.OWNER);
         ICore.NftsInfo memory info = core.nfts(id);
+        if (info.tokenIds.length == 0) return (false, swapParams);
         (bool flag, ICore.TargetNftsInfo memory target) = core
             .strategyModule()
             .getTargets(info, core.ammModule(), core.oracle());
         uint256 tokenId = info.tokenIds[0];
         if (tokenId == 0) revert("Invalid token id");
         if (!flag) return (false, swapParams);
-        vm.stopPrank();
 
         (
             uint256 amount0,
@@ -174,26 +173,25 @@ contract Integration is Test {
             ) = calculateRebalanceData(core, bot, nftId);
             if (!flag) continue;
             string memory jsonPath = "/tmp/state_4.json";
-            if (flag) {
-                string memory s = string(
-                    abi.encodePacked(
-                        "{ ",
-                        '"to": ',
-                        vm.toString(address(core)),
-                        ","
-                        '"data": ',
-                        vm.toString(
-                            abi.encodeWithSelector(
-                                core.rebalance.selector,
-                                rebalanceParams
-                            )
-                        ),
-                        " }"
-                    )
-                );
-                console2.log("nft for rebalance:", nftId, "; data:", s);
-                vm.writeJson(s, jsonPath);
-            }
+            string memory s = string(
+                abi.encodePacked(
+                    "{ ",
+                    '"to": ',
+                    vm.toString(address(core)),
+                    ","
+                    '"data": ',
+                    vm.toString(
+                        abi.encodeWithSelector(
+                            core.rebalance.selector,
+                            rebalanceParams
+                        )
+                    ),
+                    " }"
+                )
+            );
+            console2.log("nft for rebalance:", nftId, "; data:", s);
+            vm.writeJson(s, jsonPath);
+            break;
         }
     }
 }
