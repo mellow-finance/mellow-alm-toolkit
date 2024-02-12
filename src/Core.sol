@@ -67,6 +67,14 @@ contract Core is DefaultAccessControl, ICore {
     }
 
     /**
+     * @dev Returns the count of NFTs in the contract.
+     * @return uint256 count of NFTs.
+     */
+    function nftCount() public view returns (uint256) {
+        return _nfts.length;
+    }
+
+    /**
      * @dev Retrieves the array of user IDs associated with the given user address.
      * @param user The address of the user.
      * @return ids array of user IDs.
