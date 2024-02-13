@@ -26,6 +26,13 @@ contract LpWrapper is ERC20 {
 
     uint256 public tokenId;
 
+    /**
+     * @dev Constructor function for the LpWrapper contract.
+     * @param core_ The address of the ICore contract.
+     * @param ammDepositWithdrawModule_ The address of the IAmmDepositWithdrawModule contract.
+     * @param name The name of the ERC20 token.
+     * @param symbol The symbol of the ERC20 token.
+     */
     constructor(
         ICore core_,
         IAmmDepositWithdrawModule ammDepositWithdrawModule_,
@@ -39,12 +46,27 @@ contract LpWrapper is ERC20 {
         ammDepositWithdrawModule = ammDepositWithdrawModule_;
     }
 
+    /**
+     * @dev Initializes the LP wrapper contract with the given token ID and initial total supply.
+     * @param tokenId_ The token ID to be associated with the LP wrapper contract.
+     * @param initialTotalSupply The initial total supply of the LP wrapper contract.
+     */
     function initialize(uint256 tokenId_, uint256 initialTotalSupply) external {
         if (tokenId != 0) revert AlreadyInitialized();
         tokenId = tokenId_;
         _mint(address(this), initialTotalSupply);
     }
 
+    /**
+     * @dev Deposits specified amounts of tokens into the LP wrapper contract and mints LP tokens to the specified address.
+     * @param amount0 The amount of token0 to deposit.
+     * @param amount1 The amount of token1 to deposit.
+     * @param minLpAmount The minimum amount of LP tokens required to be minted.
+     * @param to The address to receive the minted LP tokens.
+     * @return actualAmount0 The actual amount of token0 deposited.
+     * @return actualAmount1 The actual amount of token1 deposited.
+     * @return lpAmount The amount of LP tokens minted.
+     */
     function deposit(
         uint256 amount0,
         uint256 amount1,
@@ -160,6 +182,16 @@ contract LpWrapper is ERC20 {
         );
     }
 
+    /**
+     * @dev Withdraws LP tokens and transfers the underlying assets to the specified address.
+     * @param lpAmount The amount of LP tokens to withdraw.
+     * @param minAmount0 The minimum amount of asset 0 to receive.
+     * @param minAmount1 The minimum amount of asset 1 to receive.
+     * @param to The address to transfer the underlying assets to.
+     * @return amount0 The actual amount of asset 0 received.
+     * @return amount1 The actual amount of asset 1 received.
+     * @return actualLpAmount The actual amount of LP tokens withdrawn.
+     */
     function withdraw(
         uint256 lpAmount,
         uint256 minAmount0,
