@@ -6,10 +6,14 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../../interfaces/modules/IAmmModule.sol";
 import "../../interfaces/modules/IAmmDepositWithdrawModule.sol";
 
-import "../../interfaces/external/univ3/INonfungiblePositionManager.sol";
-import "../../interfaces/external/univ3/IUniswapV3Pool.sol";
+import "../../interfaces/external/agni/INonfungiblePositionManager.sol";
+import "../../interfaces/external/agni/IAgniPool.sol";
 
-contract UniV3AmmDepositWithdrawModule is IAmmDepositWithdrawModule {
+/**
+ * @title AgniDepositWithdrawModule
+ * @dev A contract that implements the IAmmDepositWithdrawModule interface for Agni pools.
+ */
+contract AgniDepositWithdrawModule is IAmmDepositWithdrawModule {
     using SafeERC20 for IERC20;
 
     INonfungiblePositionManager public immutable positionManager;
@@ -23,6 +27,15 @@ contract UniV3AmmDepositWithdrawModule is IAmmDepositWithdrawModule {
         ammModule = ammModule_;
     }
 
+    /**
+     * @dev Deposits the specified amounts of token0 and token1 into the pool.
+     * @param tokenId The ID of the token.
+     * @param amount0 The amount of token0 to deposit.
+     * @param amount1 The amount of token1 to deposit.
+     * @param from The address from which the tokens are to be transferred.
+     * @notice The caller must approve the contract to spend the tokens.
+     * @notice Tokens distributes proportionally accross all positions.
+     */
     function deposit(
         uint256 tokenId,
         uint256 amount0,
@@ -60,6 +73,15 @@ contract UniV3AmmDepositWithdrawModule is IAmmDepositWithdrawModule {
         }
     }
 
+    /**
+     * @dev Withdraws liquidity from a position and transfers the collected tokens to the specified recipient.
+     * @param tokenId The ID of the position.
+     * @param liquidity The amount of liquidity to withdraw.
+     * @param to The address to transfer the collected tokens to.
+     * @return actualAmount0 The actual amount of token0 collected.
+     * @return actualAmount1 The actual amount of token1 collected.
+     * @notice Function collects tokens proportionally from all positions.
+     */
     function withdraw(
         uint256 tokenId,
         uint256 liquidity,

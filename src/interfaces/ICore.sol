@@ -47,6 +47,8 @@ interface ICore {
 
     function nfts(uint256 index) external view returns (NftsInfo memory);
 
+    function nftCount() external view returns (uint256);
+
     function getUserIds(
         address user
     ) external view returns (uint256[] memory ids);

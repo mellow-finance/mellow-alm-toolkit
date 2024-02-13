@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 /// @title Pool state that is not stored
 /// @notice Contains view functions to provide information about the pool that is computed rather than stored on the
 /// blockchain. The functions here may have variable gas costs.
-interface IUniswapV3PoolDerivedState {
+interface IAgniPoolDerivedState {
     /// @notice Returns the cumulative tick and liquidity as of each timestamp `secondsAgo` from the current block timestamp
     /// @dev To get a time weighted average tick or liquidity-in-range, you must call this with two values, one representing
     /// the beginning of the period and another for the end of the period. E.g., to get the last hour time-weighted average tick,
@@ -23,5 +23,26 @@ interface IUniswapV3PoolDerivedState {
         returns (
             int56[] memory tickCumulatives,
             uint160[] memory secondsPerLiquidityCumulativeX128s
+        );
+
+    /// @notice Returns a snapshot of the tick cumulative, seconds per liquidity and seconds inside a tick range
+    /// @dev Snapshots must only be compared to other snapshots, taken over a period for which a position existed.
+    /// I.e., snapshots cannot be compared if a position is not held for the entire period between when the first
+    /// snapshot is taken and the second snapshot is taken.
+    /// @param tickLower The lower tick of the range
+    /// @param tickUpper The upper tick of the range
+    /// @return tickCumulativeInside The snapshot of the tick accumulator for the range
+    /// @return secondsPerLiquidityInsideX128 The snapshot of seconds per liquidity for the range
+    /// @return secondsInside The snapshot of seconds per liquidity for the range
+    function snapshotCumulativesInside(
+        int24 tickLower,
+        int24 tickUpper
+    )
+        external
+        view
+        returns (
+            int56 tickCumulativeInside,
+            uint160 secondsPerLiquidityInsideX128,
+            uint32 secondsInside
         );
 }

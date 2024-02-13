@@ -34,6 +34,14 @@ contract Core is DefaultAccessControl, ICore {
     NftsInfo[] private _nfts;
     mapping(address => EnumerableSet.UintSet) private _userIds;
 
+    /**
+     * @dev Constructor function for the Core contract.
+     * @param ammModule_ The address of the AMM module contract.
+     * @param strategyModule_ The address of the strategy module contract.
+     * @param oracle_ The address of the oracle contract.
+     * @param positionManager_ The address of the position manager contract.
+     * @param admin_ The address of the admin for the Core contract.
+     */
     constructor(
         IAmmModule ammModule_,
         IStrategyModule strategyModule_,
@@ -47,23 +55,57 @@ contract Core is DefaultAccessControl, ICore {
         positionManager = positionManager_;
     }
 
+    /**
+     * @dev Retrieves the NftsInfo struct at the specified index.
+     * @param index The index of the NftsInfo struct to retrieve.
+     * @return The NftsInfo struct at the specified index.
+     */
     function nfts(
         uint256 index
     ) public view override returns (NftsInfo memory) {
         return _nfts[index];
     }
 
+    /**
+     * @dev Returns the count of NFTs in the contract.
+     * @return uint256 count of NFTs.
+     */
+    function nftCount() public view returns (uint256) {
+        return _nfts.length;
+    }
+
+    /**
+     * @dev Retrieves the array of user IDs associated with the given user address.
+     * @param user The address of the user.
+     * @return ids array of user IDs.
+     */
     function getUserIds(
         address user
     ) external view override returns (uint256[] memory ids) {
         return _userIds[user].values();
     }
 
+    /**
+     * @dev Sets the operator flag to enable or disable operator functionality.
+     * Only the admin can call this function.
+     * @param operatorFlag_ The new value for the operator flag.
+     */
     function setOperatorFlag(bool operatorFlag_) external override {
         _requireAdmin();
         operatorFlag = operatorFlag_;
     }
 
+    /**
+     * @dev Sets the position parameters for a given ID.
+     * @param id The ID of the position.
+     * @param slippageD4 The slippage value in basis points (0.01%).
+     * @param strategyParams The strategy parameters.
+     * @param securityParams The security parameters.
+     * Requirements:
+     * - The caller must be the owner of the position.
+     * - The strategy parameters must be valid.
+     * - The security parameters must be valid.
+     */
     function setPositionParams(
         uint256 id,
         uint16 slippageD4,
@@ -80,6 +122,11 @@ contract Core is DefaultAccessControl, ICore {
         _nfts[id] = info;
     }
 
+    /**
+     * @dev Deposits multiple tokens into the contract.
+     * @param params The deposit parameters including strategy parameters, security parameters, slippage, and token IDs.
+     * @return id The ID of the deposited tokens.
+     */
     function deposit(
         DepositParams memory params
     ) external override returns (uint256 id) {
@@ -117,7 +164,7 @@ contract Core is DefaultAccessControl, ICore {
             }
 
             IERC721(positionManager).transferFrom(
-                params.owner,
+                msg.sender,
                 address(this),
                 tokenId
             );
@@ -151,10 +198,17 @@ contract Core is DefaultAccessControl, ICore {
         );
     }
 
+    /**
+     * @dev Withdraws NFTs from the contract and transfers them to the specified address.
+     * Only the owner of the NFTs can call this function.
+     *
+     * @param id The ID of the NFTs to withdraw.
+     * @param to The address to transfer the NFTs to.
+     */
     function withdraw(uint256 id, address to) external override {
         NftsInfo memory info = _nfts[id];
         if (info.tokenIds.length == 0) revert();
-        require(info.owner == msg.sender);
+        if (info.owner != msg.sender) revert Forbidden();
         _userIds[info.owner].remove(id);
         delete _nfts[id];
         for (uint256 i = 0; i < info.tokenIds.length; i++) {
@@ -172,6 +226,13 @@ contract Core is DefaultAccessControl, ICore {
         }
     }
 
+    /**
+     * @dev Calculates the target capital in Token1X96 based on the given parameters.
+     * @param target The TargetNftsInfo struct containing the target information.
+     * @param sqrtPriceX96 The square root of the priceX96.
+     * @param priceX96 The priceX96 value.
+     * @return targetCapitalInToken1X96 The calculated target capital in Token1X96.
+     */
     function _calculateTargetCapitalX96(
         TargetNftsInfo memory target,
         uint160 sqrtPriceX96,
@@ -193,6 +254,13 @@ contract Core is DefaultAccessControl, ICore {
         }
     }
 
+    /**
+     * @dev Rebalances the portfolio based on the given parameters.
+     * @param params The parameters for rebalancing.
+     *   - ids: An array of NFT IDs to rebalance.
+     *   - callback: The address of the callback contract.
+     *   - data: Additional data to be passed to the callback contract.
+     */
     function rebalance(RebalanceParams memory params) external override {
         if (operatorFlag) {
             _requireAtLeastOperator();
@@ -215,10 +283,7 @@ contract Core is DefaultAccessControl, ICore {
                 );
                 if (!flag) continue;
             }
-            (uint160 sqrtPriceX96, ) = oracle.getOraclePrice(
-                info.pool,
-                info.securityParams
-            );
+            (uint160 sqrtPriceX96, ) = oracle.getOraclePrice(info.pool);
             uint256 priceX96 = FullMath.mulDiv(sqrtPriceX96, sqrtPriceX96, Q96);
             uint256 capitalInToken1 = 0;
             for (uint256 j = 0; j < info.tokenIds.length; j++) {
@@ -282,7 +347,7 @@ contract Core is DefaultAccessControl, ICore {
 
         uint256[][] memory newTokenIds = IRebalanceCallback(params.callback)
             .call(params.data, targets);
-        if (newTokenIds.length != iterator) revert InvalidParameters();
+        if (newTokenIds.length != iterator) revert InvalidLength();
         for (uint256 i = 0; i < iterator; i++) {
             TargetNftsInfo memory target = targets[i];
             uint256[] memory tokenIds = newTokenIds[i];
