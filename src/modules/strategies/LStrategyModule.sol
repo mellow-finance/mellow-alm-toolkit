@@ -82,11 +82,27 @@ contract LStrategyModule is IStrategyModule {
     }
 
     /**
+     * @dev Checks if the difference between two numbers exceeds a specified deviation.
+     * @param a The first number.
+     * @param b The second number.
+     * @param deviation The maximum allowed difference between the two numbers.
+     * @return bool true if the difference between `a` and `b` exceeds `deviation`, false otherwise.
+     */
+    function checkDeviation(
+        uint256 a,
+        uint256 b,
+        uint256 deviation
+    ) public pure returns (bool) {
+        if (a + deviation > b || b + deviation > a) return true;
+        return false;
+    }
+
+    /**
      * @dev Retrieves the target positions for rebalancing based on the given NftsInfo, AmmModule, and Oracle.
      * @param info The NftsInfo containing the pool and token IDs.
      * @param ammModule The AmmModule contract.
      * @param oracle The Oracle contract.
-     * @return isRebalanceRequired A boolean indicating whether rebalancing is required.
+     * @return bool A boolean indicating whether rebalancing is required.
      * @return target The TargetNftsInfo containing the target positions for rebalancing.
      */
     function getTargets(
@@ -97,85 +113,66 @@ contract LStrategyModule is IStrategyModule {
         external
         view
         override
-        returns (bool isRebalanceRequired, ICore.TargetNftsInfo memory target)
+        returns (bool, ICore.TargetNftsInfo memory target)
     {
-        {
-            int24 tick;
-            (, tick) = oracle.getOraclePrice(info.pool);
-            if (info.tokenIds.length != 2) {
-                revert InvalidLength();
-            }
-            IAmmModule.Position memory lowerPosition = ammModule
-                .getPositionInfo(info.tokenIds[0]);
-            IAmmModule.Position memory upperPosition = ammModule
-                .getPositionInfo(info.tokenIds[1]);
+        int24 tick;
+        (, tick) = oracle.getOraclePrice(info.pool);
+        if (info.tokenIds.length != 2) revert InvalidLength();
+        IAmmModule.Position memory lowerPosition = ammModule.getPositionInfo(
+            info.tokenIds[0]
+        );
+        IAmmModule.Position memory upperPosition = ammModule.getPositionInfo(
+            info.tokenIds[1]
+        );
 
-            int24 width = lowerPosition.tickUpper - lowerPosition.tickLower;
-            int24 half = width / 2;
-
-            if (
-                half % 2 != 0 ||
-                upperPosition.tickLower != lowerPosition.tickLower + half ||
-                upperPosition.tickUpper != lowerPosition.tickUpper + half
-            ) {
-                revert InvalidLength();
-            }
-
-            (int24 targetLower, uint256 targetRatioX96) = calculateTarget(
-                lowerPosition.tickLower,
-                half,
-                tick
-            );
-
-            StrategyParams memory strategyParams = abi.decode(
-                info.strategyParams,
-                (StrategyParams)
-            );
-
-            uint256 ratioX96 = FullMath.mulDiv(
-                lowerPosition.liquidity,
-                Q96,
-                lowerPosition.liquidity + upperPosition.liquidity
-            );
-
-            target.lowerTicks = new int24[](2);
-            target.upperTicks = new int24[](2);
-            target.lowerTicks[0] = targetLower;
-            target.lowerTicks[1] = targetLower + half;
-            target.upperTicks[0] = targetLower + width;
-            target.upperTicks[1] = targetLower + half + width;
-            target.liquidityRatiosX96 = new uint256[](2);
-            target.liquidityRatiosX96[0] = ratioX96;
-            target.liquidityRatiosX96[1] = Q96 - ratioX96;
-
-            uint256 maxDeviationX96 = strategyParams
-                .maxLiquidityRatioDeviationX96;
-
-            if (targetLower == lowerPosition.tickLower) {
-                if (
-                    ratioX96 + maxDeviationX96 > targetRatioX96 ||
-                    targetRatioX96 + maxDeviationX96 > ratioX96
-                ) {
-                    return (true, target);
-                }
-            } else if (targetLower + half == lowerPosition.tickLower) {
-                uint256 upperRatioX96 = Q96 - ratioX96;
-                if (
-                    targetRatioX96 + maxDeviationX96 > upperRatioX96 ||
-                    upperRatioX96 + maxDeviationX96 > targetRatioX96
-                ) {
-                    return (true, target);
-                }
-            } else if (targetLower - half == lowerPosition.tickLower) {
-                uint256 targetUpperRatioX96 = Q96 - targetRatioX96;
-                if (
-                    targetUpperRatioX96 + maxDeviationX96 > ratioX96 ||
-                    ratioX96 + maxDeviationX96 > targetUpperRatioX96
-                ) {
-                    return (true, target);
-                }
-            }
+        int24 width = lowerPosition.tickUpper - lowerPosition.tickLower;
+        int24 half = width / 2;
+        if (
+            width % 2 != 0 ||
+            upperPosition.tickLower != lowerPosition.tickLower + half ||
+            upperPosition.tickUpper != lowerPosition.tickUpper + half
+        ) {
+            revert InvalidLength();
         }
+
+        (int24 targetLower, uint256 targetRatioX96) = calculateTarget(
+            lowerPosition.tickLower,
+            half,
+            tick
+        );
+
+        uint256 ratioX96 = FullMath.mulDiv(
+            lowerPosition.liquidity,
+            Q96,
+            lowerPosition.liquidity + upperPosition.liquidity
+        );
+
+        target.lowerTicks = new int24[](2);
+        target.upperTicks = new int24[](2);
+        target.liquidityRatiosX96 = new uint256[](2);
+        target.lowerTicks[0] = targetLower;
+        target.upperTicks[0] = targetLower + width;
+        target.liquidityRatiosX96[0] = ratioX96;
+        target.lowerTicks[1] = targetLower + half;
+        target.upperTicks[1] = targetLower + half + width;
+        target.liquidityRatiosX96[1] = Q96 - ratioX96;
+
+        uint256 maxDeviationX96 = abi
+            .decode(info.strategyParams, (StrategyParams))
+            .maxLiquidityRatioDeviationX96;
+
+        if (
+            targetLower == lowerPosition.tickLower &&
+            checkDeviation(ratioX96, targetRatioX96, maxDeviationX96)
+        ) return (true, target);
+        if (
+            targetLower + half == lowerPosition.tickLower &&
+            checkDeviation(Q96 - ratioX96, targetRatioX96, maxDeviationX96)
+        ) return (true, target);
+        if (
+            targetLower - half == lowerPosition.tickLower &&
+            checkDeviation(ratioX96, Q96 - targetRatioX96, maxDeviationX96)
+        ) return (true, target);
 
         return (false, target);
     }
