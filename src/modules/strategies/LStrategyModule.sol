@@ -49,9 +49,8 @@ contract LStrategyModule is IStrategyModule {
         } else if (tickLower + width <= tick) {
             liquidityRatioX96 = 0;
         } else {
-            int24 delta = tickLower + width - tick;
             liquidityRatioX96 = FullMath.mulDiv(
-                uint24(delta),
+                uint24(tickLower + width - tick),
                 Q96,
                 uint24(half)
             );
