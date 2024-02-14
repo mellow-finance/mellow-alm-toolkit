@@ -5,17 +5,33 @@ import "../../interfaces/modules/IStrategyModule.sol";
 
 import "../../libraries/external/FullMath.sol";
 
+/**
+ * @title LStrategyModule
+ * @dev A strategy module contract that implements the optimised for alm base version LStrategy.
+ */
 contract LStrategyModule is IStrategyModule {
+    // Error definitions
     error InvalidParams();
     error InvalidLength();
 
+    // Constants
     uint256 public constant Q96 = 2 ** 96;
     uint256 public constant D4 = 1e4;
 
+    /**
+     * @dev Struct representing the parameters for a strategy.
+     * @param maxLiquidityRatioDeviationX96 The maximum allowed deviation of the liquidity ratio for lower position.
+     */
     struct StrategyParams {
         uint256 maxLiquidityRatioDeviationX96;
     }
 
+    /**
+     * @dev Validates the strategy parameters.
+     * @param params The encoded strategy parameters.
+     * @notice This function decodes the `params` and checks if the `maxLiquidityRatioDeviationX96` is valid.
+     *         If the `maxLiquidityRatioDeviationX96` is 0 or greater than half of Q96, it reverts with an `InvalidParams` error.
+     */
     function validateStrategyParams(
         bytes memory params
     ) external pure override {
@@ -31,6 +47,14 @@ contract LStrategyModule is IStrategyModule {
         }
     }
 
+    /**
+     * @dev Calculates the target lower tick and liquidity ratio of the lower position based on the given parameters.
+     * @param tickLower The lower tick value.
+     * @param half Half of the width of each position.
+     * @param tick The current spot tick value.
+     * @return targetLower The calculated target lower tick.
+     * @return liquidityRatioX96 The calculated liquidity ratio.
+     */
     function calculateTarget(
         int24 tickLower,
         int24 half,
@@ -57,6 +81,14 @@ contract LStrategyModule is IStrategyModule {
         }
     }
 
+    /**
+     * @dev Retrieves the target positions for rebalancing based on the given NftsInfo, AmmModule, and Oracle.
+     * @param info The NftsInfo containing the pool and token IDs.
+     * @param ammModule The AmmModule contract.
+     * @param oracle The Oracle contract.
+     * @return isRebalanceRequired A boolean indicating whether rebalancing is required.
+     * @return target The TargetNftsInfo containing the target positions for rebalancing.
+     */
     function getTargets(
         ICore.NftsInfo memory info,
         IAmmModule ammModule,
