@@ -275,7 +275,6 @@ contract LpWrapper is ERC20, DefaultAccessControlLateInit {
 
     /**
      * @dev Sets the position parameters for a given ID.
-     * @param id The ID of the position.
      * @param slippageD4 The slippage value in basis points (0.01%).
      * @param strategyParams The strategy parameters.
      * @param securityParams The security parameters.
@@ -285,12 +284,16 @@ contract LpWrapper is ERC20, DefaultAccessControlLateInit {
      * - The security parameters must be valid.
      */
     function setPositionParams(
-        uint256 id,
         uint16 slippageD4,
         bytes memory strategyParams,
         bytes memory securityParams
     ) external {
         _requireAdmin();
-        core.setPositionParams(id, slippageD4, strategyParams, securityParams);
+        core.setPositionParams(
+            tokenId,
+            slippageD4,
+            strategyParams,
+            securityParams
+        );
     }
 }
