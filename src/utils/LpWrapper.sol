@@ -11,7 +11,9 @@ import "../interfaces/ICore.sol";
 
 import "../libraries/external/FullMath.sol";
 
-contract LpWrapper is ERC20 {
+import "./DefaultAccessControlLateInit.sol";
+
+contract LpWrapper is ERC20, DefaultAccessControlLateInit {
     error InsufficientAmounts();
     error InsufficientLpAmount();
     error AlreadyInitialized();
@@ -50,11 +52,17 @@ contract LpWrapper is ERC20 {
      * @dev Initializes the LP wrapper contract with the given token ID and initial total supply.
      * @param tokenId_ The token ID to be associated with the LP wrapper contract.
      * @param initialTotalSupply The initial total supply of the LP wrapper contract.
+     * @param admin The address of the admin of the LP wrapper contract.
      */
-    function initialize(uint256 tokenId_, uint256 initialTotalSupply) external {
+    function initialize(
+        uint256 tokenId_,
+        uint256 initialTotalSupply,
+        address admin
+    ) external {
         if (tokenId != 0) revert AlreadyInitialized();
         tokenId = tokenId_;
         _mint(address(this), initialTotalSupply);
+        init(admin);
     }
 
     /**
@@ -263,5 +271,26 @@ contract LpWrapper is ERC20 {
                 securityParams: info.securityParams
             })
         );
+    }
+
+    /**
+     * @dev Sets the position parameters for a given ID.
+     * @param id The ID of the position.
+     * @param slippageD4 The slippage value in basis points (0.01%).
+     * @param strategyParams The strategy parameters.
+     * @param securityParams The security parameters.
+     * Requirements:
+     * - The caller must have the ADMIN_ROLE.
+     * - The strategy parameters must be valid.
+     * - The security parameters must be valid.
+     */
+    function setPositionParams(
+        uint256 id,
+        uint16 slippageD4,
+        bytes memory strategyParams,
+        bytes memory securityParams
+    ) external {
+        _requireAdmin();
+        core.setPositionParams(id, slippageD4, strategyParams, securityParams);
     }
 }
