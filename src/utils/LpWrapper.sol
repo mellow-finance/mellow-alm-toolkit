@@ -275,7 +275,8 @@ contract LpWrapper is ERC20, DefaultAccessControlLateInit {
 
     /**
      * @dev Sets the position parameters for a given ID.
-     * @param slippageD4 The slippage value in basis points (0.01%).
+     * @param slippageD4 The maximum permissible proportion of the capital allocated to positions
+     * that can be used to compensate rebalancers for their services. A value of 10,000 (1e4) represents 100%.
      * @param strategyParams The strategy parameters.
      * @param securityParams The security parameters.
      * Requirements:
