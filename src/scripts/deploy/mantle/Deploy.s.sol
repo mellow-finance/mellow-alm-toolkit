@@ -161,7 +161,7 @@ contract Deploy is Script {
 
         positionManager.approve(address(core), depositParams.tokenIds[0]);
         uint256 nftId = core.deposit(depositParams);
-        lpWrapper.initialize(nftId, 5e5);
+        lpWrapper.initialize(nftId, 5e5, Constants.OWNER);
 
         vm.stopBroadcast();
     }
