@@ -93,19 +93,11 @@ contract Integration is Fixture {
                 Constants.PROTOCOL_TREASURY
             );
 
-            stakingRewards.withdraw(
-                stakingRewards.balanceOf(Constants.DEPOSITOR) / 2
-            );
-            lpWrapper.withdraw(
-                lpWrapper.balanceOf(Constants.DEPOSITOR),
-                0,
-                0,
-                Constants.DEPOSITOR
-            );
-
             uint256 depositorBalanceBefore = IERC20(Constants.VELO).balanceOf(
                 Constants.DEPOSITOR
             );
+
+            core.emptyRebalance(lpWrapper.tokenId());
 
             vm.stopPrank();
             vm.startPrank(Constants.OWNER);
