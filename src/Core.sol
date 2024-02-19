@@ -402,6 +402,7 @@ contract Core is DefaultAccessControl, ICore, IERC721Receiver {
      */
     function emptyRebalance(uint256 nftId) external {
         NftsInfo memory params = _nfts[nftId];
+        if (params.owner != msg.sender) revert Forbidden();
         uint256[] memory tokenIds = params.tokenIds;
         for (uint256 i = 0; i < tokenIds.length; i++) {
             uint256 tokenId = tokenIds[i];

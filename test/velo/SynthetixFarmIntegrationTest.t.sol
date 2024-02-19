@@ -88,7 +88,6 @@ contract Integration is Fixture {
         skip(7 days);
 
         {
-            vm.startPrank(Constants.DEPOSITOR);
             uint256 treasuryBalanceBefore = IERC20(Constants.VELO).balanceOf(
                 Constants.PROTOCOL_TREASURY
             );
@@ -97,11 +96,8 @@ contract Integration is Fixture {
                 Constants.DEPOSITOR
             );
 
-            core.emptyRebalance(lpWrapper.tokenId());
-
-            vm.stopPrank();
             vm.startPrank(Constants.OWNER);
-
+            lpWrapper.emptyRebalance();
             stakingRewards.notifyRewardAmount(
                 IERC20(Constants.VELO).balanceOf(address(stakingRewards))
             );

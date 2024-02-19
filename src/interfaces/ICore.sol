@@ -62,6 +62,8 @@ interface ICore {
         bytes memory securityParams
     ) external;
 
+    function emptyRebalance(uint256 nftId) external;
+
     function deposit(DepositParams memory params) external returns (uint256 id);
 
     function withdraw(uint256 id, address to) external;

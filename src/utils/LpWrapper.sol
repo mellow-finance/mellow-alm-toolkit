@@ -297,4 +297,9 @@ contract LpWrapper is ERC20, DefaultAccessControlLateInit {
             securityParams
         );
     }
+
+    function emptyRebalance() external {
+        _requireAtLeastOperator();
+        core.emptyRebalance(tokenId);
+    }
 }
