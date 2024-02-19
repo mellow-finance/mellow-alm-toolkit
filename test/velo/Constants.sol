@@ -18,6 +18,9 @@ import "../../src/oracles/VeloOracle.sol";
 
 import "../../src/interfaces/external/velo/ICLFactory.sol";
 import "../../src/interfaces/external/velo/ICLPool.sol";
+
+import {IUniswapV3Pool} from "../../src/interfaces/external/univ3/IUniswapV3Pool.sol";
+
 import "../../src/interfaces/external/velo/INonfungiblePositionManager.sol";
 
 import "../../src/libraries/external/LiquidityAmounts.sol";
@@ -34,10 +37,7 @@ library Constants {
     address public constant NONFUNGIBLE_POSITION_MANAGER =
         0xd557d3b47D159EB3f9B48c0f1B4a6e67e82e8B3f;
     address public constant VELO_FACTORY =
-        0x25780dc8Fc3cfBD75F33bFDAB65e969b603b2035;
-    address public constant VELO_SWAP_ROUTER = address(0);
-    address public constant VELO_QUOTER_V2 =
-        0x22845F37062fFf63DD45bB8eC1749b7Ca60b4B2a;
+        0x6890F9215fC8D17f4000ba91e8a5E538e78F14EB;
 
     address public constant DEPLOYER = address(bytes20(keccak256("deployer")));
     address public constant DEPOSITOR =

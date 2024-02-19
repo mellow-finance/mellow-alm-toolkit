@@ -56,8 +56,8 @@ contract Integration is Fixture {
         );
         {
             (, , uint256 lpAmount) = lpWrapper.deposit(
-                1e6,
                 500 ether,
+                1e6,
                 1e3,
                 Constants.DEPOSITOR
             );
@@ -97,7 +97,7 @@ contract Integration is Fixture {
                 uint256[] memory ids = new uint256[](1);
                 ids[0] = lpWrapper.tokenId();
                 while (true) {
-                    movePrice(20);
+                    movePrice(uint256(20));
                     (bool flag, ) = core.strategyModule().getTargets(
                         core.nfts(lpWrapper.tokenId()),
                         core.ammModule(),
