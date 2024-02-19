@@ -135,7 +135,7 @@ contract Fixture is Test {
 
     function movePrice(uint256 coefficient) public {
         vm.startPrank(Constants.OWNER);
-        uint256 amountIn = 1e5 * 1e6 * coefficient;
+        uint256 amountIn = 1e6 * 1e6 * coefficient;
         deal(Constants.USDC, Constants.OWNER, amountIn);
         IERC20(Constants.USDC).safeIncreaseAllowance(
             address(swapRouter),
