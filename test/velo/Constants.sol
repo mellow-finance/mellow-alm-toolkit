@@ -21,6 +21,7 @@ import "../../src/interfaces/external/velo/ICLPool.sol";
 import "../../src/interfaces/external/velo/INonfungiblePositionManager.sol";
 
 import "../../src/libraries/external/LiquidityAmounts.sol";
+import "../../src/libraries/external/velo/PositionValue.sol";
 
 import "../../src/utils/LpWrapper.sol";
 import "../../src/utils/external/synthetix/StakingRewards.sol";

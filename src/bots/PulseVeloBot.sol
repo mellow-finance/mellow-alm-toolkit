@@ -62,7 +62,7 @@ contract PulseVeloBot is IPulseVeloBot {
         if (currentRatioX96 > finalRatioX96) {
             swapParams.tokenIn = data.pool.token0();
             swapParams.tokenOut = data.pool.token1();
-            swapParams.fee = data.pool.fee();
+            swapParams.tickSpacing = data.pool.tickSpacing();
             unchecked {
                 int256 left = 1;
                 int256 right = int256(data.amount0);
@@ -109,7 +109,7 @@ contract PulseVeloBot is IPulseVeloBot {
         } else {
             swapParams.tokenIn = data.pool.token1();
             swapParams.tokenOut = data.pool.token0();
-            swapParams.fee = data.pool.fee();
+            swapParams.tickSpacing = data.pool.tickSpacing();
             unchecked {
                 int256 left = 1;
                 int256 right = int256(data.amount1);
@@ -197,7 +197,7 @@ contract PulseVeloBot is IPulseVeloBot {
         if (currentRatioX96 > finalRatioX96) {
             swapParams.tokenIn = data.pool.token0();
             swapParams.tokenOut = data.pool.token1();
-            swapParams.fee = data.pool.fee();
+            swapParams.tickSpacing = data.pool.tickSpacing();
             unchecked {
                 int256 left = 1;
                 int256 right = int256(data.amount0);
@@ -247,7 +247,7 @@ contract PulseVeloBot is IPulseVeloBot {
         } else {
             swapParams.tokenIn = data.pool.token1();
             swapParams.tokenOut = data.pool.token0();
-            swapParams.fee = data.pool.fee();
+            swapParams.tickSpacing = data.pool.tickSpacing();
             unchecked {
                 int256 left = 1;
                 int256 right = int256(data.amount0);

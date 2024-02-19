@@ -12,7 +12,7 @@ interface IPulseVeloBot is IRebalanceCallback {
     struct SwapParams {
         address tokenIn;
         address tokenOut;
-        uint24 fee;
+        int24 tickSpacing;
         uint256 amountIn;
         uint256 expectedAmountOut;
     }
