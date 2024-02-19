@@ -129,14 +129,15 @@ contract Integration is Fixture {
                 Constants.PROTOCOL_TREASURY
             );
 
-            console2.log(
-                "Claimed user rewards:",
-                depositorBalanceAfter - depositorBalanceBefore
-            );
-            console2.log(
-                "Claimed protocol rewards:",
-                treasuryBalanceAfter - treasuryBalanceBefore
-            );
+            uint256 userRewards = depositorBalanceAfter -
+                depositorBalanceBefore;
+            uint256 protocolRewards = treasuryBalanceAfter -
+                treasuryBalanceBefore;
+
+            uint256 totalRewards = userRewards + protocolRewards;
+            assertTrue(totalRewards > 10 ether - 1 days); // max delta in weis = number of seconds in 1 day
+            assertApproxEqAbs(protocolRewards, 1 ether, 1 wei);
+            assertApproxEqAbs(userRewards, 9 ether, 1 days);
 
             vm.stopPrank();
         }
