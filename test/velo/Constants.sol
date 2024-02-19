@@ -39,6 +39,8 @@ library Constants {
     address public constant VELO_FACTORY =
         0x6890F9215fC8D17f4000ba91e8a5E538e78F14EB;
 
+    address public constant GAUGE = 0x5f090Fc694aa42569aB61397E4c996E808f0BBf2;
+
     address public constant DEPLOYER = address(bytes20(keccak256("deployer")));
     address public constant DEPOSITOR =
         address(bytes20(keccak256("depositor-1")));

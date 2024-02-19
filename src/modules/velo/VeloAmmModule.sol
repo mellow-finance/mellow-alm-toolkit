@@ -15,7 +15,7 @@ import "../../libraries/external/TickMath.sol";
 
 import "../../utils/DefaultAccessControl.sol";
 
-contract VeloAmmModule is IAmmModule, DefaultAccessControl {
+contract VeloAmmModule is IAmmModule {
     using SafeERC20 for IERC20;
 
     uint256 public constant D9 = 1e9;
@@ -23,39 +23,22 @@ contract VeloAmmModule is IAmmModule, DefaultAccessControl {
 
     INonfungiblePositionManager public immutable positionManager;
     ICLFactory public immutable factory;
-
-    uint256 public protocolFeeD9 = 0;
-    address public protocolTreasury;
+    address public immutable protocolTreasury;
+    uint256 public immutable protocolFeeD9;
 
     constructor(
         INonfungiblePositionManager positionManager_,
-        address admin_,
         address protocolTreasury_,
         uint256 protocolFeeD9_
-    ) DefaultAccessControl(admin_) {
-        if (protocolFeeD9_ > MAX_PROTOCOL_FEE) revert Forbidden();
+    ) {
         positionManager = positionManager_;
         factory = ICLFactory(positionManager.factory());
+        if (protocolTreasury_ == address(0))
+            revert("VeloAmmModule: treasury is zero");
+        if (protocolFeeD9_ > MAX_PROTOCOL_FEE)
+            revert("VeloAmmModule: invalid fee");
         protocolTreasury = protocolTreasury_;
         protocolFeeD9 = protocolFeeD9_;
-    }
-
-    /**
-     * @dev Updates the protocol fee.
-     * @param newProtocolFeeD9 The new protocol fee in D9 format.
-     * @notice Only the admin can update the protocol fee.
-     * @notice The new protocol fee must not exceed the maximum protocol fee.
-     */
-    function updateProtocolFee(uint256 newProtocolFeeD9) external {
-        _requireAdmin();
-        if (newProtocolFeeD9 > MAX_PROTOCOL_FEE) revert Forbidden();
-        protocolFeeD9 = newProtocolFeeD9;
-    }
-
-    function updateProtocolTreasury(address newProtocolTreasury) external {
-        _requireAdmin();
-        if (newProtocolTreasury == address(0)) revert Forbidden();
-        protocolTreasury = newProtocolTreasury;
     }
 
     /**
@@ -202,6 +185,7 @@ contract VeloAmmModule is IAmmModule, DefaultAccessControl {
                 IERC20(token).safeTransfer(synthetixFarm, balance);
             }
         }
+        ICLGauge(gauge).withdraw(tokenId);
     }
 
     /**

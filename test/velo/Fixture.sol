@@ -415,7 +415,6 @@ contract Fixture is Test {
 
         ammModule = new VeloAmmModule(
             INonfungiblePositionManager(positionManager),
-            Constants.ADMIN,
             Constants.PROTOCOL_TREASURY,
             Constants.PROTOCOL_FEE_D9
         );
