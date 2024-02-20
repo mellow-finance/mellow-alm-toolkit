@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: BSL-1.1
 pragma solidity ^0.8.0;
 
+import "../interfaces/utils/IVeloDeployFactoryHelper.sol";
+
 import "./LpWrapper.sol";
 
-contract VeloDeployFactoryHelper {
+contract VeloDeployFactoryHelper is IVeloDeployFactoryHelper {
     function createLpWrapper(
         ICore core,
         IAmmDepositWithdrawModule ammDepositWithdrawModule,

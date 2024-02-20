@@ -8,6 +8,8 @@ import "../interfaces/ICore.sol";
 import "../interfaces/modules/velo/IVeloAmmModule.sol";
 import "../interfaces/modules/velo/IVeloDepositWithdrawModule.sol";
 
+import "../interfaces/utils/IVeloDeployFactory.sol";
+
 import "../modules/strategies/PulseStrategyModule.sol";
 
 import "./DefaultAccessControl.sol";
@@ -16,50 +18,15 @@ import "./external/synthetix/StakingRewards.sol";
 
 import "./VeloDeployFactoryHelper.sol";
 
-contract VeloDeployFactory is DefaultAccessControl {
+contract VeloDeployFactory is IVeloDeployFactory, DefaultAccessControl {
     using SafeERC20 for IERC20;
 
-    error LpWrapperAlreadyCreated();
-    error InvalidStrategyParams();
-    error InvalidState();
-    error PriceManipulationDetected();
-
-    struct ImmutableParams {
-        ICore core;
-        PulseStrategyModule strategyModule;
-        IVeloAmmModule veloModule;
-        IVeloDepositWithdrawModule depositWithdrawModule;
-        VeloDeployFactoryHelper helper;
-    }
-
-    struct MutableParams {
-        address lpWrapperAdmin;
-        address farmOwner;
-        address farmOperator;
-        address rewardsToken;
-    }
-
-    struct Storage {
-        ImmutableParams immutableParams;
-        MutableParams mutableParams;
-    }
-
-    struct StrategyParams {
-        int24 tickNeighborhood;
-        int24 intervalWidth;
-        uint128 initialLiquidity;
-        uint128 minInitialLiquidity;
-    }
-
-    struct PoolAddresses {
-        address synthetixFarm;
-        address lpWrapper;
-    }
-
     mapping(address => PoolAddresses) private _poolToAddresses;
-    mapping(int24 => StrategyParams) public tickSpacingToStrategyParams;
-    mapping(int24 => ICore.DepositParams) public tickSpacingToDepositParams;
+    mapping(int24 => IVeloDeployFactory.StrategyParams)
+        private _tickSpacingToStrategyParams;
+    mapping(int24 => ICore.DepositParams) private _tickSpacingToDepositParams;
 
+    /// @inheritdoc IVeloDeployFactory
     bytes32 public constant STORAGE_SLOT = keccak256("VeloDeployFactory");
 
     function _contractStorage() internal pure returns (Storage storage s) {
@@ -88,22 +55,25 @@ contract VeloDeployFactory is DefaultAccessControl {
         _contractStorage().immutableParams = immutableParams;
     }
 
+    /// @inheritdoc IVeloDeployFactory
     function updateStrategyParams(
         int24 tickSpacing,
         StrategyParams memory params
     ) external {
         _requireAdmin();
-        tickSpacingToStrategyParams[tickSpacing] = params;
+        _tickSpacingToStrategyParams[tickSpacing] = params;
     }
 
+    /// @inheritdoc IVeloDeployFactory
     function updateDepositParams(
         int24 tickSpacing,
         ICore.DepositParams memory params
     ) external {
         _requireAdmin();
-        tickSpacingToDepositParams[tickSpacing] = params;
+        _tickSpacingToDepositParams[tickSpacing] = params;
     }
 
+    /// @inheritdoc IVeloDeployFactory
     function updateMutableParams(MutableParams memory params) external {
         _requireAdmin();
         _contractStorage().mutableParams = params;
@@ -111,7 +81,7 @@ contract VeloDeployFactory is DefaultAccessControl {
 
     function _mint(
         ICore core,
-        PulseStrategyModule strategyModule,
+        IPulseStrategyModule strategyModule,
         IVeloAmmModule veloModule,
         IOracle oracle,
         StrategyParams memory strategyParams,
@@ -134,10 +104,10 @@ contract VeloDeployFactory is DefaultAccessControl {
                 tick,
                 type(int24).min,
                 type(int24).min + strategyParams.intervalWidth,
-                PulseStrategyModule.StrategyParams({
+                IPulseStrategyModule.StrategyParams({
                     tickNeighborhood: strategyParams.tickNeighborhood,
                     tickSpacing: tickSpacing,
-                    strategyType: PulseStrategyModule.StrategyType.Original
+                    strategyType: IPulseStrategyModule.StrategyType.Original
                 })
             );
 
@@ -207,6 +177,7 @@ contract VeloDeployFactory is DefaultAccessControl {
         positionManager.approve(address(core), tokenId);
     }
 
+    /// @inheritdoc IVeloDeployFactory
     function createStrategy(
         address token0,
         address token1,
@@ -227,7 +198,7 @@ contract VeloDeployFactory is DefaultAccessControl {
             revert LpWrapperAlreadyCreated();
         }
 
-        StrategyParams memory strategyParams = tickSpacingToStrategyParams[
+        StrategyParams memory strategyParams = _tickSpacingToStrategyParams[
             tickSpacing
         ];
         if (strategyParams.intervalWidth == 0) {
@@ -263,7 +234,7 @@ contract VeloDeployFactory is DefaultAccessControl {
         uint256 nftId;
         {
             ICore.DepositParams
-                memory depositParams = tickSpacingToDepositParams[tickSpacing];
+                memory depositParams = _tickSpacingToDepositParams[tickSpacing];
             depositParams.tokenIds = new uint256[](1);
             depositParams.tokenIds[0] = _mint(
                 s.immutableParams.core,
@@ -305,12 +276,28 @@ contract VeloDeployFactory is DefaultAccessControl {
         return lpWrapper;
     }
 
+    /// @inheritdoc IVeloDeployFactory
     function poolToAddresses(
         address pool
     ) external view returns (PoolAddresses memory) {
         return _poolToAddresses[pool];
     }
 
+    /// @inheritdoc IVeloDeployFactory
+    function tickSpacingToStrategyParams(
+        int24 tickSpacing
+    ) external view returns (StrategyParams memory) {
+        return _tickSpacingToStrategyParams[tickSpacing];
+    }
+
+    /// @inheritdoc IVeloDeployFactory
+    function tickSpacingToDepositParams(
+        int24 tickSpacing
+    ) external view returns (ICore.DepositParams memory) {
+        return _tickSpacingToDepositParams[tickSpacing];
+    }
+
+    /// @inheritdoc IVeloDeployFactory
     function removeAddressesForPool(address pool) external {
         _requireAdmin();
         delete _poolToAddresses[pool];

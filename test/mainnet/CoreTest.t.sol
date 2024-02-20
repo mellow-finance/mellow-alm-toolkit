@@ -401,10 +401,10 @@ contract UniIntentTest is Test {
         depositParams.owner = owner;
 
         depositParams.strategyParams = abi.encode(
-            PulseStrategyModule.StrategyParams({
+            IPulseStrategyModule.StrategyParams({
                 tickNeighborhood: 20,
                 tickSpacing: 10,
-                strategyType: PulseStrategyModule.StrategyType.Original
+                strategyType: IPulseStrategyModule.StrategyType.Original
             })
         );
         depositParams.securityParams = abi.encode(

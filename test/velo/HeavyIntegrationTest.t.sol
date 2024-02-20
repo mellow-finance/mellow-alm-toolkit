@@ -29,10 +29,10 @@ contract Integration is Fixture {
         depositParams.owner = Constants.OWNER;
         depositParams.farm = address(0);
         depositParams.strategyParams = abi.encode(
-            PulseStrategyModule.StrategyParams({
+            IPulseStrategyModule.StrategyParams({
                 tickNeighborhood: params.tickNeighborhood,
                 tickSpacing: params.tickSpacing,
-                strategyType: PulseStrategyModule.StrategyType.Original
+                strategyType: IPulseStrategyModule.StrategyType.Original
             })
         );
         depositParams.securityParams = params.securityParams;
