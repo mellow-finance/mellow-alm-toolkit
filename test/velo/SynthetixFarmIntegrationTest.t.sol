@@ -33,7 +33,7 @@ contract Integration is Fixture {
             PulseStrategyModule.StrategyParams({
                 tickNeighborhood: pool.tickSpacing() * 2,
                 tickSpacing: pool.tickSpacing(),
-                lazyMode: false
+                strategyType: PulseStrategyModule.StrategyType.Original
             })
         );
         depositParams.securityParams = new bytes(0);

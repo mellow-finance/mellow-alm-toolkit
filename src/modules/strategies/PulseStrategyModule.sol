@@ -16,10 +16,17 @@ contract PulseStrategyModule is IStrategyModule {
     uint256 public constant Q96 = 2 ** 96;
     uint256 public constant D4 = 1e4;
 
+    enum StrategyType {
+        Original,
+        LazySyncing,
+        LazyAscending,
+        LazyDescending
+    }
+
     struct StrategyParams {
         int24 tickNeighborhood;
         int24 tickSpacing;
-        bool lazyMode;
+        StrategyType strategyType;
     }
 
     /**
@@ -35,7 +42,7 @@ contract PulseStrategyModule is IStrategyModule {
             (StrategyParams)
         );
         if (strategyParams.tickSpacing == 0) revert InvalidParams();
-        if (strategyParams.lazyMode) {
+        if (strategyParams.strategyType != StrategyType.Original) {
             if (strategyParams.tickNeighborhood != 0) revert InvalidParams();
         } else {
             if (strategyParams.tickNeighborhood == 0) revert InvalidParams();
@@ -105,17 +112,7 @@ contract PulseStrategyModule is IStrategyModule {
         int24 targetTickLower;
         int24 targetTickUpper;
         int24 positionWidth = tickUpper - tickLower;
-        if (params.lazyMode) {
-            int24 delta = -(tick % params.tickSpacing);
-            if (tick < tickLower) {
-                if (delta < 0) delta += params.tickSpacing;
-                targetTickLower = tick + delta;
-            } else {
-                if (delta > 0) delta -= params.tickSpacing;
-                targetTickLower = tick + delta - positionWidth;
-            }
-            targetTickUpper = targetTickLower + positionWidth;
-        } else {
+        if (params.strategyType == StrategyType.Original) {
             targetTickLower = tick - positionWidth / 2;
             int24 remainder = targetTickLower % params.tickSpacing;
             if (remainder < 0) remainder += params.tickSpacing;
@@ -132,6 +129,25 @@ contract PulseStrategyModule is IStrategyModule {
                 targetTickLower += params.tickSpacing;
                 targetTickUpper += params.tickSpacing;
             }
+        } else {
+            if (
+                params.strategyType == StrategyType.LazyAscending &&
+                tick >= tickLower
+            ) return (false, target);
+            if (
+                params.strategyType == StrategyType.LazyDescending &&
+                tick <= tickUpper
+            ) return (false, target);
+
+            int24 delta = -(tick % params.tickSpacing);
+            if (tick < tickLower) {
+                if (delta < 0) delta += params.tickSpacing;
+                targetTickLower = tick + delta;
+            } else {
+                if (delta > 0) delta -= params.tickSpacing;
+                targetTickLower = tick + delta - positionWidth;
+            }
+            targetTickUpper = targetTickLower + positionWidth;
         }
 
         target.lowerTicks = new int24[](1);

@@ -150,7 +150,7 @@ contract Deploy is Script {
             PulseStrategyModule.StrategyParams({
                 tickNeighborhood: params.tickNeighborhood,
                 tickSpacing: params.tickSpacing,
-                lazyMode: false
+                strategyType: PulseStrategyModule.StrategyType.Original
             })
         );
         depositParams.securityParams = abi.encode(
