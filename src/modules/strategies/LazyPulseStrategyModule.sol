@@ -13,7 +13,6 @@ contract LazyPulseStrategyModule is IStrategyModule {
     error InvalidLength();
 
     uint256 public constant Q96 = 2 ** 96;
-    uint256 public constant D4 = 1e4;
 
     struct StrategyParams {
         int24 tickSpacing;
