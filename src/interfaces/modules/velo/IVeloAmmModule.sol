@@ -97,9 +97,5 @@ interface IVeloAmmModule is IAmmModule {
      * @param farm The address of the farm.
      * @param tokenId The ID of the token being transferred.
      */
-    function afterRebalance(
-        address farm,
-        address,
-        uint256 tokenId
-    ) external;
+    function afterRebalance(address farm, address, uint256 tokenId) external;
 }

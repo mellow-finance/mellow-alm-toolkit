@@ -263,6 +263,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControlLateInit {
         );
     }
 
+    /// @inheritdoc ILpWrapper
     function emptyRebalance() external {
         _requireAtLeastOperator();
         core.emptyRebalance(tokenId);
