@@ -6,7 +6,7 @@ import "./Constants.sol";
 import {SwapRouter} from "./contracts/periphery/SwapRouter.sol";
 import {QuoterV2} from "./contracts/periphery/lens/QuoterV2.sol";
 
-contract Fixture is Test {
+contract DeployFactoryFixture is Test {
     using SafeERC20 for IERC20;
 
     int24 public constant TICK_SPACING = 200;
@@ -37,6 +37,9 @@ contract Fixture is Test {
         IQuoterV2(
             address(new QuoterV2(positionManager.factory(), Constants.WETH))
         );
+
+    VeloDeployFactory public deployFactory;
+
     function mint(
         address token0,
         address token1,
@@ -433,12 +436,40 @@ contract Fixture is Test {
             ammModule
         );
 
-        lpWrapper = new LpWrapper(core, dwModule, "lp wrapper", "LPWR");
-        stakingRewards = new StakingRewards(
-            Constants.OWNER,
-            Constants.OWNER,
-            address(Constants.VELO), // random reward address
-            address(lpWrapper)
+        deployFactory = new VeloDeployFactory(Constants.OWNER, core, dwModule);
+
+        deployFactory.updateStrategyParams(
+            TICK_SPACING,
+            VeloDeployFactory.StrategyParams({
+                intervalWidth: 800,
+                tickNeighborhood: 200,
+                initialLiquidity: 1e9,
+                minInitialLiquidity: 1e8
+            })
+        );
+
+        ICore.DepositParams memory depositParams;
+        depositParams.slippageD4 = 100;
+        depositParams.strategyParams = abi.encode(
+            PulseStrategyModule.StrategyParams({
+                tickSpacing: TICK_SPACING,
+                tickNeighborhood: TICK_SPACING,
+                lazyMode: false
+            })
+        );
+        depositParams.securityParams = abi.encode(
+            IVeloOracle.SecurityParams({lookback: 1, maxAllowedDelta: 10})
+        );
+
+        deployFactory.updateDepositParams(TICK_SPACING, depositParams);
+
+        deployFactory.updateMutableParams(
+            VeloDeployFactory.MutableParams({
+                lpWrapperAdmin: Constants.OWNER,
+                farmOwner: Constants.OWNER,
+                farmOperator: Constants.OWNER,
+                rewardsToken: Constants.VELO
+            })
         );
 
         bot = new PulseVeloBot(quoterV2, swapRouter, positionManager);

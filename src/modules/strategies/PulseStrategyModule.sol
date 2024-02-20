@@ -7,7 +7,7 @@ import "../../libraries/external/FullMath.sol";
 
 /**
  * @title PulseStrategyModule
- * @dev A strategy module that implements the Pulse V1 strategy.
+ * @dev A strategy module that implements the Pulse V1 strategy and Lazy Pulse strategy.
  */
 contract PulseStrategyModule is IStrategyModule {
     error InvalidParams();
@@ -19,6 +19,7 @@ contract PulseStrategyModule is IStrategyModule {
     struct StrategyParams {
         int24 tickNeighborhood;
         int24 tickSpacing;
+        bool lazyMode;
     }
 
     /**
@@ -59,39 +60,86 @@ contract PulseStrategyModule is IStrategyModule {
         override
         returns (bool isRebalanceRequired, ICore.TargetNftsInfo memory target)
     {
-        {
-            StrategyParams memory strategyParams = abi.decode(
-                info.strategyParams,
-                (StrategyParams)
-            );
-            int24 tick;
-            (, tick) = oracle.getOraclePrice(info.pool);
-            if (info.tokenIds.length != 1) {
-                revert InvalidLength();
-            }
-            uint256 tokenId = info.tokenIds[0];
-            IAmmModule.Position memory position = ammModule.getPositionInfo(
-                tokenId
-            );
-            if (
-                tick >= position.tickLower + strategyParams.tickNeighborhood &&
-                tick <= position.tickUpper - strategyParams.tickNeighborhood
-            ) {
-                return (false, target);
-            }
-
-            target.lowerTicks = new int24[](1);
-            target.upperTicks = new int24[](1);
-            target.liquidityRatiosX96 = new uint256[](1);
-
-            int24 width = position.tickUpper - position.tickLower;
-            target.lowerTicks[0] = tick - width / 2;
-            int24 remainder = target.lowerTicks[0] % strategyParams.tickSpacing;
-            if (remainder < 0) remainder += strategyParams.tickSpacing;
-            target.lowerTicks[0] -= remainder;
-            target.upperTicks[0] = target.lowerTicks[0] + width;
+        if (info.tokenIds.length != 1) {
+            revert InvalidLength();
         }
-        isRebalanceRequired = true;
+        IAmmModule.Position memory position = ammModule.getPositionInfo(
+            info.tokenIds[0]
+        );
+        StrategyParams memory strategyParams = abi.decode(
+            info.strategyParams,
+            (StrategyParams)
+        );
+        (, int24 tick) = oracle.getOraclePrice(info.pool);
+        return
+            calculateTarget(
+                tick,
+                position.tickLower,
+                position.tickUpper,
+                strategyParams
+            );
+    }
+
+    function _max(int24 a, int24 b) private pure returns (int24) {
+        if (a < b) return b;
+        return a;
+    }
+
+    function calculateTarget(
+        int24 tick,
+        int24 tickLower,
+        int24 tickUpper,
+        StrategyParams memory params
+    )
+        public
+        pure
+        returns (bool isRebalanceRequired, ICore.TargetNftsInfo memory target)
+    {
+        if (
+            tick >= tickLower + params.tickNeighborhood &&
+            tick <= tickUpper - params.tickNeighborhood
+        ) {
+            return (false, target);
+        }
+
+        int24 targetTickLower;
+        int24 targetTickUpper;
+        int24 positionWidth = tickUpper - tickLower;
+        if (params.lazyMode) {
+            int24 delta = -(tick % params.tickSpacing);
+            if (tick < tickLower) {
+                if (delta < 0) delta += params.tickSpacing;
+                targetTickLower = tick + delta;
+            } else {
+                if (delta > 0) delta -= params.tickSpacing;
+                targetTickLower = tick + delta - positionWidth;
+            }
+            targetTickUpper = targetTickLower + positionWidth;
+        } else {
+            targetTickLower = tick - positionWidth / 2;
+            int24 remainder = targetTickLower % params.tickSpacing;
+            if (remainder < 0) remainder += params.tickSpacing;
+            targetTickLower -= remainder;
+            targetTickUpper = targetTickLower + positionWidth;
+            if (
+                targetTickUpper < tick ||
+                _max(tick - targetTickLower, targetTickUpper - tick) >
+                _max(
+                    tick - (targetTickLower + params.tickSpacing),
+                    (targetTickUpper + params.tickSpacing) - tick
+                )
+            ) {
+                targetTickLower += params.tickSpacing;
+                targetTickUpper += params.tickSpacing;
+            }
+        }
+
+        target.lowerTicks = new int24[](1);
+        target.upperTicks = new int24[](1);
+        target.lowerTicks[0] = targetTickLower;
+        target.upperTicks[0] = targetTickUpper;
+        target.liquidityRatiosX96 = new uint256[](1);
         target.liquidityRatiosX96[0] = Q96;
+        isRebalanceRequired = true;
     }
 }

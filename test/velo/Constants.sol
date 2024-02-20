@@ -29,6 +29,8 @@ import "../../src/libraries/external/velo/PositionValue.sol";
 import "../../src/utils/LpWrapper.sol";
 import "../../src/utils/external/synthetix/StakingRewards.sol";
 
+import "../../src/utils/VeloDeployFactory.sol";
+
 library Constants {
     address public constant USDC = 0x7F5c764cBc14f9669B88837ca1490cCa17c31607;
     address public constant WETH = 0x4200000000000000000000000000000000000006;
@@ -38,6 +40,8 @@ library Constants {
         0xd557d3b47D159EB3f9B48c0f1B4a6e67e82e8B3f;
     address public constant VELO_FACTORY =
         0x6890F9215fC8D17f4000ba91e8a5E538e78F14EB;
+
+    address public constant GAUGE = 0x5f090Fc694aa42569aB61397E4c996E808f0BBf2;
 
     address public constant DEPLOYER = address(bytes20(keccak256("deployer")));
     address public constant DEPOSITOR =

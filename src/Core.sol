@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
 import "./interfaces/ICore.sol";
 
@@ -14,7 +15,7 @@ import "./libraries/external/FullMath.sol";
 
 import "./utils/DefaultAccessControl.sol";
 
-contract Core is DefaultAccessControl, ICore {
+contract Core is DefaultAccessControl, ICore, IERC721Receiver {
     using EnumerableSet for EnumerableSet.UintSet;
 
     error DelegateCallFailed();
@@ -139,7 +140,7 @@ contract Core is DefaultAccessControl, ICore {
         address pool;
         for (uint256 i = 0; i < params.tokenIds.length; i++) {
             uint256 tokenId = params.tokenIds[i];
-            if (tokenId == 0 || tokenId > type(uint80).max) {
+            if (tokenId == 0) {
                 revert InvalidParameters();
             }
 
@@ -208,7 +209,7 @@ contract Core is DefaultAccessControl, ICore {
      */
     function withdraw(uint256 id, address to) external override {
         NftsInfo memory info = _nfts[id];
-        if (info.tokenIds.length == 0) revert();
+        if (info.tokenIds.length == 0) revert InvalidLength();
         if (info.owner != msg.sender) revert Forbidden();
         _userIds[info.owner].remove(id);
         delete _nfts[id];
@@ -391,5 +392,48 @@ contract Core is DefaultAccessControl, ICore {
             }
             _nfts[target.id].tokenIds = tokenIds;
         }
+    }
+
+    /**
+     * @dev This function is used to perform an empty rebalance for a specific NFT.
+     * @param nftId The ID of the NFT to perform the empty rebalance on.
+     * @notice This function calls the `beforeRebalance` and `afterRebalance` functions of the `IAmmModule` contract for each token ID in the NFT.
+     * @notice If any of the delegate calls fail, the function will revert.
+     */
+    function emptyRebalance(uint256 nftId) external {
+        NftsInfo memory params = _nfts[nftId];
+        if (params.owner != msg.sender) revert Forbidden();
+        uint256[] memory tokenIds = params.tokenIds;
+        for (uint256 i = 0; i < tokenIds.length; i++) {
+            uint256 tokenId = tokenIds[i];
+            if (tokenId == 0) revert InvalidParameters();
+            (bool success, ) = address(ammModule).delegatecall(
+                abi.encodeWithSelector(
+                    IAmmModule.beforeRebalance.selector,
+                    params.farm,
+                    params.vault,
+                    tokenId
+                )
+            );
+            if (!success) revert DelegateCallFailed();
+            (success, ) = address(ammModule).delegatecall(
+                abi.encodeWithSelector(
+                    IAmmModule.afterRebalance.selector,
+                    params.farm,
+                    params.vault,
+                    tokenId
+                )
+            );
+            if (!success) revert DelegateCallFailed();
+        }
+    }
+
+    function onERC721Received(
+        address,
+        address,
+        uint256,
+        bytes calldata
+    ) external pure returns (bytes4) {
+        return IERC721Receiver.onERC721Received.selector;
     }
 }
