@@ -113,7 +113,13 @@ contract Deploy is Script {
             INonfungiblePositionManager(positionManager),
             ammModule
         );
-        lpWrapper = new LpWrapper(core, dwModule, "lp wrapper", "LPWR");
+        lpWrapper = new LpWrapper(
+            core,
+            dwModule,
+            "lp wrapper",
+            "LPWR",
+            Constants.OWNER
+        );
         stakingRewards = new StakingRewards(
             Constants.OWNER,
             Constants.OWNER,
@@ -162,7 +168,7 @@ contract Deploy is Script {
 
         positionManager.approve(address(core), depositParams.tokenIds[0]);
         uint256 nftId = core.deposit(depositParams);
-        lpWrapper.initialize(nftId, 5e5, Constants.OWNER);
+        lpWrapper.initialize(nftId, 5e5);
 
         vm.stopBroadcast();
     }

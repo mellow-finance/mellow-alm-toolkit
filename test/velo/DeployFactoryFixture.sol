@@ -436,7 +436,12 @@ contract DeployFactoryFixture is Test {
             ammModule
         );
 
-        deployFactory = new VeloDeployFactory(Constants.OWNER, core, dwModule);
+        deployFactory = new VeloDeployFactory(
+            Constants.OWNER,
+            core,
+            dwModule,
+            new VeloDeployFactoryHelper()
+        );
 
         deployFactory.updateStrategyParams(
             TICK_SPACING,

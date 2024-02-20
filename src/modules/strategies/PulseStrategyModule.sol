@@ -14,7 +14,6 @@ contract PulseStrategyModule is IStrategyModule {
     error InvalidLength();
 
     uint256 public constant Q96 = 2 ** 96;
-    uint256 public constant D4 = 1e4;
 
     enum StrategyType {
         Original,
@@ -24,9 +23,9 @@ contract PulseStrategyModule is IStrategyModule {
     }
 
     struct StrategyParams {
+        StrategyType strategyType;
         int24 tickNeighborhood;
         int24 tickSpacing;
-        StrategyType strategyType;
     }
 
     /**

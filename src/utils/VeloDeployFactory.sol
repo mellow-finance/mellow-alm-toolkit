@@ -10,10 +10,11 @@ import "../interfaces/modules/velo/IVeloDepositWithdrawModule.sol";
 
 import "../modules/strategies/PulseStrategyModule.sol";
 
-import "./LpWrapper.sol";
 import "./DefaultAccessControl.sol";
 
 import "./external/synthetix/StakingRewards.sol";
+
+import "./VeloDeployFactoryHelper.sol";
 
 contract VeloDeployFactory is DefaultAccessControl {
     using SafeERC20 for IERC20;
@@ -28,6 +29,7 @@ contract VeloDeployFactory is DefaultAccessControl {
         PulseStrategyModule strategyModule;
         IVeloAmmModule veloModule;
         IVeloDepositWithdrawModule depositWithdrawModule;
+        VeloDeployFactoryHelper helper;
     }
 
     struct MutableParams {
@@ -71,7 +73,8 @@ contract VeloDeployFactory is DefaultAccessControl {
     constructor(
         address admin_,
         ICore core_,
-        IVeloDepositWithdrawModule ammDepositWithdrawModule_
+        IVeloDepositWithdrawModule ammDepositWithdrawModule_,
+        VeloDeployFactoryHelper helper_
     ) DefaultAccessControl(admin_) {
         ImmutableParams memory immutableParams = ImmutableParams({
             core: core_,
@@ -79,7 +82,8 @@ contract VeloDeployFactory is DefaultAccessControl {
                 address(core_.strategyModule())
             ),
             veloModule: IVeloAmmModule(address(core_.ammModule())),
-            depositWithdrawModule: ammDepositWithdrawModule_
+            depositWithdrawModule: ammDepositWithdrawModule_,
+            helper: helper_
         });
         _contractStorage().immutableParams = immutableParams;
     }
@@ -223,7 +227,14 @@ contract VeloDeployFactory is DefaultAccessControl {
             revert LpWrapperAlreadyCreated();
         }
 
-        ILpWrapper lpWrapper = new LpWrapper(
+        StrategyParams memory strategyParams = tickSpacingToStrategyParams[
+            tickSpacing
+        ];
+        if (strategyParams.intervalWidth == 0) {
+            revert InvalidStrategyParams();
+        }
+
+        ILpWrapper lpWrapper = s.immutableParams.helper.createLpWrapper(
             s.immutableParams.core,
             s.immutableParams.depositWithdrawModule,
             string(
@@ -245,15 +256,9 @@ contract VeloDeployFactory is DefaultAccessControl {
                     "-",
                     Strings.toString(tickSpacing)
                 )
-            )
+            ),
+            s.mutableParams.lpWrapperAdmin
         );
-
-        StrategyParams memory strategyParams = tickSpacingToStrategyParams[
-            tickSpacing
-        ];
-        if (strategyParams.intervalWidth == 0) {
-            revert InvalidStrategyParams();
-        }
 
         uint256 nftId;
         {
@@ -295,11 +300,7 @@ contract VeloDeployFactory is DefaultAccessControl {
                 .getPositionInfo(info.tokenIds[i]);
             initialTotalSupply += position.liquidity;
         }
-        lpWrapper.initialize(
-            nftId,
-            initialTotalSupply,
-            s.mutableParams.lpWrapperAdmin
-        );
+        lpWrapper.initialize(nftId, initialTotalSupply);
 
         return lpWrapper;
     }

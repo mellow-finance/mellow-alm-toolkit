@@ -35,13 +35,8 @@ interface ILpWrapper {
      * @dev Initializes the LP wrapper contract with the given token ID and initial total supply.
      * @param tokenId_ The token ID to be associated with the LP wrapper contract.
      * @param initialTotalSupply The initial total supply of the LP wrapper contract.
-     * @param admin The address of the admin of the LP wrapper contract.
      */
-    function initialize(
-        uint256 tokenId_,
-        uint256 initialTotalSupply,
-        address admin
-    ) external;
+    function initialize(uint256 tokenId_, uint256 initialTotalSupply) external;
 
     /**
      * @dev Deposits specified amounts of tokens into the LP wrapper contract and mints LP tokens to the specified address.

@@ -264,7 +264,13 @@ contract Fixture is Test {
             ammModule
         );
 
-        lpWrapper = new LpWrapper(core, dwModule, "lp wrapper", "LPWR");
+        lpWrapper = new LpWrapper(
+            core,
+            dwModule,
+            "lp wrapper",
+            "LPWR",
+            Constants.OWNER
+        );
         stakingRewards = new StakingRewards(
             Constants.OWNER,
             Constants.OWNER,
