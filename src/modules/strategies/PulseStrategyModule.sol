@@ -34,11 +34,11 @@ contract PulseStrategyModule is IStrategyModule {
             params,
             (StrategyParams)
         );
-        if (
-            strategyParams.tickNeighborhood == 0 ||
-            strategyParams.tickSpacing == 0
-        ) {
-            revert InvalidParams();
+        if (strategyParams.tickSpacing == 0) revert InvalidParams();
+        if (strategyParams.lazyMode) {
+            if (strategyParams.tickNeighborhood != 0) revert InvalidParams();
+        } else {
+            if (strategyParams.tickNeighborhood == 0) revert InvalidParams();
         }
     }
 
