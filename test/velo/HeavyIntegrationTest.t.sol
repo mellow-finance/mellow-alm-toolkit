@@ -31,7 +31,8 @@ contract Integration is Fixture {
         depositParams.strategyParams = abi.encode(
             PulseStrategyModule.StrategyParams({
                 tickNeighborhood: params.tickNeighborhood,
-                tickSpacing: params.tickSpacing
+                tickSpacing: params.tickSpacing,
+                lazyMode: false
             })
         );
         depositParams.securityParams = params.securityParams;

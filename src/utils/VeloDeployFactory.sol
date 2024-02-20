@@ -132,7 +132,8 @@ contract VeloDeployFactory is DefaultAccessControl {
                 type(int24).min + strategyParams.intervalWidth,
                 PulseStrategyModule.StrategyParams({
                     tickNeighborhood: strategyParams.tickNeighborhood,
-                    tickSpacing: tickSpacing
+                    tickSpacing: tickSpacing,
+                    lazyMode: false
                 })
             );
 

@@ -7,7 +7,7 @@ import "../../libraries/external/FullMath.sol";
 
 /**
  * @title PulseStrategyModule
- * @dev A strategy module that implements the Pulse V1 strategy.
+ * @dev A strategy module that implements the Pulse V1 strategy and Lazy Pulse strategy.
  */
 contract PulseStrategyModule is IStrategyModule {
     error InvalidParams();
@@ -19,6 +19,7 @@ contract PulseStrategyModule is IStrategyModule {
     struct StrategyParams {
         int24 tickNeighborhood;
         int24 tickSpacing;
+        bool lazyMode;
     }
 
     /**
@@ -101,22 +102,36 @@ contract PulseStrategyModule is IStrategyModule {
             return (false, target);
         }
 
+        int24 targetTickLower;
+        int24 targetTickUpper;
         int24 positionWidth = tickUpper - tickLower;
-        int24 targetTickLower = tick - positionWidth / 2;
-        int24 remainder = targetTickLower % params.tickSpacing;
-        if (remainder < 0) remainder += params.tickSpacing;
-        targetTickLower -= remainder;
-        int24 targetTickUpper = targetTickLower + positionWidth;
-        if (
-            targetTickUpper < tick ||
-            _max(tick - targetTickLower, targetTickUpper - tick) >
-            _max(
-                tick - (targetTickLower + params.tickSpacing),
-                (targetTickUpper + params.tickSpacing) - tick
-            )
-        ) {
-            targetTickLower += params.tickSpacing;
-            targetTickUpper += params.tickSpacing;
+        if (params.lazyMode) {
+            int24 delta = -(tick % params.tickSpacing);
+            if (tick < tickLower) {
+                if (delta < 0) delta += params.tickSpacing;
+                targetTickLower = tick + delta;
+            } else {
+                if (delta > 0) delta -= params.tickSpacing;
+                targetTickLower = tick + delta - positionWidth;
+            }
+            targetTickUpper = targetTickLower + positionWidth;
+        } else {
+            targetTickLower = tick - positionWidth / 2;
+            int24 remainder = targetTickLower % params.tickSpacing;
+            if (remainder < 0) remainder += params.tickSpacing;
+            targetTickLower -= remainder;
+            targetTickUpper = targetTickLower + positionWidth;
+            if (
+                targetTickUpper < tick ||
+                _max(tick - targetTickLower, targetTickUpper - tick) >
+                _max(
+                    tick - (targetTickLower + params.tickSpacing),
+                    (targetTickUpper + params.tickSpacing) - tick
+                )
+            ) {
+                targetTickLower += params.tickSpacing;
+                targetTickUpper += params.tickSpacing;
+            }
         }
 
         target.lowerTicks = new int24[](1);

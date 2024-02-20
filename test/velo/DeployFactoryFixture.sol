@@ -453,7 +453,8 @@ contract DeployFactoryFixture is Test {
         depositParams.strategyParams = abi.encode(
             PulseStrategyModule.StrategyParams({
                 tickSpacing: TICK_SPACING,
-                tickNeighborhood: TICK_SPACING
+                tickNeighborhood: TICK_SPACING,
+                lazyMode: false
             })
         );
         depositParams.securityParams = abi.encode(
