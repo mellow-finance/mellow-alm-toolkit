@@ -263,7 +263,7 @@ contract Integration is Fixture {
                 tickNeighborhood: tickSpacing,
                 slippageD4: 100,
                 securityParams: abi.encode(
-                    VeloOracle.SecurityParams({
+                    IVeloOracle.SecurityParams({
                         lookback: 10,
                         maxAllowedDelta: 10
                     })
@@ -361,14 +361,17 @@ contract Integration is Fixture {
         // oracle.ensureNoMEV(
         //     address(pool),
         //     abi.encode(
-        //         VeloOracle.SecurityParams({lookback: 5, maxAllowedDelta: 0})
+        //         IVeloOracle.SecurityParams({lookback: 5, maxAllowedDelta: 0})
         //     )
         // );
         vm.expectRevert(abi.encodeWithSignature("NotEnoughObservations()"));
         oracle.ensureNoMEV(
             address(pool),
             abi.encode(
-                VeloOracle.SecurityParams({lookback: 1000, maxAllowedDelta: 10})
+                IVeloOracle.SecurityParams({
+                    lookback: 1000,
+                    maxAllowedDelta: 10
+                })
             )
         );
         // vm.expectRevert(abi.encodeWithSignature("NotEnoughObservations()"));
@@ -398,18 +401,18 @@ contract Integration is Fixture {
         vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
         oracle.validateSecurityParams(
             abi.encode(
-                VeloOracle.SecurityParams({lookback: 0, maxAllowedDelta: 0})
+                IVeloOracle.SecurityParams({lookback: 0, maxAllowedDelta: 0})
             )
         );
         vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
         oracle.validateSecurityParams(
             abi.encode(
-                VeloOracle.SecurityParams({lookback: 1, maxAllowedDelta: -1})
+                IVeloOracle.SecurityParams({lookback: 1, maxAllowedDelta: -1})
             )
         );
         oracle.validateSecurityParams(
             abi.encode(
-                VeloOracle.SecurityParams({lookback: 10, maxAllowedDelta: 10})
+                IVeloOracle.SecurityParams({lookback: 10, maxAllowedDelta: 10})
             )
         );
     }

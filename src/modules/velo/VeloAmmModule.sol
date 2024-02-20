@@ -3,27 +3,28 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "../../interfaces/modules/IAmmModule.sol";
-
-import "../../interfaces/external/velo/ICLPool.sol";
-import "../../interfaces/external/velo/ICLGauge.sol";
-import "../../interfaces/external/velo/ICLFactory.sol";
-import "../../interfaces/external/velo/INonfungiblePositionManager.sol";
+import "../../interfaces/modules/velo/IVeloAmmModule.sol";
 
 import "../../libraries/external/LiquidityAmounts.sol";
 import "../../libraries/external/TickMath.sol";
 
 import "../../utils/DefaultAccessControl.sol";
 
-contract VeloAmmModule is IAmmModule {
+contract VeloAmmModule is IVeloAmmModule {
     using SafeERC20 for IERC20;
 
+    /// @inheritdoc IVeloAmmModule
     uint256 public constant D9 = 1e9;
+    /// @inheritdoc IVeloAmmModule
     uint256 public constant MAX_PROTOCOL_FEE = 3e8; // 30%
 
+    /// @inheritdoc IVeloAmmModule
     INonfungiblePositionManager public immutable positionManager;
+    /// @inheritdoc IVeloAmmModule
     ICLFactory public immutable factory;
+    /// @inheritdoc IVeloAmmModule
     address public immutable protocolTreasury;
+    /// @inheritdoc IVeloAmmModule
     uint256 public immutable protocolFeeD9;
 
     constructor(
@@ -41,14 +42,7 @@ contract VeloAmmModule is IAmmModule {
         protocolFeeD9 = protocolFeeD9_;
     }
 
-    /**
-     * @dev Calculates the amounts of token0 and token1 for a given liquidity amount.
-     * @param liquidity The liquidity amount.
-     * @param sqrtPriceX96 The square root of the current price of the pool.
-     * @param tickLower The lower tick of the range.
-     * @param tickUpper The upper tick of the range.
-     * @return The amounts of token0 and token1.
-     */
+    /// @inheritdoc IVeloAmmModule
     function getAmountsForLiquidity(
         uint128 liquidity,
         uint160 sqrtPriceX96,
@@ -64,12 +58,7 @@ contract VeloAmmModule is IAmmModule {
             );
     }
 
-    /**
-     * @dev Calculates the total value locked (TVL) for a given token ID and pool.
-     * @param tokenId The ID of the token.
-     * @param sqrtRatioX96 The square root of the current tick value of the pool.
-     * @return uint256, uint256 - amount0 and amount1 locked in the position.
-     */
+    /// @inheritdoc IVeloAmmModule
     function tvl(
         uint256 tokenId,
         uint160 sqrtRatioX96,
@@ -99,11 +88,7 @@ contract VeloAmmModule is IAmmModule {
             );
     }
 
-    /**
-     * @dev Retrieves the information of a position.
-     * @param tokenId The ID of the position.
-     * @return position The Position struct containing the position information.
-     */
+    /// @inheritdoc IVeloAmmModule
     function getPositionInfo(
         uint256 tokenId
     ) public view override returns (Position memory position) {
@@ -125,13 +110,7 @@ contract VeloAmmModule is IAmmModule {
         position.property = uint24(tickSpacing);
     }
 
-    /**
-     * @dev Retrieves the address of the pool for the specified tokens and fee.
-     * @param token0 The address of the first token in the pool.
-     * @param token1 The address of the second token in the pool.
-     * @param tickSpacing The tickSpacing of the pool.
-     * @return address The address of the pool.
-     */
+    /// @inheritdoc IVeloAmmModule
     function getPool(
         address token0,
         address token1,
@@ -140,21 +119,12 @@ contract VeloAmmModule is IAmmModule {
         return factory.getPool(token0, token1, int24(tickSpacing));
     }
 
-    /**
-     * @dev Retrieves the fee property of a given pool.
-     * @param pool The address of the pool.
-     * @return uint24 fee value of the pool.
-     */
+    /// @inheritdoc IVeloAmmModule
     function getProperty(address pool) external view override returns (uint24) {
         return uint24(ICLPool(pool).tickSpacing());
     }
 
-    /**
-     * @dev Executes actions before rebalancing.
-     * @param gauge The address of the gauge contract.
-     * @param synthetixFarm The address of the Synthetix farm contract.
-     * @param tokenId The ID of the token.
-     */
+    /// @inheritdoc IVeloAmmModule
     function beforeRebalance(
         address gauge,
         address synthetixFarm,
@@ -188,11 +158,7 @@ contract VeloAmmModule is IAmmModule {
         ICLGauge(gauge).withdraw(tokenId);
     }
 
-    /**
-     * @dev Executes after a rebalance operation.
-     * @param farm The address of the farm.
-     * @param tokenId The ID of the token being transferred.
-     */
+    /// @inheritdoc IVeloAmmModule
     function afterRebalance(
         address farm,
         address,
