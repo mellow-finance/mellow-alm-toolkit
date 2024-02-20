@@ -436,11 +436,16 @@ contract DeployFactoryFixture is Test {
             ammModule
         );
 
-        deployFactory = new VeloDeployFactory(Constants.OWNER, core, dwModule);
+        deployFactory = new VeloDeployFactory(
+            Constants.OWNER,
+            core,
+            dwModule,
+            new VeloDeployFactoryHelper()
+        );
 
         deployFactory.updateStrategyParams(
             TICK_SPACING,
-            VeloDeployFactory.StrategyParams({
+            IVeloDeployFactory.StrategyParams({
                 intervalWidth: 800,
                 tickNeighborhood: 200,
                 initialLiquidity: 1e9,
@@ -451,10 +456,10 @@ contract DeployFactoryFixture is Test {
         ICore.DepositParams memory depositParams;
         depositParams.slippageD4 = 100;
         depositParams.strategyParams = abi.encode(
-            PulseStrategyModule.StrategyParams({
+            IPulseStrategyModule.StrategyParams({
                 tickSpacing: TICK_SPACING,
                 tickNeighborhood: TICK_SPACING,
-                lazyMode: false
+                strategyType: IPulseStrategyModule.StrategyType.Original
             })
         );
         depositParams.securityParams = abi.encode(
@@ -464,7 +469,7 @@ contract DeployFactoryFixture is Test {
         deployFactory.updateDepositParams(TICK_SPACING, depositParams);
 
         deployFactory.updateMutableParams(
-            VeloDeployFactory.MutableParams({
+            IVeloDeployFactory.MutableParams({
                 lpWrapperAdmin: Constants.OWNER,
                 farmOwner: Constants.OWNER,
                 farmOperator: Constants.OWNER,

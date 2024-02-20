@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSL-1.1
 pragma solidity ^0.8.0;
 
-import "../../interfaces/modules/IStrategyModule.sol";
+import "../../interfaces/modules/strategies/IPulseStrategyModule.sol";
 
 import "../../libraries/external/FullMath.sol";
 
@@ -9,24 +9,11 @@ import "../../libraries/external/FullMath.sol";
  * @title PulseStrategyModule
  * @dev A strategy module that implements the Pulse V1 strategy and Lazy Pulse strategy.
  */
-contract PulseStrategyModule is IStrategyModule {
-    error InvalidParams();
-    error InvalidLength();
-
+contract PulseStrategyModule is IPulseStrategyModule {
+    /// @inheritdoc IPulseStrategyModule
     uint256 public constant Q96 = 2 ** 96;
-    uint256 public constant D4 = 1e4;
 
-    struct StrategyParams {
-        int24 tickNeighborhood;
-        int24 tickSpacing;
-        bool lazyMode;
-    }
-
-    /**
-     * @dev Validates the strategy parameters.
-     * @param params The encoded strategy parameters.
-     * @notice throws InvalidParams if the tick neighborhood or tick spacing is zero.
-     */
+    /// @inheritdoc IPulseStrategyModule
     function validateStrategyParams(
         bytes memory params
     ) external pure override {
@@ -35,21 +22,14 @@ contract PulseStrategyModule is IStrategyModule {
             (StrategyParams)
         );
         if (strategyParams.tickSpacing == 0) revert InvalidParams();
-        if (strategyParams.lazyMode) {
+        if (strategyParams.strategyType != StrategyType.Original) {
             if (strategyParams.tickNeighborhood != 0) revert InvalidParams();
         } else {
             if (strategyParams.tickNeighborhood == 0) revert InvalidParams();
         }
     }
 
-    /**
-     * @dev Retrieves the target information for rebalancing based on the given parameters.
-     * @param info The NFTs information.
-     * @param ammModule The AMM module.
-     * @param oracle The oracle.
-     * @return isRebalanceRequired A boolean indicating whether rebalancing is required.
-     * @return target The target NFTs information for rebalancing.
-     */
+    /// @inheritdoc IPulseStrategyModule
     function getTargets(
         ICore.NftsInfo memory info,
         IAmmModule ammModule,
@@ -80,11 +60,7 @@ contract PulseStrategyModule is IStrategyModule {
             );
     }
 
-    function _max(int24 a, int24 b) private pure returns (int24) {
-        if (a < b) return b;
-        return a;
-    }
-
+    /// @inheritdoc IPulseStrategyModule
     function calculateTarget(
         int24 tick,
         int24 tickLower,
@@ -105,17 +81,7 @@ contract PulseStrategyModule is IStrategyModule {
         int24 targetTickLower;
         int24 targetTickUpper;
         int24 positionWidth = tickUpper - tickLower;
-        if (params.lazyMode) {
-            int24 delta = -(tick % params.tickSpacing);
-            if (tick < tickLower) {
-                if (delta < 0) delta += params.tickSpacing;
-                targetTickLower = tick + delta;
-            } else {
-                if (delta > 0) delta -= params.tickSpacing;
-                targetTickLower = tick + delta - positionWidth;
-            }
-            targetTickUpper = targetTickLower + positionWidth;
-        } else {
+        if (params.strategyType == StrategyType.Original) {
             targetTickLower = tick - positionWidth / 2;
             int24 remainder = targetTickLower % params.tickSpacing;
             if (remainder < 0) remainder += params.tickSpacing;
@@ -132,6 +98,25 @@ contract PulseStrategyModule is IStrategyModule {
                 targetTickLower += params.tickSpacing;
                 targetTickUpper += params.tickSpacing;
             }
+        } else {
+            if (
+                params.strategyType == StrategyType.LazyAscending &&
+                tick >= tickLower
+            ) return (false, target);
+            if (
+                params.strategyType == StrategyType.LazyDescending &&
+                tick <= tickUpper
+            ) return (false, target);
+
+            int24 delta = -(tick % params.tickSpacing);
+            if (tick < tickLower) {
+                if (delta < 0) delta += params.tickSpacing;
+                targetTickLower = tick + delta;
+            } else {
+                if (delta > 0) delta -= params.tickSpacing;
+                targetTickLower = tick + delta - positionWidth;
+            }
+            targetTickUpper = targetTickLower + positionWidth;
         }
 
         target.lowerTicks = new int24[](1);
@@ -141,5 +126,10 @@ contract PulseStrategyModule is IStrategyModule {
         target.liquidityRatiosX96 = new uint256[](1);
         target.liquidityRatiosX96[0] = Q96;
         isRebalanceRequired = true;
+    }
+
+    function _max(int24 a, int24 b) private pure returns (int24) {
+        if (a < b) return b;
+        return a;
     }
 }

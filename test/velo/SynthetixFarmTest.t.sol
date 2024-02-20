@@ -19,10 +19,10 @@ contract Integration is Fixture {
         depositParams.owner = Constants.OWNER;
         depositParams.farm = address(0);
         depositParams.strategyParams = abi.encode(
-            PulseStrategyModule.StrategyParams({
+            IPulseStrategyModule.StrategyParams({
                 tickNeighborhood: pool.tickSpacing() * 2,
                 tickSpacing: pool.tickSpacing(),
-                lazyMode: false
+                strategyType: IPulseStrategyModule.StrategyType.Original
             })
         );
         depositParams.securityParams = new bytes(0);
@@ -41,7 +41,7 @@ contract Integration is Fixture {
 
         uint256 nftId2 = core.deposit(depositParams);
 
-        lpWrapper.initialize(nftId2, 5e5, Constants.OWNER);
+        lpWrapper.initialize(nftId2, 5e5);
         vm.stopPrank();
 
         vm.startPrank(Constants.DEPOSITOR);

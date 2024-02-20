@@ -5,9 +5,9 @@ import "../interfaces/utils/ILpWrapper.sol";
 
 import "../libraries/external/FullMath.sol";
 
-import "./DefaultAccessControlLateInit.sol";
+import "./DefaultAccessControl.sol";
 
-contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControlLateInit {
+contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
     /// @inheritdoc ILpWrapper
     address public immutable positionManager;
 
@@ -32,13 +32,15 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControlLateInit {
      * @param ammDepositWithdrawModule_ The address of the IAmmDepositWithdrawModule contract.
      * @param name The name of the ERC20 token.
      * @param symbol The symbol of the ERC20 token.
+     * @param admin The address of the admin.
      */
     constructor(
         ICore core_,
         IAmmDepositWithdrawModule ammDepositWithdrawModule_,
         string memory name,
-        string memory symbol
-    ) ERC20(name, symbol) {
+        string memory symbol,
+        address admin
+    ) ERC20(name, symbol) DefaultAccessControl(admin) {
         core = core_;
         positionManager = core.positionManager();
         ammModule = core.ammModule();
@@ -47,15 +49,10 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControlLateInit {
     }
 
     /// @inheritdoc ILpWrapper
-    function initialize(
-        uint256 tokenId_,
-        uint256 initialTotalSupply,
-        address admin
-    ) external {
+    function initialize(uint256 tokenId_, uint256 initialTotalSupply) external {
         if (tokenId != 0) revert AlreadyInitialized();
         tokenId = tokenId_;
         _mint(address(this), initialTotalSupply);
-        init(admin);
     }
 
     /// @inheritdoc ILpWrapper
