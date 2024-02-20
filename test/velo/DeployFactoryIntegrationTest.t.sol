@@ -24,6 +24,13 @@ contract Integration is DeployFactoryFixture {
         deal(Constants.WETH, address(deployFactory), 1 ether);
         deal(Constants.USDC, address(deployFactory), 1e6 * 2000);
 
+        vm.expectRevert(abi.encodeWithSignature("InvalidStrategyParams()"));
+        deployFactory.createStrategy(
+            Constants.WETH,
+            Constants.USDC,
+            TICK_SPACING + 1
+        );
+
         deployFactory.createStrategy(
             Constants.WETH,
             Constants.USDC,

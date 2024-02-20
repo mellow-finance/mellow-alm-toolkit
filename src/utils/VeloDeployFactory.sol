@@ -227,10 +227,11 @@ contract VeloDeployFactory is DefaultAccessControl {
             s.immutableParams.depositWithdrawModule,
             string(
                 abi.encodePacked(
-                    "MellowVeloStrategy-",
+                    "MellowVelodromeStrategy-",
                     IERC20Metadata(token0).symbol(),
                     "-",
                     IERC20Metadata(token1).symbol(),
+                    "-",
                     Strings.toString(tickSpacing)
                 )
             ),
@@ -240,6 +241,7 @@ contract VeloDeployFactory is DefaultAccessControl {
                     IERC20Metadata(token0).symbol(),
                     "-",
                     IERC20Metadata(token1).symbol(),
+                    "-",
                     Strings.toString(tickSpacing)
                 )
             )
