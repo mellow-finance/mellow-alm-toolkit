@@ -79,6 +79,32 @@ contract VeloDeployFactory is IVeloDeployFactory, DefaultAccessControl {
         _contractStorage().mutableParams = params;
     }
 
+    function _prepareToken(address token, address to, uint256 amount) private {
+        IERC20(token).safeIncreaseAllowance(address(to), amount);
+        uint256 balance = IERC20(token).balanceOf(address(this));
+        if (balance >= amount) return;
+        amount -= balance;
+        uint256 allowance = IERC20(token).allowance(msg.sender, address(this));
+        uint256 userBalance = IERC20(token).balanceOf(msg.sender);
+        if (allowance < amount || userBalance < amount)
+            revert(
+                string(
+                    abi.encodePacked(
+                        "Invalid ",
+                        IERC20Metadata(token).symbol(),
+                        " allowance or balance. Required: ",
+                        Strings.toString(amount),
+                        "; User balance: ",
+                        Strings.toString(userBalance),
+                        "; User allowance: ",
+                        Strings.toString(allowance),
+                        "."
+                    )
+                )
+            );
+        IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
+    }
+
     function _mint(
         ICore core,
         IPulseStrategyModule strategyModule,
@@ -120,38 +146,10 @@ contract VeloDeployFactory is IVeloDeployFactory, DefaultAccessControl {
                     target.lowerTicks[0],
                     target.upperTicks[0]
                 );
-
             address token0 = pool.token0();
-            {
-                uint256 balance = IERC20(token0).balanceOf(address(this));
-                if (balance < amount0) {
-                    IERC20(token0).safeTransferFrom(
-                        msg.sender,
-                        address(this),
-                        amount0 - balance
-                    );
-                }
-                IERC20(token0).safeIncreaseAllowance(
-                    address(positionManager),
-                    amount0
-                );
-            }
-
             address token1 = pool.token1();
-            {
-                uint256 balance = IERC20(token1).balanceOf(address(this));
-                if (balance < amount1) {
-                    IERC20(token1).safeTransferFrom(
-                        msg.sender,
-                        address(this),
-                        amount1 - balance
-                    );
-                }
-                IERC20(token1).safeIncreaseAllowance(
-                    address(positionManager),
-                    amount1
-                );
-            }
+            _prepareToken(token0, address(positionManager), amount0);
+            _prepareToken(token1, address(positionManager), amount1);
 
             uint128 actualMintedLiquidity;
             (tokenId, actualMintedLiquidity, , ) = positionManager.mint(
