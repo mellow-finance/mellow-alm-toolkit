@@ -21,12 +21,11 @@ contract PulseStrategyModule is IPulseStrategyModule {
             params,
             (StrategyParams)
         );
-        if (strategyParams.tickSpacing == 0) revert InvalidParams();
-        if (strategyParams.strategyType != StrategyType.Original) {
-            if (strategyParams.tickNeighborhood != 0) revert InvalidParams();
-        } else {
-            if (strategyParams.tickNeighborhood == 0) revert InvalidParams();
-        }
+        if (
+            strategyParams.tickSpacing == 0 ||
+            (strategyParams.strategyType != StrategyType.Original &&
+                strategyParams.tickNeighborhood != 0)
+        ) revert InvalidParams();
     }
 
     /// @inheritdoc IPulseStrategyModule
@@ -100,11 +99,11 @@ contract PulseStrategyModule is IPulseStrategyModule {
             }
         } else {
             if (
-                params.strategyType == StrategyType.LazyAscending &&
+                params.strategyType == StrategyType.LazyDescending &&
                 tick >= tickLower
             ) return (false, target);
             if (
-                params.strategyType == StrategyType.LazyDescending &&
+                params.strategyType == StrategyType.LazyAscending &&
                 tick <= tickUpper
             ) return (false, target);
 
