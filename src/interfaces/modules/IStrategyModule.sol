@@ -10,11 +10,14 @@ interface IStrategyModule {
     function validateStrategyParams(bytes memory params) external view;
 
     function getTargets(
-        ICore.NftsInfo memory info,
+        ICore.PositionInfo memory info,
         IAmmModule ammModule,
         IOracle oracleModule
     )
         external
         view
-        returns (bool isRebalanceRequired, ICore.TargetNftsInfo memory targets);
+        returns (
+            bool isRebalanceRequired,
+            ICore.TargetPositionInfo memory targets
+        );
 }

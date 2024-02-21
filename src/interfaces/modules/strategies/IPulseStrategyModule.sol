@@ -35,21 +35,24 @@ interface IPulseStrategyModule is IStrategyModule {
 
     /**
      * @dev Retrieves the target information for rebalancing based on the given parameters.
-     * @param info The NFTs information.
+     * @param info position information.
      * @param ammModule The AMM module.
      * @param oracle The oracle.
      * @return isRebalanceRequired A boolean indicating whether rebalancing is required.
-     * @return target The target NFTs information for rebalancing.
+     * @return target The target position information for rebalancing.
      */
     function getTargets(
-        ICore.NftsInfo memory info,
+        ICore.PositionInfo memory info,
         IAmmModule ammModule,
         IOracle oracle
     )
         external
         view
         override
-        returns (bool isRebalanceRequired, ICore.TargetNftsInfo memory target);
+        returns (
+            bool isRebalanceRequired,
+            ICore.TargetPositionInfo memory target
+        );
 
     function calculateTarget(
         int24 tick,
@@ -59,5 +62,8 @@ interface IPulseStrategyModule is IStrategyModule {
     )
         external
         pure
-        returns (bool isRebalanceRequired, ICore.TargetNftsInfo memory target);
+        returns (
+            bool isRebalanceRequired,
+            ICore.TargetPositionInfo memory target
+        );
 }

@@ -25,7 +25,7 @@ contract Unit is Test {
                     if (width % tickSpacing != 0) continue;
                     (
                         bool isRebalanceRequired,
-                        ICore.TargetNftsInfo memory target
+                        ICore.TargetPositionInfo memory target
                     ) = pulseStrategyModule.calculateTarget(
                             spotTick,
                             tickLower,

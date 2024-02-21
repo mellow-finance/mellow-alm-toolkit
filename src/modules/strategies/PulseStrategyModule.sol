@@ -30,14 +30,17 @@ contract PulseStrategyModule is IPulseStrategyModule {
 
     /// @inheritdoc IPulseStrategyModule
     function getTargets(
-        ICore.NftsInfo memory info,
+        ICore.PositionInfo memory info,
         IAmmModule ammModule,
         IOracle oracle
     )
         external
         view
         override
-        returns (bool isRebalanceRequired, ICore.TargetNftsInfo memory target)
+        returns (
+            bool isRebalanceRequired,
+            ICore.TargetPositionInfo memory target
+        )
     {
         if (info.tokenIds.length != 1) {
             revert InvalidLength();
@@ -68,7 +71,10 @@ contract PulseStrategyModule is IPulseStrategyModule {
     )
         public
         pure
-        returns (bool isRebalanceRequired, ICore.TargetNftsInfo memory target)
+        returns (
+            bool isRebalanceRequired,
+            ICore.TargetPositionInfo memory target
+        )
     {
         if (
             tick >= tickLower + params.tickNeighborhood &&

@@ -104,8 +104,8 @@ contract Integration is Test {
         IPulseAgniBot bot,
         uint256 id
     ) public returns (Status, IPulseAgniBot.SwapParams memory swapParams) {
-        ICore.NftsInfo memory info;
-        try core.nfts(id) returns (ICore.NftsInfo memory _info) {
+        ICore.PositionInfo memory info;
+        try core.position(id) returns (ICore.PositionInfo memory _info) {
             info = _info;
         } catch {
             return (Status.ERROR, swapParams);
@@ -114,7 +114,7 @@ contract Integration is Test {
         try core.oracle().ensureNoMEV(info.pool, info.securityParams) {} catch {
             return (Status.ERROR, swapParams);
         }
-        (bool flag, ICore.TargetNftsInfo memory target) = core
+        (bool flag, ICore.TargetPositionInfo memory target) = core
             .strategyModule()
             .getTargets(info, core.ammModule(), core.oracle());
         uint256 tokenId = info.tokenIds[0];
