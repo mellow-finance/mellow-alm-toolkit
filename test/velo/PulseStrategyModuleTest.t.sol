@@ -8,73 +8,7 @@ contract Unit is Test {
 
     PulseStrategyModule public pulseStrategyModule = new PulseStrategyModule();
 
-    function _testCalculateTargetOriginal() external {
-        int24 k = 5;
-        for (int24 tickLower = -k; tickLower <= k; tickLower++) {
-            for (int24 width = 1; width <= k; width++) {
-                int24 tickUpper = tickLower + width;
-                for (
-                    int24 spotTick = tickLower - width;
-                    spotTick <= tickUpper + width;
-                    spotTick++
-                ) {
-                    (
-                        bool isRebalanceRequired,
-                        ICore.TargetNftsInfo memory target
-                    ) = pulseStrategyModule.calculateTarget(
-                            spotTick,
-                            tickLower,
-                            tickUpper,
-                            IPulseStrategyModule.StrategyParams({
-                                strategyType: IPulseStrategyModule
-                                    .StrategyType
-                                    .Original,
-                                tickSpacing: width >= 4 ? int24(4) : int24(1),
-                                tickNeighborhood: width >= 4
-                                    ? width - 3
-                                    : int24(1)
-                            })
-                        );
-                    string memory response = string(
-                        abi.encodePacked(
-                            "initial: {",
-                            vm.toString(tickLower),
-                            ", ",
-                            vm.toString(tickUpper),
-                            "} spot=",
-                            vm.toString(spotTick),
-                            " tickSpacing=",
-                            vm.toString(width >= 4 ? int24(4) : int24(1))
-                        )
-                    );
-
-                    if (isRebalanceRequired) {
-                        response = string(
-                            abi.encodePacked(
-                                response,
-                                "\ttarget: {",
-                                vm.toString(target.lowerTicks[0]),
-                                ", ",
-                                vm.toString(target.upperTicks[0]),
-                                "}"
-                            )
-                        );
-                    } else {
-                        response = string(
-                            abi.encodePacked(
-                                response,
-                                "\tnothing to rebalance."
-                            )
-                        );
-                    }
-                    console2.log(response);
-                }
-            }
-        }
-        console2.log("OK");
-    }
-
-    function testCalculateLazySyncing() external {
+    function _run(IPulseStrategyModule.StrategyType strategyType) private view {
         int24 k = 6;
         for (int24 width = 1; width <= k; width++) {
             int24 tickSpacing = width >= 4 ? int24(2) : int24(1);
@@ -97,9 +31,7 @@ contract Unit is Test {
                             tickLower,
                             tickUpper,
                             IPulseStrategyModule.StrategyParams({
-                                strategyType: IPulseStrategyModule
-                                    .StrategyType
-                                    .LazySyncing,
+                                strategyType: strategyType,
                                 tickSpacing: tickSpacing,
                                 tickNeighborhood: 0
                             })
@@ -140,6 +72,21 @@ contract Unit is Test {
                 }
             }
         }
-        console2.log("OK");
+    }
+
+    function testCalculateTargetOriginal() external view {
+        _run(IPulseStrategyModule.StrategyType.Original);
+    }
+
+    function testCalculateLazySyncing() external view {
+        _run(IPulseStrategyModule.StrategyType.LazySyncing);
+    }
+
+    function testCalculateLazyAscending() external view {
+        _run(IPulseStrategyModule.StrategyType.LazyAscending);
+    }
+
+    function testCalculateLazyDescending() external view {
+        _run(IPulseStrategyModule.StrategyType.LazyDescending);
     }
 }
