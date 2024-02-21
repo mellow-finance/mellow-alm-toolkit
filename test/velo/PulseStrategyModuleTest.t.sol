@@ -78,15 +78,15 @@ contract Unit is Test {
         _run(IPulseStrategyModule.StrategyType.Original);
     }
 
-    function testCalculateLazySyncing() external view {
+    function testCalculateTargetLazySyncing() external view {
         _run(IPulseStrategyModule.StrategyType.LazySyncing);
     }
 
-    function testCalculateLazyAscending() external view {
+    function testCalculateTargetLazyAscending() external view {
         _run(IPulseStrategyModule.StrategyType.LazyAscending);
     }
 
-    function testCalculateLazyDescending() external view {
+    function testCalculateTargetLazyDescending() external view {
         _run(IPulseStrategyModule.StrategyType.LazyDescending);
     }
 }

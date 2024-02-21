@@ -74,10 +74,7 @@ contract Integration is DeployFactoryFixture {
             require(lpAmount > 0, "Invalid lp amount");
             console2.log("Actual lp amount:", lpAmount);
             lpWrapper.approve(address(stakingRewards), type(uint256).max);
-            stakingRewards.stake(
-                lpWrapper.balanceOf(Constants.DEPOSITOR),
-                Constants.DEPOSITOR
-            );
+            stakingRewards.stake(lpWrapper.balanceOf(Constants.DEPOSITOR));
         }
         vm.stopPrank();
 
