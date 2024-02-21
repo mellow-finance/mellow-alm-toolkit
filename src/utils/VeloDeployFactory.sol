@@ -192,6 +192,10 @@ contract VeloDeployFactory is IVeloDeployFactory, DefaultAccessControl {
             )
         );
 
+        if (address(pool) == address(0)) {
+            revert PoolNotFound();
+        }
+
         if (_poolToAddresses[address(pool)].lpWrapper != address(0)) {
             revert LpWrapperAlreadyCreated();
         }

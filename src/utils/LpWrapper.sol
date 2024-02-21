@@ -86,6 +86,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
             {
                 (uint160 sqrtPriceX96, ) = oracle.getOraclePrice(info.pool);
                 for (uint256 i = 0; i < n; i++) {
+                    if (positionsBefore[i].liquidity == 0) continue;
                     (amounts0[i], amounts1[i]) = ammModule
                         .getAmountsForLiquidity(
                             positionsBefore[i].liquidity,
@@ -112,6 +113,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         }
         if (amount0 > 0 || amount1 > 0) {
             for (uint256 i = 0; i < n; i++) {
+                if (positionsBefore[i].liquidity == 0) continue;
                 (bool success, bytes memory response) = address(
                     ammDepositWithdrawModule
                 ).delegatecall(
@@ -148,6 +150,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
 
         lpAmount = type(uint256).max;
         for (uint256 i = 0; i < n; i++) {
+            if (positionsBefore[i].liquidity == 0) continue;
             uint256 currentLpAmount = FullMath.mulDiv(
                 positionsAfter[i].liquidity - positionsBefore[i].liquidity,
                 totalSupply_,

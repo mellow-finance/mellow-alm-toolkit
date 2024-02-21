@@ -31,12 +31,15 @@ contract Integration is DeployFactoryFixture {
             type(uint256).max
         );
 
-        vm.expectRevert(abi.encodeWithSignature("InvalidStrategyParams()"));
+        vm.expectRevert(abi.encodeWithSignature("PoolNotFound()"));
         deployFactory.createStrategy(
             Constants.WETH,
             Constants.USDC,
             TICK_SPACING + 1
         );
+
+        vm.expectRevert(abi.encodeWithSignature("InvalidStrategyParams()"));
+        deployFactory.createStrategy(Constants.WETH, Constants.USDC, 100);
 
         IVeloDeployFactory.PoolAddresses memory poolAddresses = deployFactory
             .createStrategy(Constants.WETH, Constants.USDC, TICK_SPACING);

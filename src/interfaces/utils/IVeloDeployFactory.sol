@@ -16,6 +16,7 @@ interface IVeloDeployFactory {
     error InvalidStrategyParams();
     error InvalidState();
     error PriceManipulationDetected();
+    error PoolNotFound();
 
     struct ImmutableParams {
         ICore core;
