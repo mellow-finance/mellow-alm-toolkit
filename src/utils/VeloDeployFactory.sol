@@ -180,7 +180,7 @@ contract VeloDeployFactory is IVeloDeployFactory, DefaultAccessControl {
         address token0,
         address token1,
         int24 tickSpacing
-    ) external returns (ILpWrapper) {
+    ) external returns (PoolAddresses memory poolAddresses) {
         _requireAtLeastOperator();
 
         Storage memory s = _contractStorage();
@@ -262,10 +262,11 @@ contract VeloDeployFactory is IVeloDeployFactory, DefaultAccessControl {
             );
 
             nftId = s.immutableParams.core.deposit(depositParams);
-            _poolToAddresses[address(pool)] = PoolAddresses({
+            poolAddresses = PoolAddresses({
                 lpWrapper: address(lpWrapper),
                 synthetixFarm: depositParams.vault
             });
+            _poolToAddresses[address(pool)] = poolAddresses;
         }
 
         ICore.NftsInfo memory info = s.immutableParams.core.nfts(nftId);
@@ -278,8 +279,6 @@ contract VeloDeployFactory is IVeloDeployFactory, DefaultAccessControl {
             initialTotalSupply += position.liquidity;
         }
         lpWrapper.initialize(nftId, initialTotalSupply);
-
-        return lpWrapper;
     }
 
     /// @inheritdoc IVeloDeployFactory

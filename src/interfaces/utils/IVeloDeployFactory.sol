@@ -76,7 +76,7 @@ interface IVeloDeployFactory {
         address token0,
         address token1,
         int24 tickSpacing
-    ) external returns (ILpWrapper);
+    ) external returns (PoolAddresses memory);
 
     function poolToAddresses(
         address pool

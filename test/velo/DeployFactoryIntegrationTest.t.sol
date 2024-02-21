@@ -38,20 +38,13 @@ contract Integration is DeployFactoryFixture {
             TICK_SPACING + 1
         );
 
-        deployFactory.createStrategy(
-            Constants.WETH,
-            Constants.USDC,
-            TICK_SPACING
-        );
+        IVeloDeployFactory.PoolAddresses memory poolAddresses = deployFactory
+            .createStrategy(Constants.WETH, Constants.USDC, TICK_SPACING);
 
         vm.stopPrank();
 
-        lpWrapper = LpWrapper(
-            deployFactory.poolToAddresses(address(pool)).lpWrapper
-        );
-        stakingRewards = StakingRewards(
-            deployFactory.poolToAddresses(address(pool)).synthetixFarm
-        );
+        lpWrapper = LpWrapper(poolAddresses.lpWrapper);
+        stakingRewards = StakingRewards(poolAddresses.synthetixFarm);
 
         vm.startPrank(Constants.DEPOSITOR);
         deal(Constants.USDC, Constants.DEPOSITOR, 1e6 * 1e6);
