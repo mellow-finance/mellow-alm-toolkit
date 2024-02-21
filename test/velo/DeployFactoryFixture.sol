@@ -449,7 +449,8 @@ contract DeployFactoryFixture is Test {
                 intervalWidth: 800,
                 tickNeighborhood: 200,
                 initialLiquidity: 1e9,
-                minInitialLiquidity: 1e8
+                minInitialLiquidity: 1e8,
+                strategyType: IPulseStrategyModule.StrategyType.Original
             })
         );
 

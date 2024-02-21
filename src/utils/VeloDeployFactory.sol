@@ -253,6 +253,14 @@ contract VeloDeployFactory is IVeloDeployFactory, DefaultAccessControl {
                     address(lpWrapper)
                 )
             );
+            depositParams.strategyParams = abi.encode(
+                IPulseStrategyModule.StrategyParams({
+                    tickNeighborhood: strategyParams.tickNeighborhood,
+                    tickSpacing: pool.tickSpacing(),
+                    strategyType: strategyParams.strategyType
+                })
+            );
+
             nftId = s.immutableParams.core.deposit(depositParams);
             _poolToAddresses[address(pool)] = PoolAddresses({
                 lpWrapper: address(lpWrapper),

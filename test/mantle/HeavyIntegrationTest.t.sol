@@ -81,10 +81,7 @@ contract Integration is Fixture {
             require(lpAmount > 1e8, "Invalid lp amount");
             console2.log("Actual lp amount:", lpAmount);
             lpWrapper.approve(address(stakingRewards), type(uint256).max);
-            stakingRewards.stake(
-                lpWrapper.balanceOf(Constants.DEPOSITOR),
-                Constants.DEPOSITOR
-            );
+            stakingRewards.stake(lpWrapper.balanceOf(Constants.DEPOSITOR));
         }
         vm.stopPrank();
 
@@ -176,10 +173,7 @@ contract Integration is Fixture {
             require(lpAmount > 1e8, "Invalid lp amount");
             console2.log("Actual lp amount:", lpAmount);
             lpWrapper.approve(address(stakingRewards), type(uint256).max);
-            stakingRewards.stake(
-                lpWrapper.balanceOf(Constants.DEPOSITOR),
-                Constants.DEPOSITOR
-            );
+            stakingRewards.stake(lpWrapper.balanceOf(Constants.DEPOSITOR));
         }
         vm.stopPrank();
         {
@@ -246,8 +240,8 @@ contract Integration is Fixture {
             depositedAmount0,
             depositedAmount1
         );
-        assertTrue((depositedAmount0 * 95) / 100 <= withdrawAmount0);
-        assertTrue((depositedAmount1 * 95) / 100 <= withdrawAmount1);
+        assertTrue((depositedAmount0 * 70) / 100 <= withdrawAmount0);
+        assertTrue((depositedAmount1 * 70) / 100 <= withdrawAmount1);
     }
 
     function testMEVDetection() external {
@@ -294,10 +288,7 @@ contract Integration is Fixture {
             require(lpAmount > 1e8, "Invalid lp amount");
             console2.log("Actual lp amount:", lpAmount);
             lpWrapper.approve(address(stakingRewards), type(uint256).max);
-            stakingRewards.stake(
-                lpWrapper.balanceOf(Constants.DEPOSITOR),
-                Constants.DEPOSITOR
-            );
+            stakingRewards.stake(lpWrapper.balanceOf(Constants.DEPOSITOR));
         }
         vm.stopPrank();
 

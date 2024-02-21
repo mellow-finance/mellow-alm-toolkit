@@ -16,8 +16,6 @@ interface IVeloDeployFactory {
     error InvalidStrategyParams();
     error InvalidState();
     error PriceManipulationDetected();
-    error InsufficientAllowance(address token, uint256 requiredAmount);
-    error InsufficientUserBalance(address token, uint256 requiredAmount);
 
     struct ImmutableParams {
         ICore core;
@@ -42,6 +40,7 @@ interface IVeloDeployFactory {
     struct StrategyParams {
         int24 tickNeighborhood;
         int24 intervalWidth;
+        IPulseStrategyModule.StrategyType strategyType;
         uint128 initialLiquidity;
         uint128 minInitialLiquidity;
     }
