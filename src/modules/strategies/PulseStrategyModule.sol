@@ -118,6 +118,10 @@ contract PulseStrategyModule is IPulseStrategyModule {
             targetTickUpper = targetTickLower + positionWidth;
         }
 
+        if (targetTickLower == tickLower && targetTickUpper == tickUpper) {
+            return (false, target);
+        }
+
         target.lowerTicks = new int24[](1);
         target.upperTicks = new int24[](1);
         target.lowerTicks[0] = targetTickLower;
