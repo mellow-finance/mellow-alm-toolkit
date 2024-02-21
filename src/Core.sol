@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 import "./interfaces/ICore.sol";
 
@@ -15,12 +16,13 @@ import "./libraries/external/FullMath.sol";
 
 import "./utils/DefaultAccessControl.sol";
 
-contract Core is DefaultAccessControl, ICore, IERC721Receiver {
+contract Core is ICore, IERC721Receiver, DefaultAccessControl, ReentrancyGuard {
     using EnumerableSet for EnumerableSet.UintSet;
 
     error DelegateCallFailed();
     error InvalidParameters();
     error InvalidLength();
+    error InvalidTarget();
 
     uint256 public constant D4 = 1e4;
     uint256 public constant Q96 = 2 ** 96;
@@ -127,7 +129,7 @@ contract Core is DefaultAccessControl, ICore, IERC721Receiver {
     /**
      * @dev Deposits multiple tokens into the contract.
      * @param params The deposit parameters including strategy parameters, security parameters, slippage, and token IDs.
-     * @return id The ID of the deposited tokens.
+     * @return id The ID of the position for deposited tokens.
      */
     function deposit(
         DepositParams memory params
@@ -202,9 +204,9 @@ contract Core is DefaultAccessControl, ICore, IERC721Receiver {
 
     /**
      * @dev Withdraws NFTs from the contract and transfers them to the specified address.
-     * Only the owner of the NFTs can call this function.
+     * Only the owner of the position can call this function.
      *
-     * @param id The ID of the NFTs to withdraw.
+     * @param id The ID of the position with NFTs to withdraw.
      * @param to The address to transfer the NFTs to.
      */
     function withdraw(uint256 id, address to) external override {
@@ -256,6 +258,26 @@ contract Core is DefaultAccessControl, ICore, IERC721Receiver {
         }
     }
 
+    function _validateTarget(TargetNftsInfo memory target) private pure {
+        uint256 n = target.liquidityRatiosX96.length;
+        {
+            uint256 cumulativeLiquidityX96 = 0;
+            for (uint256 i = 0; i < n; i++) {
+                cumulativeLiquidityX96 += target.liquidityRatiosX96[i];
+            }
+            if (cumulativeLiquidityX96 != Q96) revert InvalidTarget();
+        }
+
+        if (n != target.lowerTicks.length) revert InvalidTarget();
+        if (n != target.upperTicks.length) revert InvalidTarget();
+
+        for (uint256 i = 0; i < n; i++) {
+            if (target.lowerTicks[i] > target.upperTicks[i]) {
+                revert InvalidTarget();
+            }
+        }
+    }
+
     /**
      * @dev Rebalances the portfolio based on the given parameters.
      * @param params The parameters for rebalancing.
@@ -263,7 +285,9 @@ contract Core is DefaultAccessControl, ICore, IERC721Receiver {
      *   - callback: The address of the callback contract.
      *   - data: Additional data to be passed to the callback contract.
      */
-    function rebalance(RebalanceParams memory params) external override {
+    function rebalance(
+        RebalanceParams memory params
+    ) external override nonReentrant {
         if (operatorFlag) {
             _requireAtLeastOperator();
         }
@@ -284,6 +308,7 @@ contract Core is DefaultAccessControl, ICore, IERC721Receiver {
                     oracle
                 );
                 if (!flag) continue;
+                _validateTarget(target);
             }
             (uint160 sqrtPriceX96, ) = oracle.getOraclePrice(info.pool);
             uint256 priceX96 = FullMath.mulDiv(sqrtPriceX96, sqrtPriceX96, Q96);
@@ -396,12 +421,12 @@ contract Core is DefaultAccessControl, ICore, IERC721Receiver {
 
     /**
      * @dev This function is used to perform an empty rebalance for a specific NFT.
-     * @param nftId The ID of the NFT to perform the empty rebalance on.
+     * @param id The ID of the position to perform the empty rebalance on.
      * @notice This function calls the `beforeRebalance` and `afterRebalance` functions of the `IAmmModule` contract for each token ID in the NFT.
      * @notice If any of the delegate calls fail, the function will revert.
      */
-    function emptyRebalance(uint256 nftId) external {
-        NftsInfo memory params = _nfts[nftId];
+    function emptyRebalance(uint256 id) external {
+        NftsInfo memory params = _nfts[id];
         if (params.owner != msg.sender) revert Forbidden();
         uint256[] memory tokenIds = params.tokenIds;
         for (uint256 i = 0; i < tokenIds.length; i++) {
