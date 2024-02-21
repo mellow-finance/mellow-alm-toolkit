@@ -20,9 +20,16 @@ contract Integration is DeployFactoryFixture {
 
     function testSynthetixFarm() external {
         vm.startPrank(Constants.OWNER);
-
-        deal(Constants.WETH, address(deployFactory), 1 ether);
-        deal(Constants.USDC, address(deployFactory), 1e6 * 2000);
+        deal(Constants.WETH, address(Constants.OWNER), 1 ether);
+        deal(Constants.USDC, address(Constants.OWNER), 2000 * 1e6);
+        IERC20(Constants.WETH).safeApprove(
+            address(deployFactory),
+            type(uint256).max
+        );
+        IERC20(Constants.USDC).safeApprove(
+            address(deployFactory),
+            type(uint256).max
+        );
 
         vm.expectRevert(abi.encodeWithSignature("InvalidStrategyParams()"));
         deployFactory.createStrategy(

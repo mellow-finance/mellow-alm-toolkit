@@ -16,6 +16,8 @@ interface IVeloDeployFactory {
     error InvalidStrategyParams();
     error InvalidState();
     error PriceManipulationDetected();
+    error InsufficientAllowance(address token, uint256 requiredAmount);
+    error InsufficientUserBalance(address token, uint256 requiredAmount);
 
     struct ImmutableParams {
         ICore core;
@@ -63,6 +65,7 @@ interface IVeloDeployFactory {
         int24 tickSpacing,
         StrategyParams memory params
     ) external;
+
     function updateDepositParams(
         int24 tickSpacing,
         ICore.DepositParams memory params
@@ -79,5 +82,6 @@ interface IVeloDeployFactory {
     function poolToAddresses(
         address pool
     ) external view returns (PoolAddresses memory);
+
     function removeAddressesForPool(address pool) external;
 }
