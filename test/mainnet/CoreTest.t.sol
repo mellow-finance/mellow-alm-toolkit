@@ -221,9 +221,9 @@ contract UniIntentTest is Test {
         PulseUniBot bot,
         uint256 id
     ) public returns (PulseUniBot.SwapParams memory) {
-        ICore.NftsInfo memory info = core.nfts(id);
+        ICore.PositionInfo memory info = core.position(id);
         IUniswapV3Pool pool = IUniswapV3Pool(info.pool);
-        (bool flag, ICore.TargetNftsInfo memory target) = core
+        (bool flag, ICore.TargetPositionInfo memory target) = core
             .strategyModule()
             .getTargets(info, core.ammModule(), core.oracle());
         uint256 tokenId = info.tokenIds[0];
@@ -283,7 +283,7 @@ contract UniIntentTest is Test {
         data.ratiosX96 = new uint256[](ids.length);
         {
             (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(
-                core.nfts(ids[0]).pool
+                core.position(ids[0]).pool
             ).slot0();
             data.priceX96 = FullMath.mulDiv(
                 sqrtPriceX96,
@@ -293,9 +293,9 @@ contract UniIntentTest is Test {
         }
         data.cumulative = 0;
         for (uint256 i = 0; i < ids.length; i++) {
-            ICore.NftsInfo memory info = core.nfts(ids[i]);
+            ICore.PositionInfo memory info = core.position(ids[i]);
             IUniswapV3Pool pool = IUniswapV3Pool(info.pool);
-            (bool flag, ICore.TargetNftsInfo memory target) = core
+            (bool flag, ICore.TargetPositionInfo memory target) = core
                 .strategyModule()
                 .getTargets(info, core.ammModule(), core.oracle());
 
@@ -355,12 +355,12 @@ contract UniIntentTest is Test {
                     ratiosX96: data.ratiosX96,
                     sqrtLowerRatiosX96: data.sqrtLowerRatiosX96,
                     sqrtUpperRatiosX96: data.sqrtUpperRatiosX96,
-                    pool: IUniswapV3Pool(core.nfts(ids[0]).pool)
+                    pool: IUniswapV3Pool(core.position(ids[0]).pool)
                 })
             );
 
         for (uint256 i = 0; i < ids.length; i++) {
-            ICore.NftsInfo memory nftInfo = core.nfts(ids[i]);
+            ICore.PositionInfo memory nftInfo = core.position(ids[i]);
             addPosition(
                 core,
                 nftInfo.tokenIds[0],
@@ -430,14 +430,14 @@ contract UniIntentTest is Test {
         );
 
         for (uint256 i = 0; i < 2; i++) {
-            ICore.TargetNftsInfo memory target;
+            ICore.TargetPositionInfo memory target;
             while (true) {
                 movePrice(true);
                 uint256[] memory ids = new uint256[](1);
                 ids[0] = nftId2;
                 bool flag;
                 (flag, target) = core.strategyModule().getTargets(
-                    core.nfts(nftId2),
+                    core.position(nftId2),
                     core.ammModule(),
                     core.oracle()
                 );
@@ -473,7 +473,7 @@ contract UniIntentTest is Test {
 
             core.rebalance(rebalanceParams);
             {
-                ICore.NftsInfo memory info = core.nfts(nftId2);
+                ICore.PositionInfo memory info = core.position(nftId2);
                 uint160 sqrtPriceX96;
                 (sqrtPriceX96, , , , , , ) = pool.slot0();
 

@@ -24,7 +24,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
     IOracle public immutable oracle;
 
     /// @inheritdoc ILpWrapper
-    uint256 public tokenId;
+    uint256 public positionId;
 
     /**
      * @dev Constructor function for the LpWrapper contract.
@@ -49,9 +49,12 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
     }
 
     /// @inheritdoc ILpWrapper
-    function initialize(uint256 tokenId_, uint256 initialTotalSupply) external {
-        if (tokenId != 0) revert AlreadyInitialized();
-        tokenId = tokenId_;
+    function initialize(
+        uint256 positionId_,
+        uint256 initialTotalSupply
+    ) external {
+        if (positionId != 0) revert AlreadyInitialized();
+        positionId = positionId_;
         _mint(address(this), initialTotalSupply);
     }
 
@@ -65,8 +68,8 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         external
         returns (uint256 actualAmount0, uint256 actualAmount1, uint256 lpAmount)
     {
-        ICore.NftsInfo memory info = core.nfts(tokenId);
-        core.withdraw(tokenId, address(this));
+        ICore.PositionInfo memory info = core.position(positionId);
+        core.withdraw(positionId, address(this));
 
         uint256 n = info.tokenIds.length;
         IAmmModule.Position[]
@@ -83,6 +86,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
             {
                 (uint160 sqrtPriceX96, ) = oracle.getOraclePrice(info.pool);
                 for (uint256 i = 0; i < n; i++) {
+                    if (positionsBefore[i].liquidity == 0) continue;
                     (amounts0[i], amounts1[i]) = ammModule
                         .getAmountsForLiquidity(
                             positionsBefore[i].liquidity,
@@ -109,6 +113,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         }
         if (amount0 > 0 || amount1 > 0) {
             for (uint256 i = 0; i < n; i++) {
+                if (positionsBefore[i].liquidity == 0) continue;
                 (bool success, bytes memory response) = address(
                     ammDepositWithdrawModule
                 ).delegatecall(
@@ -145,6 +150,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
 
         lpAmount = type(uint256).max;
         for (uint256 i = 0; i < n; i++) {
+            if (positionsBefore[i].liquidity == 0) continue;
             uint256 currentLpAmount = FullMath.mulDiv(
                 positionsAfter[i].liquidity - positionsBefore[i].liquidity,
                 totalSupply_,
@@ -158,7 +164,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         if (lpAmount < minLpAmount) revert InsufficientLpAmount();
         _mint(to, lpAmount);
 
-        tokenId = core.deposit(
+        positionId = core.deposit(
             ICore.DepositParams({
                 tokenIds: info.tokenIds,
                 owner: info.owner,
@@ -181,8 +187,8 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         external
         returns (uint256 amount0, uint256 amount1, uint256 actualLpAmount)
     {
-        ICore.NftsInfo memory info = core.nfts(tokenId);
-        core.withdraw(tokenId, address(this));
+        ICore.PositionInfo memory info = core.position(positionId);
+        core.withdraw(positionId, address(this));
 
         actualLpAmount = balanceOf(msg.sender);
         if (actualLpAmount > lpAmount) {
@@ -232,7 +238,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
             revert InsufficientAmounts();
         }
 
-        tokenId = core.deposit(
+        positionId = core.deposit(
             ICore.DepositParams({
                 tokenIds: info.tokenIds,
                 owner: info.owner,
@@ -253,7 +259,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
     ) external {
         _requireAdmin();
         core.setPositionParams(
-            tokenId,
+            positionId,
             slippageD4,
             strategyParams,
             securityParams
@@ -263,6 +269,6 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
     /// @inheritdoc ILpWrapper
     function emptyRebalance() external {
         _requireAtLeastOperator();
-        core.emptyRebalance(tokenId);
+        core.emptyRebalance(positionId);
     }
 }

@@ -299,7 +299,7 @@ contract PulseVeloBot is IPulseVeloBot {
 
     function call(
         bytes memory data,
-        ICore.TargetNftsInfo[] memory targets
+        ICore.TargetPositionInfo[] memory targets
     ) external returns (uint256[][] memory newTokenIds) {
         ISwapRouter.ExactInputSingleParams[] memory swapParams = abi.decode(
             data,

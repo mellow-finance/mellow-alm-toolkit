@@ -8,7 +8,7 @@ import "./modules/IStrategyModule.sol";
 import "./oracles/IOracle.sol";
 
 interface ICore {
-    struct NftsInfo {
+    struct PositionInfo {
         uint16 slippageD4;
         uint24 property;
         address owner;
@@ -20,13 +20,13 @@ interface ICore {
         bytes strategyParams;
     }
 
-    struct TargetNftsInfo {
+    struct TargetPositionInfo {
         int24[] lowerTicks;
         int24[] upperTicks;
         uint256[] liquidityRatiosX96;
         uint256[] minLiquidities;
         uint256 id;
-        NftsInfo info;
+        PositionInfo info;
     }
 
     struct DepositParams {
@@ -45,9 +45,9 @@ interface ICore {
         bytes data;
     }
 
-    function nfts(uint256 index) external view returns (NftsInfo memory);
+    function position(uint256 id) external view returns (PositionInfo memory);
 
-    function nftCount() external view returns (uint256);
+    function positionCount() external view returns (uint256);
 
     function getUserIds(
         address user
@@ -62,7 +62,7 @@ interface ICore {
         bytes memory securityParams
     ) external;
 
-    function emptyRebalance(uint256 nftId) external;
+    function emptyRebalance(uint256 id) external;
 
     function deposit(DepositParams memory params) external returns (uint256 id);
 

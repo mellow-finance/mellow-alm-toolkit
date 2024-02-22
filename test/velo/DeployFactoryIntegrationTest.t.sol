@@ -31,27 +31,23 @@ contract Integration is DeployFactoryFixture {
             type(uint256).max
         );
 
-        vm.expectRevert(abi.encodeWithSignature("InvalidStrategyParams()"));
+        vm.expectRevert(abi.encodeWithSignature("PoolNotFound()"));
         deployFactory.createStrategy(
             Constants.WETH,
             Constants.USDC,
             TICK_SPACING + 1
         );
 
-        deployFactory.createStrategy(
-            Constants.WETH,
-            Constants.USDC,
-            TICK_SPACING
-        );
+        vm.expectRevert(abi.encodeWithSignature("InvalidStrategyParams()"));
+        deployFactory.createStrategy(Constants.WETH, Constants.USDC, 100);
+
+        IVeloDeployFactory.PoolAddresses memory poolAddresses = deployFactory
+            .createStrategy(Constants.WETH, Constants.USDC, TICK_SPACING);
 
         vm.stopPrank();
 
-        lpWrapper = LpWrapper(
-            deployFactory.poolToAddresses(address(pool)).lpWrapper
-        );
-        stakingRewards = StakingRewards(
-            deployFactory.poolToAddresses(address(pool)).synthetixFarm
-        );
+        lpWrapper = LpWrapper(poolAddresses.lpWrapper);
+        stakingRewards = StakingRewards(poolAddresses.synthetixFarm);
 
         vm.startPrank(Constants.DEPOSITOR);
         deal(Constants.USDC, Constants.DEPOSITOR, 1e6 * 1e6);

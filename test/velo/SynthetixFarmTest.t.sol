@@ -93,11 +93,11 @@ contract Integration is Fixture {
 
             {
                 uint256[] memory ids = new uint256[](1);
-                ids[0] = lpWrapper.tokenId();
+                ids[0] = lpWrapper.positionId();
                 while (true) {
                     movePrice(uint256(20));
                     (bool flag, ) = core.strategyModule().getTargets(
-                        core.nfts(lpWrapper.tokenId()),
+                        core.position(lpWrapper.positionId()),
                         core.ammModule(),
                         core.oracle()
                     );
@@ -106,12 +106,12 @@ contract Integration is Fixture {
                 }
             }
             PulseVeloBot.SwapParams memory swapParams = determineSwapAmounts(
-                lpWrapper.tokenId()
+                lpWrapper.positionId()
             );
             ICore.RebalanceParams memory rebalanceParams;
 
             rebalanceParams.ids = new uint256[](1);
-            rebalanceParams.ids[0] = lpWrapper.tokenId();
+            rebalanceParams.ids[0] = lpWrapper.positionId();
             rebalanceParams.callback = address(bot);
             ISwapRouter.ExactInputSingleParams[]
                 memory ammParams = new ISwapRouter.ExactInputSingleParams[](1);
@@ -131,7 +131,9 @@ contract Integration is Fixture {
             core.rebalance(rebalanceParams);
 
             {
-                ICore.NftsInfo memory info = core.nfts(lpWrapper.tokenId());
+                ICore.PositionInfo memory info = core.position(
+                    lpWrapper.positionId()
+                );
                 uint160 sqrtPriceX96;
                 (sqrtPriceX96, , , , , ) = pool.slot0();
 

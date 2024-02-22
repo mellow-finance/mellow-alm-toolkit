@@ -187,8 +187,8 @@ contract Fixture is Test {
         uint256 id
     ) public returns (PulseAgniBot.SwapParams memory) {
         vm.startPrank(Constants.OWNER);
-        ICore.NftsInfo memory info = core.nfts(id);
-        (bool flag, ICore.TargetNftsInfo memory target) = core
+        ICore.PositionInfo memory info = core.position(id);
+        (bool flag, ICore.TargetPositionInfo memory target) = core
             .strategyModule()
             .getTargets(info, core.ammModule(), core.oracle());
         uint256 tokenId = info.tokenIds[0];

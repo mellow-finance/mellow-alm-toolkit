@@ -189,12 +189,12 @@ contract Integration is Fixture {
 
         {
             PulseAgniBot.SwapParams memory swapParams = determineSwapAmounts(
-                lpWrapper.tokenId()
+                lpWrapper.positionId()
             );
             ICore.RebalanceParams memory rebalanceParams;
 
             rebalanceParams.ids = new uint256[](1);
-            rebalanceParams.ids[0] = lpWrapper.tokenId();
+            rebalanceParams.ids[0] = lpWrapper.positionId();
             rebalanceParams.callback = address(bot);
             ISwapRouter.ExactInputSingleParams[]
                 memory ammParams = new ISwapRouter.ExactInputSingleParams[](1);
@@ -297,12 +297,12 @@ contract Integration is Fixture {
 
         {
             PulseAgniBot.SwapParams memory swapParams = determineSwapAmounts(
-                lpWrapper.tokenId()
+                lpWrapper.positionId()
             );
             ICore.RebalanceParams memory rebalanceParams;
 
             rebalanceParams.ids = new uint256[](1);
-            rebalanceParams.ids[0] = lpWrapper.tokenId();
+            rebalanceParams.ids[0] = lpWrapper.positionId();
             rebalanceParams.callback = address(bot);
             ISwapRouter.ExactInputSingleParams[]
                 memory ammParams = new ISwapRouter.ExactInputSingleParams[](1);

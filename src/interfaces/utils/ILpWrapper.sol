@@ -29,14 +29,17 @@ interface ILpWrapper {
 
     function oracle() external view returns (IOracle);
 
-    function tokenId() external view returns (uint256);
+    function positionId() external view returns (uint256);
 
     /**
      * @dev Initializes the LP wrapper contract with the given token ID and initial total supply.
-     * @param tokenId_ The token ID to be associated with the LP wrapper contract.
+     * @param positionId_ position id to be associated with the LP wrapper contract.
      * @param initialTotalSupply The initial total supply of the LP wrapper contract.
      */
-    function initialize(uint256 tokenId_, uint256 initialTotalSupply) external;
+    function initialize(
+        uint256 positionId_,
+        uint256 initialTotalSupply
+    ) external;
 
     /**
      * @dev Deposits specified amounts of tokens into the LP wrapper contract and mints LP tokens to the specified address.

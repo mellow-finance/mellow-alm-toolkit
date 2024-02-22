@@ -98,22 +98,22 @@ contract LStrategyModule is IStrategyModule {
     }
 
     /**
-     * @dev Retrieves the target positions for rebalancing based on the given NftsInfo, AmmModule, and Oracle.
-     * @param info The NftsInfo containing the pool and token IDs.
+     * @dev Retrieves the target positions for rebalancing based on the given PositionInfo, AmmModule, and Oracle.
+     * @param info The PositionInfo containing the pool and token IDs.
      * @param ammModule The AmmModule contract.
      * @param oracle The Oracle contract.
      * @return bool A boolean indicating whether rebalancing is required.
-     * @return target The TargetNftsInfo containing the target positions for rebalancing.
+     * @return target The TargetPositionInfo containing the target positions for rebalancing.
      */
     function getTargets(
-        ICore.NftsInfo memory info,
+        ICore.PositionInfo memory info,
         IAmmModule ammModule,
         IOracle oracle
     )
         external
         view
         override
-        returns (bool, ICore.TargetNftsInfo memory target)
+        returns (bool, ICore.TargetPositionInfo memory target)
     {
         int24 tick;
         (, tick) = oracle.getOraclePrice(info.pool);

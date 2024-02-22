@@ -34,7 +34,7 @@ contract Core is ICore, IERC721Receiver, DefaultAccessControl, ReentrancyGuard {
 
     bool public operatorFlag;
 
-    NftsInfo[] private _nfts;
+    PositionInfo[] private _positions;
     mapping(address => EnumerableSet.UintSet) private _userIds;
 
     /**
@@ -59,22 +59,22 @@ contract Core is ICore, IERC721Receiver, DefaultAccessControl, ReentrancyGuard {
     }
 
     /**
-     * @dev Retrieves the NftsInfo struct at the specified index.
-     * @param index The index of the NftsInfo struct to retrieve.
-     * @return The NftsInfo struct at the specified index.
+     * @dev Retrieves the PositionInfo struct at the specified index.
+     * @param id The index of the PositionInfo struct to retrieve.
+     * @return The PositionInfo struct at the specified index.
      */
-    function nfts(
-        uint256 index
-    ) public view override returns (NftsInfo memory) {
-        return _nfts[index];
+    function position(
+        uint256 id
+    ) public view override returns (PositionInfo memory) {
+        return _positions[id];
     }
 
     /**
-     * @dev Returns the count of NFTs in the contract.
-     * @return uint256 count of NFTs.
+     * @dev Returns the count of positions in the contract.
+     * @return uint256 count of positions.
      */
-    function nftCount() public view returns (uint256) {
-        return _nfts.length;
+    function positionCount() public view returns (uint256) {
+        return _positions.length;
     }
 
     /**
@@ -116,14 +116,14 @@ contract Core is ICore, IERC721Receiver, DefaultAccessControl, ReentrancyGuard {
         bytes memory strategyParams,
         bytes memory securityParams
     ) external override {
-        NftsInfo memory info = _nfts[id];
+        PositionInfo memory info = _positions[id];
         if (info.owner != msg.sender) revert Forbidden();
         strategyModule.validateStrategyParams(strategyParams);
         oracle.validateSecurityParams(securityParams);
         info.strategyParams = strategyParams;
         info.securityParams = securityParams;
         info.slippageD4 = slippageD4;
-        _nfts[id] = info;
+        _positions[id] = info;
     }
 
     /**
@@ -146,15 +146,15 @@ contract Core is ICore, IERC721Receiver, DefaultAccessControl, ReentrancyGuard {
                 revert InvalidParameters();
             }
 
-            IAmmModule.Position memory position = ammModule.getPositionInfo(
+            IAmmModule.Position memory ammPosition = ammModule.getPositionInfo(
                 tokenId
             );
 
-            if (position.liquidity == 0) revert InvalidParameters();
+            if (ammPosition.liquidity == 0) revert InvalidParameters();
             address positionPool = ammModule.getPool(
-                position.token0,
-                position.token1,
-                position.property
+                ammPosition.token0,
+                ammPosition.token1,
+                ammPosition.property
             );
 
             if (positionPool == address(0)) {
@@ -185,10 +185,10 @@ contract Core is ICore, IERC721Receiver, DefaultAccessControl, ReentrancyGuard {
                 if (!success) revert DelegateCallFailed();
             }
         }
-        id = _nfts.length;
+        id = _positions.length;
         _userIds[params.owner].add(id);
-        _nfts.push(
-            NftsInfo({
+        _positions.push(
+            PositionInfo({
                 owner: params.owner,
                 tokenIds: params.tokenIds,
                 pool: pool,
@@ -203,18 +203,18 @@ contract Core is ICore, IERC721Receiver, DefaultAccessControl, ReentrancyGuard {
     }
 
     /**
-     * @dev Withdraws NFTs from the contract and transfers them to the specified address.
+     * @dev Withdraws AMM NFTs from the contract and transfers them to the specified address.
      * Only the owner of the position can call this function.
      *
-     * @param id The ID of the position with NFTs to withdraw.
-     * @param to The address to transfer the NFTs to.
+     * @param id The ID of the position with AMM NFTs to withdraw.
+     * @param to The address to transfer AMM NFTs to.
      */
     function withdraw(uint256 id, address to) external override {
-        NftsInfo memory info = _nfts[id];
+        PositionInfo memory info = _positions[id];
         if (info.tokenIds.length == 0) revert InvalidLength();
         if (info.owner != msg.sender) revert Forbidden();
         _userIds[info.owner].remove(id);
-        delete _nfts[id];
+        delete _positions[id];
         for (uint256 i = 0; i < info.tokenIds.length; i++) {
             uint256 tokenId = info.tokenIds[i];
             (bool success, ) = address(ammModule).delegatecall(
@@ -232,13 +232,13 @@ contract Core is ICore, IERC721Receiver, DefaultAccessControl, ReentrancyGuard {
 
     /**
      * @dev Calculates the target capital in Token1X96 based on the given parameters.
-     * @param target The TargetNftsInfo struct containing the target information.
+     * @param target The TargetPositionInfo struct containing the target information.
      * @param sqrtPriceX96 The square root of the priceX96.
      * @param priceX96 The priceX96 value.
      * @return targetCapitalInToken1X96 The calculated target capital in Token1X96.
      */
     function _calculateTargetCapitalX96(
-        TargetNftsInfo memory target,
+        TargetPositionInfo memory target,
         uint160 sqrtPriceX96,
         uint256 priceX96
     ) private view returns (uint256 targetCapitalInToken1X96) {
@@ -258,7 +258,7 @@ contract Core is ICore, IERC721Receiver, DefaultAccessControl, ReentrancyGuard {
         }
     }
 
-    function _validateTarget(TargetNftsInfo memory target) private pure {
+    function _validateTarget(TargetPositionInfo memory target) private pure {
         uint256 n = target.liquidityRatiosX96.length;
         {
             uint256 cumulativeLiquidityX96 = 0;
@@ -281,7 +281,7 @@ contract Core is ICore, IERC721Receiver, DefaultAccessControl, ReentrancyGuard {
     /**
      * @dev Rebalances the portfolio based on the given parameters.
      * @param params The parameters for rebalancing.
-     *   - ids: An array of NFT IDs to rebalance.
+     *   - ids: An array of ids of positions to rebalance.
      *   - callback: The address of the callback contract.
      *   - data: Additional data to be passed to the callback contract.
      */
@@ -291,15 +291,15 @@ contract Core is ICore, IERC721Receiver, DefaultAccessControl, ReentrancyGuard {
         if (operatorFlag) {
             _requireAtLeastOperator();
         }
-        TargetNftsInfo[] memory targets = new TargetNftsInfo[](
+        TargetPositionInfo[] memory targets = new TargetPositionInfo[](
             params.ids.length
         );
         uint256 iterator = 0;
         for (uint256 i = 0; i < params.ids.length; i++) {
             uint256 id = params.ids[i];
-            NftsInfo memory info = _nfts[id];
+            PositionInfo memory info = _positions[id];
             oracle.ensureNoMEV(info.pool, info.securityParams);
-            TargetNftsInfo memory target;
+            TargetPositionInfo memory target;
             {
                 bool flag;
                 (flag, target) = strategyModule.getTargets(
@@ -376,7 +376,7 @@ contract Core is ICore, IERC721Receiver, DefaultAccessControl, ReentrancyGuard {
             .call(params.data, targets);
         if (newTokenIds.length != iterator) revert InvalidLength();
         for (uint256 i = 0; i < iterator; i++) {
-            TargetNftsInfo memory target = targets[i];
+            TargetPositionInfo memory target = targets[i];
             uint256[] memory tokenIds = newTokenIds[i];
 
             if (tokenIds.length != target.liquidityRatiosX96.length) {
@@ -384,17 +384,16 @@ contract Core is ICore, IERC721Receiver, DefaultAccessControl, ReentrancyGuard {
             }
             for (uint256 j = 0; j < tokenIds.length; j++) {
                 uint256 tokenId = tokenIds[j];
-                IAmmModule.Position memory position = ammModule.getPositionInfo(
-                    tokenId
-                );
+                IAmmModule.Position memory ammPosition = ammModule
+                    .getPositionInfo(tokenId);
                 if (
-                    position.liquidity < target.minLiquidities[j] ||
-                    position.tickLower != target.lowerTicks[j] ||
-                    position.tickUpper != target.upperTicks[j] ||
+                    ammPosition.liquidity < target.minLiquidities[j] ||
+                    ammPosition.tickLower != target.lowerTicks[j] ||
+                    ammPosition.tickUpper != target.upperTicks[j] ||
                     ammModule.getPool(
-                        position.token0,
-                        position.token1,
-                        position.property
+                        ammPosition.token0,
+                        ammPosition.token1,
+                        ammPosition.property
                     ) !=
                     target.info.pool
                 ) revert InvalidParameters();
@@ -415,18 +414,18 @@ contract Core is ICore, IERC721Receiver, DefaultAccessControl, ReentrancyGuard {
                     if (!success) revert DelegateCallFailed();
                 }
             }
-            _nfts[target.id].tokenIds = tokenIds;
+            _positions[target.id].tokenIds = tokenIds;
         }
     }
 
     /**
-     * @dev This function is used to perform an empty rebalance for a specific NFT.
+     * @dev This function is used to perform an empty rebalance for a specific position.
      * @param id The ID of the position to perform the empty rebalance on.
-     * @notice This function calls the `beforeRebalance` and `afterRebalance` functions of the `IAmmModule` contract for each token ID in the NFT.
+     * @notice This function calls the `beforeRebalance` and `afterRebalance` functions of the `IAmmModule` contract for each tokenId of the position.
      * @notice If any of the delegate calls fail, the function will revert.
      */
     function emptyRebalance(uint256 id) external {
-        NftsInfo memory params = _nfts[id];
+        PositionInfo memory params = _positions[id];
         if (params.owner != msg.sender) revert Forbidden();
         uint256[] memory tokenIds = params.tokenIds;
         for (uint256 i = 0; i < tokenIds.length; i++) {

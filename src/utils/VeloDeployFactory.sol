@@ -125,7 +125,7 @@ contract VeloDeployFactory is IVeloDeployFactory, DefaultAccessControl {
 
         (
             bool isRebalanceRequired,
-            ICore.TargetNftsInfo memory target
+            ICore.TargetPositionInfo memory target
         ) = strategyModule.calculateTarget(
                 tick,
                 type(int24).min,
@@ -180,7 +180,7 @@ contract VeloDeployFactory is IVeloDeployFactory, DefaultAccessControl {
         address token0,
         address token1,
         int24 tickSpacing
-    ) external returns (ILpWrapper) {
+    ) external returns (PoolAddresses memory poolAddresses) {
         _requireAtLeastOperator();
 
         Storage memory s = _contractStorage();
@@ -191,6 +191,10 @@ contract VeloDeployFactory is IVeloDeployFactory, DefaultAccessControl {
                 uint24(tickSpacing)
             )
         );
+
+        if (address(pool) == address(0)) {
+            revert PoolNotFound();
+        }
 
         if (_poolToAddresses[address(pool)].lpWrapper != address(0)) {
             revert LpWrapperAlreadyCreated();
@@ -229,7 +233,7 @@ contract VeloDeployFactory is IVeloDeployFactory, DefaultAccessControl {
             s.mutableParams.lpWrapperAdmin
         );
 
-        uint256 nftId;
+        uint256 positionId;
         {
             ICore.DepositParams
                 memory depositParams = _tickSpacingToDepositParams[tickSpacing];
@@ -261,14 +265,17 @@ contract VeloDeployFactory is IVeloDeployFactory, DefaultAccessControl {
                 })
             );
 
-            nftId = s.immutableParams.core.deposit(depositParams);
-            _poolToAddresses[address(pool)] = PoolAddresses({
+            positionId = s.immutableParams.core.deposit(depositParams);
+            poolAddresses = PoolAddresses({
                 lpWrapper: address(lpWrapper),
                 synthetixFarm: depositParams.vault
             });
+            _poolToAddresses[address(pool)] = poolAddresses;
         }
 
-        ICore.NftsInfo memory info = s.immutableParams.core.nfts(nftId);
+        ICore.PositionInfo memory info = s.immutableParams.core.position(
+            positionId
+        );
         uint256 initialTotalSupply = 0;
         for (uint256 i = 0; i < info.tokenIds.length; i++) {
             IAmmModule.Position memory position = s
@@ -277,9 +284,7 @@ contract VeloDeployFactory is IVeloDeployFactory, DefaultAccessControl {
                 .getPositionInfo(info.tokenIds[i]);
             initialTotalSupply += position.liquidity;
         }
-        lpWrapper.initialize(nftId, initialTotalSupply);
-
-        return lpWrapper;
+        lpWrapper.initialize(positionId, initialTotalSupply);
     }
 
     /// @inheritdoc IVeloDeployFactory

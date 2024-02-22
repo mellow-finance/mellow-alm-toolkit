@@ -6,6 +6,6 @@ import "../ICore.sol";
 interface IRebalanceCallback {
     function call(
         bytes memory data,
-        ICore.TargetNftsInfo[] memory targets
+        ICore.TargetPositionInfo[] memory targets
     ) external returns (uint256[][] memory);
 }
