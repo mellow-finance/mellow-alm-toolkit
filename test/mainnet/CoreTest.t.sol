@@ -404,7 +404,8 @@ contract UniIntentTest is Test {
             IPulseStrategyModule.StrategyParams({
                 tickNeighborhood: 20,
                 tickSpacing: 10,
-                strategyType: IPulseStrategyModule.StrategyType.Original
+                strategyType: IPulseStrategyModule.StrategyType.Original,
+                width: 200
             })
         );
         depositParams.securityParams = abi.encode(

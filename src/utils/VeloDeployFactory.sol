@@ -129,11 +129,12 @@ contract VeloDeployFactory is IVeloDeployFactory, DefaultAccessControl {
         ) = strategyModule.calculateTarget(
                 tick,
                 type(int24).min,
-                type(int24).min + strategyParams.intervalWidth,
+                type(int24).min,
                 IPulseStrategyModule.StrategyParams({
                     tickNeighborhood: strategyParams.tickNeighborhood,
                     tickSpacing: tickSpacing,
-                    strategyType: IPulseStrategyModule.StrategyType.Original
+                    strategyType: IPulseStrategyModule.StrategyType.Original,
+                    width: strategyParams.intervalWidth
                 })
             );
 
@@ -261,7 +262,8 @@ contract VeloDeployFactory is IVeloDeployFactory, DefaultAccessControl {
                 IPulseStrategyModule.StrategyParams({
                     tickNeighborhood: strategyParams.tickNeighborhood,
                     tickSpacing: pool.tickSpacing(),
-                    strategyType: strategyParams.strategyType
+                    strategyType: strategyParams.strategyType,
+                    width: strategyParams.intervalWidth
                 })
             );
 

@@ -22,6 +22,7 @@ interface IPulseStrategyModule is IStrategyModule {
         StrategyType strategyType;
         int24 tickNeighborhood;
         int24 tickSpacing;
+        int24 width;
     }
 
     function Q96() external view returns (uint256);
