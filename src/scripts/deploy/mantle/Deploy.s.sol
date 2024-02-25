@@ -94,10 +94,9 @@ contract Deploy is Script {
     function run() external {
         vm.startBroadcast(uint256(bytes32(vm.envBytes("DEPLOYER_PK"))));
 
-        // ammModule = new AgniAmmModule(
-        //     INonfungiblePositionManager(positionManager)
-        // );
-        ammModule = AgniAmmModule(0xCD8237f2b332e482DaEaA609D9664b739e93097d);
+        ammModule = new AgniAmmModule(
+            INonfungiblePositionManager(positionManager)
+        );
 
         strategyModule = new PulseStrategyModule();
         oracle = new AgniOracle();
@@ -156,7 +155,8 @@ contract Deploy is Script {
             IPulseStrategyModule.StrategyParams({
                 tickNeighborhood: params.tickNeighborhood,
                 tickSpacing: params.tickSpacing,
-                strategyType: IPulseStrategyModule.StrategyType.Original
+                strategyType: IPulseStrategyModule.StrategyType.Original,
+                width: 200
             })
         );
         depositParams.securityParams = abi.encode(

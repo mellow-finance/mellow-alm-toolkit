@@ -32,7 +32,8 @@ contract Integration is Fixture {
             IPulseStrategyModule.StrategyParams({
                 tickNeighborhood: params.tickNeighborhood,
                 tickSpacing: params.tickSpacing,
-                strategyType: IPulseStrategyModule.StrategyType.Original
+                strategyType: IPulseStrategyModule.StrategyType.Original,
+                width: params.width
             })
         );
         depositParams.securityParams = params.securityParams;

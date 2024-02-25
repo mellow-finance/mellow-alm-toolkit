@@ -22,6 +22,7 @@ contract PulseStrategyModule is IPulseStrategyModule {
             (StrategyParams)
         );
         if (
+            strategyParams.width == 0 ||
             strategyParams.tickSpacing == 0 ||
             (strategyParams.strategyType != StrategyType.Original &&
                 strategyParams.tickNeighborhood != 0)
@@ -62,6 +63,63 @@ contract PulseStrategyModule is IPulseStrategyModule {
             );
     }
 
+    function _centeredPosition(
+        int24 tick,
+        int24 positionWidth,
+        int24 tickSpacing
+    ) private pure returns (int24 targetTickLower, int24 targetTickUpper) {
+        targetTickLower = tick - positionWidth / 2;
+        int24 remainder = targetTickLower % tickSpacing;
+        if (remainder < 0) remainder += tickSpacing;
+        targetTickLower -= remainder;
+        targetTickUpper = targetTickLower + positionWidth;
+        if (
+            targetTickUpper < tick ||
+            _max(tick - targetTickLower, targetTickUpper - tick) >
+            _max(
+                tick - (targetTickLower + tickSpacing),
+                (targetTickUpper + tickSpacing) - tick
+            )
+        ) {
+            targetTickLower += tickSpacing;
+            targetTickUpper += tickSpacing;
+        }
+    }
+
+    function _calculatePosition(
+        int24 tick,
+        int24 tickLower,
+        int24 tickUpper,
+        StrategyParams memory params
+    ) private pure returns (int24 targetTickLower, int24 targetTickUpper) {
+        if (params.width != tickUpper - tickLower)
+            return _centeredPosition(tick, params.width, params.tickSpacing);
+        if (
+            tick >= tickLower + params.tickNeighborhood &&
+            tick <= tickUpper - params.tickNeighborhood
+        ) return (tickLower, tickUpper);
+        if (params.strategyType == StrategyType.Original)
+            return _centeredPosition(tick, params.width, params.tickSpacing);
+        if (
+            params.strategyType == StrategyType.LazyDescending &&
+            tick >= tickLower
+        ) return (tickLower, tickUpper);
+        if (
+            params.strategyType == StrategyType.LazyAscending &&
+            tick <= tickUpper
+        ) return (tickLower, tickUpper);
+
+        int24 delta = -(tick % params.tickSpacing);
+        if (tick < tickLower) {
+            if (delta < 0) delta += params.tickSpacing;
+            targetTickLower = tick + delta;
+        } else {
+            if (delta > 0) delta -= params.tickSpacing;
+            targetTickLower = tick + delta - params.width;
+        }
+        targetTickUpper = targetTickLower + params.width;
+    }
+
     /// @inheritdoc IPulseStrategyModule
     function calculateTarget(
         int24 tick,
@@ -76,58 +134,14 @@ contract PulseStrategyModule is IPulseStrategyModule {
             ICore.TargetPositionInfo memory target
         )
     {
-        if (
-            tick >= tickLower + params.tickNeighborhood &&
-            tick <= tickUpper - params.tickNeighborhood
-        ) {
+        (int24 targetTickLower, int24 targetTickUpper) = _calculatePosition(
+            tick,
+            tickLower,
+            tickUpper,
+            params
+        );
+        if (targetTickLower == tickLower && targetTickUpper == tickUpper)
             return (false, target);
-        }
-
-        int24 targetTickLower;
-        int24 targetTickUpper;
-        int24 positionWidth = tickUpper - tickLower;
-        if (params.strategyType == StrategyType.Original) {
-            targetTickLower = tick - positionWidth / 2;
-            int24 remainder = targetTickLower % params.tickSpacing;
-            if (remainder < 0) remainder += params.tickSpacing;
-            targetTickLower -= remainder;
-            targetTickUpper = targetTickLower + positionWidth;
-            if (
-                targetTickUpper < tick ||
-                _max(tick - targetTickLower, targetTickUpper - tick) >
-                _max(
-                    tick - (targetTickLower + params.tickSpacing),
-                    (targetTickUpper + params.tickSpacing) - tick
-                )
-            ) {
-                targetTickLower += params.tickSpacing;
-                targetTickUpper += params.tickSpacing;
-            }
-        } else {
-            if (
-                params.strategyType == StrategyType.LazyDescending &&
-                tick >= tickLower
-            ) return (false, target);
-            if (
-                params.strategyType == StrategyType.LazyAscending &&
-                tick <= tickUpper
-            ) return (false, target);
-
-            int24 delta = -(tick % params.tickSpacing);
-            if (tick < tickLower) {
-                if (delta < 0) delta += params.tickSpacing;
-                targetTickLower = tick + delta;
-            } else {
-                if (delta > 0) delta -= params.tickSpacing;
-                targetTickLower = tick + delta - positionWidth;
-            }
-            targetTickUpper = targetTickLower + positionWidth;
-        }
-
-        if (targetTickLower == tickLower && targetTickUpper == tickUpper) {
-            return (false, target);
-        }
-
         target.lowerTicks = new int24[](1);
         target.upperTicks = new int24[](1);
         target.lowerTicks[0] = targetTickLower;

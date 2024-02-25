@@ -33,7 +33,8 @@ contract Unit is Test {
                             IPulseStrategyModule.StrategyParams({
                                 strategyType: strategyType,
                                 tickSpacing: tickSpacing,
-                                tickNeighborhood: 0
+                                tickNeighborhood: 0,
+                                width: 200
                             })
                         );
                     string memory response = string(
