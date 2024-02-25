@@ -1,28 +1,14 @@
 // SPDX-License-Identifier: BSL-1.1
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-
 import "./interfaces/ICore.sol";
-
-import "./interfaces/modules/IAmmModule.sol";
-import "./interfaces/modules/IStrategyModule.sol";
-
-import "./interfaces/oracles/IOracle.sol";
 
 import "./libraries/external/FullMath.sol";
 
 import "./utils/DefaultAccessControl.sol";
 
-contract Core is ICore, IERC721Receiver, DefaultAccessControl, ReentrancyGuard {
+contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     using EnumerableSet for EnumerableSet.UintSet;
-
-    error DelegateCallFailed();
-    error InvalidParameters();
-    error InvalidLength();
-    error InvalidTarget();
 
     uint256 public constant D4 = 1e4;
     uint256 public constant Q96 = 2 ** 96;
@@ -58,58 +44,32 @@ contract Core is ICore, IERC721Receiver, DefaultAccessControl, ReentrancyGuard {
         positionManager = positionManager_;
     }
 
-    /**
-     * @dev Retrieves the PositionInfo struct at the specified index.
-     * @param id The index of the PositionInfo struct to retrieve.
-     * @return The PositionInfo struct at the specified index.
-     */
+    /// @inheritdoc ICore
     function position(
         uint256 id
     ) public view override returns (PositionInfo memory) {
         return _positions[id];
     }
 
-    /**
-     * @dev Returns the count of positions in the contract.
-     * @return uint256 count of positions.
-     */
+    /// @inheritdoc ICore
     function positionCount() public view returns (uint256) {
         return _positions.length;
     }
 
-    /**
-     * @dev Retrieves the array of user IDs associated with the given user address.
-     * @param user The address of the user.
-     * @return ids array of user IDs.
-     */
+    /// @inheritdoc ICore
     function getUserIds(
         address user
     ) external view override returns (uint256[] memory ids) {
         return _userIds[user].values();
     }
 
-    /**
-     * @dev Sets the operator flag to enable or disable operator functionality.
-     * Only the admin can call this function.
-     * @param operatorFlag_ The new value for the operator flag.
-     */
+    /// @inheritdoc ICore
     function setOperatorFlag(bool operatorFlag_) external override {
         _requireAdmin();
         operatorFlag = operatorFlag_;
     }
 
-    /**
-     * @dev Sets the position parameters for a given ID.
-     * @param id The ID of the position.
-     * @param slippageD4 The maximum permissible proportion of the capital allocated to positions
-     * that can be used to compensate rebalancers for their services. A value of 10,000 (1e4) represents 100%.
-     * @param strategyParams The strategy parameters.
-     * @param securityParams The security parameters.
-     * Requirements:
-     * - The caller must be the owner of the position.
-     * - The strategy parameters must be valid.
-     * - The security parameters must be valid.
-     */
+    /// @inheritdoc ICore
     function setPositionParams(
         uint256 id,
         uint16 slippageD4,
@@ -126,11 +86,7 @@ contract Core is ICore, IERC721Receiver, DefaultAccessControl, ReentrancyGuard {
         _positions[id] = info;
     }
 
-    /**
-     * @dev Deposits multiple tokens into the contract.
-     * @param params The deposit parameters including strategy parameters, security parameters, slippage, and token IDs.
-     * @return id The ID of the position for deposited tokens.
-     */
+    /// @inheritdoc ICore
     function deposit(
         DepositParams memory params
     ) external override returns (uint256 id) {
@@ -202,13 +158,7 @@ contract Core is ICore, IERC721Receiver, DefaultAccessControl, ReentrancyGuard {
         );
     }
 
-    /**
-     * @dev Withdraws AMM NFTs from the contract and transfers them to the specified address.
-     * Only the owner of the position can call this function.
-     *
-     * @param id The ID of the position with AMM NFTs to withdraw.
-     * @param to The address to transfer AMM NFTs to.
-     */
+    /// @inheritdoc ICore
     function withdraw(uint256 id, address to) external override {
         PositionInfo memory info = _positions[id];
         if (info.tokenIds.length == 0) revert InvalidLength();
@@ -230,61 +180,7 @@ contract Core is ICore, IERC721Receiver, DefaultAccessControl, ReentrancyGuard {
         }
     }
 
-    /**
-     * @dev Calculates the target capital in Token1X96 based on the given parameters.
-     * @param target The TargetPositionInfo struct containing the target information.
-     * @param sqrtPriceX96 The square root of the priceX96.
-     * @param priceX96 The priceX96 value.
-     * @return targetCapitalInToken1X96 The calculated target capital in Token1X96.
-     */
-    function _calculateTargetCapitalX96(
-        TargetPositionInfo memory target,
-        uint160 sqrtPriceX96,
-        uint256 priceX96
-    ) private view returns (uint256 targetCapitalInToken1X96) {
-        for (uint256 j = 0; j < target.lowerTicks.length; j++) {
-            {
-                (uint256 amount0, uint256 amount1) = ammModule
-                    .getAmountsForLiquidity(
-                        uint128(target.liquidityRatiosX96[j]),
-                        sqrtPriceX96,
-                        target.lowerTicks[j],
-                        target.upperTicks[j]
-                    );
-                targetCapitalInToken1X96 +=
-                    FullMath.mulDiv(amount0, priceX96, Q96) +
-                    amount1;
-            }
-        }
-    }
-
-    function _validateTarget(TargetPositionInfo memory target) private pure {
-        uint256 n = target.liquidityRatiosX96.length;
-        {
-            uint256 cumulativeLiquidityX96 = 0;
-            for (uint256 i = 0; i < n; i++) {
-                cumulativeLiquidityX96 += target.liquidityRatiosX96[i];
-            }
-            if (cumulativeLiquidityX96 != Q96) revert InvalidTarget();
-        }
-
-        if (n != target.lowerTicks.length) revert InvalidTarget();
-        if (n != target.upperTicks.length) revert InvalidTarget();
-
-        for (uint256 i = 0; i < n; i++) {
-            if (target.lowerTicks[i] > target.upperTicks[i]) {
-                revert InvalidTarget();
-            }
-        }
-    }
-
-    /**
-     * @dev Rebalances the portfolio based on the given parameters.
-     * @param params The parameters for rebalancing.
-     *   - ids: An array of ids of positions to rebalance.
-     *   - callback: The address of the callback contract.
-     *   - data: Additional data to be passed to the callback contract.
-     */
+    /// @inheritdoc ICore
     function rebalance(
         RebalanceParams memory params
     ) external override nonReentrant {
@@ -418,12 +314,7 @@ contract Core is ICore, IERC721Receiver, DefaultAccessControl, ReentrancyGuard {
         }
     }
 
-    /**
-     * @dev This function is used to perform an empty rebalance for a specific position.
-     * @param id The ID of the position to perform the empty rebalance on.
-     * @notice This function calls the `beforeRebalance` and `afterRebalance` functions of the `IAmmModule` contract for each tokenId of the position.
-     * @notice If any of the delegate calls fail, the function will revert.
-     */
+    /// @inheritdoc ICore
     function emptyRebalance(uint256 id) external {
         PositionInfo memory params = _positions[id];
         if (params.owner != msg.sender) revert Forbidden();
@@ -452,6 +343,7 @@ contract Core is ICore, IERC721Receiver, DefaultAccessControl, ReentrancyGuard {
         }
     }
 
+    /// @inheritdoc IERC721Receiver
     function onERC721Received(
         address,
         address,
@@ -459,5 +351,46 @@ contract Core is ICore, IERC721Receiver, DefaultAccessControl, ReentrancyGuard {
         bytes calldata
     ) external pure returns (bytes4) {
         return IERC721Receiver.onERC721Received.selector;
+    }
+
+    function _calculateTargetCapitalX96(
+        TargetPositionInfo memory target,
+        uint160 sqrtPriceX96,
+        uint256 priceX96
+    ) private view returns (uint256 targetCapitalInToken1X96) {
+        for (uint256 j = 0; j < target.lowerTicks.length; j++) {
+            {
+                (uint256 amount0, uint256 amount1) = ammModule
+                    .getAmountsForLiquidity(
+                        uint128(target.liquidityRatiosX96[j]),
+                        sqrtPriceX96,
+                        target.lowerTicks[j],
+                        target.upperTicks[j]
+                    );
+                targetCapitalInToken1X96 +=
+                    FullMath.mulDiv(amount0, priceX96, Q96) +
+                    amount1;
+            }
+        }
+    }
+
+    function _validateTarget(TargetPositionInfo memory target) private pure {
+        uint256 n = target.liquidityRatiosX96.length;
+        {
+            uint256 cumulativeLiquidityX96 = 0;
+            for (uint256 i = 0; i < n; i++) {
+                cumulativeLiquidityX96 += target.liquidityRatiosX96[i];
+            }
+            if (cumulativeLiquidityX96 != Q96) revert InvalidTarget();
+        }
+
+        if (n != target.lowerTicks.length) revert InvalidTarget();
+        if (n != target.upperTicks.length) revert InvalidTarget();
+
+        for (uint256 i = 0; i < n; i++) {
+            if (target.lowerTicks[i] > target.upperTicks[i]) {
+                revert InvalidTarget();
+            }
+        }
     }
 }
