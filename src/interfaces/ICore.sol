@@ -61,12 +61,10 @@ interface ICore is IERC721Receiver {
 
     function D4() external view returns (uint256);
     function Q96() external view returns (uint256);
-
     function ammModule() external view returns (IAmmModule);
     function oracle() external view returns (IOracle);
     function strategyModule() external view returns (IStrategyModule);
     function positionManager() external view returns (address);
-
     function operatorFlag() external view returns (bool);
 
     /**

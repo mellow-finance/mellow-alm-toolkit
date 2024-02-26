@@ -315,4 +315,9 @@ contract VeloDeployFactory is IVeloDeployFactory, DefaultAccessControl {
         _requireAdmin();
         delete _poolToAddresses[pool];
     }
+
+    /// @inheritdoc IVeloDeployFactory
+    function getStorage() external pure returns (Storage memory) {
+        return _contractStorage();
+    }
 }

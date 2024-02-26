@@ -84,4 +84,6 @@ interface IVeloDeployFactory {
     ) external view returns (PoolAddresses memory);
 
     function removeAddressesForPool(address pool) external;
+
+    function getStorage() external pure returns (Storage memory);
 }
