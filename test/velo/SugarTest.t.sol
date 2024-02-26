@@ -22,28 +22,6 @@ contract Integration is DeployFactoryFixture {
     function logLpInfo(address user) public {
         VeloSugarHelper sugar = new VeloSugarHelper(address(deployFactory));
         VeloSugarHelper.Lp[] memory lps = sugar.full(user);
-
-        // uint256 amount0;
-        // uint256 amount1;
-        // uint256 lpAmount;
-        // uint256 stakedLpAmount;
-        // address almFarm;
-        // address almVault;
-        // uint256 almFeeD9;
-        // address rewardToken;
-        // uint256 rewards;
-        // uint256 nft;
-        // address pool;
-        // address token0;
-        // address token1;
-        // uint256 reserve0;
-        // uint256 reserve1;
-        // int24 tickSpacing;
-        // int24 tick;
-        // uint160 price;
-        // address gauge;
-        // bool initialized;
-
         for (uint256 i = 0; i < lps.length; i++) {
             VeloSugarHelper.Lp memory lp = lps[i];
             string memory logS = string(
