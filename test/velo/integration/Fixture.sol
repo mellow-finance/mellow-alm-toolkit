@@ -3,8 +3,8 @@ pragma solidity ^0.8.0;
 
 import "./Constants.sol";
 
-import {SwapRouter} from "./contracts/periphery/SwapRouter.sol";
-import {QuoterV2} from "./contracts/periphery/lens/QuoterV2.sol";
+import {SwapRouter} from "../contracts/periphery/SwapRouter.sol";
+import {QuoterV2} from "../contracts/periphery/lens/QuoterV2.sol";
 
 contract Fixture is Test {
     using SafeERC20 for IERC20;

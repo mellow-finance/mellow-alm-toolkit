@@ -6,8 +6,6 @@ import "../interfaces/oracles/IVeloOracle.sol";
 import "../libraries/external/FullMath.sol";
 import "../libraries/external/TickMath.sol";
 
-import "../libraries/CommonLibrary.sol";
-
 contract VeloOracle is IVeloOracle {
     /// @inheritdoc IVeloOracle
     function ensureNoMEV(

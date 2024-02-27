@@ -7,8 +7,6 @@ import "../interfaces/oracles/IOracle.sol";
 import "../libraries/external/FullMath.sol";
 import "../libraries/external/TickMath.sol";
 
-import "../libraries/CommonLibrary.sol";
-
 /**
  * @title AgniOracle
  * @dev A contract that implements the IOracle interface for Agni pools.

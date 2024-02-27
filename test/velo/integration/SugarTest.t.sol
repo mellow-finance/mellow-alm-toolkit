@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import "./DeployFactoryFixture.sol";
-import "../../src/utils/VeloSugarHelper.sol";
 
 contract Integration is DeployFactoryFixture {
     using SafeERC20 for IERC20;

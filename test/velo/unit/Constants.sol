@@ -8,28 +8,28 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
-import "../../src/Core.sol";
-import "../../src/bots/PulseVeloBot.sol";
+import "../../../src/Core.sol";
+import "../../../src/bots/PulseVeloBot.sol";
 
-import "../../src/modules/velo/VeloAmmModule.sol";
-import "../../src/modules/velo/VeloDepositWithdrawModule.sol";
-import "../../src/modules/strategies/PulseStrategyModule.sol";
-import "../../src/oracles/VeloOracle.sol";
+import "../../../src/modules/velo/VeloAmmModule.sol";
+import "../../../src/modules/velo/VeloDepositWithdrawModule.sol";
+import "../../../src/modules/strategies/PulseStrategyModule.sol";
+import "../../../src/oracles/VeloOracle.sol";
 
-import "../../src/interfaces/external/velo/ICLFactory.sol";
-import "../../src/interfaces/external/velo/ICLPool.sol";
+import "../../../src/interfaces/external/velo/ICLFactory.sol";
+import "../../../src/interfaces/external/velo/ICLPool.sol";
 
-import {IUniswapV3Pool} from "../../src/interfaces/external/univ3/IUniswapV3Pool.sol";
+import {IUniswapV3Pool} from "../../../src/interfaces/external/univ3/IUniswapV3Pool.sol";
 
-import "../../src/interfaces/external/velo/INonfungiblePositionManager.sol";
+import "../../../src/interfaces/external/velo/INonfungiblePositionManager.sol";
 
-import "../../src/libraries/external/LiquidityAmounts.sol";
-import "../../src/libraries/external/velo/PositionValue.sol";
+import "../../../src/libraries/external/LiquidityAmounts.sol";
+import "../../../src/libraries/external/velo/PositionValue.sol";
 
-import "../../src/utils/LpWrapper.sol";
-import "../../src/utils/external/synthetix/StakingRewards.sol";
+import "../../../src/utils/LpWrapper.sol";
+import "../../../src/utils/external/synthetix/StakingRewards.sol";
 
-import "../../src/utils/VeloDeployFactory.sol";
+import "../../../src/utils/VeloDeployFactory.sol";
 
 library Constants {
     address public constant USDC = 0x7F5c764cBc14f9669B88837ca1490cCa17c31607;
