@@ -4,6 +4,8 @@ pragma solidity ^0.8.0;
 import "forge-std/Test.sol";
 import "forge-std/Vm.sol";
 
+import "@synthetix/contracts/StakingRewards.sol";
+
 import "../../../Core.sol";
 import "../../../bots/PulseAgniBot.sol";
 
@@ -16,7 +18,6 @@ import "../../../libraries/external/agni/PositionValue.sol";
 import "../../../libraries/external/LiquidityAmounts.sol";
 
 import "../../../utils/LpWrapper.sol";
-import "../../../utils/external/synthetix/StakingRewards.sol";
 
 import "../../../interfaces/external/agni/IAgniFactory.sol";
 import "../../../interfaces/external/agni/IAgniPool.sol";

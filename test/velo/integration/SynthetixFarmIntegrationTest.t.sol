@@ -101,7 +101,7 @@ contract Integration is Fixture {
                 IERC20(Constants.VELO).balanceOf(address(stakingRewards))
             );
 
-            skip(1 days);
+            skip(7 days);
 
             vm.stopPrank();
             vm.startPrank(Constants.DEPOSITOR);
@@ -122,9 +122,9 @@ contract Integration is Fixture {
                 treasuryBalanceBefore;
 
             uint256 totalRewards = userRewards + protocolRewards;
-            assertTrue(totalRewards > 10 ether - 1 days); // max delta in weis = number of seconds in 1 day
+            assertTrue(totalRewards > 10 ether - 7 days); // max delta in weis = number of seconds in 1 day
             assertApproxEqAbs(protocolRewards, 1 ether, 1 wei);
-            assertApproxEqAbs(userRewards, 9 ether, 1 days);
+            assertApproxEqAbs(userRewards, 9 ether, 7 days);
 
             vm.stopPrank();
         }

@@ -7,3 +7,4 @@ forge-std/=lib/forge-std/src/
 @solmate/=lib/solmate/
 @zodiac/=lib/zodiac/contracts/
 @mellow-vaults/=lib/mellow-vaults/
+@synthetix=lib/synthetix
