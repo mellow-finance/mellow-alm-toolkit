@@ -8,6 +8,8 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
+import "@synthetix/contracts/StakingRewards.sol";
+
 import "../../src/Core.sol";
 import "../../src/bots/PulseAgniBot.sol";
 
@@ -24,7 +26,6 @@ import "../../src/libraries/external/agni/PositionValue.sol";
 import "../../src/libraries/external/LiquidityAmounts.sol";
 
 import "../../src/utils/LpWrapper.sol";
-import "../../src/utils/external/synthetix/StakingRewards.sol";
 
 library Constants {
     address public constant USDC = 0x09Bc4E0D864854c6aFB6eB9A9cdF58aC190D0dF9;
