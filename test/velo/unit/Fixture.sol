@@ -15,8 +15,6 @@ contract Fixture is Test {
     INonfungiblePositionManager public positionManager =
         INonfungiblePositionManager(Constants.NONFUNGIBLE_POSITION_MANAGER);
     ICLFactory public factory = ICLFactory(Constants.VELO_FACTORY);
-    ICLPool public pool =
-        ICLPool(factory.getPool(Constants.USDC, Constants.WETH, TICK_SPACING));
 
     VeloAmmModule public ammModule;
     PulseStrategyModule public strategyModule;
@@ -45,7 +43,8 @@ contract Fixture is Test {
         address token1,
         int24 tickSpacing,
         int24 width,
-        uint128 liquidity
+        uint128 liquidity,
+        ICLPool pool
     ) public returns (uint256) {
         vm.startPrank(Constants.OWNER);
         if (token0 > token1) (token0, token1) = (token1, token0);
@@ -98,7 +97,7 @@ contract Fixture is Test {
         return tokenId;
     }
 
-    function movePrice(int24 targetTick) public {
+    function movePrice(int24 targetTick, ICLPool pool) public {
         int24 spotTick;
         (, spotTick, , , , ) = pool.slot0();
         uint256 usdcAmount = IERC20(Constants.USDC).balanceOf(address(pool));
@@ -132,33 +131,6 @@ contract Fixture is Test {
         }
     }
 
-    function movePrice() public {
-        movePrice(uint256(1));
-    }
-
-    function movePrice(uint256 coefficient) public {
-        vm.startPrank(Constants.OWNER);
-        uint256 amountIn = 1e6 * 1e6 * coefficient;
-        deal(Constants.USDC, Constants.OWNER, amountIn);
-        IERC20(Constants.USDC).safeIncreaseAllowance(
-            address(swapRouter),
-            amountIn
-        );
-        swapRouter.exactInputSingle(
-            ISwapRouter.ExactInputSingleParams({
-                tokenIn: Constants.USDC,
-                tokenOut: Constants.WETH,
-                tickSpacing: TICK_SPACING,
-                deadline: type(uint256).max,
-                recipient: Constants.OWNER,
-                sqrtPriceLimitX96: 0,
-                amountOutMinimum: 0,
-                amountIn: amountIn
-            })
-        );
-        vm.stopPrank();
-    }
-
     function _swapAmount(uint256 amountIn, uint256 tokenInIndex) private {
         if (amountIn == 0) revert("Insufficient amount for swap");
         address[] memory tokens = new address[](2);
@@ -180,13 +152,13 @@ contract Fixture is Test {
                 deadline: type(uint256).max
             })
         );
-        skip(24 * 3600);
     }
 
     function addLiquidity(
         int24 tickLower,
         int24 tickUpper,
-        uint128 liquidity
+        uint128 liquidity,
+        ICLPool pool
     ) public {
         (uint160 sqrtRatioX96, , , , , ) = pool.slot0();
         (uint256 amount0, uint256 amount1) = LiquidityAmounts
@@ -225,12 +197,12 @@ contract Fixture is Test {
         );
     }
 
-    function normalizePool() public {
+    function normalizePool(ICLPool pool) public {
         pool.increaseObservationCardinalityNext(2);
         {
             int24 lowerTick = -800000;
             int24 upperTick = 800000;
-            addLiquidity(lowerTick, upperTick, 2500 ether);
+            addLiquidity(lowerTick, upperTick, 2500 ether, pool);
         }
 
         (, int24 targetTick, , , , , ) = IUniswapV3Pool(
@@ -238,7 +210,7 @@ contract Fixture is Test {
         ).slot0();
 
         _swapAmount(2621439999999999988840005632, 0);
-        movePrice(targetTick);
+        movePrice(targetTick, pool);
 
         targetTick -= targetTick % TICK_SPACING;
 
@@ -258,229 +230,10 @@ contract Fixture is Test {
                     wethAmount,
                     usdcAmount
                 );
-                addLiquidity(lowerTick, upperTick, liquidity);
+                addLiquidity(lowerTick, upperTick, liquidity, pool);
             }
         }
 
         skip(3 * 24 * 3600);
-    }
-
-    function removePosition(
-        uint256 tokenId
-    )
-        public
-        returns (
-            uint256 amount0,
-            uint256 amount1,
-            uint256 liquidityAmount0,
-            uint256 liquidityAmount1
-        )
-    {
-        vm.startPrank(address(core));
-        (uint160 sqrtRatioX96, , , , , ) = pool.slot0();
-
-        (
-            ,
-            ,
-            ,
-            ,
-            ,
-            int24 tickLower,
-            int24 tickUpper,
-            uint128 liquidity,
-            ,
-            ,
-            ,
-
-        ) = positionManager.positions(tokenId);
-        (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
-            sqrtRatioX96,
-            TickMath.getSqrtRatioAtTick(tickLower),
-            TickMath.getSqrtRatioAtTick(tickUpper),
-            liquidity
-        );
-
-        (liquidityAmount0, liquidityAmount1) = positionManager
-            .decreaseLiquidity(
-                INonfungiblePositionManager.DecreaseLiquidityParams({
-                    tokenId: tokenId,
-                    liquidity: liquidity,
-                    amount0Min: 0,
-                    amount1Min: 0,
-                    deadline: type(uint256).max
-                })
-            );
-
-        positionManager.collect(
-            INonfungiblePositionManager.CollectParams({
-                recipient: address(core),
-                tokenId: tokenId,
-                amount0Max: uint128(liquidityAmount0),
-                amount1Max: uint128(liquidityAmount1)
-            })
-        );
-
-        vm.stopPrank();
-    }
-
-    function addPosition(
-        uint256 tokenId,
-        uint256 amount0,
-        uint256 amount1
-    ) public {
-        vm.startPrank(address(core));
-        IERC20(pool.token0()).safeIncreaseAllowance(
-            address(positionManager),
-            amount0
-        );
-        IERC20(pool.token1()).safeIncreaseAllowance(
-            address(positionManager),
-            amount1
-        );
-        positionManager.increaseLiquidity(
-            INonfungiblePositionManager.IncreaseLiquidityParams({
-                tokenId: tokenId,
-                amount0Desired: amount0,
-                amount1Desired: amount1,
-                amount0Min: 0,
-                amount1Min: 0,
-                deadline: type(uint256).max
-            })
-        );
-        vm.stopPrank();
-    }
-
-    function determineSwapAmounts(
-        uint256 id
-    ) public returns (PulseVeloBot.SwapParams memory) {
-        vm.startPrank(Constants.OWNER);
-        ICore.PositionInfo memory info = core.position(id);
-        (bool flag, ICore.TargetPositionInfo memory target) = core
-            .strategyModule()
-            .getTargets(info, core.ammModule(), core.oracle());
-        uint256 tokenId = info.tokenIds[0];
-        if (tokenId == 0) revert("Invalid token id");
-        if (!flag) revert("Rebalance is not necessary");
-        vm.stopPrank();
-
-        (
-            uint256 amount0,
-            uint256 amount1,
-            uint256 liquidityAmount0,
-            uint256 liquidityAmount1
-        ) = removePosition(tokenId);
-
-        PulseVeloBot.SwapParams memory swapParams = bot
-            .calculateSwapAmountsPreciselySingle(
-                IPulseVeloBot.SingleIntervalData({
-                    amount0: amount0,
-                    amount1: amount1,
-                    sqrtLowerRatioX96: TickMath.getSqrtRatioAtTick(
-                        target.lowerTicks[0]
-                    ),
-                    sqrtUpperRatioX96: TickMath.getSqrtRatioAtTick(
-                        target.upperTicks[0]
-                    ),
-                    pool: pool
-                })
-            );
-
-        addPosition(tokenId, liquidityAmount0, liquidityAmount1);
-
-        return swapParams;
-    }
-
-    function setUp() external {
-        vm.startPrank(Constants.DEPLOYER);
-        normalizePool();
-        vm.stopPrank();
-        vm.startPrank(Constants.OWNER);
-        {
-            uint256 amountIn = 1e3 * 1e6;
-            deal(Constants.USDC, Constants.OWNER, amountIn);
-            IERC20(Constants.USDC).safeIncreaseAllowance(
-                address(swapRouter),
-                amountIn
-            );
-            swapRouter.exactInputSingle(
-                ISwapRouter.ExactInputSingleParams({
-                    tokenIn: Constants.USDC,
-                    tokenOut: Constants.WETH,
-                    tickSpacing: TICK_SPACING,
-                    deadline: type(uint256).max,
-                    recipient: Constants.OWNER,
-                    sqrtPriceLimitX96: 0,
-                    amountOutMinimum: 0,
-                    amountIn: amountIn
-                })
-            );
-        }
-
-        ammModule = new VeloAmmModule(
-            INonfungiblePositionManager(positionManager),
-            Constants.PROTOCOL_TREASURY,
-            Constants.PROTOCOL_FEE_D9
-        );
-        strategyModule = new PulseStrategyModule();
-        oracle = new VeloOracle();
-        core = new Core(
-            ammModule,
-            strategyModule,
-            oracle,
-            address(positionManager),
-            Constants.OWNER
-        );
-
-        dwModule = new VeloDepositWithdrawModule(
-            INonfungiblePositionManager(positionManager),
-            ammModule
-        );
-
-        deployFactory = new VeloDeployFactory(
-            Constants.OWNER,
-            core,
-            dwModule,
-            new VeloDeployFactoryHelper()
-        );
-
-        deployFactory.updateStrategyParams(
-            TICK_SPACING,
-            IVeloDeployFactory.StrategyParams({
-                intervalWidth: 800,
-                tickNeighborhood: 200,
-                initialLiquidity: 1e9,
-                minInitialLiquidity: 1e8,
-                strategyType: IPulseStrategyModule.StrategyType.Original
-            })
-        );
-
-        ICore.DepositParams memory depositParams;
-        depositParams.slippageD4 = 100;
-        depositParams.strategyParams = abi.encode(
-            IPulseStrategyModule.StrategyParams({
-                tickSpacing: TICK_SPACING,
-                tickNeighborhood: TICK_SPACING,
-                strategyType: IPulseStrategyModule.StrategyType.Original,
-                width: 200
-            })
-        );
-        depositParams.securityParams = abi.encode(
-            IVeloOracle.SecurityParams({lookback: 1, maxAllowedDelta: 10})
-        );
-
-        deployFactory.updateDepositParams(TICK_SPACING, depositParams);
-
-        deployFactory.updateMutableParams(
-            IVeloDeployFactory.MutableParams({
-                lpWrapperAdmin: Constants.OWNER,
-                farmOwner: Constants.OWNER,
-                farmOperator: Constants.OWNER,
-                rewardsToken: Constants.VELO
-            })
-        );
-
-        bot = new PulseVeloBot(quoterV2, swapRouter, positionManager);
-
-        vm.stopPrank();
     }
 }
