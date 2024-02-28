@@ -7,7 +7,6 @@ import "./libraries/external/FullMath.sol";
 
 import "./utils/DefaultAccessControl.sol";
 
-/// TODO: replace ERC721.transferFrom(from, to, tokenId, data) in AmmModule
 contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     using EnumerableSet for EnumerableSet.UintSet;
 
