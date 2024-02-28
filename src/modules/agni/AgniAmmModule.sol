@@ -18,12 +18,12 @@ import "../../libraries/external/TickMath.sol";
 contract AgniAmmModule is IAmmModule {
     using SafeERC20 for IERC20;
 
-    INonfungiblePositionManager public immutable positionManager;
+    address public immutable positionManager;
     IAgniFactory public immutable factory;
 
     constructor(INonfungiblePositionManager positionManager_) {
-        positionManager = positionManager_;
-        factory = IAgniFactory(positionManager.factory());
+        positionManager = address(positionManager_);
+        factory = IAgniFactory(positionManager_.factory());
     }
 
     /**
@@ -64,7 +64,7 @@ contract AgniAmmModule is IAmmModule {
     ) external view override returns (uint256, uint256) {
         return
             PositionValue.total(
-                positionManager,
+                INonfungiblePositionManager(positionManager),
                 tokenId,
                 sqrtRatioX96,
                 IAgniPool(pool)
@@ -92,7 +92,7 @@ contract AgniAmmModule is IAmmModule {
             ,
             ,
 
-        ) = positionManager.positions(tokenId);
+        ) = INonfungiblePositionManager(positionManager).positions(tokenId);
     }
 
     /**
@@ -129,7 +129,7 @@ contract AgniAmmModule is IAmmModule {
         address farm,
         address synthetixFarm,
         uint256 tokenId
-    ) external virtual {
+    ) external virtual override {
         if (farm == address(0)) return;
         require(
             synthetixFarm != address(0),
@@ -148,8 +148,24 @@ contract AgniAmmModule is IAmmModule {
         address farm,
         address,
         uint256 tokenId
-    ) external virtual {
+    ) external virtual override {
         if (farm == address(0)) return;
-        positionManager.safeTransferFrom(address(this), address(farm), tokenId);
+        INonfungiblePositionManager(positionManager).safeTransferFrom(
+            address(this),
+            address(farm),
+            tokenId
+        );
+    }
+
+    function transferFrom(
+        address from,
+        address to,
+        uint256 tokenId
+    ) external virtual override {
+        INonfungiblePositionManager(positionManager).transferFrom(
+            from,
+            to,
+            tokenId
+        );
     }
 }

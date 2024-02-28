@@ -42,8 +42,8 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         address admin
     ) ERC20(name, symbol) DefaultAccessControl(admin) {
         core = core_;
-        positionManager = core.positionManager();
         ammModule = core.ammModule();
+        positionManager = ammModule.positionManager();
         oracle = core.oracle();
         ammDepositWithdrawModule = ammDepositWithdrawModule_;
     }

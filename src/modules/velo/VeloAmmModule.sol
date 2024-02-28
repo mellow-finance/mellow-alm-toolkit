@@ -18,8 +18,8 @@ contract VeloAmmModule is IVeloAmmModule {
     /// @inheritdoc IVeloAmmModule
     uint256 public constant MAX_PROTOCOL_FEE = 3e8; // 30%
 
-    /// @inheritdoc IVeloAmmModule
-    INonfungiblePositionManager public immutable positionManager;
+    /// @inheritdoc IAmmModule
+    address public immutable positionManager;
     /// @inheritdoc IVeloAmmModule
     ICLFactory public immutable factory;
     /// @inheritdoc IVeloAmmModule
@@ -32,8 +32,8 @@ contract VeloAmmModule is IVeloAmmModule {
         address protocolTreasury_,
         uint256 protocolFeeD9_
     ) {
-        positionManager = positionManager_;
-        factory = ICLFactory(positionManager.factory());
+        positionManager = address(positionManager_);
+        factory = ICLFactory(positionManager_.factory());
         if (protocolTreasury_ == address(0))
             revert("VeloAmmModule: treasury is zero");
         if (protocolFeeD9_ > MAX_PROTOCOL_FEE)
@@ -78,7 +78,7 @@ contract VeloAmmModule is IVeloAmmModule {
             ,
             ,
 
-        ) = positionManager.positions(tokenId);
+        ) = INonfungiblePositionManager(positionManager).positions(tokenId);
         return
             getAmountsForLiquidity(
                 liquidity,
@@ -106,7 +106,7 @@ contract VeloAmmModule is IVeloAmmModule {
             ,
             ,
 
-        ) = positionManager.positions(tokenId);
+        ) = INonfungiblePositionManager(positionManager).positions(tokenId);
         position.property = uint24(tickSpacing);
     }
 
@@ -129,7 +129,7 @@ contract VeloAmmModule is IVeloAmmModule {
         address gauge,
         address synthetixFarm,
         uint256 tokenId
-    ) external virtual {
+    ) external virtual override {
         if (gauge == address(0)) return;
         require(
             synthetixFarm != address(0),
@@ -163,9 +163,21 @@ contract VeloAmmModule is IVeloAmmModule {
         address farm,
         address,
         uint256 tokenId
-    ) external virtual {
+    ) external virtual override {
         if (farm == address(0)) return;
-        positionManager.approve(farm, tokenId);
+        INonfungiblePositionManager(positionManager).approve(farm, tokenId);
         ICLGauge(farm).deposit(tokenId);
+    }
+
+    function transferFrom(
+        address from,
+        address to,
+        uint256 tokenId
+    ) external virtual override {
+        INonfungiblePositionManager(positionManager).transferFrom(
+            from,
+            to,
+            tokenId
+        );
     }
 }

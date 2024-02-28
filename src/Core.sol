@@ -7,6 +7,7 @@ import "./libraries/external/FullMath.sol";
 
 import "./utils/DefaultAccessControl.sol";
 
+/// TODO: replace ERC721.transferFrom(from, to, tokenId, data) in AmmModule
 contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     using EnumerableSet for EnumerableSet.UintSet;
 
@@ -16,7 +17,6 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     IAmmModule public immutable ammModule;
     IOracle public immutable oracle;
     IStrategyModule public immutable strategyModule;
-    address public immutable positionManager;
 
     bool public operatorFlag;
 
@@ -28,20 +28,17 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
      * @param ammModule_ The address of the AMM module contract.
      * @param strategyModule_ The address of the strategy module contract.
      * @param oracle_ The address of the oracle contract.
-     * @param positionManager_ The address of the position manager contract.
      * @param admin_ The address of the admin for the Core contract.
      */
     constructor(
         IAmmModule ammModule_,
         IStrategyModule strategyModule_,
         IOracle oracle_,
-        address positionManager_,
         address admin_
     ) DefaultAccessControl(admin_) {
         ammModule = ammModule_;
         strategyModule = strategyModule_;
         oracle = oracle_;
-        positionManager = positionManager_;
     }
 
     /// @inheritdoc ICore
@@ -123,11 +120,17 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
                 revert InvalidParameters();
             }
 
-            IERC721(positionManager).transferFrom(
-                msg.sender,
-                address(this),
-                tokenId
-            );
+            {
+                (bool success, ) = address(ammModule).delegatecall(
+                    abi.encodeWithSelector(
+                        IAmmModule.transferFrom.selector,
+                        msg.sender,
+                        address(this),
+                        tokenId
+                    )
+                );
+                if (!success) revert DelegateCallFailed();
+            }
 
             {
                 (bool success, ) = address(ammModule).delegatecall(
@@ -167,16 +170,28 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         delete _positions[id];
         for (uint256 i = 0; i < info.tokenIds.length; i++) {
             uint256 tokenId = info.tokenIds[i];
-            (bool success, ) = address(ammModule).delegatecall(
-                abi.encodeWithSelector(
-                    IAmmModule.beforeRebalance.selector,
-                    info.farm,
-                    info.vault,
-                    tokenId
-                )
-            );
-            if (!success) revert DelegateCallFailed();
-            IERC721(positionManager).transferFrom(address(this), to, tokenId);
+            {
+                (bool success, ) = address(ammModule).delegatecall(
+                    abi.encodeWithSelector(
+                        IAmmModule.beforeRebalance.selector,
+                        info.farm,
+                        info.vault,
+                        tokenId
+                    )
+                );
+                if (!success) revert DelegateCallFailed();
+            }
+            {
+                (bool success, ) = address(ammModule).delegatecall(
+                    abi.encodeWithSelector(
+                        IAmmModule.transferFrom.selector,
+                        address(this),
+                        to,
+                        tokenId
+                    )
+                );
+                if (!success) revert DelegateCallFailed();
+            }
         }
     }
 
@@ -222,20 +237,28 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
                         FullMath.mulDiv(amount0, priceX96, Q96) +
                         amount1;
                 }
-                (bool success, ) = address(ammModule).delegatecall(
-                    abi.encodeWithSelector(
-                        IAmmModule.beforeRebalance.selector,
-                        target.info.farm,
-                        target.info.vault,
-                        tokenId
-                    )
-                );
-                if (!success) revert DelegateCallFailed();
-                IERC721(positionManager).transferFrom(
-                    address(this),
-                    params.callback,
-                    tokenId
-                );
+                {
+                    (bool success, ) = address(ammModule).delegatecall(
+                        abi.encodeWithSelector(
+                            IAmmModule.beforeRebalance.selector,
+                            target.info.farm,
+                            target.info.vault,
+                            tokenId
+                        )
+                    );
+                    if (!success) revert DelegateCallFailed();
+                }
+                {
+                    (bool success, ) = address(ammModule).delegatecall(
+                        abi.encodeWithSelector(
+                            IAmmModule.transferFrom.selector,
+                            address(this),
+                            params.callback,
+                            tokenId
+                        )
+                    );
+                    if (!success) revert DelegateCallFailed();
+                }
             }
 
             uint256 targetCapitalInToken1X96 = _calculateTargetCapitalX96(
@@ -293,11 +316,17 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
                     ) !=
                     target.info.pool
                 ) revert InvalidParameters();
-                IERC721(positionManager).transferFrom(
-                    params.callback,
-                    address(this),
-                    tokenId
-                );
+                {
+                    (bool success, ) = address(ammModule).delegatecall(
+                        abi.encodeWithSelector(
+                            IAmmModule.transferFrom.selector,
+                            params.callback,
+                            address(this),
+                            tokenId
+                        )
+                    );
+                    if (!success) revert DelegateCallFailed();
+                }
                 {
                     (bool success, ) = address(ammModule).delegatecall(
                         abi.encodeWithSelector(

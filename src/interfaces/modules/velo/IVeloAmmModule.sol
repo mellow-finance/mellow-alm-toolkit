@@ -15,11 +15,6 @@ interface IVeloAmmModule is IAmmModule {
 
     function MAX_PROTOCOL_FEE() external view returns (uint256);
 
-    function positionManager()
-        external
-        view
-        returns (INonfungiblePositionManager);
-
     function factory() external view returns (ICLFactory);
 
     function protocolTreasury() external view returns (address);
