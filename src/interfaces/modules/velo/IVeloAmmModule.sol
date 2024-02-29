@@ -11,6 +11,9 @@ import "../../external/velo/ICLFactory.sol";
 import "../../external/velo/INonfungiblePositionManager.sol";
 
 interface IVeloAmmModule is IAmmModule {
+    error InvalidFee();
+    error AddressZero();
+
     function D9() external view returns (uint256);
 
     function MAX_PROTOCOL_FEE() external view returns (uint256);

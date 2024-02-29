@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "./VeloDeployFactory.sol";
 
 contract VeloSugarHelper {
-    VeloDeployFactory public factory;
+    VeloDeployFactory public immutable factory;
 
     struct Lp {
         uint256 amount0;

@@ -34,10 +34,8 @@ contract VeloAmmModule is IVeloAmmModule {
     ) {
         positionManager = address(positionManager_);
         factory = ICLFactory(positionManager_.factory());
-        if (protocolTreasury_ == address(0))
-            revert("VeloAmmModule: treasury is zero");
-        if (protocolFeeD9_ > MAX_PROTOCOL_FEE)
-            revert("VeloAmmModule: invalid fee");
+        if (protocolTreasury_ == address(0)) revert AddressZero();
+        if (protocolFeeD9_ > MAX_PROTOCOL_FEE) revert InvalidFee();
         protocolTreasury = protocolTreasury_;
         protocolFeeD9 = protocolFeeD9_;
     }
@@ -131,11 +129,7 @@ contract VeloAmmModule is IVeloAmmModule {
         uint256 tokenId
     ) external virtual override {
         if (gauge == address(0)) return;
-        require(
-            synthetixFarm != address(0),
-            "VeloAmmModule: synthetixFarm is zero"
-        );
-
+        if (synthetixFarm == address(0)) revert AddressZero();
         ICLGauge(gauge).getReward(tokenId);
         address token = ICLGauge(gauge).rewardToken();
         uint256 balance = IERC20(token).balanceOf(address(this));
