@@ -8,6 +8,25 @@ contract Unit is Fixture {
 
     VeloAmmModule public module;
 
+    function addRewardToGauge(uint256 amount, ICLGauge gauge) public {
+        address voter = address(gauge.voter());
+        address rewardToken = gauge.rewardToken();
+        deal(rewardToken, voter, amount);
+        vm.startPrank(voter);
+        IERC20(rewardToken).safeIncreaseAllowance(address(gauge), amount);
+        ICLGauge(gauge).notifyRewardAmount(amount);
+        vm.stopPrank();
+    }
+
+    function onERC721Received(
+        address,
+        address,
+        uint256,
+        bytes calldata
+    ) external pure returns (bytes4) {
+        return IERC721Receiver.onERC721Received.selector;
+    }
+
     function testConstructor() external {
         vm.expectRevert();
         module = new VeloAmmModule(
@@ -311,38 +330,172 @@ contract Unit is Fixture {
     }
 
     function testBeforeRebalance() external {
+        address testFarmAddress = address(123);
+        address testTreasuryAddress = address(124);
+
+        uint256 protocolFeeD = 3e8;
+
+        module = new VeloAmmModule(
+            INonfungiblePositionManager(Constants.NONFUNGIBLE_POSITION_MANAGER),
+            testTreasuryAddress,
+            protocolFeeD
+        );
+
+        module.beforeRebalance(address(0), address(0), 0);
+        vm.expectRevert(abi.encodeWithSignature("AddressZero()"));
+        module.beforeRebalance(address(1), address(0), 0);
+
+        ICLPool pool = ICLPool(0xC358c95b146E9597339b376063A2cB657AFf84eb);
+        uint256 tokenId = mint(
+            pool.token0(),
+            pool.token1(),
+            pool.tickSpacing(),
+            pool.tickSpacing() * 2,
+            10000,
+            pool
+        );
+
+        vm.startPrank(Constants.OWNER);
+        positionManager.transferFrom(Constants.OWNER, address(this), tokenId);
+        vm.stopPrank();
+
+        (bool success, ) = address(module).delegatecall(
+            abi.encodeWithSelector(
+                IVeloAmmModule.afterRebalance.selector,
+                address(pool.gauge()),
+                address(testFarmAddress),
+                tokenId
+            )
+        );
+        assertTrue(success);
+
+        addRewardToGauge(10 ether, ICLGauge(pool.gauge()));
+        skip(10 days);
+
+        (success, ) = address(module).delegatecall(
+            abi.encodeWithSelector(
+                IVeloAmmModule.beforeRebalance.selector,
+                address(pool.gauge()),
+                address(testFarmAddress),
+                tokenId
+            )
+        );
+        assertTrue(success);
+
+        assertApproxEqAbs(
+            IERC20(Constants.VELO).balanceOf(testFarmAddress),
+            7 ether,
+            1 wei
+        );
+        assertApproxEqAbs(
+            IERC20(Constants.VELO).balanceOf(testTreasuryAddress),
+            3 ether,
+            1 wei
+        );
+    }
+
+    function testAfterRebalance() external {
         module = new VeloAmmModule(
             INonfungiblePositionManager(Constants.NONFUNGIBLE_POSITION_MANAGER),
             address(1),
             3e8
         );
 
-        // nothing happens
         module.beforeRebalance(address(0), address(0), 0);
-
         vm.expectRevert(abi.encodeWithSignature("AddressZero()"));
         module.beforeRebalance(address(1), address(0), 0);
 
-        //     ICLGauge(gauge).getReward(tokenId);
-        //     address token = ICLGauge(gauge).rewardToken();
-        //     uint256 balance = IERC20(token).balanceOf(address(this));
-        //     if (balance > 0) {
-        //         uint256 protocolReward = FullMath.mulDiv(
-        //             protocolFeeD9,
-        //             balance,
-        //             D9
-        //         );
+        ICLPool pool = ICLPool(0xC358c95b146E9597339b376063A2cB657AFf84eb);
+        uint256 tokenId = mint(
+            pool.token0(),
+            pool.token1(),
+            pool.tickSpacing(),
+            pool.tickSpacing() * 2,
+            10000,
+            pool
+        );
 
-        //         if (protocolReward > 0) {
-        //             IERC20(token).safeTransfer(protocolTreasury, protocolReward);
-        //         }
+        vm.startPrank(Constants.OWNER);
+        positionManager.transferFrom(Constants.OWNER, address(this), tokenId);
+        vm.stopPrank();
 
-        //         balance -= protocolReward;
-        //         if (balance > 0) {
-        //             IERC20(token).safeTransfer(synthetixFarm, balance);
-        //         }
-        //     }
-        //     ICLGauge(gauge).withdraw(tokenId);
-        // }
+        address testFarmAddress = address(123);
+        (bool success, ) = address(module).delegatecall(
+            abi.encodeWithSelector(
+                IVeloAmmModule.afterRebalance.selector,
+                address(pool.gauge()),
+                address(testFarmAddress),
+                tokenId
+            )
+        );
+        assertTrue(success);
+
+        (success, ) = address(module).delegatecall(
+            abi.encodeWithSelector(
+                IVeloAmmModule.beforeRebalance.selector,
+                address(pool.gauge()),
+                address(testFarmAddress),
+                tokenId
+            )
+        );
+        assertTrue(success);
+
+        (success, ) = address(module).delegatecall(
+            abi.encodeWithSelector(
+                IVeloAmmModule.afterRebalance.selector,
+                address(0),
+                address(testFarmAddress),
+                tokenId
+            )
+        );
+        assertTrue(success);
+
+        (success, ) = address(module).delegatecall(
+            abi.encodeWithSelector(
+                IVeloAmmModule.afterRebalance.selector,
+                address(pool.gauge()),
+                address(testFarmAddress),
+                tokenId
+            )
+        );
+        assertTrue(success);
+        assertEq(positionManager.ownerOf(tokenId), address(pool.gauge()));
+
+        (success, ) = address(module).delegatecall(
+            abi.encodeWithSelector(
+                IVeloAmmModule.beforeRebalance.selector,
+                address(pool.gauge()),
+                address(testFarmAddress),
+                tokenId
+            )
+        );
+        assertTrue(success);
+        assertEq(positionManager.ownerOf(tokenId), address(this));
+    }
+
+    function testTransferFrom() external {
+        module = new VeloAmmModule(
+            INonfungiblePositionManager(Constants.NONFUNGIBLE_POSITION_MANAGER),
+            address(1),
+            3e8
+        );
+
+        ICLPool pool = ICLPool(0xC358c95b146E9597339b376063A2cB657AFf84eb);
+        uint256 tokenId = mint(
+            pool.token0(),
+            pool.token1(),
+            pool.tickSpacing(),
+            pool.tickSpacing() * 2,
+            10000,
+            pool
+        );
+
+        vm.startPrank(Constants.OWNER);
+        positionManager.transferFrom(Constants.OWNER, address(module), tokenId);
+        vm.stopPrank();
+
+        assertEq(positionManager.ownerOf(tokenId), address(module));
+        module.transferFrom(address(module), Constants.OWNER, tokenId);
+        assertEq(positionManager.ownerOf(tokenId), Constants.OWNER);
     }
 }
