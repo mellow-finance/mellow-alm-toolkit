@@ -426,8 +426,7 @@ contract DeployFactoryFixture is Test {
         core = new Core(ammModule, strategyModule, oracle, Constants.OWNER);
 
         dwModule = new VeloDepositWithdrawModule(
-            INonfungiblePositionManager(positionManager),
-            ammModule
+            INonfungiblePositionManager(positionManager)
         );
 
         deployFactory = new VeloDeployFactory(

@@ -3,7 +3,6 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "../IAmmModule.sol";
 import "../IAmmDepositWithdrawModule.sol";
 
 import "../../external/velo/INonfungiblePositionManager.sol";
@@ -18,8 +17,6 @@ interface IVeloDepositWithdrawModule is IAmmDepositWithdrawModule {
         external
         view
         returns (INonfungiblePositionManager);
-
-    function ammModule() external view returns (IAmmModule);
 
     /**
      * @dev Deposits the specified amounts of token0 and token1 into the pool.

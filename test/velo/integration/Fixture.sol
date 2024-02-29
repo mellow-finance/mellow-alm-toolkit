@@ -423,8 +423,7 @@ contract Fixture is Test {
         core = new Core(ammModule, strategyModule, oracle, Constants.OWNER);
 
         dwModule = new VeloDepositWithdrawModule(
-            INonfungiblePositionManager(positionManager),
-            ammModule
+            INonfungiblePositionManager(positionManager)
         );
 
         lpWrapper = new LpWrapper(

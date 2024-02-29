@@ -10,15 +10,9 @@ contract VeloDepositWithdrawModule is IVeloDepositWithdrawModule {
 
     /// @inheritdoc IVeloDepositWithdrawModule
     INonfungiblePositionManager public immutable positionManager;
-    /// @inheritdoc IVeloDepositWithdrawModule
-    IAmmModule public immutable ammModule;
 
-    constructor(
-        INonfungiblePositionManager positionManager_,
-        IAmmModule ammModule_
-    ) {
+    constructor(INonfungiblePositionManager positionManager_) {
         positionManager = positionManager_;
-        ammModule = ammModule_;
     }
 
     /// @inheritdoc IVeloDepositWithdrawModule
@@ -28,19 +22,12 @@ contract VeloDepositWithdrawModule is IVeloDepositWithdrawModule {
         uint256 amount1,
         address from
     ) external override returns (uint256 actualAmount0, uint256 actualAmount1) {
-        IAmmModule.Position memory position = ammModule.getPositionInfo(
-            tokenId
-        );
-        IERC20(position.token0).safeTransferFrom(from, address(this), amount0);
-        IERC20(position.token1).safeTransferFrom(from, address(this), amount1);
-        IERC20(position.token0).safeIncreaseAllowance(
-            address(positionManager),
-            amount0
-        );
-        IERC20(position.token1).safeIncreaseAllowance(
-            address(positionManager),
-            amount1
-        );
+        (, , address token0, address token1, , , , , , , , ) = positionManager
+            .positions(tokenId);
+        IERC20(token0).safeTransferFrom(from, address(this), amount0);
+        IERC20(token1).safeTransferFrom(from, address(this), amount1);
+        IERC20(token0).safeIncreaseAllowance(address(positionManager), amount0);
+        IERC20(token1).safeIncreaseAllowance(address(positionManager), amount1);
         (, actualAmount0, actualAmount1) = positionManager.increaseLiquidity(
             INonfungiblePositionManager.IncreaseLiquidityParams({
                 tokenId: tokenId,
@@ -52,10 +39,10 @@ contract VeloDepositWithdrawModule is IVeloDepositWithdrawModule {
             })
         );
         if (actualAmount0 != amount0) {
-            IERC20(position.token0).safeTransfer(from, amount0 - actualAmount0);
+            IERC20(token0).safeTransfer(from, amount0 - actualAmount0);
         }
         if (actualAmount1 != amount1) {
-            IERC20(position.token1).safeTransfer(from, amount1 - actualAmount1);
+            IERC20(token1).safeTransfer(from, amount1 - actualAmount1);
         }
     }
 

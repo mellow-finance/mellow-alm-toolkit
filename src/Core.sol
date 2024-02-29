@@ -118,30 +118,8 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
             } else if (pool != positionPool) {
                 revert InvalidParameters();
             }
-
-            {
-                (bool success, ) = address(ammModule).delegatecall(
-                    abi.encodeWithSelector(
-                        IAmmModule.transferFrom.selector,
-                        msg.sender,
-                        address(this),
-                        tokenId
-                    )
-                );
-                if (!success) revert DelegateCallFailed();
-            }
-
-            {
-                (bool success, ) = address(ammModule).delegatecall(
-                    abi.encodeWithSelector(
-                        IAmmModule.afterRebalance.selector,
-                        params.farm,
-                        params.vault,
-                        tokenId
-                    )
-                );
-                if (!success) revert DelegateCallFailed();
-            }
+            _transferFrom(msg.sender, address(this), tokenId);
+            _afterRebalance(params.farm, params.vault, tokenId);
         }
         id = _positions.length;
         _userIds[params.owner].add(id);
@@ -169,28 +147,8 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         delete _positions[id];
         for (uint256 i = 0; i < info.tokenIds.length; i++) {
             uint256 tokenId = info.tokenIds[i];
-            {
-                (bool success, ) = address(ammModule).delegatecall(
-                    abi.encodeWithSelector(
-                        IAmmModule.beforeRebalance.selector,
-                        info.farm,
-                        info.vault,
-                        tokenId
-                    )
-                );
-                if (!success) revert DelegateCallFailed();
-            }
-            {
-                (bool success, ) = address(ammModule).delegatecall(
-                    abi.encodeWithSelector(
-                        IAmmModule.transferFrom.selector,
-                        address(this),
-                        to,
-                        tokenId
-                    )
-                );
-                if (!success) revert DelegateCallFailed();
-            }
+            _beforeRebalance(info.farm, info.vault, tokenId);
+            _transferFrom(address(this), to, tokenId);
         }
     }
 
@@ -236,28 +194,8 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
                         FullMath.mulDiv(amount0, priceX96, Q96) +
                         amount1;
                 }
-                {
-                    (bool success, ) = address(ammModule).delegatecall(
-                        abi.encodeWithSelector(
-                            IAmmModule.beforeRebalance.selector,
-                            target.info.farm,
-                            target.info.vault,
-                            tokenId
-                        )
-                    );
-                    if (!success) revert DelegateCallFailed();
-                }
-                {
-                    (bool success, ) = address(ammModule).delegatecall(
-                        abi.encodeWithSelector(
-                            IAmmModule.transferFrom.selector,
-                            address(this),
-                            params.callback,
-                            tokenId
-                        )
-                    );
-                    if (!success) revert DelegateCallFailed();
-                }
+                _beforeRebalance(target.info.farm, target.info.vault, tokenId);
+                _transferFrom(address(this), params.callback, tokenId);
             }
 
             uint256 targetCapitalInToken1X96 = _calculateTargetCapitalX96(
@@ -315,28 +253,8 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
                     ) !=
                     target.info.pool
                 ) revert InvalidParameters();
-                {
-                    (bool success, ) = address(ammModule).delegatecall(
-                        abi.encodeWithSelector(
-                            IAmmModule.transferFrom.selector,
-                            params.callback,
-                            address(this),
-                            tokenId
-                        )
-                    );
-                    if (!success) revert DelegateCallFailed();
-                }
-                {
-                    (bool success, ) = address(ammModule).delegatecall(
-                        abi.encodeWithSelector(
-                            IAmmModule.afterRebalance.selector,
-                            target.info.farm,
-                            target.info.vault,
-                            tokenId
-                        )
-                    );
-                    if (!success) revert DelegateCallFailed();
-                }
+                _transferFrom(params.callback, address(this), tokenId);
+                _afterRebalance(target.info.farm, target.info.vault, tokenId);
             }
             _positions[target.id].tokenIds = tokenIds;
         }
@@ -350,24 +268,8 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         for (uint256 i = 0; i < tokenIds.length; i++) {
             uint256 tokenId = tokenIds[i];
             if (tokenId == 0) revert InvalidParameters();
-            (bool success, ) = address(ammModule).delegatecall(
-                abi.encodeWithSelector(
-                    IAmmModule.beforeRebalance.selector,
-                    params.farm,
-                    params.vault,
-                    tokenId
-                )
-            );
-            if (!success) revert DelegateCallFailed();
-            (success, ) = address(ammModule).delegatecall(
-                abi.encodeWithSelector(
-                    IAmmModule.afterRebalance.selector,
-                    params.farm,
-                    params.vault,
-                    tokenId
-                )
-            );
-            if (!success) revert DelegateCallFailed();
+            _beforeRebalance(params.farm, params.vault, tokenId);
+            _afterRebalance(params.farm, params.vault, tokenId);
         }
     }
 
@@ -400,6 +302,50 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
                     amount1;
             }
         }
+    }
+
+    function _transferFrom(address from, address to, uint256 tokenId) private {
+        (bool success, ) = address(ammModule).delegatecall(
+            abi.encodeWithSelector(
+                IAmmModule.transferFrom.selector,
+                from,
+                to,
+                tokenId
+            )
+        );
+        if (!success) revert DelegateCallFailed();
+    }
+
+    function _beforeRebalance(
+        address farm,
+        address vault,
+        uint256 tokenId
+    ) private {
+        (bool success, ) = address(ammModule).delegatecall(
+            abi.encodeWithSelector(
+                IAmmModule.beforeRebalance.selector,
+                farm,
+                vault,
+                tokenId
+            )
+        );
+        if (!success) revert DelegateCallFailed();
+    }
+
+    function _afterRebalance(
+        address farm,
+        address vault,
+        uint256 tokenId
+    ) private {
+        (bool success, ) = address(ammModule).delegatecall(
+            abi.encodeWithSelector(
+                IAmmModule.afterRebalance.selector,
+                farm,
+                vault,
+                tokenId
+            )
+        );
+        if (!success) revert DelegateCallFailed();
     }
 
     function _validateTarget(TargetPositionInfo memory target) private pure {
