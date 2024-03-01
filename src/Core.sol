@@ -13,10 +13,13 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     uint256 public constant D4 = 1e4;
     uint256 public constant Q96 = 2 ** 96;
 
+    /// @inheritdoc ICore
     IAmmModule public immutable ammModule;
+    /// @inheritdoc ICore
     IOracle public immutable oracle;
+    /// @inheritdoc ICore
     IStrategyModule public immutable strategyModule;
-
+    /// @inheritdoc ICore
     bool public operatorFlag;
 
     bytes private _protocolParams;
@@ -161,7 +164,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         }
     }
 
-    function _prepare(
+    function _prepareForRebalance(
         RebalanceParams memory params,
         PositionInfo memory info,
         bytes memory protocolParams_,
@@ -212,7 +215,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
             _validateTarget(target);
             (uint160 sqrtPriceX96, ) = oracle.getOraclePrice(info.pool);
             uint256 priceX96 = FullMath.mulDiv(sqrtPriceX96, sqrtPriceX96, Q96);
-            uint256 capitalInToken1 = _prepare(
+            uint256 capitalInToken1 = _prepareForRebalance(
                 params,
                 info,
                 protocolParams_,
@@ -369,11 +372,9 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
 
     function _validateTarget(TargetPositionInfo memory target) private pure {
         uint256 n = target.liquidityRatiosX96.length;
-
         if (n != target.lowerTicks.length) revert InvalidTarget();
         if (n != target.upperTicks.length) revert InvalidTarget();
         if (n != target.info.tokenIds.length) revert InvalidTarget();
-
         uint256 cumulativeLiquidityX96 = 0;
         for (uint256 i = 0; i < n; i++) {
             cumulativeLiquidityX96 += target.liquidityRatiosX96[i];
