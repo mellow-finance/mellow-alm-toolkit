@@ -170,17 +170,15 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     ) private returns (uint256 capitalInToken1) {
         for (uint256 j = 0; j < info.tokenIds.length; j++) {
             uint256 tokenId = info.tokenIds[j];
-            {
-                (uint256 amount0, uint256 amount1) = ammModule.tvl(
-                    tokenId,
-                    sqrtPriceX96,
-                    info.callbackParams,
-                    protocolParams_
-                );
-                capitalInToken1 +=
-                    FullMath.mulDiv(amount0, priceX96, Q96) +
-                    amount1;
-            }
+            (uint256 amount0, uint256 amount1) = ammModule.tvl(
+                tokenId,
+                sqrtPriceX96,
+                info.callbackParams,
+                protocolParams_
+            );
+            capitalInToken1 +=
+                FullMath.mulDiv(amount0, priceX96, Q96) +
+                amount1;
             _beforeRebalance(tokenId, info.callbackParams, protocolParams_);
             _transferFrom(address(this), params.callback, tokenId);
         }
