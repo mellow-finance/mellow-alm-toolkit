@@ -160,4 +160,40 @@ contract Unit is Fixture {
 
         vm.stopPrank();
     }
+
+    function testSetProtocolParams() external {
+        core = new Core(ammModule, strategyModule, oracle, Constants.OWNER);
+        vm.expectRevert(abi.encodeWithSignature("Forbidden()"));
+        core.setProtocolParams(new bytes(123));
+        vm.startPrank(Constants.OWNER);
+        vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
+        core.setProtocolParams(new bytes(123));
+        vm.expectRevert(abi.encodeWithSignature("AddressZero()"));
+        core.setProtocolParams(
+            abi.encode(
+                IVeloAmmModule.ProtocolParams({
+                    treasury: address(0),
+                    feeD9: Constants.PROTOCOL_FEE_D9
+                })
+            )
+        );
+        vm.expectRevert(abi.encodeWithSignature("InvalidFee()"));
+        core.setProtocolParams(
+            abi.encode(
+                IVeloAmmModule.ProtocolParams({
+                    treasury: address(1),
+                    feeD9: 3e8 + 1
+                })
+            )
+        );
+        core.setProtocolParams(
+            abi.encode(
+                IVeloAmmModule.ProtocolParams({
+                    treasury: Constants.PROTOCOL_TREASURY,
+                    feeD9: Constants.PROTOCOL_FEE_D9
+                })
+            )
+        );
+        vm.stopPrank();
+    }
 }
