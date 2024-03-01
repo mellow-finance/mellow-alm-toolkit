@@ -275,26 +275,28 @@ contract Fixture is Test {
         if (!flag) revert("Rebalance is not necessary");
         vm.stopPrank();
 
-        // (
-        //     uint256 amount0,
-        //     uint256 amount1,
-        // ) = ammModule.getPositionInfo(tokenId, );
+        (uint160 sqrtPriceX96, , , , , ) = pool.slot0();
+        (uint256 amount0, uint256 amount1) = ammModule.tvl(
+            tokenId,
+            sqrtPriceX96,
+            new bytes(0),
+            new bytes(0)
+        );
 
-        PulseVeloBot.SwapParams memory swapParams;
-        //  = bot
-        //     .calculateSwapAmountsPreciselySingle(
-        //         IPulseVeloBot.SingleIntervalData({
-        //             amount0: amount0,
-        //             amount1: amount1,
-        //             sqrtLowerRatioX96: TickMath.getSqrtRatioAtTick(
-        //                 target.lowerTicks[0]
-        //             ),
-        //             sqrtUpperRatioX96: TickMath.getSqrtRatioAtTick(
-        //                 target.upperTicks[0]
-        //             ),
-        //             pool: pool
-        //         })
-        //     );
+        PulseVeloBot.SwapParams memory swapParams = bot
+            .calculateSwapAmountsPreciselySingle(
+                IPulseVeloBot.SingleIntervalData({
+                    amount0: amount0,
+                    amount1: amount1,
+                    sqrtLowerRatioX96: TickMath.getSqrtRatioAtTick(
+                        target.lowerTicks[0]
+                    ),
+                    sqrtUpperRatioX96: TickMath.getSqrtRatioAtTick(
+                        target.upperTicks[0]
+                    ),
+                    pool: pool
+                })
+            );
 
         return swapParams;
     }

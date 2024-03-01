@@ -7,6 +7,8 @@ import "./libraries/external/FullMath.sol";
 
 import "./utils/DefaultAccessControl.sol";
 
+import "forge-std/Test.sol";
+
 contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     using EnumerableSet for EnumerableSet.UintSet;
 
@@ -197,10 +199,9 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         uint256 iterator = 0;
         bytes memory protocolParams_ = _protocolParams;
         for (uint256 i = 0; i < params.ids.length; i++) {
-            uint256 id = params.ids[i];
-            PositionInfo memory info = _positions[id];
-            oracle.ensureNoMEV(info.pool, info.securityParams);
             TargetPositionInfo memory target;
+            ICore.PositionInfo memory info = _positions[params.ids[i]];
+            oracle.ensureNoMEV(info.pool, info.securityParams);
             {
                 bool flag;
                 (flag, target) = strategyModule.getTargets(
@@ -210,6 +211,8 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
                 );
                 if (!flag) continue;
             }
+            target.id = params.ids[i];
+            target.info = info;
             _validateTarget(target);
             (uint160 sqrtPriceX96, ) = oracle.getOraclePrice(info.pool);
             uint256 priceX96 = FullMath.mulDiv(sqrtPriceX96, sqrtPriceX96, Q96);
@@ -239,9 +242,6 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
                     D4
                 );
             }
-
-            target.id = id;
-            target.info = info;
             targets[iterator++] = target;
         }
 
@@ -373,16 +373,21 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
 
     function _validateTarget(TargetPositionInfo memory target) private pure {
         uint256 n = target.liquidityRatiosX96.length;
+
+        console2.log("here0");
         if (n != target.lowerTicks.length) revert InvalidTarget();
         if (n != target.upperTicks.length) revert InvalidTarget();
+        console2.log(target.info.tokenIds.length, n);
         if (n != target.info.tokenIds.length) revert InvalidTarget();
         uint256 cumulativeLiquidityX96 = 0;
         for (uint256 i = 0; i < n; i++) {
             cumulativeLiquidityX96 += target.liquidityRatiosX96[i];
         }
+        console2.log("here1");
         if (cumulativeLiquidityX96 != Q96) revert InvalidTarget();
         for (uint256 i = 0; i < n; i++) {
             if (target.lowerTicks[i] >= target.upperTicks[i]) {
+                console2.log("here3");
                 revert InvalidTarget();
             }
         }

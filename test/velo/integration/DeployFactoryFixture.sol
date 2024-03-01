@@ -425,7 +425,7 @@ contract DeployFactoryFixture is Test {
         core.setProtocolParams(
             abi.encode(
                 IVeloAmmModule.ProtocolParams({
-                    feeD9: 1e9,
+                    feeD9: 1e8,
                     treasury: Constants.PROTOCOL_TREASURY
                 })
             )

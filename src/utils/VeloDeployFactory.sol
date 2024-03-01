@@ -13,8 +13,7 @@ contract VeloDeployFactory is IVeloDeployFactory, DefaultAccessControl {
         private _tickSpacingToStrategyParams;
     mapping(int24 => ICore.DepositParams) private _tickSpacingToDepositParams;
 
-    /// @inheritdoc IVeloDeployFactory
-    bytes32 public constant STORAGE_SLOT = keccak256("VeloDeployFactory");
+    bytes32 internal constant STORAGE_SLOT = keccak256("VeloDeployFactory");
 
     function _contractStorage() internal pure returns (Storage storage s) {
         bytes32 position = STORAGE_SLOT;
