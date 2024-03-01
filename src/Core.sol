@@ -49,7 +49,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     }
 
     /// @inheritdoc ICore
-    function positionCount() public view returns (uint256) {
+    function positionCount() public view override returns (uint256) {
         return _positions.length;
     }
 
@@ -61,7 +61,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     }
 
     /// @inheritdoc ICore
-    function protocolParams() external view returns (bytes memory) {
+    function protocolParams() external view override returns (bytes memory) {
         return _protocolParams;
     }
 
@@ -72,7 +72,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     }
 
     /// @inheritdoc ICore
-    function setProtocolParams(bytes memory params) external {
+    function setProtocolParams(bytes memory params) external override {
         _requireAdmin();
         ammModule.validateProtocolParams(params);
         _protocolParams = params;
@@ -85,7 +85,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         bytes memory callbackParams,
         bytes memory strategyParams,
         bytes memory securityParams
-    ) external {
+    ) external override {
         PositionInfo memory info = _positions[id];
         if (info.owner != msg.sender) revert Forbidden();
         ammModule.validateCallbackParams(callbackParams);
@@ -284,7 +284,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     }
 
     /// @inheritdoc ICore
-    function emptyRebalance(uint256 id) external {
+    function emptyRebalance(uint256 id) external override {
         PositionInfo memory params = _positions[id];
         if (params.owner != msg.sender) revert Forbidden();
         bytes memory protocolParams_ = _protocolParams;
