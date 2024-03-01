@@ -154,7 +154,6 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     function withdraw(uint256 id, address to) external override {
         PositionInfo memory info = _positions[id];
         if (info.owner != msg.sender) revert Forbidden();
-        if (info.tokenIds.length == 0) revert InvalidLength();
         _userIds[info.owner].remove(id);
         delete _positions[id];
         bytes memory protocolParams_ = _protocolParams;

@@ -92,7 +92,7 @@ contract Unit is Fixture {
         vm.stopPrank();
     }
 
-    function _depositToken(uint256 tokenId) private {
+    function _depositToken(uint256 tokenId) private returns (uint256 id) {
         vm.startPrank(Constants.OWNER);
         core = new Core(ammModule, strategyModule, oracle, Constants.OWNER);
         core.setProtocolParams(
@@ -129,7 +129,7 @@ contract Unit is Fixture {
             IVeloOracle.SecurityParams({lookback: 100, maxAllowedDelta: 100})
         );
 
-        core.deposit(depositParams);
+        id = core.deposit(depositParams);
 
         vm.stopPrank();
     }
@@ -144,11 +144,19 @@ contract Unit is Fixture {
             pool
         );
 
-        _depositToken(tokenId);
+        uint256 positionId = _depositToken(tokenId);
+
+        vm.expectRevert(abi.encodeWithSignature("Forbidden()"));
+        core.withdraw(positionId, Constants.OWNER);
 
         vm.startPrank(Constants.OWNER);
 
-        ICore.WithdrawParams memory withdrawParams;
+        assertEq(positionManager.ownerOf(tokenId), address(pool.gauge()));
+        core.withdraw(positionId, Constants.OWNER);
+        assertEq(positionManager.ownerOf(tokenId), Constants.OWNER);
+
+        vm.expectRevert(abi.encodeWithSignature("Forbidden()"));
+        core.withdraw(positionId, Constants.OWNER);
 
         vm.stopPrank();
     }
