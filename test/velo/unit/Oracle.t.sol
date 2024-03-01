@@ -4,6 +4,8 @@ pragma solidity ^0.8.0;
 import "./Fixture.sol";
 
 contract Unit is Fixture {
+    VeloOracle public oracle;
+
     function testConstructor() external {
         oracle = new VeloOracle();
         assertTrue(address(oracle) != address(0));

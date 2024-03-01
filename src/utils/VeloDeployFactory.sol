@@ -13,8 +13,7 @@ contract VeloDeployFactory is IVeloDeployFactory, DefaultAccessControl {
         private _tickSpacingToStrategyParams;
     mapping(int24 => ICore.DepositParams) private _tickSpacingToDepositParams;
 
-    /// @inheritdoc IVeloDeployFactory
-    bytes32 public constant STORAGE_SLOT = keccak256("VeloDeployFactory");
+    bytes32 internal constant STORAGE_SLOT = keccak256("VeloDeployFactory");
 
     function _contractStorage() internal pure returns (Storage storage s) {
         bytes32 position = STORAGE_SLOT;
@@ -236,14 +235,19 @@ contract VeloDeployFactory is IVeloDeployFactory, DefaultAccessControl {
             );
 
             depositParams.owner = address(lpWrapper);
-            depositParams.farm = pool.gauge();
-            depositParams.vault = address(
+            address farm = address(
                 new StakingRewards(
                     s.mutableParams.farmOwner,
                     s.mutableParams.farmOperator,
                     s.mutableParams.rewardsToken,
                     address(lpWrapper)
                 )
+            );
+            depositParams.callbackParams = abi.encode(
+                IVeloAmmModule.CallbackParams({
+                    farm: farm,
+                    gauge: address(pool.gauge())
+                })
             );
             depositParams.strategyParams = abi.encode(
                 IPulseStrategyModule.StrategyParams({
@@ -257,7 +261,7 @@ contract VeloDeployFactory is IVeloDeployFactory, DefaultAccessControl {
             positionId = s.immutableParams.core.deposit(depositParams);
             poolAddresses = PoolAddresses({
                 lpWrapper: address(lpWrapper),
-                synthetixFarm: depositParams.vault
+                synthetixFarm: farm
             });
             _poolToAddresses[address(pool)] = poolAddresses;
         }

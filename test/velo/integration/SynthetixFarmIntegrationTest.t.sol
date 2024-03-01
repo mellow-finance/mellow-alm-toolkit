@@ -31,10 +31,10 @@ contract Integration is Fixture {
         depositParams.owner = Constants.OWNER;
         depositParams.strategyParams = abi.encode(
             IPulseStrategyModule.StrategyParams({
-                tickNeighborhood: pool.tickSpacing() * 2,
+                tickNeighborhood: pool.tickSpacing() / 4,
                 tickSpacing: pool.tickSpacing(),
                 strategyType: IPulseStrategyModule.StrategyType.Original,
-                width: 200
+                width: pool.tickSpacing() * 2
             })
         );
         depositParams.securityParams = new bytes(0);
@@ -49,8 +49,12 @@ contract Integration is Fixture {
 
         positionManager.approve(address(core), depositParams.tokenIds[0]);
         depositParams.owner = address(lpWrapper);
-        depositParams.farm = address(Constants.GAUGE);
-        depositParams.vault = address(stakingRewards);
+        depositParams.callbackParams = abi.encode(
+            IVeloAmmModule.CallbackParams({
+                farm: address(stakingRewards),
+                gauge: Constants.GAUGE
+            })
+        );
 
         uint256 nftId2 = core.deposit(depositParams);
 

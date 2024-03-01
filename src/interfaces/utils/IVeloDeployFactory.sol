@@ -60,8 +60,6 @@ interface IVeloDeployFactory {
         int24
     ) external view returns (ICore.DepositParams memory);
 
-    function STORAGE_SLOT() external view returns (bytes32);
-
     function updateStrategyParams(
         int24 tickSpacing,
         StrategyParams memory params

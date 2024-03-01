@@ -16,16 +16,6 @@ contract Fixture is Test {
         INonfungiblePositionManager(Constants.NONFUNGIBLE_POSITION_MANAGER);
     ICLFactory public factory = ICLFactory(Constants.VELO_FACTORY);
 
-    VeloAmmModule public ammModule;
-    PulseStrategyModule public strategyModule;
-    VeloOracle public oracle;
-    VeloDepositWithdrawModule public dwModule;
-    LpWrapper public lpWrapper;
-    Core public core;
-    address public farm;
-    StakingRewards public stakingRewards;
-    PulseVeloBot public bot;
-
     ISwapRouter public swapRouter =
         ISwapRouter(
             address(new SwapRouter(positionManager.factory(), Constants.WETH))
@@ -35,8 +25,6 @@ contract Fixture is Test {
         IQuoterV2(
             address(new QuoterV2(positionManager.factory(), Constants.WETH))
         );
-
-    VeloDeployFactory public deployFactory;
 
     function mint(
         address token0,

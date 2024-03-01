@@ -6,7 +6,30 @@ import "./Fixture.sol";
 contract Unit is Fixture {
     using SafeERC20 for IERC20;
 
-    VeloAmmModule public module;
+    VeloAmmModule public module =
+        new VeloAmmModule(
+            INonfungiblePositionManager(Constants.NONFUNGIBLE_POSITION_MANAGER)
+        );
+
+    ICLPool public pool = ICLPool(0xC358c95b146E9597339b376063A2cB657AFf84eb);
+
+    address public testFarmAddress = address(123);
+
+    bytes public defaultCallbackParams =
+        abi.encode(
+            IVeloAmmModule.CallbackParams({
+                farm: testFarmAddress,
+                gauge: address(pool.gauge())
+            })
+        );
+
+    bytes public defaultProtocolParams =
+        abi.encode(
+            IVeloAmmModule.ProtocolParams({
+                feeD9: 3e8,
+                treasury: Constants.PROTOCOL_TREASURY
+            })
+        );
 
     function addRewardToGauge(uint256 amount, ICLGauge gauge) public {
         address voter = address(gauge.voter());
@@ -28,38 +51,12 @@ contract Unit is Fixture {
     }
 
     function testConstructor() external {
-        vm.expectRevert();
         module = new VeloAmmModule(
-            INonfungiblePositionManager(address(0)),
-            address(0),
-            0
-        );
-        vm.expectRevert(abi.encodeWithSignature("AddressZero()"));
-        module = new VeloAmmModule(
-            INonfungiblePositionManager(Constants.NONFUNGIBLE_POSITION_MANAGER),
-            address(0),
-            0
-        );
-        vm.expectRevert(abi.encodeWithSignature("InvalidFee()"));
-        module = new VeloAmmModule(
-            INonfungiblePositionManager(Constants.NONFUNGIBLE_POSITION_MANAGER),
-            address(1),
-            3e8 + 1
-        );
-        module = new VeloAmmModule(
-            INonfungiblePositionManager(Constants.NONFUNGIBLE_POSITION_MANAGER),
-            address(1),
-            3e8
+            INonfungiblePositionManager(Constants.NONFUNGIBLE_POSITION_MANAGER)
         );
     }
 
     function testGetAmountsForLiquidity() external {
-        module = new VeloAmmModule(
-            INonfungiblePositionManager(Constants.NONFUNGIBLE_POSITION_MANAGER),
-            address(1),
-            3e8
-        );
-
         {
             uint160 sqrtRatioX96 = TickMath.getSqrtRatioAtTick(1234);
             int24 tickLower = -1234;
@@ -119,13 +116,6 @@ contract Unit is Fixture {
     }
 
     function testTvl() external {
-        module = new VeloAmmModule(
-            INonfungiblePositionManager(Constants.NONFUNGIBLE_POSITION_MANAGER),
-            address(1),
-            3e8
-        );
-
-        ICLPool pool = ICLPool(0xC358c95b146E9597339b376063A2cB657AFf84eb);
         uint256 tokenId = mint(
             pool.token0(),
             pool.token1(),
@@ -152,8 +142,8 @@ contract Unit is Fixture {
             (uint256 amount0, uint256 amount1) = module.tvl(
                 tokenId,
                 TickMath.getSqrtRatioAtTick(0),
-                address(0),
-                address(0)
+                defaultCallbackParams,
+                defaultProtocolParams
             );
             assertTrue(amount0 > 0 && amount1 > 0 && amount0 == amount1);
             (uint256 expected0, uint256 expected1) = LiquidityAmounts
@@ -172,8 +162,8 @@ contract Unit is Fixture {
             (uint256 amount0, uint256 amount1) = module.tvl(
                 tokenId,
                 TickMath.getSqrtRatioAtTick(0),
-                address(0),
-                address(0)
+                defaultCallbackParams,
+                defaultProtocolParams
             );
             assertTrue(amount0 > 0 && amount1 > 0 && amount0 == amount1);
             (uint256 expected0, uint256 expected1) = LiquidityAmounts
@@ -190,8 +180,8 @@ contract Unit is Fixture {
             (uint256 amount0, uint256 amount1) = module.tvl(
                 tokenId,
                 sqrtPriceX96,
-                address(0),
-                address(0)
+                defaultCallbackParams,
+                defaultProtocolParams
             );
             assertTrue(amount0 > 0 && amount1 > 0 && amount0 != amount1);
             (uint256 left0, uint256 left1) = LiquidityAmounts
@@ -222,13 +212,6 @@ contract Unit is Fixture {
     }
 
     function testGetPositionInfo() external {
-        module = new VeloAmmModule(
-            INonfungiblePositionManager(Constants.NONFUNGIBLE_POSITION_MANAGER),
-            address(1),
-            3e8
-        );
-
-        ICLPool pool = ICLPool(0xC358c95b146E9597339b376063A2cB657AFf84eb);
         uint256 tokenId = mint(
             pool.token0(),
             pool.token1(),
@@ -265,12 +248,6 @@ contract Unit is Fixture {
     }
 
     function testGetPool() external {
-        module = new VeloAmmModule(
-            INonfungiblePositionManager(Constants.NONFUNGIBLE_POSITION_MANAGER),
-            address(1),
-            3e8
-        );
-
         int24[6] memory tickSpacings = [
             int24(1),
             int24(50),
@@ -302,12 +279,6 @@ contract Unit is Fixture {
     }
 
     function testGetProperty() external {
-        module = new VeloAmmModule(
-            INonfungiblePositionManager(Constants.NONFUNGIBLE_POSITION_MANAGER),
-            address(1),
-            3e8
-        );
-
         int24[5] memory tickSpacings = [
             int24(1),
             int24(50),
@@ -330,22 +301,19 @@ contract Unit is Fixture {
     }
 
     function testBeforeRebalance() external {
-        address testFarmAddress = address(123);
-        address testTreasuryAddress = address(124);
-
-        uint256 protocolFeeD = 3e8;
-
-        module = new VeloAmmModule(
-            INonfungiblePositionManager(Constants.NONFUNGIBLE_POSITION_MANAGER),
-            testTreasuryAddress,
-            protocolFeeD
+        module.beforeRebalance(0, new bytes(0), new bytes(0));
+        vm.expectRevert(abi.encodeWithSignature("AddressZero()"));
+        module.beforeRebalance(
+            0,
+            abi.encode(
+                IVeloAmmModule.CallbackParams({
+                    farm: address(0),
+                    gauge: address(0)
+                })
+            ),
+            defaultProtocolParams
         );
 
-        module.beforeRebalance(address(0), address(0), 0);
-        vm.expectRevert(abi.encodeWithSignature("AddressZero()"));
-        module.beforeRebalance(address(1), address(0), 0);
-
-        ICLPool pool = ICLPool(0xC358c95b146E9597339b376063A2cB657AFf84eb);
         uint256 tokenId = mint(
             pool.token0(),
             pool.token1(),
@@ -361,10 +329,10 @@ contract Unit is Fixture {
 
         (bool success, ) = address(module).delegatecall(
             abi.encodeWithSelector(
-                IVeloAmmModule.afterRebalance.selector,
-                address(pool.gauge()),
-                address(testFarmAddress),
-                tokenId
+                IAmmModule.afterRebalance.selector,
+                tokenId,
+                defaultCallbackParams,
+                defaultProtocolParams
             )
         );
         assertTrue(success);
@@ -374,10 +342,10 @@ contract Unit is Fixture {
 
         (success, ) = address(module).delegatecall(
             abi.encodeWithSelector(
-                IVeloAmmModule.beforeRebalance.selector,
-                address(pool.gauge()),
-                address(testFarmAddress),
-                tokenId
+                IAmmModule.beforeRebalance.selector,
+                tokenId,
+                defaultCallbackParams,
+                defaultProtocolParams
             )
         );
         assertTrue(success);
@@ -388,24 +356,26 @@ contract Unit is Fixture {
             1 wei
         );
         assertApproxEqAbs(
-            IERC20(Constants.VELO).balanceOf(testTreasuryAddress),
+            IERC20(Constants.VELO).balanceOf(Constants.PROTOCOL_TREASURY),
             3 ether,
             1 wei
         );
     }
 
     function testAfterRebalance() external {
-        module = new VeloAmmModule(
-            INonfungiblePositionManager(Constants.NONFUNGIBLE_POSITION_MANAGER),
-            address(1),
-            3e8
+        module.beforeRebalance(0, new bytes(0), new bytes(0));
+        vm.expectRevert(abi.encodeWithSignature("AddressZero()"));
+        module.beforeRebalance(
+            0,
+            abi.encode(
+                IVeloAmmModule.CallbackParams({
+                    farm: address(0),
+                    gauge: address(0)
+                })
+            ),
+            defaultProtocolParams
         );
 
-        module.beforeRebalance(address(0), address(0), 0);
-        vm.expectRevert(abi.encodeWithSignature("AddressZero()"));
-        module.beforeRebalance(address(1), address(0), 0);
-
-        ICLPool pool = ICLPool(0xC358c95b146E9597339b376063A2cB657AFf84eb);
         uint256 tokenId = mint(
             pool.token0(),
             pool.token1(),
@@ -419,43 +389,32 @@ contract Unit is Fixture {
         positionManager.transferFrom(Constants.OWNER, address(this), tokenId);
         vm.stopPrank();
 
-        address testFarmAddress = address(123);
         (bool success, ) = address(module).delegatecall(
             abi.encodeWithSelector(
-                IVeloAmmModule.afterRebalance.selector,
-                address(pool.gauge()),
-                address(testFarmAddress),
-                tokenId
+                IAmmModule.afterRebalance.selector,
+                tokenId,
+                defaultCallbackParams,
+                defaultProtocolParams
             )
         );
         assertTrue(success);
 
         (success, ) = address(module).delegatecall(
             abi.encodeWithSelector(
-                IVeloAmmModule.beforeRebalance.selector,
-                address(pool.gauge()),
-                address(testFarmAddress),
-                tokenId
+                IAmmModule.beforeRebalance.selector,
+                tokenId,
+                defaultCallbackParams,
+                defaultProtocolParams
             )
         );
         assertTrue(success);
 
         (success, ) = address(module).delegatecall(
             abi.encodeWithSelector(
-                IVeloAmmModule.afterRebalance.selector,
-                address(0),
-                address(testFarmAddress),
-                tokenId
-            )
-        );
-        assertTrue(success);
-
-        (success, ) = address(module).delegatecall(
-            abi.encodeWithSelector(
-                IVeloAmmModule.afterRebalance.selector,
-                address(pool.gauge()),
-                address(testFarmAddress),
-                tokenId
+                IAmmModule.afterRebalance.selector,
+                tokenId,
+                defaultCallbackParams,
+                defaultProtocolParams
             )
         );
         assertTrue(success);
@@ -463,10 +422,10 @@ contract Unit is Fixture {
 
         (success, ) = address(module).delegatecall(
             abi.encodeWithSelector(
-                IVeloAmmModule.beforeRebalance.selector,
-                address(pool.gauge()),
-                address(testFarmAddress),
-                tokenId
+                IAmmModule.beforeRebalance.selector,
+                tokenId,
+                defaultCallbackParams,
+                defaultProtocolParams
             )
         );
         assertTrue(success);
@@ -474,13 +433,6 @@ contract Unit is Fixture {
     }
 
     function testTransferFrom() external {
-        module = new VeloAmmModule(
-            INonfungiblePositionManager(Constants.NONFUNGIBLE_POSITION_MANAGER),
-            address(1),
-            3e8
-        );
-
-        ICLPool pool = ICLPool(0xC358c95b146E9597339b376063A2cB657AFf84eb);
         uint256 tokenId = mint(
             pool.token0(),
             pool.token1(),
@@ -497,5 +449,69 @@ contract Unit is Fixture {
         assertEq(positionManager.ownerOf(tokenId), address(module));
         module.transferFrom(address(module), Constants.OWNER, tokenId);
         assertEq(positionManager.ownerOf(tokenId), Constants.OWNER);
+    }
+
+    function testValidateCallbackParams() external {
+        vm.expectRevert(abi.encodeWithSignature("AddressZero()"));
+        module.validateCallbackParams(
+            abi.encode(
+                IVeloAmmModule.CallbackParams({
+                    farm: address(0),
+                    gauge: address(0)
+                })
+            )
+        );
+        vm.expectRevert(abi.encodeWithSignature("AddressZero()"));
+        module.validateCallbackParams(
+            abi.encode(
+                IVeloAmmModule.CallbackParams({
+                    farm: address(1),
+                    gauge: address(0)
+                })
+            )
+        );
+        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        module.validateCallbackParams(new bytes(123));
+
+        module.validateCallbackParams(
+            abi.encode(
+                IVeloAmmModule.CallbackParams({
+                    farm: address(1),
+                    gauge: address(2)
+                })
+            )
+        );
+    }
+
+    function testValidateProtocolParams() external {
+        vm.expectRevert(abi.encodeWithSignature("AddressZero()"));
+        module.validateProtocolParams(
+            abi.encode(
+                IVeloAmmModule.ProtocolParams({
+                    feeD9: 3e8,
+                    treasury: address(0)
+                })
+            )
+        );
+        vm.expectRevert(abi.encodeWithSignature("InvalidFee()"));
+        module.validateProtocolParams(
+            abi.encode(
+                IVeloAmmModule.ProtocolParams({
+                    feeD9: 3e8 + 1,
+                    treasury: address(1)
+                })
+            )
+        );
+        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        module.validateProtocolParams(new bytes(123));
+
+        module.validateProtocolParams(
+            abi.encode(
+                IVeloAmmModule.ProtocolParams({
+                    feeD9: 3e8,
+                    treasury: address(1)
+                })
+            )
+        );
     }
 }

@@ -13,23 +13,22 @@ contract PulseStrategyModule is IPulseStrategyModule {
     /// @inheritdoc IPulseStrategyModule
     uint256 public constant Q96 = 2 ** 96;
 
-    /// @inheritdoc IPulseStrategyModule
+    /// @inheritdoc IStrategyModule
     function validateStrategyParams(
-        bytes memory params
+        bytes memory params_
     ) external pure override {
-        StrategyParams memory strategyParams = abi.decode(
-            params,
-            (StrategyParams)
-        );
+        StrategyParams memory params = abi.decode(params_, (StrategyParams));
         if (
-            strategyParams.width == 0 ||
-            strategyParams.tickSpacing == 0 ||
-            (strategyParams.strategyType != StrategyType.Original &&
-                strategyParams.tickNeighborhood != 0)
+            params.width == 0 ||
+            params.tickSpacing == 0 ||
+            params.width % params.tickSpacing != 0 ||
+            params.tickNeighborhood * 2 > params.width ||
+            (params.strategyType != StrategyType.Original &&
+                params.tickNeighborhood != 0)
         ) revert InvalidParams();
     }
 
-    /// @inheritdoc IPulseStrategyModule
+    /// @inheritdoc IStrategyModule
     function getTargets(
         ICore.PositionInfo memory info,
         IAmmModule ammModule,

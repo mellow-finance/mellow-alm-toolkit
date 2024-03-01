@@ -262,91 +262,6 @@ contract Fixture is Test {
         skip(3 * 24 * 3600);
     }
 
-    function removePosition(
-        uint256 tokenId
-    )
-        public
-        returns (
-            uint256 amount0,
-            uint256 amount1,
-            uint256 liquidityAmount0,
-            uint256 liquidityAmount1
-        )
-    {
-        vm.startPrank(address(core));
-        (uint160 sqrtRatioX96, , , , , ) = pool.slot0();
-
-        (
-            ,
-            ,
-            ,
-            ,
-            ,
-            int24 tickLower,
-            int24 tickUpper,
-            uint128 liquidity,
-            ,
-            ,
-            ,
-
-        ) = positionManager.positions(tokenId);
-        (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
-            sqrtRatioX96,
-            TickMath.getSqrtRatioAtTick(tickLower),
-            TickMath.getSqrtRatioAtTick(tickUpper),
-            liquidity
-        );
-
-        (liquidityAmount0, liquidityAmount1) = positionManager
-            .decreaseLiquidity(
-                INonfungiblePositionManager.DecreaseLiquidityParams({
-                    tokenId: tokenId,
-                    liquidity: liquidity,
-                    amount0Min: 0,
-                    amount1Min: 0,
-                    deadline: type(uint256).max
-                })
-            );
-
-        positionManager.collect(
-            INonfungiblePositionManager.CollectParams({
-                recipient: address(core),
-                tokenId: tokenId,
-                amount0Max: uint128(liquidityAmount0),
-                amount1Max: uint128(liquidityAmount1)
-            })
-        );
-
-        vm.stopPrank();
-    }
-
-    function addPosition(
-        uint256 tokenId,
-        uint256 amount0,
-        uint256 amount1
-    ) public {
-        vm.startPrank(address(core));
-        IERC20(pool.token0()).safeIncreaseAllowance(
-            address(positionManager),
-            amount0
-        );
-        IERC20(pool.token1()).safeIncreaseAllowance(
-            address(positionManager),
-            amount1
-        );
-        positionManager.increaseLiquidity(
-            INonfungiblePositionManager.IncreaseLiquidityParams({
-                tokenId: tokenId,
-                amount0Desired: amount0,
-                amount1Desired: amount1,
-                amount0Min: 0,
-                amount1Min: 0,
-                deadline: type(uint256).max
-            })
-        );
-        vm.stopPrank();
-    }
-
     function determineSwapAmounts(
         uint256 id
     ) public returns (PulseVeloBot.SwapParams memory) {
@@ -360,12 +275,13 @@ contract Fixture is Test {
         if (!flag) revert("Rebalance is not necessary");
         vm.stopPrank();
 
-        (
-            uint256 amount0,
-            uint256 amount1,
-            uint256 liquidityAmount0,
-            uint256 liquidityAmount1
-        ) = removePosition(tokenId);
+        (uint160 sqrtPriceX96, , , , , ) = pool.slot0();
+        (uint256 amount0, uint256 amount1) = ammModule.tvl(
+            tokenId,
+            sqrtPriceX96,
+            new bytes(0),
+            new bytes(0)
+        );
 
         PulseVeloBot.SwapParams memory swapParams = bot
             .calculateSwapAmountsPreciselySingle(
@@ -381,8 +297,6 @@ contract Fixture is Test {
                     pool: pool
                 })
             );
-
-        addPosition(tokenId, liquidityAmount0, liquidityAmount1);
 
         return swapParams;
     }
@@ -414,13 +328,19 @@ contract Fixture is Test {
         }
 
         ammModule = new VeloAmmModule(
-            INonfungiblePositionManager(positionManager),
-            Constants.PROTOCOL_TREASURY,
-            Constants.PROTOCOL_FEE_D9
+            INonfungiblePositionManager(positionManager)
         );
         strategyModule = new PulseStrategyModule();
         oracle = new VeloOracle();
         core = new Core(ammModule, strategyModule, oracle, Constants.OWNER);
+        core.setProtocolParams(
+            abi.encode(
+                IVeloAmmModule.ProtocolParams({
+                    feeD9: 1e8,
+                    treasury: Constants.PROTOCOL_TREASURY
+                })
+            )
+        );
 
         dwModule = new VeloDepositWithdrawModule(
             INonfungiblePositionManager(positionManager)

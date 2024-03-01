@@ -22,9 +22,8 @@ interface ICore is IERC721Receiver {
         uint24 property;
         address owner;
         address pool;
-        address farm;
-        address vault;
         uint256[] tokenIds;
+        bytes callbackParams;
         bytes securityParams;
         bytes strategyParams;
     }
@@ -41,9 +40,8 @@ interface ICore is IERC721Receiver {
     struct DepositParams {
         uint256[] tokenIds;
         address owner;
-        address farm;
-        address vault;
         uint16 slippageD4;
+        bytes callbackParams;
         bytes strategyParams;
         bytes securityParams;
     }
@@ -88,6 +86,8 @@ interface ICore is IERC721Receiver {
         address user
     ) external view returns (uint256[] memory ids);
 
+    function protocolParams() external view returns (bytes memory);
+
     /**
      * @dev Sets the operator flag to enable or disable operator functionality.
      * Only the admin can call this function.
@@ -95,11 +95,14 @@ interface ICore is IERC721Receiver {
      */
     function setOperatorFlag(bool operatorFlag_) external;
 
+    function setProtocolParams(bytes memory params) external;
+
     /**
      * @dev Sets the position parameters for a given ID.
      * @param id The ID of the position.
      * @param slippageD4 The maximum permissible proportion of the capital allocated to positions
      * that can be used to compensate rebalancers for their services. A value of 10,000 (1e4) represents 100%.
+     * @param callbackParams The callback parameters.
      * @param strategyParams The strategy parameters.
      * @param securityParams The security parameters.
      * Requirements:
@@ -110,6 +113,7 @@ interface ICore is IERC721Receiver {
     function setPositionParams(
         uint256 id,
         uint16 slippageD4,
+        bytes memory callbackParams,
         bytes memory strategyParams,
         bytes memory securityParams
     ) external;
