@@ -13,6 +13,7 @@ import "../../external/velo/INonfungiblePositionManager.sol";
 interface IVeloAmmModule is IAmmModule {
     error InvalidFee();
     error AddressZero();
+    error InvalidParams();
 
     struct CallbackParams {
         address farm;

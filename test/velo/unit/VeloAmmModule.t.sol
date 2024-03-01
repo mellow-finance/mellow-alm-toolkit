@@ -57,10 +57,6 @@ contract Unit is Fixture {
     }
 
     function testGetAmountsForLiquidity() external {
-        module = new VeloAmmModule(
-            INonfungiblePositionManager(Constants.NONFUNGIBLE_POSITION_MANAGER)
-        );
-
         {
             uint160 sqrtRatioX96 = TickMath.getSqrtRatioAtTick(1234);
             int24 tickLower = -1234;
@@ -120,10 +116,6 @@ contract Unit is Fixture {
     }
 
     function testTvl() external {
-        module = new VeloAmmModule(
-            INonfungiblePositionManager(Constants.NONFUNGIBLE_POSITION_MANAGER)
-        );
-
         uint256 tokenId = mint(
             pool.token0(),
             pool.token1(),
@@ -220,10 +212,6 @@ contract Unit is Fixture {
     }
 
     function testGetPositionInfo() external {
-        module = new VeloAmmModule(
-            INonfungiblePositionManager(Constants.NONFUNGIBLE_POSITION_MANAGER)
-        );
-
         uint256 tokenId = mint(
             pool.token0(),
             pool.token1(),
@@ -260,9 +248,6 @@ contract Unit is Fixture {
     }
 
     function testGetPool() external {
-        module = new VeloAmmModule(
-            INonfungiblePositionManager(Constants.NONFUNGIBLE_POSITION_MANAGER)
-        );
         int24[6] memory tickSpacings = [
             int24(1),
             int24(50),
@@ -294,10 +279,6 @@ contract Unit is Fixture {
     }
 
     function testGetProperty() external {
-        module = new VeloAmmModule(
-            INonfungiblePositionManager(Constants.NONFUNGIBLE_POSITION_MANAGER)
-        );
-
         int24[5] memory tickSpacings = [
             int24(1),
             int24(50),
@@ -320,10 +301,6 @@ contract Unit is Fixture {
     }
 
     function testBeforeRebalance() external {
-        module = new VeloAmmModule(
-            INonfungiblePositionManager(Constants.NONFUNGIBLE_POSITION_MANAGER)
-        );
-
         module.beforeRebalance(0, new bytes(0), new bytes(0));
         vm.expectRevert(abi.encodeWithSignature("AddressZero()"));
         module.beforeRebalance(
@@ -386,10 +363,6 @@ contract Unit is Fixture {
     }
 
     function testAfterRebalance() external {
-        module = new VeloAmmModule(
-            INonfungiblePositionManager(Constants.NONFUNGIBLE_POSITION_MANAGER)
-        );
-
         module.beforeRebalance(0, new bytes(0), new bytes(0));
         vm.expectRevert(abi.encodeWithSignature("AddressZero()"));
         module.beforeRebalance(
@@ -460,10 +433,6 @@ contract Unit is Fixture {
     }
 
     function testTransferFrom() external {
-        module = new VeloAmmModule(
-            INonfungiblePositionManager(Constants.NONFUNGIBLE_POSITION_MANAGER)
-        );
-
         uint256 tokenId = mint(
             pool.token0(),
             pool.token1(),
@@ -480,5 +449,69 @@ contract Unit is Fixture {
         assertEq(positionManager.ownerOf(tokenId), address(module));
         module.transferFrom(address(module), Constants.OWNER, tokenId);
         assertEq(positionManager.ownerOf(tokenId), Constants.OWNER);
+    }
+
+    function testValidateCallbackParams() external {
+        vm.expectRevert(abi.encodeWithSignature("AddressZero()"));
+        module.validateCallbackParams(
+            abi.encode(
+                IVeloAmmModule.CallbackParams({
+                    farm: address(0),
+                    gauge: address(0)
+                })
+            )
+        );
+        vm.expectRevert(abi.encodeWithSignature("AddressZero()"));
+        module.validateCallbackParams(
+            abi.encode(
+                IVeloAmmModule.CallbackParams({
+                    farm: address(1),
+                    gauge: address(0)
+                })
+            )
+        );
+        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        module.validateCallbackParams(new bytes(123));
+
+        module.validateCallbackParams(
+            abi.encode(
+                IVeloAmmModule.CallbackParams({
+                    farm: address(1),
+                    gauge: address(2)
+                })
+            )
+        );
+    }
+
+    function testValidateProtocolParams() external {
+        vm.expectRevert(abi.encodeWithSignature("AddressZero()"));
+        module.validateProtocolParams(
+            abi.encode(
+                IVeloAmmModule.ProtocolParams({
+                    feeD9: 3e8,
+                    treasury: address(0)
+                })
+            )
+        );
+        vm.expectRevert(abi.encodeWithSignature("InvalidFee()"));
+        module.validateProtocolParams(
+            abi.encode(
+                IVeloAmmModule.ProtocolParams({
+                    feeD9: 3e8 + 1,
+                    treasury: address(1)
+                })
+            )
+        );
+        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        module.validateProtocolParams(new bytes(123));
+
+        module.validateProtocolParams(
+            abi.encode(
+                IVeloAmmModule.ProtocolParams({
+                    feeD9: 3e8,
+                    treasury: address(1)
+                })
+            )
+        );
     }
 }

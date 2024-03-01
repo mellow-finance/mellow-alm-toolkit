@@ -6,6 +6,8 @@ import "../../interfaces/modules/velo/IVeloAmmModule.sol";
 import "../../libraries/external/LiquidityAmounts.sol";
 import "../../libraries/external/TickMath.sol";
 
+import "forge-std/Test.sol";
+
 contract VeloAmmModule is IVeloAmmModule {
     using SafeERC20 for IERC20;
 
@@ -25,11 +27,23 @@ contract VeloAmmModule is IVeloAmmModule {
     }
 
     function validateProtocolParams(bytes memory params) external pure {
-        // if (params.length != 3213) revert();
+        if (params.length != 0x40) revert InvalidParams();
+        IVeloAmmModule.ProtocolParams memory params_ = abi.decode(
+            params,
+            (IVeloAmmModule.ProtocolParams)
+        );
+        if (params_.feeD9 > MAX_PROTOCOL_FEE) revert InvalidFee();
+        if (params_.treasury == address(0)) revert AddressZero();
     }
 
     function validateCallbackParams(bytes memory params) external pure {
-        // if (params.length != 3213) revert();
+        if (params.length != 0x40) revert InvalidParams();
+        IVeloAmmModule.CallbackParams memory params_ = abi.decode(
+            params,
+            (IVeloAmmModule.CallbackParams)
+        );
+        if (params_.farm == address(0)) revert AddressZero();
+        if (params_.gauge == address(0)) revert AddressZero();
     }
 
     /// @inheritdoc IAmmModule

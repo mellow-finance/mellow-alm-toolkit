@@ -7,8 +7,6 @@ import "./libraries/external/FullMath.sol";
 
 import "./utils/DefaultAccessControl.sol";
 
-import "forge-std/Test.sol";
-
 contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     using EnumerableSet for EnumerableSet.UintSet;
 
@@ -374,20 +372,17 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     function _validateTarget(TargetPositionInfo memory target) private pure {
         uint256 n = target.liquidityRatiosX96.length;
 
-        console2.log("here0");
         if (n != target.lowerTicks.length) revert InvalidTarget();
         if (n != target.upperTicks.length) revert InvalidTarget();
-        console2.log(target.info.tokenIds.length, n);
         if (n != target.info.tokenIds.length) revert InvalidTarget();
+
         uint256 cumulativeLiquidityX96 = 0;
         for (uint256 i = 0; i < n; i++) {
             cumulativeLiquidityX96 += target.liquidityRatiosX96[i];
         }
-        console2.log("here1");
         if (cumulativeLiquidityX96 != Q96) revert InvalidTarget();
         for (uint256 i = 0; i < n; i++) {
             if (target.lowerTicks[i] >= target.upperTicks[i]) {
-                console2.log("here3");
                 revert InvalidTarget();
             }
         }
