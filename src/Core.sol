@@ -164,29 +164,6 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         }
     }
 
-    function _preprocess(
-        RebalanceParams memory params,
-        PositionInfo memory info,
-        bytes memory protocolParams_,
-        uint160 sqrtPriceX96,
-        uint256 priceX96
-    ) private returns (uint256 capitalInToken1) {
-        for (uint256 i = 0; i < info.tokenIds.length; i++) {
-            uint256 tokenId = info.tokenIds[i];
-            (uint256 amount0, uint256 amount1) = ammModule.tvl(
-                tokenId,
-                sqrtPriceX96,
-                info.callbackParams,
-                protocolParams_
-            );
-            capitalInToken1 +=
-                FullMath.mulDiv(amount0, priceX96, Q96) +
-                amount1;
-            _beforeRebalance(tokenId, info.callbackParams, protocolParams_);
-            _transferFrom(address(this), params.callback, tokenId);
-        }
-    }
-
     /// @inheritdoc ICore
     function rebalance(
         RebalanceParams memory params
@@ -298,6 +275,23 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         return IERC721Receiver.onERC721Received.selector;
     }
 
+    function _validateTarget(TargetPositionInfo memory target) private pure {
+        uint256 n = target.liquidityRatiosX96.length;
+        if (n != target.lowerTicks.length) revert InvalidTarget();
+        if (n != target.upperTicks.length) revert InvalidTarget();
+        if (n != target.info.tokenIds.length) revert InvalidTarget();
+        uint256 cumulativeLiquidityX96 = 0;
+        for (uint256 i = 0; i < n; i++) {
+            cumulativeLiquidityX96 += target.liquidityRatiosX96[i];
+        }
+        if (cumulativeLiquidityX96 != Q96) revert InvalidTarget();
+        for (uint256 i = 0; i < n; i++) {
+            if (target.lowerTicks[i] >= target.upperTicks[i]) {
+                revert InvalidTarget();
+            }
+        }
+    }
+
     function _calculateTargetCapitalX96(
         TargetPositionInfo memory target,
         uint160 sqrtPriceX96,
@@ -314,6 +308,29 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
             targetCapitalInToken1X96 +=
                 FullMath.mulDiv(amount0, priceX96, Q96) +
                 amount1;
+        }
+    }
+
+    function _preprocess(
+        RebalanceParams memory params,
+        PositionInfo memory info,
+        bytes memory protocolParams_,
+        uint160 sqrtPriceX96,
+        uint256 priceX96
+    ) private returns (uint256 capitalInToken1) {
+        for (uint256 i = 0; i < info.tokenIds.length; i++) {
+            uint256 tokenId = info.tokenIds[i];
+            (uint256 amount0, uint256 amount1) = ammModule.tvl(
+                tokenId,
+                sqrtPriceX96,
+                info.callbackParams,
+                protocolParams_
+            );
+            capitalInToken1 +=
+                FullMath.mulDiv(amount0, priceX96, Q96) +
+                amount1;
+            _beforeRebalance(tokenId, info.callbackParams, protocolParams_);
+            _transferFrom(address(this), params.callback, tokenId);
         }
     }
 
@@ -359,22 +376,5 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
             )
         );
         if (!success) revert DelegateCallFailed();
-    }
-
-    function _validateTarget(TargetPositionInfo memory target) private pure {
-        uint256 n = target.liquidityRatiosX96.length;
-        if (n != target.lowerTicks.length) revert InvalidTarget();
-        if (n != target.upperTicks.length) revert InvalidTarget();
-        if (n != target.info.tokenIds.length) revert InvalidTarget();
-        uint256 cumulativeLiquidityX96 = 0;
-        for (uint256 i = 0; i < n; i++) {
-            cumulativeLiquidityX96 += target.liquidityRatiosX96[i];
-        }
-        if (cumulativeLiquidityX96 != Q96) revert InvalidTarget();
-        for (uint256 i = 0; i < n; i++) {
-            if (target.lowerTicks[i] >= target.upperTicks[i]) {
-                revert InvalidTarget();
-            }
-        }
     }
 }
