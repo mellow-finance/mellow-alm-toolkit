@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: BSL-1.1
 pragma solidity ^0.8.0;
 
+import "../libraries/external/FullMath.sol";
+
 import "./VeloDeployFactory.sol";
 
 contract VeloSugarHelper {
-    VeloDeployFactory public factory;
+    VeloDeployFactory public immutable factory;
 
     struct Lp {
         uint256 amount0;

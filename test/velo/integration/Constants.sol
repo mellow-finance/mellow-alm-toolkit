@@ -31,6 +31,7 @@ import "../../../src/libraries/external/velo/PositionValue.sol";
 import "../../../src/utils/LpWrapper.sol";
 
 import "../../../src/utils/VeloDeployFactory.sol";
+import "../../../src/utils/VeloDeployFactoryHelper.sol";
 import "../../../src/utils/VeloSugarHelper.sol";
 
 library Constants {

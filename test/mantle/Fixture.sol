@@ -251,13 +251,7 @@ contract Fixture is Test {
         );
         strategyModule = new PulseStrategyModule();
         oracle = new AgniOracle();
-        core = new Core(
-            ammModule,
-            strategyModule,
-            oracle,
-            address(positionManager),
-            Constants.OWNER
-        );
+        core = new Core(ammModule, strategyModule, oracle, Constants.OWNER);
 
         dwModule = new AgniDepositWithdrawModule(
             INonfungiblePositionManager(positionManager),

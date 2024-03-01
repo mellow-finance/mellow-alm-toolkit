@@ -40,4 +40,8 @@ interface IAmmModule {
     function beforeRebalance(address, address, uint256) external;
 
     function afterRebalance(address, address, uint256) external;
+
+    function transferFrom(address, address, uint256) external;
+
+    function positionManager() external view returns (address);
 }

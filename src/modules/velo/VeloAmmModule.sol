@@ -1,14 +1,10 @@
 // SPDX-License-Identifier: BSL-1.1
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-
 import "../../interfaces/modules/velo/IVeloAmmModule.sol";
 
 import "../../libraries/external/LiquidityAmounts.sol";
 import "../../libraries/external/TickMath.sol";
-
-import "../../utils/DefaultAccessControl.sol";
 
 contract VeloAmmModule is IVeloAmmModule {
     using SafeERC20 for IERC20;
@@ -18,8 +14,8 @@ contract VeloAmmModule is IVeloAmmModule {
     /// @inheritdoc IVeloAmmModule
     uint256 public constant MAX_PROTOCOL_FEE = 3e8; // 30%
 
-    /// @inheritdoc IVeloAmmModule
-    INonfungiblePositionManager public immutable positionManager;
+    /// @inheritdoc IAmmModule
+    address public immutable positionManager;
     /// @inheritdoc IVeloAmmModule
     ICLFactory public immutable factory;
     /// @inheritdoc IVeloAmmModule
@@ -32,17 +28,15 @@ contract VeloAmmModule is IVeloAmmModule {
         address protocolTreasury_,
         uint256 protocolFeeD9_
     ) {
-        positionManager = positionManager_;
-        factory = ICLFactory(positionManager.factory());
-        if (protocolTreasury_ == address(0))
-            revert("VeloAmmModule: treasury is zero");
-        if (protocolFeeD9_ > MAX_PROTOCOL_FEE)
-            revert("VeloAmmModule: invalid fee");
+        positionManager = address(positionManager_);
+        factory = ICLFactory(positionManager_.factory());
+        if (protocolTreasury_ == address(0)) revert AddressZero();
+        if (protocolFeeD9_ > MAX_PROTOCOL_FEE) revert InvalidFee();
         protocolTreasury = protocolTreasury_;
         protocolFeeD9 = protocolFeeD9_;
     }
 
-    /// @inheritdoc IVeloAmmModule
+    /// @inheritdoc IAmmModule
     function getAmountsForLiquidity(
         uint128 liquidity,
         uint160 sqrtPriceX96,
@@ -58,7 +52,7 @@ contract VeloAmmModule is IVeloAmmModule {
             );
     }
 
-    /// @inheritdoc IVeloAmmModule
+    /// @inheritdoc IAmmModule
     function tvl(
         uint256 tokenId,
         uint160 sqrtRatioX96,
@@ -78,7 +72,7 @@ contract VeloAmmModule is IVeloAmmModule {
             ,
             ,
 
-        ) = positionManager.positions(tokenId);
+        ) = INonfungiblePositionManager(positionManager).positions(tokenId);
         return
             getAmountsForLiquidity(
                 liquidity,
@@ -88,7 +82,7 @@ contract VeloAmmModule is IVeloAmmModule {
             );
     }
 
-    /// @inheritdoc IVeloAmmModule
+    /// @inheritdoc IAmmModule
     function getPositionInfo(
         uint256 tokenId
     ) public view override returns (Position memory position) {
@@ -106,11 +100,11 @@ contract VeloAmmModule is IVeloAmmModule {
             ,
             ,
 
-        ) = positionManager.positions(tokenId);
+        ) = INonfungiblePositionManager(positionManager).positions(tokenId);
         position.property = uint24(tickSpacing);
     }
 
-    /// @inheritdoc IVeloAmmModule
+    /// @inheritdoc IAmmModule
     function getPool(
         address token0,
         address token1,
@@ -124,18 +118,14 @@ contract VeloAmmModule is IVeloAmmModule {
         return uint24(ICLPool(pool).tickSpacing());
     }
 
-    /// @inheritdoc IVeloAmmModule
+    /// @inheritdoc IAmmModule
     function beforeRebalance(
         address gauge,
         address synthetixFarm,
         uint256 tokenId
-    ) external virtual {
+    ) external virtual override {
         if (gauge == address(0)) return;
-        require(
-            synthetixFarm != address(0),
-            "VeloAmmModule: synthetixFarm is zero"
-        );
-
+        if (synthetixFarm == address(0)) revert AddressZero();
         ICLGauge(gauge).getReward(tokenId);
         address token = ICLGauge(gauge).rewardToken();
         uint256 balance = IERC20(token).balanceOf(address(this));
@@ -158,14 +148,27 @@ contract VeloAmmModule is IVeloAmmModule {
         ICLGauge(gauge).withdraw(tokenId);
     }
 
-    /// @inheritdoc IVeloAmmModule
+    /// @inheritdoc IAmmModule
     function afterRebalance(
         address farm,
         address,
         uint256 tokenId
-    ) external virtual {
+    ) external virtual override {
         if (farm == address(0)) return;
-        positionManager.approve(farm, tokenId);
+        INonfungiblePositionManager(positionManager).approve(farm, tokenId);
         ICLGauge(farm).deposit(tokenId);
+    }
+
+    /// @inheritdoc IAmmModule
+    function transferFrom(
+        address from,
+        address to,
+        uint256 tokenId
+    ) external virtual override {
+        INonfungiblePositionManager(positionManager).transferFrom(
+            from,
+            to,
+            tokenId
+        );
     }
 }

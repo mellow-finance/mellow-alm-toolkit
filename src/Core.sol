@@ -16,7 +16,6 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     IAmmModule public immutable ammModule;
     IOracle public immutable oracle;
     IStrategyModule public immutable strategyModule;
-    address public immutable positionManager;
 
     bool public operatorFlag;
 
@@ -28,20 +27,17 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
      * @param ammModule_ The address of the AMM module contract.
      * @param strategyModule_ The address of the strategy module contract.
      * @param oracle_ The address of the oracle contract.
-     * @param positionManager_ The address of the position manager contract.
      * @param admin_ The address of the admin for the Core contract.
      */
     constructor(
         IAmmModule ammModule_,
         IStrategyModule strategyModule_,
         IOracle oracle_,
-        address positionManager_,
         address admin_
     ) DefaultAccessControl(admin_) {
         ammModule = ammModule_;
         strategyModule = strategyModule_;
         oracle = oracle_;
-        positionManager = positionManager_;
     }
 
     /// @inheritdoc ICore
@@ -98,48 +94,24 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         address pool;
         for (uint256 i = 0; i < params.tokenIds.length; i++) {
             uint256 tokenId = params.tokenIds[i];
-            if (tokenId == 0) {
-                revert InvalidParameters();
-            }
-
-            IAmmModule.Position memory ammPosition = ammModule.getPositionInfo(
+            if (tokenId == 0) revert InvalidParameters();
+            IAmmModule.Position memory position_ = ammModule.getPositionInfo(
                 tokenId
             );
-
-            if (ammPosition.liquidity == 0) revert InvalidParameters();
-            address positionPool = ammModule.getPool(
-                ammPosition.token0,
-                ammPosition.token1,
-                ammPosition.property
+            if (position_.liquidity == 0) revert InvalidParameters();
+            address pool_ = ammModule.getPool(
+                position_.token0,
+                position_.token1,
+                position_.property
             );
-
-            if (positionPool == address(0)) {
+            if (pool_ == address(0)) revert InvalidParameters();
+            if (i == 0) {
+                pool = pool_;
+            } else if (pool != pool_) {
                 revert InvalidParameters();
             }
-
-            if (pool == address(0)) {
-                pool = positionPool;
-            } else if (pool != positionPool) {
-                revert InvalidParameters();
-            }
-
-            IERC721(positionManager).transferFrom(
-                msg.sender,
-                address(this),
-                tokenId
-            );
-
-            {
-                (bool success, ) = address(ammModule).delegatecall(
-                    abi.encodeWithSelector(
-                        IAmmModule.afterRebalance.selector,
-                        params.farm,
-                        params.vault,
-                        tokenId
-                    )
-                );
-                if (!success) revert DelegateCallFailed();
-            }
+            _transferFrom(msg.sender, address(this), tokenId);
+            _afterRebalance(params.farm, params.vault, tokenId);
         }
         id = _positions.length;
         _userIds[params.owner].add(id);
@@ -161,22 +133,14 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     /// @inheritdoc ICore
     function withdraw(uint256 id, address to) external override {
         PositionInfo memory info = _positions[id];
-        if (info.tokenIds.length == 0) revert InvalidLength();
         if (info.owner != msg.sender) revert Forbidden();
+        if (info.tokenIds.length == 0) revert InvalidLength();
         _userIds[info.owner].remove(id);
         delete _positions[id];
         for (uint256 i = 0; i < info.tokenIds.length; i++) {
             uint256 tokenId = info.tokenIds[i];
-            (bool success, ) = address(ammModule).delegatecall(
-                abi.encodeWithSelector(
-                    IAmmModule.beforeRebalance.selector,
-                    info.farm,
-                    info.vault,
-                    tokenId
-                )
-            );
-            if (!success) revert DelegateCallFailed();
-            IERC721(positionManager).transferFrom(address(this), to, tokenId);
+            _beforeRebalance(info.farm, info.vault, tokenId);
+            _transferFrom(address(this), to, tokenId);
         }
     }
 
@@ -184,9 +148,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     function rebalance(
         RebalanceParams memory params
     ) external override nonReentrant {
-        if (operatorFlag) {
-            _requireAtLeastOperator();
-        }
+        if (operatorFlag) _requireAtLeastOperator();
         TargetPositionInfo[] memory targets = new TargetPositionInfo[](
             params.ids.length
         );
@@ -195,21 +157,15 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
             uint256 id = params.ids[i];
             PositionInfo memory info = _positions[id];
             oracle.ensureNoMEV(info.pool, info.securityParams);
-            TargetPositionInfo memory target;
-            {
-                bool flag;
-                (flag, target) = strategyModule.getTargets(
-                    info,
-                    ammModule,
-                    oracle
-                );
-                if (!flag) continue;
-                _validateTarget(target);
-            }
+            (bool flag, TargetPositionInfo memory target) = strategyModule
+                .getTargets(info, ammModule, oracle);
+            if (!flag) continue;
+            _validateTarget(target);
             (uint160 sqrtPriceX96, ) = oracle.getOraclePrice(info.pool);
             uint256 priceX96 = FullMath.mulDiv(sqrtPriceX96, sqrtPriceX96, Q96);
             uint256 capitalInToken1 = 0;
-            for (uint256 j = 0; j < info.tokenIds.length; j++) {
+            uint256 n = info.tokenIds.length;
+            for (uint256 j = 0; j < n; j++) {
                 uint256 tokenId = info.tokenIds[j];
                 {
                     (uint256 amount0, uint256 amount1) = ammModule.tvl(
@@ -222,20 +178,8 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
                         FullMath.mulDiv(amount0, priceX96, Q96) +
                         amount1;
                 }
-                (bool success, ) = address(ammModule).delegatecall(
-                    abi.encodeWithSelector(
-                        IAmmModule.beforeRebalance.selector,
-                        target.info.farm,
-                        target.info.vault,
-                        tokenId
-                    )
-                );
-                if (!success) revert DelegateCallFailed();
-                IERC721(positionManager).transferFrom(
-                    address(this),
-                    params.callback,
-                    tokenId
-                );
+                _beforeRebalance(info.farm, info.vault, tokenId);
+                _transferFrom(address(this), params.callback, tokenId);
             }
 
             uint256 targetCapitalInToken1X96 = _calculateTargetCapitalX96(
@@ -243,10 +187,8 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
                 sqrtPriceX96,
                 priceX96
             );
-            target.minLiquidities = new uint256[](
-                target.liquidityRatiosX96.length
-            );
-            for (uint256 j = 0; j < target.minLiquidities.length; j++) {
+            target.minLiquidities = new uint256[](n);
+            for (uint256 j = 0; j < n; j++) {
                 target.minLiquidities[j] = FullMath.mulDiv(
                     target.liquidityRatiosX96[j],
                     capitalInToken1,
@@ -280,35 +222,21 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
             }
             for (uint256 j = 0; j < tokenIds.length; j++) {
                 uint256 tokenId = tokenIds[j];
-                IAmmModule.Position memory ammPosition = ammModule
+                IAmmModule.Position memory position_ = ammModule
                     .getPositionInfo(tokenId);
                 if (
-                    ammPosition.liquidity < target.minLiquidities[j] ||
-                    ammPosition.tickLower != target.lowerTicks[j] ||
-                    ammPosition.tickUpper != target.upperTicks[j] ||
+                    position_.liquidity < target.minLiquidities[j] ||
+                    position_.tickLower != target.lowerTicks[j] ||
+                    position_.tickUpper != target.upperTicks[j] ||
                     ammModule.getPool(
-                        ammPosition.token0,
-                        ammPosition.token1,
-                        ammPosition.property
+                        position_.token0,
+                        position_.token1,
+                        position_.property
                     ) !=
                     target.info.pool
                 ) revert InvalidParameters();
-                IERC721(positionManager).transferFrom(
-                    params.callback,
-                    address(this),
-                    tokenId
-                );
-                {
-                    (bool success, ) = address(ammModule).delegatecall(
-                        abi.encodeWithSelector(
-                            IAmmModule.afterRebalance.selector,
-                            target.info.farm,
-                            target.info.vault,
-                            tokenId
-                        )
-                    );
-                    if (!success) revert DelegateCallFailed();
-                }
+                _transferFrom(params.callback, address(this), tokenId);
+                _afterRebalance(target.info.farm, target.info.vault, tokenId);
             }
             _positions[target.id].tokenIds = tokenIds;
         }
@@ -318,28 +246,11 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     function emptyRebalance(uint256 id) external {
         PositionInfo memory params = _positions[id];
         if (params.owner != msg.sender) revert Forbidden();
-        uint256[] memory tokenIds = params.tokenIds;
-        for (uint256 i = 0; i < tokenIds.length; i++) {
-            uint256 tokenId = tokenIds[i];
+        for (uint256 i = 0; i < params.tokenIds.length; i++) {
+            uint256 tokenId = params.tokenIds[i];
             if (tokenId == 0) revert InvalidParameters();
-            (bool success, ) = address(ammModule).delegatecall(
-                abi.encodeWithSelector(
-                    IAmmModule.beforeRebalance.selector,
-                    params.farm,
-                    params.vault,
-                    tokenId
-                )
-            );
-            if (!success) revert DelegateCallFailed();
-            (success, ) = address(ammModule).delegatecall(
-                abi.encodeWithSelector(
-                    IAmmModule.afterRebalance.selector,
-                    params.farm,
-                    params.vault,
-                    tokenId
-                )
-            );
-            if (!success) revert DelegateCallFailed();
+            _beforeRebalance(params.farm, params.vault, tokenId);
+            _afterRebalance(params.farm, params.vault, tokenId);
         }
     }
 
@@ -359,36 +270,75 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         uint256 priceX96
     ) private view returns (uint256 targetCapitalInToken1X96) {
         for (uint256 j = 0; j < target.lowerTicks.length; j++) {
-            {
-                (uint256 amount0, uint256 amount1) = ammModule
-                    .getAmountsForLiquidity(
-                        uint128(target.liquidityRatiosX96[j]),
-                        sqrtPriceX96,
-                        target.lowerTicks[j],
-                        target.upperTicks[j]
-                    );
-                targetCapitalInToken1X96 +=
-                    FullMath.mulDiv(amount0, priceX96, Q96) +
-                    amount1;
-            }
+            (uint256 amount0, uint256 amount1) = ammModule
+                .getAmountsForLiquidity(
+                    uint128(target.liquidityRatiosX96[j]),
+                    sqrtPriceX96,
+                    target.lowerTicks[j],
+                    target.upperTicks[j]
+                );
+            targetCapitalInToken1X96 +=
+                FullMath.mulDiv(amount0, priceX96, Q96) +
+                amount1;
         }
+    }
+
+    function _transferFrom(address from, address to, uint256 tokenId) private {
+        (bool success, ) = address(ammModule).delegatecall(
+            abi.encodeWithSelector(
+                IAmmModule.transferFrom.selector,
+                from,
+                to,
+                tokenId
+            )
+        );
+        if (!success) revert DelegateCallFailed();
+    }
+
+    function _beforeRebalance(
+        address farm,
+        address vault,
+        uint256 tokenId
+    ) private {
+        (bool success, ) = address(ammModule).delegatecall(
+            abi.encodeWithSelector(
+                IAmmModule.beforeRebalance.selector,
+                farm,
+                vault,
+                tokenId
+            )
+        );
+        if (!success) revert DelegateCallFailed();
+    }
+
+    function _afterRebalance(
+        address farm,
+        address vault,
+        uint256 tokenId
+    ) private {
+        (bool success, ) = address(ammModule).delegatecall(
+            abi.encodeWithSelector(
+                IAmmModule.afterRebalance.selector,
+                farm,
+                vault,
+                tokenId
+            )
+        );
+        if (!success) revert DelegateCallFailed();
     }
 
     function _validateTarget(TargetPositionInfo memory target) private pure {
         uint256 n = target.liquidityRatiosX96.length;
-        {
-            uint256 cumulativeLiquidityX96 = 0;
-            for (uint256 i = 0; i < n; i++) {
-                cumulativeLiquidityX96 += target.liquidityRatiosX96[i];
-            }
-            if (cumulativeLiquidityX96 != Q96) revert InvalidTarget();
-        }
-
         if (n != target.lowerTicks.length) revert InvalidTarget();
         if (n != target.upperTicks.length) revert InvalidTarget();
-
+        if (n != target.info.tokenIds.length) revert InvalidTarget();
+        uint256 cumulativeLiquidityX96 = 0;
         for (uint256 i = 0; i < n; i++) {
-            if (target.lowerTicks[i] > target.upperTicks[i]) {
+            cumulativeLiquidityX96 += target.liquidityRatiosX96[i];
+        }
+        if (cumulativeLiquidityX96 != Q96) revert InvalidTarget();
+        for (uint256 i = 0; i < n; i++) {
+            if (target.lowerTicks[i] >= target.upperTicks[i]) {
                 revert InvalidTarget();
             }
         }

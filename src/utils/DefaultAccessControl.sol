@@ -10,6 +10,7 @@ import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 /// - OPERATOR: low-privileged role, generally keeper or some other bot
 contract DefaultAccessControl is AccessControlEnumerable {
     error Forbidden();
+    error AddressZero();
 
     bytes32 public constant OPERATOR = keccak256("operator");
     bytes32 public constant ADMIN_ROLE = keccak256("admin");
@@ -18,7 +19,7 @@ contract DefaultAccessControl is AccessControlEnumerable {
     /// @notice Creates a new contract.
     /// @param admin Admin of the contract
     constructor(address admin) {
-        require(admin != address(0), "Address zero");
+        if (admin == address(0)) revert AddressZero();
 
         _grantRole(OPERATOR, admin);
         _grantRole(ADMIN_ROLE, admin);
