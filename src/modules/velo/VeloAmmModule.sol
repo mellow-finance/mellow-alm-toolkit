@@ -1,14 +1,10 @@
 // SPDX-License-Identifier: BSL-1.1
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-
 import "../../interfaces/modules/velo/IVeloAmmModule.sol";
 
 import "../../libraries/external/LiquidityAmounts.sol";
 import "../../libraries/external/TickMath.sol";
-
-import "../../utils/DefaultAccessControl.sol";
 
 contract VeloAmmModule is IVeloAmmModule {
     using SafeERC20 for IERC20;
@@ -40,7 +36,7 @@ contract VeloAmmModule is IVeloAmmModule {
         protocolFeeD9 = protocolFeeD9_;
     }
 
-    /// @inheritdoc IVeloAmmModule
+    /// @inheritdoc IAmmModule
     function getAmountsForLiquidity(
         uint128 liquidity,
         uint160 sqrtPriceX96,
@@ -56,7 +52,7 @@ contract VeloAmmModule is IVeloAmmModule {
             );
     }
 
-    /// @inheritdoc IVeloAmmModule
+    /// @inheritdoc IAmmModule
     function tvl(
         uint256 tokenId,
         uint160 sqrtRatioX96,
@@ -86,7 +82,7 @@ contract VeloAmmModule is IVeloAmmModule {
             );
     }
 
-    /// @inheritdoc IVeloAmmModule
+    /// @inheritdoc IAmmModule
     function getPositionInfo(
         uint256 tokenId
     ) public view override returns (Position memory position) {
@@ -108,7 +104,7 @@ contract VeloAmmModule is IVeloAmmModule {
         position.property = uint24(tickSpacing);
     }
 
-    /// @inheritdoc IVeloAmmModule
+    /// @inheritdoc IAmmModule
     function getPool(
         address token0,
         address token1,
@@ -122,7 +118,7 @@ contract VeloAmmModule is IVeloAmmModule {
         return uint24(ICLPool(pool).tickSpacing());
     }
 
-    /// @inheritdoc IVeloAmmModule
+    /// @inheritdoc IAmmModule
     function beforeRebalance(
         address gauge,
         address synthetixFarm,
@@ -152,7 +148,7 @@ contract VeloAmmModule is IVeloAmmModule {
         ICLGauge(gauge).withdraw(tokenId);
     }
 
-    /// @inheritdoc IVeloAmmModule
+    /// @inheritdoc IAmmModule
     function afterRebalance(
         address farm,
         address,
@@ -163,6 +159,7 @@ contract VeloAmmModule is IVeloAmmModule {
         ICLGauge(farm).deposit(tokenId);
     }
 
+    /// @inheritdoc IAmmModule
     function transferFrom(
         address from,
         address to,

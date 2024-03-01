@@ -1,19 +1,9 @@
 // SPDX-License-Identifier: BSL-1.1
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/Strings.sol";
-import "@synthetix/contracts/StakingRewards.sol";
-
-import "../interfaces/ICore.sol";
-import "../interfaces/modules/velo/IVeloAmmModule.sol";
-import "../interfaces/modules/velo/IVeloDepositWithdrawModule.sol";
 import "../interfaces/utils/IVeloDeployFactory.sol";
 
-import "../modules/strategies/PulseStrategyModule.sol";
-
 import "./DefaultAccessControl.sol";
-import "./VeloDeployFactoryHelper.sol";
 
 contract VeloDeployFactory is IVeloDeployFactory, DefaultAccessControl {
     using SafeERC20 for IERC20;
@@ -38,11 +28,11 @@ contract VeloDeployFactory is IVeloDeployFactory, DefaultAccessControl {
         address admin_,
         ICore core_,
         IVeloDepositWithdrawModule ammDepositWithdrawModule_,
-        VeloDeployFactoryHelper helper_
+        IVeloDeployFactoryHelper helper_
     ) DefaultAccessControl(admin_) {
         ImmutableParams memory immutableParams = ImmutableParams({
             core: core_,
-            strategyModule: PulseStrategyModule(
+            strategyModule: IPulseStrategyModule(
                 address(core_.strategyModule())
             ),
             veloModule: IVeloAmmModule(address(core_.ammModule())),

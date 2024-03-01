@@ -433,7 +433,7 @@ contract DeployFactoryFixture is Test {
             Constants.OWNER,
             core,
             dwModule,
-            new VeloDeployFactoryHelper()
+            IVeloDeployFactoryHelper(address(new VeloDeployFactoryHelper()))
         );
 
         deployFactory.updateStrategyParams(
