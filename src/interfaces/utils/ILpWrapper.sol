@@ -96,6 +96,7 @@ interface ILpWrapper {
      */
     function setPositionParams(
         uint16 slippageD4,
+        bytes memory callbackParams,
         bytes memory strategyParams,
         bytes memory securityParams
     ) external;

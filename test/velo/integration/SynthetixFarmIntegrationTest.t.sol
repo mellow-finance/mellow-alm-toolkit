@@ -49,8 +49,12 @@ contract Integration is Fixture {
 
         positionManager.approve(address(core), depositParams.tokenIds[0]);
         depositParams.owner = address(lpWrapper);
-        depositParams.farm = address(Constants.GAUGE);
-        depositParams.vault = address(stakingRewards);
+        depositParams.callbackParams = abi.encode(
+            IVeloAmmModule.CallbackParams({
+                farm: address(stakingRewards),
+                gauge: Constants.GAUGE
+            })
+        );
 
         uint256 nftId2 = core.deposit(depositParams);
 

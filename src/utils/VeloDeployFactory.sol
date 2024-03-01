@@ -236,14 +236,19 @@ contract VeloDeployFactory is IVeloDeployFactory, DefaultAccessControl {
             );
 
             depositParams.owner = address(lpWrapper);
-            depositParams.farm = pool.gauge();
-            depositParams.vault = address(
+            address farm = address(
                 new StakingRewards(
                     s.mutableParams.farmOwner,
                     s.mutableParams.farmOperator,
                     s.mutableParams.rewardsToken,
                     address(lpWrapper)
                 )
+            );
+            depositParams.callbackParams = abi.encode(
+                IVeloAmmModule.CallbackParams({
+                    farm: farm,
+                    gauge: address(pool.gauge())
+                })
             );
             depositParams.strategyParams = abi.encode(
                 IPulseStrategyModule.StrategyParams({
@@ -257,7 +262,7 @@ contract VeloDeployFactory is IVeloDeployFactory, DefaultAccessControl {
             positionId = s.immutableParams.core.deposit(depositParams);
             poolAddresses = PoolAddresses({
                 lpWrapper: address(lpWrapper),
-                synthetixFarm: depositParams.vault
+                synthetixFarm: farm
             });
             _poolToAddresses[address(pool)] = poolAddresses;
         }

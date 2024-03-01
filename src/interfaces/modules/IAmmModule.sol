@@ -11,6 +11,10 @@ interface IAmmModule {
         uint128 liquidity;
     }
 
+    function validateProtocolParams(bytes memory) external view;
+
+    function validateCallbackParams(bytes memory) external view;
+
     function getAmountsForLiquidity(
         uint128 liquidity,
         uint160 sqrtPriceX96,
@@ -21,8 +25,8 @@ interface IAmmModule {
     function tvl(
         uint256 tokenId,
         uint160 sqrtRatioX96,
-        address pool,
-        address farm
+        bytes memory,
+        bytes memory
     ) external view returns (uint256 amount0, uint256 amount1);
 
     function getPositionInfo(
@@ -37,9 +41,9 @@ interface IAmmModule {
 
     function getProperty(address pool) external view returns (uint24);
 
-    function beforeRebalance(address, address, uint256) external;
+    function beforeRebalance(uint256, bytes memory, bytes memory) external;
 
-    function afterRebalance(address, address, uint256) external;
+    function afterRebalance(uint256, bytes memory, bytes memory) external;
 
     function transferFrom(address, address, uint256) external;
 

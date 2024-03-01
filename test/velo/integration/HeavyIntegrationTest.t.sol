@@ -27,7 +27,7 @@ contract Integration is Fixture {
             1e9
         );
         depositParams.owner = Constants.OWNER;
-        depositParams.farm = address(0);
+
         depositParams.strategyParams = abi.encode(
             IPulseStrategyModule.StrategyParams({
                 tickNeighborhood: params.tickNeighborhood,
@@ -39,7 +39,12 @@ contract Integration is Fixture {
         depositParams.securityParams = params.securityParams;
         depositParams.slippageD4 = params.slippageD4;
         depositParams.owner = address(lpWrapper);
-        depositParams.vault = address(stakingRewards);
+        // depositParams.callbackParams = abi.encode(
+        //     IVeloAmmModule.CallbackParams({
+        //         farm: address(stakingRewards),
+        //         gauge: address(pool.gauge())
+        //     })
+        // );
 
         vm.startPrank(Constants.OWNER);
         positionManager.approve(address(core), depositParams.tokenIds[0]);

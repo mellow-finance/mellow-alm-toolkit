@@ -397,9 +397,7 @@ contract Unit is Fixture {
         );
 
         VeloAmmModule ammModule = new VeloAmmModule(
-            INonfungiblePositionManager(Constants.NONFUNGIBLE_POSITION_MANAGER),
-            address(1),
-            3e8
+            INonfungiblePositionManager(Constants.NONFUNGIBLE_POSITION_MANAGER)
         );
 
         VeloOracle oracle = new VeloOracle();
