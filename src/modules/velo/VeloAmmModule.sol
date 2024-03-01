@@ -26,6 +26,7 @@ contract VeloAmmModule is IVeloAmmModule {
         factory = ICLFactory(positionManager_.factory());
     }
 
+    /// @inheritdoc IAmmModule
     function validateProtocolParams(bytes memory params) external pure {
         if (params.length != 0x40) revert InvalidParams();
         IVeloAmmModule.ProtocolParams memory params_ = abi.decode(
@@ -36,6 +37,7 @@ contract VeloAmmModule is IVeloAmmModule {
         if (params_.treasury == address(0)) revert AddressZero();
     }
 
+    /// @inheritdoc IAmmModule
     function validateCallbackParams(bytes memory params) external pure {
         if (params.length != 0x40) revert InvalidParams();
         IVeloAmmModule.CallbackParams memory params_ = abi.decode(
