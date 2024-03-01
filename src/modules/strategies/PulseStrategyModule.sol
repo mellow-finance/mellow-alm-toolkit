@@ -17,6 +17,7 @@ contract PulseStrategyModule is IPulseStrategyModule {
     function validateStrategyParams(
         bytes memory params_
     ) external pure override {
+        if (params_.length != 0x80) revert InvalidLength();
         StrategyParams memory params = abi.decode(params_, (StrategyParams));
         if (
             params.width == 0 ||

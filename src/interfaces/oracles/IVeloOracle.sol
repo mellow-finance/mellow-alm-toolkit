@@ -9,6 +9,7 @@ import "./IOracle.sol";
  * @dev A contract that implements the IOracle interface for Velo pools.
  */
 interface IVeloOracle is IOracle {
+    error InvalidLength();
     error InvalidParams();
     error PriceManipulationDetected();
     error NotEnoughObservations();

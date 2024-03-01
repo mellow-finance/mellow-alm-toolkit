@@ -105,30 +105,31 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     function deposit(
         DepositParams memory params
     ) external override returns (uint256 id) {
+        ammModule.validateCallbackParams(params.callbackParams);
         strategyModule.validateStrategyParams(params.strategyParams);
         oracle.validateSecurityParams(params.securityParams);
         if (params.slippageD4 * 4 > D4 || params.slippageD4 == 0)
-            revert InvalidParameters();
+            revert InvalidParams();
 
         address pool;
         bytes memory protocolParams_ = _protocolParams;
         for (uint256 i = 0; i < params.tokenIds.length; i++) {
             uint256 tokenId = params.tokenIds[i];
-            if (tokenId == 0) revert InvalidParameters();
+            if (tokenId == 0) revert InvalidParams();
             IAmmModule.Position memory position_ = ammModule.getPositionInfo(
                 tokenId
             );
-            if (position_.liquidity == 0) revert InvalidParameters();
+            if (position_.liquidity == 0) revert InvalidParams();
             address pool_ = ammModule.getPool(
                 position_.token0,
                 position_.token1,
                 position_.property
             );
-            if (pool_ == address(0)) revert InvalidParameters();
+            if (pool_ == address(0)) revert InvalidParams();
             if (i == 0) {
                 pool = pool_;
             } else if (pool != pool_) {
-                revert InvalidParameters();
+                revert InvalidParams();
             }
             _transferFrom(msg.sender, address(this), tokenId);
             _afterRebalance(tokenId, params.callbackParams, protocolParams_);
@@ -272,7 +273,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
                         position_.property
                     ) !=
                     target.info.pool
-                ) revert InvalidParameters();
+                ) revert InvalidParams();
                 _transferFrom(params.callback, address(this), tokenId);
                 _afterRebalance(
                     tokenId,
@@ -291,7 +292,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         bytes memory protocolParams_ = _protocolParams;
         for (uint256 i = 0; i < params.tokenIds.length; i++) {
             uint256 tokenId = params.tokenIds[i];
-            if (tokenId == 0) revert InvalidParameters();
+            if (tokenId == 0) revert InvalidParams();
             _beforeRebalance(tokenId, params.callbackParams, protocolParams_);
             _afterRebalance(tokenId, params.callbackParams, protocolParams_);
         }

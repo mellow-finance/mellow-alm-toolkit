@@ -53,7 +53,7 @@ interface ICore is IERC721Receiver {
     }
 
     error DelegateCallFailed();
-    error InvalidParameters();
+    error InvalidParams();
     error InvalidLength();
     error InvalidTarget();
 
