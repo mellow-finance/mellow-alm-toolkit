@@ -94,9 +94,9 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         ammModule.validateCallbackParams(callbackParams);
         strategyModule.validateStrategyParams(strategyParams);
         oracle.validateSecurityParams(securityParams);
+        info.callbackParams = callbackParams;
         info.strategyParams = strategyParams;
         info.securityParams = securityParams;
-        info.callbackParams = callbackParams;
         info.slippageD4 = slippageD4;
         _positions[id] = info;
     }
@@ -164,15 +164,15 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         }
     }
 
-    function _prepareForRebalance(
+    function _preprocess(
         RebalanceParams memory params,
         PositionInfo memory info,
         bytes memory protocolParams_,
         uint160 sqrtPriceX96,
         uint256 priceX96
     ) private returns (uint256 capitalInToken1) {
-        for (uint256 j = 0; j < info.tokenIds.length; j++) {
-            uint256 tokenId = info.tokenIds[j];
+        for (uint256 i = 0; i < info.tokenIds.length; i++) {
+            uint256 tokenId = info.tokenIds[i];
             (uint256 amount0, uint256 amount1) = ammModule.tvl(
                 tokenId,
                 sqrtPriceX96,
@@ -198,24 +198,17 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         uint256 iterator = 0;
         bytes memory protocolParams_ = _protocolParams;
         for (uint256 i = 0; i < params.ids.length; i++) {
-            TargetPositionInfo memory target;
             ICore.PositionInfo memory info = _positions[params.ids[i]];
             oracle.ensureNoMEV(info.pool, info.securityParams);
-            {
-                bool flag;
-                (flag, target) = strategyModule.getTargets(
-                    info,
-                    ammModule,
-                    oracle
-                );
-                if (!flag) continue;
-            }
+            (bool flag, TargetPositionInfo memory target) = strategyModule
+                .getTargets(info, ammModule, oracle);
+            if (!flag) continue;
             target.id = params.ids[i];
             target.info = info;
             _validateTarget(target);
             (uint160 sqrtPriceX96, ) = oracle.getOraclePrice(info.pool);
             uint256 priceX96 = FullMath.mulDiv(sqrtPriceX96, sqrtPriceX96, Q96);
-            uint256 capitalInToken1 = _prepareForRebalance(
+            uint256 capitalInToken1 = _preprocess(
                 params,
                 info,
                 protocolParams_,
@@ -227,9 +220,8 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
                 sqrtPriceX96,
                 priceX96
             );
-            uint256 n = info.tokenIds.length;
-            target.minLiquidities = new uint256[](n);
-            for (uint256 j = 0; j < n; j++) {
+            target.minLiquidities = new uint256[](info.tokenIds.length);
+            for (uint256 j = 0; j < info.tokenIds.length; j++) {
                 target.minLiquidities[j] = FullMath.mulDiv(
                     target.liquidityRatiosX96[j],
                     capitalInToken1,
@@ -254,7 +246,6 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         for (uint256 i = 0; i < iterator; i++) {
             TargetPositionInfo memory target = targets[i];
             uint256[] memory tokenIds = newTokenIds[i];
-
             if (tokenIds.length != target.liquidityRatiosX96.length) {
                 revert InvalidLength();
             }
