@@ -14,6 +14,7 @@ interface IVeloAmmModule is IAmmModule {
     error InvalidFee();
     error AddressZero();
     error InvalidParams();
+    error InvalidLength();
 
     struct CallbackParams {
         address farm;

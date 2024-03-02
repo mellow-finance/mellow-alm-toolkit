@@ -93,6 +93,7 @@ contract VeloOracle is IVeloOracle {
         bytes memory params
     ) external pure override {
         if (params.length == 0) return;
+        if (params.length != 0x40) revert InvalidLength();
         SecurityParams memory securityParams = abi.decode(
             params,
             (SecurityParams)

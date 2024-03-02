@@ -53,12 +53,10 @@ interface ICore is IERC721Receiver {
     }
 
     error DelegateCallFailed();
-    error InvalidParameters();
+    error InvalidParams();
     error InvalidLength();
     error InvalidTarget();
 
-    function D4() external view returns (uint256);
-    function Q96() external view returns (uint256);
     function ammModule() external view returns (IAmmModule);
     function oracle() external view returns (IOracle);
     function strategyModule() external view returns (IStrategyModule);

@@ -28,7 +28,7 @@ contract VeloAmmModule is IVeloAmmModule {
 
     /// @inheritdoc IAmmModule
     function validateProtocolParams(bytes memory params) external pure {
-        if (params.length != 0x40) revert InvalidParams();
+        if (params.length != 0x40) revert InvalidLength();
         IVeloAmmModule.ProtocolParams memory params_ = abi.decode(
             params,
             (IVeloAmmModule.ProtocolParams)
@@ -39,7 +39,8 @@ contract VeloAmmModule is IVeloAmmModule {
 
     /// @inheritdoc IAmmModule
     function validateCallbackParams(bytes memory params) external pure {
-        if (params.length != 0x40) revert InvalidParams();
+        if (params.length == 0) return;
+        if (params.length != 0x40) revert InvalidLength();
         IVeloAmmModule.CallbackParams memory params_ = abi.decode(
             params,
             (IVeloAmmModule.CallbackParams)

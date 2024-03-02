@@ -470,7 +470,7 @@ contract Unit is Fixture {
                 })
             )
         );
-        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
         module.validateCallbackParams(new bytes(123));
 
         module.validateCallbackParams(
@@ -502,7 +502,7 @@ contract Unit is Fixture {
                 })
             )
         );
-        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
         module.validateProtocolParams(new bytes(123));
 
         module.validateProtocolParams(

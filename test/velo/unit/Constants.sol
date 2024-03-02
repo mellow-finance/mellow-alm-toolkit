@@ -57,5 +57,5 @@ library Constants {
     address public constant ADMIN = address(bytes20(keccak256("admin")));
     address public constant PROTOCOL_TREASURY =
         address(bytes20(keccak256("protocol-treasury")));
-    uint256 public constant PROTOCOL_FEE_D9 = 1e8; // 10%
+    uint32 public constant PROTOCOL_FEE_D9 = 1e8; // 10%
 }

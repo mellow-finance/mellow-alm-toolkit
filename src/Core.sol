@@ -13,10 +13,13 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     uint256 public constant D4 = 1e4;
     uint256 public constant Q96 = 2 ** 96;
 
+    /// @inheritdoc ICore
     IAmmModule public immutable ammModule;
+    /// @inheritdoc ICore
     IOracle public immutable oracle;
+    /// @inheritdoc ICore
     IStrategyModule public immutable strategyModule;
-
+    /// @inheritdoc ICore
     bool public operatorFlag;
 
     bytes private _protocolParams;
@@ -91,9 +94,9 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         ammModule.validateCallbackParams(callbackParams);
         strategyModule.validateStrategyParams(strategyParams);
         oracle.validateSecurityParams(securityParams);
+        info.callbackParams = callbackParams;
         info.strategyParams = strategyParams;
         info.securityParams = securityParams;
-        info.callbackParams = callbackParams;
         info.slippageD4 = slippageD4;
         _positions[id] = info;
     }
@@ -102,30 +105,31 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     function deposit(
         DepositParams memory params
     ) external override returns (uint256 id) {
+        ammModule.validateCallbackParams(params.callbackParams);
         strategyModule.validateStrategyParams(params.strategyParams);
         oracle.validateSecurityParams(params.securityParams);
         if (params.slippageD4 * 4 > D4 || params.slippageD4 == 0)
-            revert InvalidParameters();
+            revert InvalidParams();
 
         address pool;
         bytes memory protocolParams_ = _protocolParams;
         for (uint256 i = 0; i < params.tokenIds.length; i++) {
             uint256 tokenId = params.tokenIds[i];
-            if (tokenId == 0) revert InvalidParameters();
+            if (tokenId == 0) revert InvalidParams();
             IAmmModule.Position memory position_ = ammModule.getPositionInfo(
                 tokenId
             );
-            if (position_.liquidity == 0) revert InvalidParameters();
+            if (position_.liquidity == 0) revert InvalidParams();
             address pool_ = ammModule.getPool(
                 position_.token0,
                 position_.token1,
                 position_.property
             );
-            if (pool_ == address(0)) revert InvalidParameters();
+            if (pool_ == address(0)) revert InvalidParams();
             if (i == 0) {
                 pool = pool_;
             } else if (pool != pool_) {
-                revert InvalidParameters();
+                revert InvalidParams();
             }
             _transferFrom(msg.sender, address(this), tokenId);
             _afterRebalance(tokenId, params.callbackParams, protocolParams_);
@@ -150,7 +154,6 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     function withdraw(uint256 id, address to) external override {
         PositionInfo memory info = _positions[id];
         if (info.owner != msg.sender) revert Forbidden();
-        if (info.tokenIds.length == 0) revert InvalidLength();
         _userIds[info.owner].remove(id);
         delete _positions[id];
         bytes memory protocolParams_ = _protocolParams;
@@ -158,29 +161,6 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
             uint256 tokenId = info.tokenIds[i];
             _beforeRebalance(tokenId, info.callbackParams, protocolParams_);
             _transferFrom(address(this), to, tokenId);
-        }
-    }
-
-    function _prepare(
-        RebalanceParams memory params,
-        PositionInfo memory info,
-        bytes memory protocolParams_,
-        uint160 sqrtPriceX96,
-        uint256 priceX96
-    ) private returns (uint256 capitalInToken1) {
-        for (uint256 j = 0; j < info.tokenIds.length; j++) {
-            uint256 tokenId = info.tokenIds[j];
-            (uint256 amount0, uint256 amount1) = ammModule.tvl(
-                tokenId,
-                sqrtPriceX96,
-                info.callbackParams,
-                protocolParams_
-            );
-            capitalInToken1 +=
-                FullMath.mulDiv(amount0, priceX96, Q96) +
-                amount1;
-            _beforeRebalance(tokenId, info.callbackParams, protocolParams_);
-            _transferFrom(address(this), params.callback, tokenId);
         }
     }
 
@@ -195,24 +175,17 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         uint256 iterator = 0;
         bytes memory protocolParams_ = _protocolParams;
         for (uint256 i = 0; i < params.ids.length; i++) {
-            TargetPositionInfo memory target;
             ICore.PositionInfo memory info = _positions[params.ids[i]];
             oracle.ensureNoMEV(info.pool, info.securityParams);
-            {
-                bool flag;
-                (flag, target) = strategyModule.getTargets(
-                    info,
-                    ammModule,
-                    oracle
-                );
-                if (!flag) continue;
-            }
+            (bool flag, TargetPositionInfo memory target) = strategyModule
+                .getTargets(info, ammModule, oracle);
+            if (!flag) continue;
             target.id = params.ids[i];
             target.info = info;
             _validateTarget(target);
             (uint160 sqrtPriceX96, ) = oracle.getOraclePrice(info.pool);
             uint256 priceX96 = FullMath.mulDiv(sqrtPriceX96, sqrtPriceX96, Q96);
-            uint256 capitalInToken1 = _prepare(
+            uint256 capitalInToken1 = _preprocess(
                 params,
                 info,
                 protocolParams_,
@@ -224,9 +197,8 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
                 sqrtPriceX96,
                 priceX96
             );
-            uint256 n = info.tokenIds.length;
-            target.minLiquidities = new uint256[](n);
-            for (uint256 j = 0; j < n; j++) {
+            target.minLiquidities = new uint256[](info.tokenIds.length);
+            for (uint256 j = 0; j < info.tokenIds.length; j++) {
                 target.minLiquidities[j] = FullMath.mulDiv(
                     target.liquidityRatiosX96[j],
                     capitalInToken1,
@@ -251,7 +223,6 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         for (uint256 i = 0; i < iterator; i++) {
             TargetPositionInfo memory target = targets[i];
             uint256[] memory tokenIds = newTokenIds[i];
-
             if (tokenIds.length != target.liquidityRatiosX96.length) {
                 revert InvalidLength();
             }
@@ -269,7 +240,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
                         position_.property
                     ) !=
                     target.info.pool
-                ) revert InvalidParameters();
+                ) revert InvalidParams();
                 _transferFrom(params.callback, address(this), tokenId);
                 _afterRebalance(
                     tokenId,
@@ -288,7 +259,6 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         bytes memory protocolParams_ = _protocolParams;
         for (uint256 i = 0; i < params.tokenIds.length; i++) {
             uint256 tokenId = params.tokenIds[i];
-            if (tokenId == 0) revert InvalidParameters();
             _beforeRebalance(tokenId, params.callbackParams, protocolParams_);
             _afterRebalance(tokenId, params.callbackParams, protocolParams_);
         }
@@ -302,6 +272,23 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         bytes calldata
     ) external pure returns (bytes4) {
         return IERC721Receiver.onERC721Received.selector;
+    }
+
+    function _validateTarget(TargetPositionInfo memory target) private pure {
+        uint256 n = target.liquidityRatiosX96.length;
+        if (n != target.lowerTicks.length) revert InvalidTarget();
+        if (n != target.upperTicks.length) revert InvalidTarget();
+        if (n != target.info.tokenIds.length) revert InvalidTarget();
+        uint256 cumulativeLiquidityX96 = 0;
+        for (uint256 i = 0; i < n; i++) {
+            cumulativeLiquidityX96 += target.liquidityRatiosX96[i];
+        }
+        if (cumulativeLiquidityX96 != Q96) revert InvalidTarget();
+        for (uint256 i = 0; i < n; i++) {
+            if (target.lowerTicks[i] >= target.upperTicks[i]) {
+                revert InvalidTarget();
+            }
+        }
     }
 
     function _calculateTargetCapitalX96(
@@ -320,6 +307,29 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
             targetCapitalInToken1X96 +=
                 FullMath.mulDiv(amount0, priceX96, Q96) +
                 amount1;
+        }
+    }
+
+    function _preprocess(
+        RebalanceParams memory params,
+        PositionInfo memory info,
+        bytes memory protocolParams_,
+        uint160 sqrtPriceX96,
+        uint256 priceX96
+    ) private returns (uint256 capitalInToken1) {
+        for (uint256 i = 0; i < info.tokenIds.length; i++) {
+            uint256 tokenId = info.tokenIds[i];
+            (uint256 amount0, uint256 amount1) = ammModule.tvl(
+                tokenId,
+                sqrtPriceX96,
+                info.callbackParams,
+                protocolParams_
+            );
+            capitalInToken1 +=
+                FullMath.mulDiv(amount0, priceX96, Q96) +
+                amount1;
+            _beforeRebalance(tokenId, info.callbackParams, protocolParams_);
+            _transferFrom(address(this), params.callback, tokenId);
         }
     }
 
@@ -365,24 +375,5 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
             )
         );
         if (!success) revert DelegateCallFailed();
-    }
-
-    function _validateTarget(TargetPositionInfo memory target) private pure {
-        uint256 n = target.liquidityRatiosX96.length;
-
-        if (n != target.lowerTicks.length) revert InvalidTarget();
-        if (n != target.upperTicks.length) revert InvalidTarget();
-        if (n != target.info.tokenIds.length) revert InvalidTarget();
-
-        uint256 cumulativeLiquidityX96 = 0;
-        for (uint256 i = 0; i < n; i++) {
-            cumulativeLiquidityX96 += target.liquidityRatiosX96[i];
-        }
-        if (cumulativeLiquidityX96 != Q96) revert InvalidTarget();
-        for (uint256 i = 0; i < n; i++) {
-            if (target.lowerTicks[i] >= target.upperTicks[i]) {
-                revert InvalidTarget();
-            }
-        }
     }
 }
