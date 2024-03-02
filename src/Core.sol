@@ -259,7 +259,6 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         bytes memory protocolParams_ = _protocolParams;
         for (uint256 i = 0; i < params.tokenIds.length; i++) {
             uint256 tokenId = params.tokenIds[i];
-            if (tokenId == 0) revert InvalidParams();
             _beforeRebalance(tokenId, params.callbackParams, protocolParams_);
             _afterRebalance(tokenId, params.callbackParams, protocolParams_);
         }
