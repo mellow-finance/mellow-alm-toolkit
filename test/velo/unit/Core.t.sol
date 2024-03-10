@@ -3,6 +3,8 @@ pragma solidity ^0.8.0;
 
 import "./Fixture.sol";
 
+import "../../../src/bots/EmptyBot.sol";
+
 contract Unit is Fixture {
     using SafeERC20 for IERC20;
 
@@ -65,8 +67,8 @@ contract Unit is Fixture {
             IPulseStrategyModule.StrategyParams({
                 strategyType: IPulseStrategyModule.StrategyType.Original,
                 width: 1000,
-                tickSpacing: 100,
-                tickNeighborhood: 10
+                tickSpacing: 200,
+                tickNeighborhood: 100
             })
         );
 
@@ -120,13 +122,13 @@ contract Unit is Fixture {
             IPulseStrategyModule.StrategyParams({
                 strategyType: IPulseStrategyModule.StrategyType.Original,
                 width: 1000,
-                tickSpacing: 100,
-                tickNeighborhood: 10
+                tickSpacing: 200,
+                tickNeighborhood: 100
             })
         );
         depositParams.slippageD4 = 1;
         depositParams.securityParams = abi.encode(
-            IVeloOracle.SecurityParams({lookback: 100, maxAllowedDelta: 100})
+            IVeloOracle.SecurityParams({lookback: 1, maxAllowedDelta: 100000})
         );
 
         id = core.deposit(depositParams);
@@ -195,5 +197,155 @@ contract Unit is Fixture {
             )
         );
         vm.stopPrank();
+    }
+
+    function _checkState(
+        uint256 positionId,
+        ICore.RebalanceParams memory rebalanceParams
+    ) private {
+        ICore.PositionInfo memory infoBefore = core.position(positionId);
+        uint256 capitalBefore = 0;
+        uint256 capitalAfter = 0;
+        (uint160 sqrtPriceX96, int24 tick, , , , ) = pool.slot0();
+        uint256 priceX96 = FullMath.mulDiv(sqrtPriceX96, sqrtPriceX96, Q96);
+
+        {
+            (uint256 amount0, uint256 amount1) = ammModule.tvl(
+                infoBefore.tokenIds[0],
+                sqrtPriceX96,
+                infoBefore.callbackParams,
+                core.protocolParams()
+            );
+            capitalBefore = FullMath.mulDiv(amount0, priceX96, Q96) + amount1;
+        }
+
+        core.rebalance(rebalanceParams);
+
+        ICore.PositionInfo memory infoAfter = core.position(positionId);
+        IAmmModule.Position memory positionAfter = ammModule.getPositionInfo(
+            infoAfter.tokenIds[0]
+        );
+
+        {
+            (uint256 amount0, uint256 amount1) = ammModule.tvl(
+                infoAfter.tokenIds[0],
+                sqrtPriceX96,
+                infoAfter.callbackParams,
+                core.protocolParams()
+            );
+            capitalAfter = FullMath.mulDiv(amount0, priceX96, Q96) + amount1;
+        }
+
+        IPulseStrategyModule.StrategyParams memory strategyParams = abi.decode(
+            infoBefore.strategyParams,
+            (IPulseStrategyModule.StrategyParams)
+        );
+
+        assertTrue(
+            FullMath.mulDiv(capitalBefore, D4 - infoBefore.slippageD4, D4) <=
+                capitalAfter
+        );
+
+        assertEq(
+            positionAfter.tickUpper - positionAfter.tickLower,
+            strategyParams.width
+        );
+        assertEq(positionAfter.tickUpper % strategyParams.tickSpacing, 0);
+        assertEq(positionAfter.tickLower % strategyParams.tickSpacing, 0);
+        assertTrue(
+            positionAfter.tickLower <= tick && tick <= positionAfter.tickUpper
+        );
+    }
+
+    function testRebalance() external {
+        pool.increaseObservationCardinalityNext(2);
+        mint(
+            pool.token0(),
+            pool.token1(),
+            pool.tickSpacing(),
+            pool.tickSpacing() * 100,
+            1000000,
+            pool
+        );
+
+        uint256 tokenId = mint(
+            pool.token0(),
+            pool.token1(),
+            pool.tickSpacing(),
+            pool.tickSpacing() * 2,
+            10000,
+            pool
+        );
+
+        ICore.RebalanceParams memory rebalanceParams;
+
+        uint256 positionId = _depositToken(tokenId);
+        vm.startPrank(Constants.DEPLOYER);
+        movePrice(-10, pool);
+        vm.stopPrank();
+
+        vm.startPrank(Constants.OWNER);
+        core.setOperatorFlag(true);
+        vm.stopPrank();
+
+        vm.expectRevert(abi.encodeWithSignature("Forbidden()"));
+        core.rebalance(rebalanceParams);
+
+        vm.startPrank(Constants.OWNER);
+        core.setOperatorFlag(false);
+        vm.stopPrank();
+
+        rebalanceParams.callback = address(new EmptyBot());
+
+        // nothig happens
+        core.rebalance(rebalanceParams);
+
+        rebalanceParams.ids = new uint256[](1);
+        rebalanceParams.ids[0] = positionId;
+
+        vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
+        core.rebalance(rebalanceParams);
+
+        rebalanceParams.callback = address(
+            new PulseVeloBot(quoterV2, swapRouter, positionManager)
+        );
+
+        vm.expectRevert();
+        core.rebalance(rebalanceParams);
+
+        rebalanceParams.data = abi.encode(
+            new ISwapRouter.ExactInputSingleParams[](0)
+        );
+
+        vm.expectRevert();
+        core.rebalance(rebalanceParams);
+
+        deal(pool.token0(), address(rebalanceParams.callback), 10 wei);
+        deal(pool.token1(), address(rebalanceParams.callback), 30 wei);
+        _checkState(positionId, rebalanceParams);
+
+        vm.startPrank(Constants.DEPLOYER);
+        movePrice(-800, pool);
+        vm.stopPrank();
+
+        skip(1);
+
+        {
+            ISwapRouter.ExactInputSingleParams[]
+                memory params = new ISwapRouter.ExactInputSingleParams[](1);
+            params[0] = ISwapRouter.ExactInputSingleParams({
+                tokenIn: pool.token0(),
+                tokenOut: pool.token1(),
+                tickSpacing: pool.tickSpacing(),
+                recipient: rebalanceParams.callback,
+                amountIn: 150 wei,
+                sqrtPriceLimitX96: 0,
+                amountOutMinimum: 0,
+                deadline: type(uint256).max
+            });
+
+            rebalanceParams.data = abi.encode(params);
+        }
+        _checkState(positionId, rebalanceParams);
     }
 }
