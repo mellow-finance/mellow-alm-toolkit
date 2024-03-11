@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 
 import "../interfaces/bots/IPulseVeloBot.sol";
 
@@ -420,7 +421,14 @@ contract PulseVeloBot is IPulseVeloBot {
                 );
             require(
                 actualLiquidity >= targets[i].minLiquidities[0],
-                "Insufficient amount of liquidity"
+                string(
+                    abi.encodePacked(
+                        "Insufficient amount of liquidity. Actual: ",
+                        Strings.toString(actualLiquidity),
+                        "; Expected: ",
+                        Strings.toString(targets[i].minLiquidities[0])
+                    )
+                )
             );
             positionManager.approve(msg.sender, tokenId);
             newTokenIds[i] = new uint256[](1);

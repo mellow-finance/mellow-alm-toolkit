@@ -94,6 +94,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         ammModule.validateCallbackParams(callbackParams);
         strategyModule.validateStrategyParams(strategyParams);
         oracle.validateSecurityParams(securityParams);
+        if (slippageD4 * 4 > D4 || slippageD4 == 0) revert InvalidParams();
         info.callbackParams = callbackParams;
         info.strategyParams = strategyParams;
         info.securityParams = securityParams;

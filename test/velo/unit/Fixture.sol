@@ -11,6 +11,7 @@ contract Fixture is Test {
 
     int24 public constant TICK_SPACING = 200;
     uint256 public constant Q96 = 2 ** 96;
+    uint256 public constant D4 = 1e4;
 
     INonfungiblePositionManager public positionManager =
         INonfungiblePositionManager(Constants.NONFUNGIBLE_POSITION_MANAGER);

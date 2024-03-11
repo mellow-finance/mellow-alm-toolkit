@@ -54,6 +54,8 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         uint256 initialTotalSupply
     ) external {
         if (positionId != 0) revert AlreadyInitialized();
+        if (core.position(positionId_).owner != address(this))
+            revert Forbidden();
         positionId = positionId_;
         _mint(address(this), initialTotalSupply);
     }

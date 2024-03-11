@@ -40,38 +40,42 @@ contract Unit is Fixture {
 
         ) = positionManager.positions(tokenId);
 
-        (uint256 before0, uint256 before1) = LiquidityAmounts
-            .getAmountsForLiquidity(
-                TickMath.getSqrtRatioAtTick(0),
-                TickMath.getSqrtRatioAtTick(tickLower),
-                TickMath.getSqrtRatioAtTick(tickUpper),
-                liquidity
+        for (uint256 i = 0; i < 10; i++) {
+            (uint256 before0, uint256 before1) = LiquidityAmounts
+                .getAmountsForLiquidity(
+                    TickMath.getSqrtRatioAtTick(0),
+                    TickMath.getSqrtRatioAtTick(tickLower),
+                    TickMath.getSqrtRatioAtTick(tickUpper),
+                    liquidity
+                );
+
+            deal(pool.token0(), address(this), 1 ether);
+            deal(pool.token1(), address(this), 1 ether);
+            IERC20(pool.token0()).approve(address(module), 1 ether);
+            IERC20(pool.token1()).approve(address(module), 1 ether);
+
+            (uint256 actualAmount0, uint256 actualAmount1) = module.deposit(
+                tokenId,
+                1 ether,
+                1 ether,
+                address(this)
             );
 
-        deal(pool.token0(), address(this), 1 ether);
-        deal(pool.token1(), address(this), 1 ether);
-        IERC20(pool.token0()).approve(address(module), 1 ether);
-        IERC20(pool.token1()).approve(address(module), 1 ether);
-
-        (uint256 actualAmount0, uint256 actualAmount1) = module.deposit(
-            tokenId,
-            1 ether,
-            1 ether,
-            address(this)
-        );
-
-        (, , , , , , , liquidity, , , , ) = positionManager.positions(tokenId);
-
-        (uint256 after0, uint256 after1) = LiquidityAmounts
-            .getAmountsForLiquidity(
-                TickMath.getSqrtRatioAtTick(0),
-                TickMath.getSqrtRatioAtTick(tickLower),
-                TickMath.getSqrtRatioAtTick(tickUpper),
-                liquidity
+            (, , , , , , , liquidity, , , , ) = positionManager.positions(
+                tokenId
             );
 
-        assertEq(actualAmount0, after0 - before0);
-        assertEq(actualAmount1, after1 - before1);
+            (uint256 after0, uint256 after1) = LiquidityAmounts
+                .getAmountsForLiquidity(
+                    TickMath.getSqrtRatioAtTick(0),
+                    TickMath.getSqrtRatioAtTick(tickLower),
+                    TickMath.getSqrtRatioAtTick(tickUpper),
+                    liquidity
+                );
+
+            assertEq(actualAmount0, after0 - before0);
+            assertEq(actualAmount1, after1 - before1);
+        }
     }
 
     function testWithdraw() external {
@@ -83,55 +87,59 @@ contract Unit is Fixture {
             pool.token1(),
             pool.tickSpacing(),
             pool.tickSpacing() * 2,
-            10000,
+            1000000,
             pool
         );
-
-        (
-            ,
-            ,
-            ,
-            ,
-            ,
-            int24 tickLower,
-            int24 tickUpper,
-            uint128 liquidity,
-            ,
-            ,
-            ,
-
-        ) = positionManager.positions(tokenId);
-
-        (uint256 before0, uint256 before1) = LiquidityAmounts
-            .getAmountsForLiquidity(
-                TickMath.getSqrtRatioAtTick(0),
-                TickMath.getSqrtRatioAtTick(tickLower),
-                TickMath.getSqrtRatioAtTick(tickUpper),
-                liquidity
-            );
 
         vm.startPrank(Constants.OWNER);
         positionManager.transferFrom(Constants.OWNER, address(module), tokenId);
         vm.stopPrank();
 
-        (uint256 actualAmount0, uint256 actualAmount1) = module.withdraw(
-            tokenId,
-            liquidity / 4,
-            address(this)
-        );
+        for (uint256 i = 0; i < 10; i++) {
+            (
+                ,
+                ,
+                ,
+                ,
+                ,
+                int24 tickLower,
+                int24 tickUpper,
+                uint128 liquidity,
+                ,
+                ,
+                ,
 
-        (, , , , , , , uint128 liquidityAfter, , , , ) = positionManager
-            .positions(tokenId);
-        (uint256 after0, uint256 after1) = LiquidityAmounts
-            .getAmountsForLiquidity(
-                TickMath.getSqrtRatioAtTick(0),
-                TickMath.getSqrtRatioAtTick(tickLower),
-                TickMath.getSqrtRatioAtTick(tickUpper),
-                liquidityAfter
+            ) = positionManager.positions(tokenId);
+
+            (uint256 before0, uint256 before1) = LiquidityAmounts
+                .getAmountsForLiquidity(
+                    TickMath.getSqrtRatioAtTick(0),
+                    TickMath.getSqrtRatioAtTick(tickLower),
+                    TickMath.getSqrtRatioAtTick(tickUpper),
+                    liquidity
+                );
+
+            uint128 liquidityForWithdraw = liquidity / 4;
+
+            (uint256 actualAmount0, uint256 actualAmount1) = module.withdraw(
+                tokenId,
+                liquidityForWithdraw,
+                address(this)
             );
 
-        assertEq(liquidityAfter, liquidity - liquidity / 4);
-        assertEq(actualAmount0, before0 - after0);
-        assertEq(actualAmount1, before1 - after1);
+            (, , , , , , , uint128 liquidityAfter, , , , ) = positionManager
+                .positions(tokenId);
+            (uint256 after0, uint256 after1) = LiquidityAmounts
+                .getAmountsForLiquidity(
+                    TickMath.getSqrtRatioAtTick(0),
+                    TickMath.getSqrtRatioAtTick(tickLower),
+                    TickMath.getSqrtRatioAtTick(tickUpper),
+                    liquidityAfter
+                );
+
+            assertEq(liquidityAfter, liquidity - liquidityForWithdraw);
+            assertApproxEqAbs(actualAmount0, before0 - after0, 1 wei);
+            assertApproxEqAbs(actualAmount1, before1 - after1, 1 wei);
+        }
     }
 }
