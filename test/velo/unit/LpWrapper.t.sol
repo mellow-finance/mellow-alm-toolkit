@@ -276,10 +276,9 @@ contract Unit is Fixture {
                 totalSupplyBefore - totalSupplyAfter,
                 totalSupplyBefore
             );
-            assertApproxEqAbs(
+            assertEq(
                 expectedLiquidityDecrease,
-                positionBefore.liquidity - positionAfter.liquidity,
-                0 wei
+                positionBefore.liquidity - positionAfter.liquidity
             );
         }
 

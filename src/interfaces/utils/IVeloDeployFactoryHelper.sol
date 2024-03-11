@@ -9,6 +9,7 @@ interface IVeloDeployFactoryHelper {
         IAmmDepositWithdrawModule ammDepositWithdrawModule,
         string memory name,
         string memory symbol,
-        address admin
+        address admin,
+        address operator
     ) external returns (ILpWrapper);
 }
