@@ -181,14 +181,26 @@ contract Unit is Fixture {
         );
 
         {
-            uint256 liquidityIncrease = positionAfter.liquidity -
-                positionBefore.liquidity;
-            uint256 expectedLpAmount = FullMath.mulDiv(
-                liquidityIncrease,
-                totalSupplyBefore,
-                positionBefore.liquidity
+            uint256 expectedLiquidityIncrease = FullMath.mulDiv(
+                positionBefore.liquidity,
+                totalSupplyAfter - totalSupplyBefore,
+                totalSupplyBefore
             );
-            assertEq(expectedLpAmount, totalSupplyAfter - totalSupplyBefore);
+
+            assertApproxEqAbs(
+                expectedLiquidityIncrease,
+                positionAfter.liquidity - positionBefore.liquidity,
+                1 wei
+            );
+
+            assertEq(
+                FullMath.mulDiv(
+                    positionAfter.liquidity - positionBefore.liquidity,
+                    totalSupplyBefore,
+                    positionBefore.liquidity
+                ),
+                totalSupplyAfter - totalSupplyBefore
+            );
         }
 
         vm.expectRevert(abi.encodeWithSignature("DepositCallFailed()"));
@@ -259,17 +271,14 @@ contract Unit is Fixture {
         );
 
         {
-            uint256 liquidityDecrease = positionBefore.liquidity -
-                positionAfter.liquidity;
-            uint256 expectedLpAmount = FullMath.mulDiv(
-                liquidityDecrease,
-                totalSupplyBefore,
-                positionBefore.liquidity
-            );
-            assertApproxEqAbs(
-                expectedLpAmount,
+            uint256 expectedLiquidityDecrease = FullMath.mulDiv(
+                positionBefore.liquidity,
                 totalSupplyBefore - totalSupplyAfter,
-                5 wei
+                totalSupplyBefore
+            );
+            assertEq(
+                expectedLiquidityDecrease,
+                positionBefore.liquidity - positionAfter.liquidity
             );
         }
 

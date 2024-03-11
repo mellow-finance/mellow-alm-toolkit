@@ -217,7 +217,8 @@ contract VeloDeployFactory is IVeloDeployFactory, DefaultAccessControl {
                     Strings.toString(tickSpacing)
                 )
             ),
-            s.mutableParams.lpWrapperAdmin
+            s.mutableParams.lpWrapperAdmin,
+            s.mutableParams.farmOperator
         );
 
         uint256 positionId;
