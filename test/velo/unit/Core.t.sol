@@ -343,9 +343,323 @@ contract Unit is Fixture {
                 amountOutMinimum: 0,
                 deadline: type(uint256).max
             });
-
             rebalanceParams.data = abi.encode(params);
         }
         _checkState(positionId, rebalanceParams);
+
+        vm.startPrank(Constants.DEPLOYER);
+        movePrice(-1600, pool);
+        vm.stopPrank();
+
+        skip(1);
+
+        {
+            ISwapRouter.ExactInputSingleParams[]
+                memory params = new ISwapRouter.ExactInputSingleParams[](1);
+            params[0] = ISwapRouter.ExactInputSingleParams({
+                tokenIn: pool.token0(),
+                tokenOut: pool.token1(),
+                tickSpacing: pool.tickSpacing(),
+                recipient: rebalanceParams.callback,
+                amountIn: 120 wei,
+                sqrtPriceLimitX96: 0,
+                amountOutMinimum: 0,
+                deadline: type(uint256).max
+            });
+            rebalanceParams.data = abi.encode(params);
+        }
+        _checkState(positionId, rebalanceParams);
+
+        vm.startPrank(Constants.DEPLOYER);
+        movePrice(-3000, pool);
+        vm.stopPrank();
+
+        skip(1);
+
+        {
+            ISwapRouter.ExactInputSingleParams[]
+                memory params = new ISwapRouter.ExactInputSingleParams[](1);
+            params[0] = ISwapRouter.ExactInputSingleParams({
+                tokenIn: pool.token0(),
+                tokenOut: pool.token1(),
+                tickSpacing: pool.tickSpacing(),
+                recipient: rebalanceParams.callback,
+                amountIn: 140 wei,
+                sqrtPriceLimitX96: 0,
+                amountOutMinimum: 0,
+                deadline: type(uint256).max
+            });
+            rebalanceParams.data = abi.encode(params);
+        }
+        _checkState(positionId, rebalanceParams);
+    }
+
+    function testSetOperatorFlag() external {
+        core = new Core(ammModule, strategyModule, oracle, Constants.OWNER);
+        vm.expectRevert(abi.encodeWithSignature("Forbidden()"));
+        core.setOperatorFlag(true);
+        vm.startPrank(Constants.OWNER);
+        core.setOperatorFlag(true);
+        vm.stopPrank();
+        vm.expectRevert(abi.encodeWithSignature("Forbidden()"));
+        core.setOperatorFlag(false);
+        vm.startPrank(Constants.OWNER);
+        core.setOperatorFlag(false);
+        vm.stopPrank();
+    }
+
+    function testSetPositionParams() external {
+        uint256 positionId = _depositToken(
+            mint(
+                pool.token0(),
+                pool.token1(),
+                pool.tickSpacing(),
+                pool.tickSpacing() * 2,
+                10000,
+                pool
+            )
+        );
+
+        vm.expectRevert(abi.encodeWithSignature("Forbidden()"));
+        core.setPositionParams(
+            positionId,
+            0,
+            new bytes(0),
+            new bytes(0),
+            new bytes(0)
+        );
+
+        vm.startPrank(Constants.OWNER);
+        vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
+        core.setPositionParams(
+            positionId,
+            1,
+            new bytes(123),
+            new bytes(0),
+            new bytes(0)
+        );
+        vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
+        core.setPositionParams(
+            positionId,
+            1,
+            new bytes(0),
+            new bytes(123),
+            new bytes(0)
+        );
+
+        bytes memory defaultStrategyParams = abi.encode(
+            IPulseStrategyModule.StrategyParams({
+                width: 200,
+                tickSpacing: 100,
+                tickNeighborhood: 100,
+                strategyType: IPulseStrategyModule.StrategyType.Original
+            })
+        );
+
+        vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
+        core.setPositionParams(
+            positionId,
+            1,
+            new bytes(0),
+            defaultStrategyParams,
+            new bytes(123)
+        );
+
+        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        core.setPositionParams(
+            positionId,
+            0,
+            new bytes(0),
+            defaultStrategyParams,
+            new bytes(0)
+        );
+
+        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        core.setPositionParams(
+            positionId,
+            uint16(D4 / 4 + 1),
+            new bytes(0),
+            defaultStrategyParams,
+            new bytes(0)
+        );
+
+        core.setPositionParams(
+            positionId,
+            uint16(D4 / 4),
+            new bytes(0),
+            defaultStrategyParams,
+            new bytes(0)
+        );
+
+        bytes memory defaultCallbackParams = abi.encode(
+            IVeloAmmModule.CallbackParams({farm: address(1), gauge: address(1)})
+        );
+        bytes memory defaultSecurityParams = abi.encode(
+            IVeloOracle.SecurityParams({lookback: 100, maxAllowedDelta: 100})
+        );
+
+        core.setPositionParams(
+            positionId,
+            uint16(D4 / 4),
+            defaultCallbackParams,
+            defaultStrategyParams,
+            defaultSecurityParams
+        );
+    }
+
+    function testPosition() external {
+        uint256 tokenId = mint(
+            pool.token0(),
+            pool.token1(),
+            pool.tickSpacing(),
+            pool.tickSpacing() * 2,
+            10000,
+            pool
+        );
+        uint256 positionId = _depositToken(tokenId);
+
+        ICore.PositionInfo memory info = core.position(positionId);
+
+        assertEq(info.tokenIds.length, 1);
+        assertEq(info.tokenIds[0], tokenId);
+
+        assertEq(info.owner, Constants.OWNER);
+        assertEq(info.slippageD4, 1);
+        assertTrue(info.strategyParams.length != 0);
+        assertTrue(info.callbackParams.length != 0);
+        assertTrue(info.securityParams.length != 0);
+
+        assertEq(address(pool), info.pool);
+        assertEq(uint24(pool.tickSpacing()), info.property);
+    }
+
+    function testPositionCount() external {
+        uint256 tokenId = mint(
+            pool.token0(),
+            pool.token1(),
+            pool.tickSpacing(),
+            pool.tickSpacing() * 2,
+            10000,
+            pool
+        );
+        uint256[] memory tokenIds = new uint256[](1);
+        tokenIds[0] = tokenId;
+        ICore.DepositParams memory depositParams = ICore.DepositParams({
+            tokenIds: tokenIds,
+            owner: Constants.OWNER,
+            slippageD4: 1,
+            callbackParams: abi.encode(
+                IVeloAmmModule.CallbackParams({
+                    gauge: address(pool.gauge()),
+                    farm: address(1)
+                })
+            ),
+            strategyParams: abi.encode(
+                IPulseStrategyModule.StrategyParams({
+                    strategyType: IPulseStrategyModule.StrategyType.Original,
+                    width: 1000,
+                    tickSpacing: 200,
+                    tickNeighborhood: 100
+                })
+            ),
+            securityParams: abi.encode(
+                IVeloOracle.SecurityParams({
+                    lookback: 100,
+                    maxAllowedDelta: 100
+                })
+            )
+        });
+
+        core = new Core(ammModule, strategyModule, oracle, Constants.OWNER);
+        vm.startPrank(Constants.OWNER);
+        core.setProtocolParams(
+            abi.encode(
+                IVeloAmmModule.ProtocolParams({
+                    treasury: Constants.PROTOCOL_TREASURY,
+                    feeD9: Constants.PROTOCOL_FEE_D9
+                })
+            )
+        );
+
+        positionManager.approve(address(core), tokenId);
+        uint256 positionId = core.deposit(depositParams);
+        core.withdraw(positionId, Constants.OWNER);
+
+        assertEq(core.positionCount(), 1);
+
+        positionManager.approve(address(core), tokenId);
+        positionId = core.deposit(depositParams);
+        core.withdraw(positionId, Constants.OWNER);
+
+        assertEq(core.positionCount(), 2);
+
+        positionManager.approve(address(core), tokenId);
+        positionId = core.deposit(depositParams);
+        core.withdraw(positionId, Constants.OWNER);
+
+        assertEq(core.positionCount(), 3);
+
+        positionManager.approve(address(core), tokenId);
+        positionId = core.deposit(depositParams);
+        core.withdraw(positionId, Constants.OWNER);
+
+        assertEq(core.positionCount(), 4);
+    }
+
+    function testGetUserIds() external {
+        uint256 positionId = _depositToken(
+            mint(
+                pool.token0(),
+                pool.token1(),
+                pool.tickSpacing(),
+                pool.tickSpacing() * 2,
+                10000,
+                pool
+            )
+        );
+
+        uint256[] memory ids = core.getUserIds(Constants.OWNER);
+        assertEq(ids.length, 1);
+        assertEq(ids[0], positionId);
+
+        ids = core.getUserIds(address(1));
+        assertEq(ids.length, 0);
+    }
+
+    function testProtocolParams() external {
+        core = new Core(ammModule, strategyModule, oracle, Constants.OWNER);
+
+        assertEq(core.protocolParams(), new bytes(0));
+        vm.startPrank(Constants.OWNER);
+
+        bytes memory params = abi.encode(
+            IVeloAmmModule.ProtocolParams({
+                treasury: Constants.PROTOCOL_TREASURY,
+                feeD9: Constants.PROTOCOL_FEE_D9
+            })
+        );
+
+        core.setProtocolParams(params);
+
+        assertEq(core.protocolParams(), params);
+    }
+
+    function testEmptyRebalance() external {
+        uint256 positionId = _depositToken(
+            mint(
+                pool.token0(),
+                pool.token1(),
+                pool.tickSpacing(),
+                pool.tickSpacing() * 2,
+                10000,
+                pool
+            )
+        );
+
+        vm.expectRevert(abi.encodeWithSignature("Forbidden()"));
+        core.emptyRebalance(positionId);
+
+        vm.startPrank(Constants.OWNER);
+        core.emptyRebalance(positionId);
     }
 }
