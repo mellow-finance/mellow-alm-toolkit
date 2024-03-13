@@ -47,12 +47,15 @@ contract Integration is Fixture {
             core.withdraw(nftId, Constants.OWNER);
         }
 
+        Counter counter = new Counter(Constants.OWNER, address(core));
+
         positionManager.approve(address(core), depositParams.tokenIds[0]);
         depositParams.owner = address(lpWrapper);
         depositParams.callbackParams = abi.encode(
             IVeloAmmModule.CallbackParams({
                 farm: address(stakingRewards),
-                gauge: Constants.GAUGE
+                gauge: Constants.GAUGE,
+                counter: address(counter)
             })
         );
 

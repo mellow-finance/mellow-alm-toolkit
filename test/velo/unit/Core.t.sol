@@ -56,7 +56,8 @@ contract Unit is Fixture {
         depositParams.callbackParams = abi.encode(
             IVeloAmmModule.CallbackParams({
                 gauge: address(pool.gauge()),
-                farm: address(1)
+                farm: address(1),
+                counter: address(new Counter(Constants.OWNER, address(core)))
             })
         );
 
@@ -115,7 +116,8 @@ contract Unit is Fixture {
         depositParams.callbackParams = abi.encode(
             IVeloAmmModule.CallbackParams({
                 gauge: address(pool.gauge()),
-                farm: address(1)
+                farm: address(1),
+                counter: address(new Counter(Constants.OWNER, address(core)))
             })
         );
         depositParams.strategyParams = abi.encode(
@@ -492,7 +494,11 @@ contract Unit is Fixture {
         );
 
         bytes memory defaultCallbackParams = abi.encode(
-            IVeloAmmModule.CallbackParams({farm: address(1), gauge: address(1)})
+            IVeloAmmModule.CallbackParams({
+                farm: address(1),
+                gauge: address(1),
+                counter: address(1)
+            })
         );
         bytes memory defaultSecurityParams = abi.encode(
             IVeloOracle.SecurityParams({lookback: 100, maxAllowedDelta: 100})
@@ -551,7 +557,10 @@ contract Unit is Fixture {
             callbackParams: abi.encode(
                 IVeloAmmModule.CallbackParams({
                     gauge: address(pool.gauge()),
-                    farm: address(1)
+                    farm: address(1),
+                    counter: address(
+                        new Counter(Constants.OWNER, address(core))
+                    )
                 })
             ),
             strategyParams: abi.encode(
