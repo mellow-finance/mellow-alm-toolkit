@@ -18,7 +18,11 @@ contract Integration is Fixture {
         );
         depositParams.owner = Constants.OWNER;
         depositParams.callbackParams = abi.encode(
-            IVeloAmmModule.CallbackParams({farm: address(0), gauge: address(0)})
+            IVeloAmmModule.CallbackParams({
+                farm: address(0),
+                gauge: address(0),
+                counter: address(0)
+            })
         );
 
         depositParams.strategyParams = abi.encode(
@@ -29,12 +33,16 @@ contract Integration is Fixture {
                 width: pool.tickSpacing()
             })
         );
+
+        Counter counter = new Counter(Constants.OWNER, address(core));
+
         depositParams.securityParams = new bytes(0);
         depositParams.slippageD4 = 100;
         depositParams.callbackParams = abi.encode(
             IVeloAmmModule.CallbackParams({
                 farm: address(stakingRewards),
-                gauge: Constants.GAUGE
+                gauge: Constants.GAUGE,
+                counter: address(counter)
             })
         );
 

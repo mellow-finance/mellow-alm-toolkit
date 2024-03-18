@@ -42,7 +42,8 @@ contract Unit is Fixture {
         depositParams.callbackParams = abi.encode(
             IVeloAmmModule.CallbackParams({
                 gauge: address(pool.gauge()),
-                farm: address(1)
+                farm: address(1),
+                counter: address(new Counter(Constants.OWNER, address(core)))
             })
         );
         depositParams.strategyParams = abi.encode(

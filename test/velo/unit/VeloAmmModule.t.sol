@@ -14,12 +14,15 @@ contract Unit is Fixture {
     ICLPool public pool = ICLPool(0xC358c95b146E9597339b376063A2cB657AFf84eb);
 
     address public testFarmAddress = address(123);
+    address public counterAddress =
+        address(new Counter(Constants.OWNER, Constants.OWNER));
 
     bytes public defaultCallbackParams =
         abi.encode(
             IVeloAmmModule.CallbackParams({
                 farm: testFarmAddress,
-                gauge: address(pool.gauge())
+                gauge: address(pool.gauge()),
+                counter: address(new Counter(address(this), address(this)))
             })
         );
 
@@ -308,7 +311,8 @@ contract Unit is Fixture {
             abi.encode(
                 IVeloAmmModule.CallbackParams({
                     farm: address(0),
-                    gauge: address(0)
+                    gauge: address(0),
+                    counter: address(0)
                 })
             ),
             defaultProtocolParams
@@ -370,7 +374,8 @@ contract Unit is Fixture {
             abi.encode(
                 IVeloAmmModule.CallbackParams({
                     farm: address(0),
-                    gauge: address(0)
+                    gauge: address(0),
+                    counter: address(0)
                 })
             ),
             defaultProtocolParams
@@ -457,7 +462,8 @@ contract Unit is Fixture {
             abi.encode(
                 IVeloAmmModule.CallbackParams({
                     farm: address(0),
-                    gauge: address(0)
+                    gauge: address(0),
+                    counter: address(0)
                 })
             )
         );
@@ -466,7 +472,8 @@ contract Unit is Fixture {
             abi.encode(
                 IVeloAmmModule.CallbackParams({
                     farm: address(1),
-                    gauge: address(0)
+                    gauge: address(0),
+                    counter: address(0)
                 })
             )
         );
@@ -477,7 +484,8 @@ contract Unit is Fixture {
             abi.encode(
                 IVeloAmmModule.CallbackParams({
                     farm: address(1),
-                    gauge: address(2)
+                    gauge: address(2),
+                    counter: address(1)
                 })
             )
         );

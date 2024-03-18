@@ -10,6 +10,8 @@ import "../../external/velo/ICLGauge.sol";
 import "../../external/velo/ICLFactory.sol";
 import "../../external/velo/INonfungiblePositionManager.sol";
 
+import "../../utils/ICounter.sol";
+
 interface IVeloAmmModule is IAmmModule {
     error InvalidFee();
     error AddressZero();
@@ -19,6 +21,7 @@ interface IVeloAmmModule is IAmmModule {
     struct CallbackParams {
         address farm;
         address gauge;
+        address counter;
     }
 
     struct ProtocolParams {

@@ -40,13 +40,14 @@ contract VeloAmmModule is IVeloAmmModule {
     /// @inheritdoc IAmmModule
     function validateCallbackParams(bytes memory params) external pure {
         if (params.length == 0) return;
-        if (params.length != 0x40) revert InvalidLength();
+        if (params.length != 0x60) revert InvalidLength();
         IVeloAmmModule.CallbackParams memory params_ = abi.decode(
             params,
             (IVeloAmmModule.CallbackParams)
         );
         if (params_.farm == address(0)) revert AddressZero();
         if (params_.gauge == address(0)) revert AddressZero();
+        if (params_.counter == address(0)) revert AddressZero();
     }
 
     /// @inheritdoc IAmmModule
@@ -168,6 +169,7 @@ contract VeloAmmModule is IVeloAmmModule {
             balance -= protocolReward;
             if (balance > 0) {
                 IERC20(token).safeTransfer(callbackParams_.farm, balance);
+                ICounter(callbackParams_.counter).add(balance);
             }
         }
         ICLGauge(callbackParams_.gauge).withdraw(tokenId);

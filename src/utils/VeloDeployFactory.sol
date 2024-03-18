@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "../interfaces/utils/IVeloDeployFactory.sol";
 
+import "./Counter.sol";
 import "./DefaultAccessControl.sol";
 
 contract VeloDeployFactory is IVeloDeployFactory, DefaultAccessControl {
@@ -247,7 +248,13 @@ contract VeloDeployFactory is IVeloDeployFactory, DefaultAccessControl {
             depositParams.callbackParams = abi.encode(
                 IVeloAmmModule.CallbackParams({
                     farm: farm,
-                    gauge: address(pool.gauge())
+                    gauge: address(pool.gauge()),
+                    counter: address(
+                        new Counter(
+                            s.mutableParams.farmOperator,
+                            address(s.immutableParams.core)
+                        )
+                    )
                 })
             );
             depositParams.strategyParams = abi.encode(
