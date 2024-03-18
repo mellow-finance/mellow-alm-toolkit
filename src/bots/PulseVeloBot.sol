@@ -392,13 +392,15 @@ contract PulseVeloBot is IPulseVeloBot {
 
             {
                 console2.log(
-                    "balances 0:",
+                    "token0:",
                     IERC20(token0).balanceOf(address(this)),
+                    ">=",
                     amount0
                 );
                 console2.log(
-                    "balances 1:",
+                    "token1:",
                     IERC20(token1).balanceOf(address(this)),
+                    ">=",
                     amount1
                 );
             }

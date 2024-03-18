@@ -101,16 +101,20 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
                 }
             }
             for (uint256 i = 0; i < n; i++) {
-                amounts0[i] = FullMath.mulDiv(
-                    amount0,
-                    amounts0[i],
-                    totalAmount0
-                );
-                amounts1[i] = FullMath.mulDiv(
-                    amount1,
-                    amounts1[i],
-                    totalAmount1
-                );
+                if (totalAmount0 != 0) {
+                    amounts0[i] = FullMath.mulDiv(
+                        amount0,
+                        amounts0[i],
+                        totalAmount0
+                    );
+                }
+                if (totalAmount1 != 0) {
+                    amounts1[i] = FullMath.mulDiv(
+                        amount1,
+                        amounts1[i],
+                        totalAmount1
+                    );
+                }
             }
         }
         if (amount0 > 0 || amount1 > 0) {
