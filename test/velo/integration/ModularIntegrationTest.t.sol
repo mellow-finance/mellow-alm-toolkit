@@ -586,399 +586,399 @@ contract Integration is Test {
         farm = StakingRewards(addresses.synthetixFarm);
     }
 
-    // function testDepositWithdraw() external {
-    //     (ILpWrapper wrapper, StakingRewards farm, ICLPool pool) = build(200);
-    //     Actions[] memory actions = new Actions[](10);
-    //     actions[0] = Actions.DEPOSIT;
-    //     actions[1] = Actions.DEPOSIT;
-    //     actions[2] = Actions.DEPOSIT;
-    //     actions[3] = Actions.DEPOSIT;
-    //     actions[4] = Actions.DEPOSIT;
-    //     actions[5] = Actions.WITHDRAW;
-    //     actions[6] = Actions.WITHDRAW;
-    //     actions[7] = Actions.WITHDRAW;
-    //     actions[8] = Actions.WITHDRAW;
-    //     actions[9] = Actions.WITHDRAW;
-    //     _execute(wrapper, farm, pool, actions);
-    // }
+    function testDepositWithdraw() external {
+        (ILpWrapper wrapper, StakingRewards farm, ICLPool pool) = build(200);
+        Actions[] memory actions = new Actions[](10);
+        actions[0] = Actions.DEPOSIT;
+        actions[1] = Actions.DEPOSIT;
+        actions[2] = Actions.DEPOSIT;
+        actions[3] = Actions.DEPOSIT;
+        actions[4] = Actions.DEPOSIT;
+        actions[5] = Actions.WITHDRAW;
+        actions[6] = Actions.WITHDRAW;
+        actions[7] = Actions.WITHDRAW;
+        actions[8] = Actions.WITHDRAW;
+        actions[9] = Actions.WITHDRAW;
+        _execute(wrapper, farm, pool, actions);
+    }
 
-    // function testRewards1() external {
-    //     (ILpWrapper wrapper, StakingRewards farm, ICLPool pool) = build(200);
-    //     Actions[] memory actions = new Actions[](6);
-    //     actions[0] = Actions.DEPOSIT;
-    //     actions[1] = Actions.ADD_REWARDS;
-    //     actions[2] = Actions.IDLE;
-    //     actions[3] = Actions.PUSH_REWARDS;
-    //     actions[4] = Actions.IDLE;
-    //     actions[5] = Actions.WITHDRAW;
-    //     _execute(wrapper, farm, pool, actions);
-    //     uint256 earned = farm.earned(DEPOSITOR);
-    //     assertTrue(earned > 0);
-    //     vm.prank(DEPOSITOR);
-    //     farm.getReward();
-    //     assertEq(earned, IERC20(Constants.VELO).balanceOf(DEPOSITOR));
-    // }
+    function testRewards1() external {
+        (ILpWrapper wrapper, StakingRewards farm, ICLPool pool) = build(200);
+        Actions[] memory actions = new Actions[](6);
+        actions[0] = Actions.DEPOSIT;
+        actions[1] = Actions.ADD_REWARDS;
+        actions[2] = Actions.IDLE;
+        actions[3] = Actions.PUSH_REWARDS;
+        actions[4] = Actions.IDLE;
+        actions[5] = Actions.WITHDRAW;
+        _execute(wrapper, farm, pool, actions);
+        uint256 earned = farm.earned(DEPOSITOR);
+        assertTrue(earned > 0);
+        vm.prank(DEPOSITOR);
+        farm.getReward();
+        assertEq(earned, IERC20(Constants.VELO).balanceOf(DEPOSITOR));
+    }
 
-    // function testRewards2() external {
-    //     (ILpWrapper wrapper, StakingRewards farm, ICLPool pool) = build(200);
-    //     Actions[] memory actions = new Actions[](7);
-    //     actions[0] = Actions.ADD_REWARDS;
-    //     actions[1] = Actions.IDLE;
-    //     actions[2] = Actions.PUSH_REWARDS;
-    //     actions[3] = Actions.IDLE;
-    //     actions[4] = Actions.DEPOSIT;
-    //     actions[5] = Actions.IDLE;
-    //     actions[6] = Actions.WITHDRAW;
-    //     _execute(wrapper, farm, pool, actions);
-    //     uint256 earned = farm.earned(DEPOSITOR);
-    //     assertTrue(earned > 0);
-    //     vm.prank(DEPOSITOR);
-    //     farm.getReward();
-    //     assertEq(earned, IERC20(Constants.VELO).balanceOf(DEPOSITOR));
-    // }
+    function testRewards2() external {
+        (ILpWrapper wrapper, StakingRewards farm, ICLPool pool) = build(200);
+        Actions[] memory actions = new Actions[](7);
+        actions[0] = Actions.ADD_REWARDS;
+        actions[1] = Actions.IDLE;
+        actions[2] = Actions.PUSH_REWARDS;
+        actions[3] = Actions.IDLE;
+        actions[4] = Actions.DEPOSIT;
+        actions[5] = Actions.IDLE;
+        actions[6] = Actions.WITHDRAW;
+        _execute(wrapper, farm, pool, actions);
+        uint256 earned = farm.earned(DEPOSITOR);
+        assertTrue(earned > 0);
+        vm.prank(DEPOSITOR);
+        farm.getReward();
+        assertEq(earned, IERC20(Constants.VELO).balanceOf(DEPOSITOR));
+    }
 
-    // function testRebalance1() external {
-    //     (ILpWrapper wrapper, StakingRewards farm, ICLPool pool) = build(200);
-    //     Actions[] memory actions = new Actions[](4);
-    //     actions[0] = Actions.DEPOSIT;
-    //     actions[1] = Actions.SWAP_LEFT_25;
-    //     actions[2] = Actions.IDLE;
-    //     actions[3] = Actions.REBALANCE;
-    //     _execute(wrapper, farm, pool, actions);
-    // }
+    function testRebalance1() external {
+        (ILpWrapper wrapper, StakingRewards farm, ICLPool pool) = build(200);
+        Actions[] memory actions = new Actions[](4);
+        actions[0] = Actions.DEPOSIT;
+        actions[1] = Actions.SWAP_LEFT_25;
+        actions[2] = Actions.IDLE;
+        actions[3] = Actions.REBALANCE;
+        _execute(wrapper, farm, pool, actions);
+    }
 
-    // function testRebalance2() external {
-    //     (ILpWrapper wrapper, StakingRewards farm, ICLPool pool) = build(200);
-    //     Actions[] memory actions = new Actions[](4);
-    //     actions[0] = Actions.DEPOSIT;
-    //     actions[1] = Actions.SWAP_RIGHT_25;
-    //     actions[2] = Actions.IDLE;
-    //     actions[3] = Actions.REBALANCE;
-    //     _execute(wrapper, farm, pool, actions);
-    // }
+    function testRebalance2() external {
+        (ILpWrapper wrapper, StakingRewards farm, ICLPool pool) = build(200);
+        Actions[] memory actions = new Actions[](4);
+        actions[0] = Actions.DEPOSIT;
+        actions[1] = Actions.SWAP_RIGHT_25;
+        actions[2] = Actions.IDLE;
+        actions[3] = Actions.REBALANCE;
+        _execute(wrapper, farm, pool, actions);
+    }
 
-    // function testRebalance3() external {
-    //     (ILpWrapper wrapper, StakingRewards farm, ICLPool pool) = build(200);
-    //     Actions[] memory actions = new Actions[](4);
-    //     actions[0] = Actions.DEPOSIT;
-    //     actions[1] = Actions.SWAP_LEFT_50;
-    //     actions[2] = Actions.IDLE;
-    //     actions[3] = Actions.REBALANCE;
-    //     _execute(wrapper, farm, pool, actions);
-    // }
+    function testRebalance3() external {
+        (ILpWrapper wrapper, StakingRewards farm, ICLPool pool) = build(200);
+        Actions[] memory actions = new Actions[](4);
+        actions[0] = Actions.DEPOSIT;
+        actions[1] = Actions.SWAP_LEFT_50;
+        actions[2] = Actions.IDLE;
+        actions[3] = Actions.REBALANCE;
+        _execute(wrapper, farm, pool, actions);
+    }
 
-    // function testRebalance4() external {
-    //     (ILpWrapper wrapper, StakingRewards farm, ICLPool pool) = build(200);
-    //     Actions[] memory actions = new Actions[](4);
-    //     actions[0] = Actions.DEPOSIT;
-    //     actions[1] = Actions.SWAP_RIGHT_50;
-    //     actions[2] = Actions.IDLE;
-    //     actions[3] = Actions.REBALANCE;
-    //     _execute(wrapper, farm, pool, actions);
-    // }
+    function testRebalance4() external {
+        (ILpWrapper wrapper, StakingRewards farm, ICLPool pool) = build(200);
+        Actions[] memory actions = new Actions[](4);
+        actions[0] = Actions.DEPOSIT;
+        actions[1] = Actions.SWAP_RIGHT_50;
+        actions[2] = Actions.IDLE;
+        actions[3] = Actions.REBALANCE;
+        _execute(wrapper, farm, pool, actions);
+    }
 
-    // function testRebalance5() external {
-    //     (ILpWrapper wrapper, StakingRewards farm, ICLPool pool) = build(200);
-    //     Actions[] memory actions = new Actions[](4);
-    //     actions[0] = Actions.DEPOSIT;
-    //     actions[1] = Actions.SWAP_LEFT_90;
-    //     actions[2] = Actions.IDLE;
-    //     actions[3] = Actions.REBALANCE;
-    //     _execute(wrapper, farm, pool, actions);
-    // }
+    function testRebalance5() external {
+        (ILpWrapper wrapper, StakingRewards farm, ICLPool pool) = build(200);
+        Actions[] memory actions = new Actions[](4);
+        actions[0] = Actions.DEPOSIT;
+        actions[1] = Actions.SWAP_LEFT_90;
+        actions[2] = Actions.IDLE;
+        actions[3] = Actions.REBALANCE;
+        _execute(wrapper, farm, pool, actions);
+    }
 
-    // function testRebalance6() external {
-    //     (ILpWrapper wrapper, StakingRewards farm, ICLPool pool) = build(200);
-    //     Actions[] memory actions = new Actions[](4);
-    //     actions[0] = Actions.DEPOSIT;
-    //     actions[1] = Actions.SWAP_RIGHT_90;
-    //     actions[2] = Actions.IDLE;
-    //     actions[3] = Actions.REBALANCE;
-    //     _execute(wrapper, farm, pool, actions);
-    // }
+    function testRebalance6() external {
+        (ILpWrapper wrapper, StakingRewards farm, ICLPool pool) = build(200);
+        Actions[] memory actions = new Actions[](4);
+        actions[0] = Actions.DEPOSIT;
+        actions[1] = Actions.SWAP_RIGHT_90;
+        actions[2] = Actions.IDLE;
+        actions[3] = Actions.REBALANCE;
+        _execute(wrapper, farm, pool, actions);
+    }
 
-    // function testRebalance7() external {
-    //     (ILpWrapper wrapper, StakingRewards farm, ICLPool pool) = build(200);
-    //     Actions[] memory actions = new Actions[](4);
-    //     actions[0] = Actions.DEPOSIT;
-    //     actions[1] = Actions.SWAP_LEFT_5;
-    //     actions[2] = Actions.IDLE;
-    //     actions[3] = Actions.REBALANCE;
-    //     _execute(wrapper, farm, pool, actions);
-    // }
+    function testRebalance7() external {
+        (ILpWrapper wrapper, StakingRewards farm, ICLPool pool) = build(200);
+        Actions[] memory actions = new Actions[](4);
+        actions[0] = Actions.DEPOSIT;
+        actions[1] = Actions.SWAP_LEFT_5;
+        actions[2] = Actions.IDLE;
+        actions[3] = Actions.REBALANCE;
+        _execute(wrapper, farm, pool, actions);
+    }
 
-    // function testRebalance8() external {
-    //     (ILpWrapper wrapper, StakingRewards farm, ICLPool pool) = build(200);
-    //     Actions[] memory actions = new Actions[](4);
-    //     actions[0] = Actions.DEPOSIT;
-    //     actions[1] = Actions.SWAP_RIGHT_5;
-    //     actions[2] = Actions.IDLE;
-    //     actions[3] = Actions.REBALANCE;
-    //     _execute(wrapper, farm, pool, actions);
-    // }
+    function testRebalance8() external {
+        (ILpWrapper wrapper, StakingRewards farm, ICLPool pool) = build(200);
+        Actions[] memory actions = new Actions[](4);
+        actions[0] = Actions.DEPOSIT;
+        actions[1] = Actions.SWAP_RIGHT_5;
+        actions[2] = Actions.IDLE;
+        actions[3] = Actions.REBALANCE;
+        _execute(wrapper, farm, pool, actions);
+    }
 
-    // function testRebalance9() external {
-    //     (ILpWrapper wrapper, StakingRewards farm, ICLPool pool) = build(200);
-    //     Actions[] memory actions = new Actions[](4);
-    //     actions[0] = Actions.DEPOSIT;
-    //     actions[1] = Actions.SWAP_DUST;
-    //     actions[2] = Actions.IDLE;
-    //     actions[3] = Actions.REBALANCE;
-    //     _execute(wrapper, farm, pool, actions);
-    // }
+    function testRebalance9() external {
+        (ILpWrapper wrapper, StakingRewards farm, ICLPool pool) = build(200);
+        Actions[] memory actions = new Actions[](4);
+        actions[0] = Actions.DEPOSIT;
+        actions[1] = Actions.SWAP_DUST;
+        actions[2] = Actions.IDLE;
+        actions[3] = Actions.REBALANCE;
+        _execute(wrapper, farm, pool, actions);
+    }
 
-    // function testMultipleRebalances1() external {
-    //     (ILpWrapper wrapper, StakingRewards farm, ICLPool pool) = build(200);
-    //     Actions[] memory actions = new Actions[](19);
-    //     actions[0] = Actions.DEPOSIT;
-    //     actions[1] = Actions.SWAP_DUST;
-    //     actions[2] = Actions.IDLE;
-    //     actions[3] = Actions.REBALANCE;
-    //     actions[4] = Actions.SWAP_LEFT_5;
-    //     actions[5] = Actions.IDLE;
-    //     actions[6] = Actions.REBALANCE;
-    //     actions[7] = Actions.SWAP_LEFT_5;
-    //     actions[8] = Actions.IDLE;
-    //     actions[9] = Actions.REBALANCE;
-    //     actions[10] = Actions.SWAP_LEFT_5;
-    //     actions[11] = Actions.IDLE;
-    //     actions[12] = Actions.REBALANCE;
-    //     actions[13] = Actions.SWAP_LEFT_5;
-    //     actions[14] = Actions.IDLE;
-    //     actions[15] = Actions.REBALANCE;
-    //     actions[16] = Actions.SWAP_LEFT_5;
-    //     actions[17] = Actions.IDLE;
-    //     actions[18] = Actions.REBALANCE;
-    //     _execute(wrapper, farm, pool, actions);
-    // }
+    function testMultipleRebalances1() external {
+        (ILpWrapper wrapper, StakingRewards farm, ICLPool pool) = build(200);
+        Actions[] memory actions = new Actions[](19);
+        actions[0] = Actions.DEPOSIT;
+        actions[1] = Actions.SWAP_DUST;
+        actions[2] = Actions.IDLE;
+        actions[3] = Actions.REBALANCE;
+        actions[4] = Actions.SWAP_LEFT_5;
+        actions[5] = Actions.IDLE;
+        actions[6] = Actions.REBALANCE;
+        actions[7] = Actions.SWAP_LEFT_5;
+        actions[8] = Actions.IDLE;
+        actions[9] = Actions.REBALANCE;
+        actions[10] = Actions.SWAP_LEFT_5;
+        actions[11] = Actions.IDLE;
+        actions[12] = Actions.REBALANCE;
+        actions[13] = Actions.SWAP_LEFT_5;
+        actions[14] = Actions.IDLE;
+        actions[15] = Actions.REBALANCE;
+        actions[16] = Actions.SWAP_LEFT_5;
+        actions[17] = Actions.IDLE;
+        actions[18] = Actions.REBALANCE;
+        _execute(wrapper, farm, pool, actions);
+    }
 
-    // function testMultipleRebalances2() external {
-    //     (ILpWrapper wrapper, StakingRewards farm, ICLPool pool) = build(200);
-    //     Actions[] memory actions = new Actions[](22);
-    //     actions[0] = Actions.DEPOSIT;
-    //     actions[1] = Actions.SWAP_DUST;
-    //     actions[2] = Actions.IDLE;
-    //     actions[3] = Actions.REBALANCE;
-    //     actions[4] = Actions.SWAP_LEFT_5;
-    //     actions[5] = Actions.IDLE;
-    //     actions[6] = Actions.REBALANCE;
-    //     actions[7] = Actions.SWAP_RIGHT_5;
-    //     actions[8] = Actions.IDLE;
-    //     actions[9] = Actions.REBALANCE;
-    //     actions[10] = Actions.SWAP_LEFT_5;
-    //     actions[11] = Actions.IDLE;
-    //     actions[12] = Actions.REBALANCE;
-    //     actions[13] = Actions.SWAP_RIGHT_5;
-    //     actions[14] = Actions.IDLE;
-    //     actions[15] = Actions.REBALANCE;
-    //     actions[16] = Actions.SWAP_LEFT_5;
-    //     actions[17] = Actions.IDLE;
-    //     actions[18] = Actions.REBALANCE;
-    //     actions[19] = Actions.SWAP_RIGHT_5;
-    //     actions[20] = Actions.IDLE;
-    //     actions[21] = Actions.REBALANCE;
-    //     _execute(wrapper, farm, pool, actions);
-    // }
+    function testMultipleRebalances2() external {
+        (ILpWrapper wrapper, StakingRewards farm, ICLPool pool) = build(200);
+        Actions[] memory actions = new Actions[](22);
+        actions[0] = Actions.DEPOSIT;
+        actions[1] = Actions.SWAP_DUST;
+        actions[2] = Actions.IDLE;
+        actions[3] = Actions.REBALANCE;
+        actions[4] = Actions.SWAP_LEFT_5;
+        actions[5] = Actions.IDLE;
+        actions[6] = Actions.REBALANCE;
+        actions[7] = Actions.SWAP_RIGHT_5;
+        actions[8] = Actions.IDLE;
+        actions[9] = Actions.REBALANCE;
+        actions[10] = Actions.SWAP_LEFT_5;
+        actions[11] = Actions.IDLE;
+        actions[12] = Actions.REBALANCE;
+        actions[13] = Actions.SWAP_RIGHT_5;
+        actions[14] = Actions.IDLE;
+        actions[15] = Actions.REBALANCE;
+        actions[16] = Actions.SWAP_LEFT_5;
+        actions[17] = Actions.IDLE;
+        actions[18] = Actions.REBALANCE;
+        actions[19] = Actions.SWAP_RIGHT_5;
+        actions[20] = Actions.IDLE;
+        actions[21] = Actions.REBALANCE;
+        _execute(wrapper, farm, pool, actions);
+    }
 
-    // function testMultipleRebalances3() external {
-    //     (ILpWrapper wrapper, StakingRewards farm, ICLPool pool) = build(200);
-    //     Actions[] memory actions = new Actions[](22);
-    //     actions[0] = Actions.DEPOSIT;
-    //     actions[1] = Actions.SWAP_DUST;
-    //     actions[2] = Actions.IDLE;
-    //     actions[3] = Actions.REBALANCE;
-    //     actions[4] = Actions.SWAP_LEFT_25;
-    //     actions[5] = Actions.IDLE;
-    //     actions[6] = Actions.REBALANCE;
-    //     actions[7] = Actions.SWAP_RIGHT_25;
-    //     actions[8] = Actions.IDLE;
-    //     actions[9] = Actions.REBALANCE;
-    //     actions[10] = Actions.SWAP_LEFT_25;
-    //     actions[11] = Actions.IDLE;
-    //     actions[12] = Actions.REBALANCE;
-    //     actions[13] = Actions.SWAP_RIGHT_25;
-    //     actions[14] = Actions.IDLE;
-    //     actions[15] = Actions.REBALANCE;
-    //     actions[16] = Actions.SWAP_LEFT_25;
-    //     actions[17] = Actions.IDLE;
-    //     actions[18] = Actions.REBALANCE;
-    //     actions[19] = Actions.SWAP_RIGHT_25;
-    //     actions[20] = Actions.IDLE;
-    //     actions[21] = Actions.REBALANCE;
-    //     _execute(wrapper, farm, pool, actions);
-    // }
+    function testMultipleRebalances3() external {
+        (ILpWrapper wrapper, StakingRewards farm, ICLPool pool) = build(200);
+        Actions[] memory actions = new Actions[](22);
+        actions[0] = Actions.DEPOSIT;
+        actions[1] = Actions.SWAP_DUST;
+        actions[2] = Actions.IDLE;
+        actions[3] = Actions.REBALANCE;
+        actions[4] = Actions.SWAP_LEFT_25;
+        actions[5] = Actions.IDLE;
+        actions[6] = Actions.REBALANCE;
+        actions[7] = Actions.SWAP_RIGHT_25;
+        actions[8] = Actions.IDLE;
+        actions[9] = Actions.REBALANCE;
+        actions[10] = Actions.SWAP_LEFT_25;
+        actions[11] = Actions.IDLE;
+        actions[12] = Actions.REBALANCE;
+        actions[13] = Actions.SWAP_RIGHT_25;
+        actions[14] = Actions.IDLE;
+        actions[15] = Actions.REBALANCE;
+        actions[16] = Actions.SWAP_LEFT_25;
+        actions[17] = Actions.IDLE;
+        actions[18] = Actions.REBALANCE;
+        actions[19] = Actions.SWAP_RIGHT_25;
+        actions[20] = Actions.IDLE;
+        actions[21] = Actions.REBALANCE;
+        _execute(wrapper, farm, pool, actions);
+    }
 
-    // function testMultipleRebalances4() external {
-    //     (ILpWrapper wrapper, StakingRewards farm, ICLPool pool) = build(200);
-    //     Actions[] memory actions = new Actions[](22);
-    //     actions[0] = Actions.DEPOSIT;
-    //     actions[1] = Actions.SWAP_DUST;
-    //     actions[2] = Actions.IDLE;
-    //     actions[3] = Actions.REBALANCE;
-    //     actions[4] = Actions.SWAP_LEFT_25;
-    //     actions[5] = Actions.IDLE;
-    //     actions[6] = Actions.REBALANCE;
-    //     actions[7] = Actions.SWAP_LEFT_25;
-    //     actions[8] = Actions.IDLE;
-    //     actions[9] = Actions.REBALANCE;
-    //     actions[10] = Actions.SWAP_LEFT_25;
-    //     actions[11] = Actions.IDLE;
-    //     actions[12] = Actions.REBALANCE;
-    //     actions[13] = Actions.SWAP_RIGHT_25;
-    //     actions[14] = Actions.IDLE;
-    //     actions[15] = Actions.REBALANCE;
-    //     actions[16] = Actions.SWAP_RIGHT_25;
-    //     actions[17] = Actions.IDLE;
-    //     actions[18] = Actions.REBALANCE;
-    //     actions[19] = Actions.SWAP_RIGHT_25;
-    //     actions[20] = Actions.IDLE;
-    //     actions[21] = Actions.REBALANCE;
-    //     _execute(wrapper, farm, pool, actions);
-    // }
+    function testMultipleRebalances4() external {
+        (ILpWrapper wrapper, StakingRewards farm, ICLPool pool) = build(200);
+        Actions[] memory actions = new Actions[](22);
+        actions[0] = Actions.DEPOSIT;
+        actions[1] = Actions.SWAP_DUST;
+        actions[2] = Actions.IDLE;
+        actions[3] = Actions.REBALANCE;
+        actions[4] = Actions.SWAP_LEFT_25;
+        actions[5] = Actions.IDLE;
+        actions[6] = Actions.REBALANCE;
+        actions[7] = Actions.SWAP_LEFT_25;
+        actions[8] = Actions.IDLE;
+        actions[9] = Actions.REBALANCE;
+        actions[10] = Actions.SWAP_LEFT_25;
+        actions[11] = Actions.IDLE;
+        actions[12] = Actions.REBALANCE;
+        actions[13] = Actions.SWAP_RIGHT_25;
+        actions[14] = Actions.IDLE;
+        actions[15] = Actions.REBALANCE;
+        actions[16] = Actions.SWAP_RIGHT_25;
+        actions[17] = Actions.IDLE;
+        actions[18] = Actions.REBALANCE;
+        actions[19] = Actions.SWAP_RIGHT_25;
+        actions[20] = Actions.IDLE;
+        actions[21] = Actions.REBALANCE;
+        _execute(wrapper, farm, pool, actions);
+    }
 
-    // function testMultipleRebalances5() external {
-    //     (ILpWrapper wrapper, StakingRewards farm, ICLPool pool) = build(200);
-    //     Actions[] memory actions = new Actions[](24);
-    //     actions[0] = Actions.DEPOSIT;
-    //     actions[1] = Actions.SWAP_DUST;
-    //     actions[2] = Actions.IDLE;
-    //     actions[3] = Actions.DEPOSIT;
-    //     actions[4] = Actions.REBALANCE;
-    //     actions[5] = Actions.SWAP_LEFT_25;
-    //     actions[6] = Actions.IDLE;
-    //     actions[7] = Actions.REBALANCE;
-    //     actions[8] = Actions.SWAP_LEFT_25;
-    //     actions[9] = Actions.IDLE;
-    //     actions[10] = Actions.REBALANCE;
-    //     actions[11] = Actions.DEPOSIT;
-    //     actions[12] = Actions.SWAP_LEFT_25;
-    //     actions[13] = Actions.IDLE;
-    //     actions[14] = Actions.REBALANCE;
-    //     actions[15] = Actions.SWAP_RIGHT_25;
-    //     actions[16] = Actions.IDLE;
-    //     actions[17] = Actions.REBALANCE;
-    //     actions[18] = Actions.SWAP_RIGHT_25;
-    //     actions[19] = Actions.IDLE;
-    //     actions[20] = Actions.WITHDRAW;
-    //     actions[21] = Actions.SWAP_RIGHT_25;
-    //     actions[22] = Actions.IDLE;
-    //     actions[23] = Actions.REBALANCE;
-    //     _execute(wrapper, farm, pool, actions);
-    // }
+    function testMultipleRebalances5() external {
+        (ILpWrapper wrapper, StakingRewards farm, ICLPool pool) = build(200);
+        Actions[] memory actions = new Actions[](24);
+        actions[0] = Actions.DEPOSIT;
+        actions[1] = Actions.SWAP_DUST;
+        actions[2] = Actions.IDLE;
+        actions[3] = Actions.DEPOSIT;
+        actions[4] = Actions.REBALANCE;
+        actions[5] = Actions.SWAP_LEFT_25;
+        actions[6] = Actions.IDLE;
+        actions[7] = Actions.REBALANCE;
+        actions[8] = Actions.SWAP_LEFT_25;
+        actions[9] = Actions.IDLE;
+        actions[10] = Actions.REBALANCE;
+        actions[11] = Actions.DEPOSIT;
+        actions[12] = Actions.SWAP_LEFT_25;
+        actions[13] = Actions.IDLE;
+        actions[14] = Actions.REBALANCE;
+        actions[15] = Actions.SWAP_RIGHT_25;
+        actions[16] = Actions.IDLE;
+        actions[17] = Actions.REBALANCE;
+        actions[18] = Actions.SWAP_RIGHT_25;
+        actions[19] = Actions.IDLE;
+        actions[20] = Actions.WITHDRAW;
+        actions[21] = Actions.SWAP_RIGHT_25;
+        actions[22] = Actions.IDLE;
+        actions[23] = Actions.REBALANCE;
+        _execute(wrapper, farm, pool, actions);
+    }
 
-    // function testMultipleRebalances6() external {
-    //     (ILpWrapper wrapper, StakingRewards farm, ICLPool pool) = build(200);
-    //     Actions[] memory actions = new Actions[](24);
-    //     actions[0] = Actions.DEPOSIT;
-    //     actions[1] = Actions.SWAP_DUST;
-    //     actions[2] = Actions.IDLE;
-    //     actions[3] = Actions.DEPOSIT;
-    //     actions[4] = Actions.REBALANCE;
-    //     actions[5] = Actions.SWAP_LEFT_25;
-    //     actions[6] = Actions.IDLE;
-    //     actions[7] = Actions.REBALANCE;
-    //     actions[8] = Actions.SWAP_LEFT_25;
-    //     actions[9] = Actions.IDLE;
-    //     actions[10] = Actions.REBALANCE;
-    //     actions[11] = Actions.DEPOSIT;
-    //     actions[12] = Actions.SWAP_LEFT_25;
-    //     actions[13] = Actions.IDLE;
-    //     actions[14] = Actions.REBALANCE;
-    //     actions[15] = Actions.SWAP_RIGHT_25;
-    //     actions[16] = Actions.IDLE;
-    //     actions[17] = Actions.REBALANCE;
-    //     actions[18] = Actions.SWAP_RIGHT_25;
-    //     actions[19] = Actions.IDLE;
-    //     actions[20] = Actions.WITHDRAW;
-    //     actions[21] = Actions.SWAP_RIGHT_25;
-    //     actions[22] = Actions.IDLE;
-    //     actions[23] = Actions.REBALANCE;
-    //     _execute(wrapper, farm, pool, actions);
-    // }
+    function testMultipleRebalances6() external {
+        (ILpWrapper wrapper, StakingRewards farm, ICLPool pool) = build(200);
+        Actions[] memory actions = new Actions[](24);
+        actions[0] = Actions.DEPOSIT;
+        actions[1] = Actions.SWAP_DUST;
+        actions[2] = Actions.IDLE;
+        actions[3] = Actions.DEPOSIT;
+        actions[4] = Actions.REBALANCE;
+        actions[5] = Actions.SWAP_LEFT_25;
+        actions[6] = Actions.IDLE;
+        actions[7] = Actions.REBALANCE;
+        actions[8] = Actions.SWAP_LEFT_25;
+        actions[9] = Actions.IDLE;
+        actions[10] = Actions.REBALANCE;
+        actions[11] = Actions.DEPOSIT;
+        actions[12] = Actions.SWAP_LEFT_25;
+        actions[13] = Actions.IDLE;
+        actions[14] = Actions.REBALANCE;
+        actions[15] = Actions.SWAP_RIGHT_25;
+        actions[16] = Actions.IDLE;
+        actions[17] = Actions.REBALANCE;
+        actions[18] = Actions.SWAP_RIGHT_25;
+        actions[19] = Actions.IDLE;
+        actions[20] = Actions.WITHDRAW;
+        actions[21] = Actions.SWAP_RIGHT_25;
+        actions[22] = Actions.IDLE;
+        actions[23] = Actions.REBALANCE;
+        _execute(wrapper, farm, pool, actions);
+    }
 
-    // function testMultipleRebalances7() external {
-    //     (ILpWrapper wrapper, StakingRewards farm, ICLPool pool) = build(200);
-    //     Actions[] memory actions = new Actions[](24);
-    //     actions[0] = Actions.DEPOSIT;
-    //     actions[1] = Actions.SWAP_DUST;
-    //     actions[2] = Actions.IDLE;
-    //     actions[3] = Actions.WITHDRAW;
-    //     actions[4] = Actions.REBALANCE;
-    //     actions[5] = Actions.SWAP_LEFT_5;
-    //     actions[6] = Actions.IDLE;
-    //     actions[7] = Actions.REBALANCE;
-    //     actions[8] = Actions.SWAP_LEFT_25;
-    //     actions[9] = Actions.IDLE;
-    //     actions[10] = Actions.REBALANCE;
-    //     actions[11] = Actions.WITHDRAW;
-    //     actions[12] = Actions.SWAP_LEFT_50;
-    //     actions[13] = Actions.IDLE;
-    //     actions[14] = Actions.REBALANCE;
-    //     actions[15] = Actions.SWAP_RIGHT_50;
-    //     actions[16] = Actions.IDLE;
-    //     actions[17] = Actions.REBALANCE;
-    //     actions[18] = Actions.SWAP_RIGHT_50;
-    //     actions[19] = Actions.IDLE;
-    //     actions[20] = Actions.WITHDRAW;
-    //     actions[21] = Actions.SWAP_RIGHT_50;
-    //     actions[22] = Actions.IDLE;
-    //     actions[23] = Actions.REBALANCE;
-    //     _execute(wrapper, farm, pool, actions);
-    // }
+    function testMultipleRebalances7() external {
+        (ILpWrapper wrapper, StakingRewards farm, ICLPool pool) = build(200);
+        Actions[] memory actions = new Actions[](24);
+        actions[0] = Actions.DEPOSIT;
+        actions[1] = Actions.SWAP_DUST;
+        actions[2] = Actions.IDLE;
+        actions[3] = Actions.WITHDRAW;
+        actions[4] = Actions.REBALANCE;
+        actions[5] = Actions.SWAP_LEFT_5;
+        actions[6] = Actions.IDLE;
+        actions[7] = Actions.REBALANCE;
+        actions[8] = Actions.SWAP_LEFT_25;
+        actions[9] = Actions.IDLE;
+        actions[10] = Actions.REBALANCE;
+        actions[11] = Actions.WITHDRAW;
+        actions[12] = Actions.SWAP_LEFT_50;
+        actions[13] = Actions.IDLE;
+        actions[14] = Actions.REBALANCE;
+        actions[15] = Actions.SWAP_RIGHT_50;
+        actions[16] = Actions.IDLE;
+        actions[17] = Actions.REBALANCE;
+        actions[18] = Actions.SWAP_RIGHT_50;
+        actions[19] = Actions.IDLE;
+        actions[20] = Actions.WITHDRAW;
+        actions[21] = Actions.SWAP_RIGHT_50;
+        actions[22] = Actions.IDLE;
+        actions[23] = Actions.REBALANCE;
+        _execute(wrapper, farm, pool, actions);
+    }
 
-    // function testMultipleRebalances8() external {
-    //     (ILpWrapper wrapper, StakingRewards farm, ICLPool pool) = build(200);
-    //     Actions[] memory actions = new Actions[](48);
-    //     actions[0] = Actions.DEPOSIT;
-    //     actions[1] = Actions.SWAP_DUST;
-    //     actions[2] = Actions.IDLE;
-    //     actions[3] = Actions.DEPOSIT;
-    //     actions[4] = Actions.REBALANCE;
-    //     actions[5] = Actions.SWAP_LEFT_5;
-    //     actions[6] = Actions.SWAP_LEFT_5;
-    //     actions[7] = Actions.REBALANCE;
-    //     actions[8] = Actions.SWAP_LEFT_25;
-    //     actions[9] = Actions.IDLE;
-    //     actions[10] = Actions.REBALANCE;
-    //     actions[11] = Actions.DEPOSIT;
-    //     actions[12] = Actions.SWAP_LEFT_50;
-    //     actions[13] = Actions.IDLE;
-    //     actions[14] = Actions.ADD_REWARDS;
-    //     actions[15] = Actions.SWAP_RIGHT_50;
-    //     actions[16] = Actions.IDLE;
-    //     actions[17] = Actions.PUSH_REWARDS;
-    //     actions[18] = Actions.SWAP_RIGHT_50;
-    //     actions[19] = Actions.IDLE;
-    //     actions[20] = Actions.WITHDRAW;
-    //     actions[21] = Actions.SWAP_RIGHT_50;
-    //     actions[22] = Actions.IDLE;
-    //     actions[23] = Actions.REBALANCE;
-    //     actions[24] = Actions.DEPOSIT;
-    //     actions[25] = Actions.SWAP_DUST;
-    //     actions[26] = Actions.IDLE;
-    //     actions[27] = Actions.DEPOSIT;
-    //     actions[28] = Actions.REBALANCE;
-    //     actions[29] = Actions.SWAP_LEFT_5;
-    //     actions[30] = Actions.SWAP_LEFT_5;
-    //     actions[31] = Actions.REBALANCE;
-    //     actions[32] = Actions.SWAP_LEFT_25;
-    //     actions[33] = Actions.IDLE;
-    //     actions[34] = Actions.REBALANCE;
-    //     actions[35] = Actions.DEPOSIT;
-    //     actions[36] = Actions.SWAP_LEFT_50;
-    //     actions[37] = Actions.IDLE;
-    //     actions[38] = Actions.ADD_REWARDS;
-    //     actions[39] = Actions.SWAP_RIGHT_50;
-    //     actions[40] = Actions.IDLE;
-    //     actions[41] = Actions.PUSH_REWARDS;
-    //     actions[42] = Actions.SWAP_RIGHT_50;
-    //     actions[43] = Actions.IDLE;
-    //     actions[44] = Actions.WITHDRAW;
-    //     actions[45] = Actions.SWAP_RIGHT_50;
-    //     actions[46] = Actions.IDLE;
-    //     actions[47] = Actions.REBALANCE;
-    //     _execute(wrapper, farm, pool, actions);
-    // }
+    function testMultipleRebalances8() external {
+        (ILpWrapper wrapper, StakingRewards farm, ICLPool pool) = build(200);
+        Actions[] memory actions = new Actions[](48);
+        actions[0] = Actions.DEPOSIT;
+        actions[1] = Actions.SWAP_DUST;
+        actions[2] = Actions.IDLE;
+        actions[3] = Actions.DEPOSIT;
+        actions[4] = Actions.REBALANCE;
+        actions[5] = Actions.SWAP_LEFT_5;
+        actions[6] = Actions.SWAP_LEFT_5;
+        actions[7] = Actions.REBALANCE;
+        actions[8] = Actions.SWAP_LEFT_25;
+        actions[9] = Actions.IDLE;
+        actions[10] = Actions.REBALANCE;
+        actions[11] = Actions.DEPOSIT;
+        actions[12] = Actions.SWAP_LEFT_50;
+        actions[13] = Actions.IDLE;
+        actions[14] = Actions.ADD_REWARDS;
+        actions[15] = Actions.SWAP_RIGHT_50;
+        actions[16] = Actions.IDLE;
+        actions[17] = Actions.PUSH_REWARDS;
+        actions[18] = Actions.SWAP_RIGHT_50;
+        actions[19] = Actions.IDLE;
+        actions[20] = Actions.WITHDRAW;
+        actions[21] = Actions.SWAP_RIGHT_50;
+        actions[22] = Actions.IDLE;
+        actions[23] = Actions.REBALANCE;
+        actions[24] = Actions.DEPOSIT;
+        actions[25] = Actions.SWAP_DUST;
+        actions[26] = Actions.IDLE;
+        actions[27] = Actions.DEPOSIT;
+        actions[28] = Actions.REBALANCE;
+        actions[29] = Actions.SWAP_LEFT_5;
+        actions[30] = Actions.SWAP_LEFT_5;
+        actions[31] = Actions.REBALANCE;
+        actions[32] = Actions.SWAP_LEFT_25;
+        actions[33] = Actions.IDLE;
+        actions[34] = Actions.REBALANCE;
+        actions[35] = Actions.DEPOSIT;
+        actions[36] = Actions.SWAP_LEFT_50;
+        actions[37] = Actions.IDLE;
+        actions[38] = Actions.ADD_REWARDS;
+        actions[39] = Actions.SWAP_RIGHT_50;
+        actions[40] = Actions.IDLE;
+        actions[41] = Actions.PUSH_REWARDS;
+        actions[42] = Actions.SWAP_RIGHT_50;
+        actions[43] = Actions.IDLE;
+        actions[44] = Actions.WITHDRAW;
+        actions[45] = Actions.SWAP_RIGHT_50;
+        actions[46] = Actions.IDLE;
+        actions[47] = Actions.REBALANCE;
+        _execute(wrapper, farm, pool, actions);
+    }
 
     function testRebalanceFailed() external {
         (ILpWrapper wrapper, StakingRewards farm, ICLPool pool) = build(200);
