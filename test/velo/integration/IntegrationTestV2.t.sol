@@ -44,6 +44,21 @@ contract Integration is Test {
     IQuoterV2 public quoterV2 =
         IQuoterV2(address(new QuoterV2(address(factory), Constants.WETH)));
 
+    // helpers:
+    PulseVeloBot public bot =
+        new PulseVeloBot(quoterV2, swapRouter, positionManager);
+
+    enum Actions {
+        DEPOSIT,
+        WITHDRAW,
+        REBALANCE,
+        PUSH_REWARDS,
+        SWAP,
+        MEV,
+        ADD_REWARDS,
+        IDLE
+    }
+
     function setUp() external {
         ammModule = new VeloAmmModule(positionManager);
         depositWithdrawModule = new VeloDepositWithdrawModule(positionManager);
@@ -212,8 +227,8 @@ contract Integration is Test {
         ICLPool pool
     ) public returns (IVeloDeployFactory.PoolAddresses memory addresses) {
         pool.increaseObservationCardinalityNext(2);
-        mint(pool, 1000000, pool.tickSpacing() * 4, address(this));
-        // swapDust(pool.tickSpacing());
+        mint(pool, 1e19, pool.tickSpacing() * 1000, address(this));
+        _swap(address(this), pool, false, 2 wei);
         vm.startPrank(VELO_DEPLOY_FACTORY_OPERATOR);
         deal(pool.token0(), VELO_DEPLOY_FACTORY_OPERATOR, 1e6);
         deal(pool.token1(), VELO_DEPLOY_FACTORY_OPERATOR, 1e6);
@@ -229,23 +244,35 @@ contract Integration is Test {
         vm.stopPrank();
     }
 
-    enum Actions {
-        DEPOSIT,
-        WITHDRAW,
-        REBALANCE,
-        PUSH_REWARDS,
-        SWAP,
-        MEV,
-        ADD_REWARDS,
-        IDLE
-    }
-
-    function _execute(Actions[] memory actions) private {
+    function _execute(
+        ILpWrapper wrapper,
+        StakingRewards farm,
+        ICLPool pool,
+        Actions[] memory actions
+    ) private {
         EnumerableSet.AddressSet storage depositors;
-
         for (uint256 i = 0; i < actions.length; i++) {
             Actions action = actions[i];
-            // TODO:
+            if (action == Actions.DEPOSIT) {
+                _deposit(address(this), wrapper, 100);
+            } else if (action == Actions.WITHDRAW) {
+                _withdraw(address(this), 1e18, wrapper);
+            } else if (action == Actions.REBALANCE) {
+                _rebalance(address(this), wrapper);
+            } else if (action == Actions.PUSH_REWARDS) {
+                _pushRewards(address(this), wrapper, farm);
+            } else if (action == Actions.SWAP) {
+                _swap(address(this), pool, true, 1e6);
+            } else if (action == Actions.MEV) {
+                // vm.startPrank(address(this));
+                // // TODO
+                // depositors.add(address(this));
+                // vm.stopPrank();
+            } else if (action == Actions.ADD_REWARDS) {
+                _addRewards(pool, 1 ether);
+            } else if (action == Actions.IDLE) {
+                _idle(1 days);
+            }
         }
     }
 
@@ -351,139 +378,139 @@ contract Integration is Test {
         vm.startPrank(user);
         wrapper.emptyRebalance();
 
-        uint256 rewards = IERC20(Constants.VELO).balanceOf(address(farm));
-        if (block.timestamp < farm.periodFinish()) {
-            rewards -=
-                (farm.periodFinish() - block.timestamp) *
-                farm.rewardRate();
+        ICore.PositionInfo memory info = core.position(wrapper.positionId());
+        IVeloAmmModule.CallbackParams memory callbackParams = abi.decode(
+            info.callbackParams,
+            (IVeloAmmModule.CallbackParams)
+        );
+        Counter counter = Counter(callbackParams.counter);
+        if (counter.value() != 0 && block.timestamp >= farm.periodFinish()) {
+            farm.notifyRewardAmount(counter.value());
+            counter.reset();
         }
-        StakingRewards(farm).notifyRewardAmount(rewards);
         vm.stopPrank();
     }
 
-    function _rebalance(address user) private {
+    function _rebalance(address user, ILpWrapper wrapper) private {
+        uint256 positionId = wrapper.positionId();
+        ICore.PositionInfo memory info = core.position(positionId);
+        (bool flag, ICore.TargetPositionInfo memory target) = core
+            .strategyModule()
+            .getTargets(info, core.ammModule(), core.oracle());
+        if (!flag) {
+            console2.log("Nothing to rebalance");
+            return;
+        }
+
+        (uint160 sqrtPriceX96, , , , , ) = ICLPool(info.pool).slot0();
+        (
+            ,
+            ,
+            address token0,
+            address token1,
+            int24 tickSpacing,
+            int24 tickLower,
+            int24 tickUpper,
+            uint128 liquidity,
+            ,
+            ,
+            ,
+
+        ) = positionManager.positions(info.tokenIds[0]);
+
+        (uint256 target0, uint256 target1) = LiquidityAmounts
+            .getAmountsForLiquidity(
+                sqrtPriceX96,
+                TickMath.getSqrtRatioAtTick(target.lowerTicks[0]),
+                TickMath.getSqrtRatioAtTick(target.upperTicks[0]),
+                uint128(target.minLiquidities[0] * 1001) / 1000 + 1
+            );
+
+        (uint256 current0, uint256 current1) = LiquidityAmounts
+            .getAmountsForLiquidity(
+                sqrtPriceX96,
+                TickMath.getSqrtRatioAtTick(tickLower),
+                TickMath.getSqrtRatioAtTick(tickUpper),
+                liquidity
+            );
+
+        ISwapRouter.ExactInputSingleParams[]
+            memory params = new ISwapRouter.ExactInputSingleParams[](1);
+        if (target0 > current0) {
+            params[0] = ISwapRouter.ExactInputSingleParams({
+                tokenIn: token0,
+                tokenOut: token1,
+                recipient: address(bot),
+                deadline: block.timestamp,
+                amountIn: target0 - current0,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0,
+                tickSpacing: tickSpacing
+            });
+        } else if (target1 > current1) {
+            params[0] = ISwapRouter.ExactInputSingleParams({
+                tokenIn: token1,
+                tokenOut: token0,
+                recipient: address(bot),
+                deadline: block.timestamp,
+                amountIn: target1 - current1,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0,
+                tickSpacing: tickSpacing
+            });
+        } else {
+            revert("Invalid state - to much liquidity");
+        }
+
+        ICore.RebalanceParams memory rebalanceParams;
+        rebalanceParams.ids = new uint256[](1);
+        rebalanceParams.ids[0] = positionId;
+        rebalanceParams.callback = address(bot);
+        rebalanceParams.data = abi.encode(params);
+
         vm.startPrank(user);
-
+        try core.rebalance(rebalanceParams) {
+            console2.log("Successfully rebalanced");
+        } catch {
+            console2.log("Failed to rebalance");
+        }
         vm.stopPrank();
     }
 
-    // function test() external {
-    //     address depositor = address(123);
-    //     ICLPool pool = ICLPool(
-    //         factory.getPool(Constants.WETH, Constants.USDC, 200)
-    //     );
+    function _idle(uint256 seconds_) private {
+        skip(seconds_);
+    }
 
-    //     vm.prank(VELO_DEPLOY_FACTORY_OPERATOR);
-    //     IVeloDeployFactory.PoolAddresses memory addresses = createStrategy(
-    //         pool
-    //     );
-
-    //     vm.startPrank(FARM_OPERATOR);
-    //     ILpWrapper(addresses.lpWrapper).emptyRebalance();
-    //     uint256 addedRewards = IERC20(Constants.VELO).balanceOf(
-    //         addresses.synthetixFarm
-    //     );
-    //     StakingRewards(addresses.synthetixFarm).notifyRewardAmount(
-    //         addedRewards
-    //     );
-    //     vm.stopPrank();
-
-    //     skip(7 days);
-    // }
+    function _mev(
+        address user,
+        ICLPool pool,
+        ILpWrapper wrapper,
+        bool dir,
+        uint256 amount
+    ) private {
+        uint256 amountOut = _swap(address(this), pool, false, amount);
+        _rebalance(user, wrapper);
+        _swap(address(this), pool, true, amountOut);
+    }
 
     function test() external {
-        address weth = Constants.WETH;
-        address reward = Constants.VELO;
-        address owner = address(1);
-        address operator = address(2);
-        address user1 = address(3);
-        address user2 = address(4);
-
-        deal(weth, user1, 1 ether);
-        deal(weth, user2, 1 ether);
-
-        StakingRewards farm = new StakingRewards(owner, operator, reward, weth);
-
-        vm.startPrank(user1);
-        IERC20(weth).approve(address(farm), 1 ether);
-        farm.stake(1 ether);
-        vm.stopPrank();
-
-        vm.startPrank(user2);
-        IERC20(weth).approve(address(farm), 1 ether);
-        farm.stake(1 ether);
-        vm.stopPrank();
-
-        deal(reward, address(farm), 1 ether);
-
-        vm.prank(operator);
-        farm.notifyRewardAmount(1 ether);
-
-        skip(7 days);
-
-        vm.prank(user1);
-        farm.getReward();
-        vm.prank(user2);
-        farm.getReward();
-
-        console2.log(
-            IERC20(reward).balanceOf(user1),
-            IERC20(reward).balanceOf(user2)
-        );
-
-        // console2.log(farm.earned(user1), farm.earned(user2));
-
-        // vm.prank(operator);
-        // farm.notifyRewardAmount(1 ether);
-
+        // address depositor = address(123);
+        // ICLPool pool = ICLPool(
+        //     factory.getPool(Constants.WETH, Constants.USDC, 200)
+        // );
+        // vm.prank(VELO_DEPLOY_FACTORY_OPERATOR);
+        // IVeloDeployFactory.PoolAddresses memory addresses = createStrategy(
+        //     pool
+        // );
+        // vm.startPrank(FARM_OPERATOR);
+        // ILpWrapper(addresses.lpWrapper).emptyRebalance();
+        // uint256 addedRewards = IERC20(Constants.VELO).balanceOf(
+        //     addresses.synthetixFarm
+        // );
+        // StakingRewards(addresses.synthetixFarm).notifyRewardAmount(
+        //     addedRewards
+        // );
+        // vm.stopPrank();
         // skip(7 days);
-
-        // console2.log(farm.earned(user1), farm.earned(user2));
-    }
-
-    function test2() external {
-        address weth = Constants.WETH;
-        address reward = Constants.VELO;
-        address owner = address(1);
-        address operator = address(2);
-        address user1 = address(3);
-        address user2 = address(4);
-
-        deal(weth, user1, 1 ether);
-        deal(weth, user2, 1 ether);
-
-        StakingRewards farm = new StakingRewards(owner, operator, reward, weth);
-
-        vm.startPrank(user1);
-        IERC20(weth).approve(address(farm), 1 ether);
-        farm.stake(1 ether);
-        vm.stopPrank();
-
-        vm.startPrank(user2);
-        IERC20(weth).approve(address(farm), 1 ether);
-        farm.stake(1 ether);
-        vm.stopPrank();
-
-        deal(reward, address(farm), 1 ether);
-
-        vm.prank(operator);
-        farm.notifyRewardAmount(1 ether);
-
-        skip(7 days);
-
-        vm.prank(operator);
-        farm.notifyRewardAmount(1 ether);
-
-        skip(7 days);
-
-        vm.prank(user1);
-        farm.getReward();
-        // vm.prank(user2);
-        // farm.getReward();
-
-        console2.log(
-            IERC20(reward).balanceOf(user1),
-            IERC20(reward).balanceOf(user2)
-        );
     }
 }

@@ -47,10 +47,9 @@ contract Integration is Fixture {
             core.withdraw(nftId, Constants.OWNER);
         }
 
-        Counter counter = new Counter(Constants.OWNER, address(core));
-
         positionManager.approve(address(core), depositParams.tokenIds[0]);
         depositParams.owner = address(lpWrapper);
+        Counter counter = new Counter(Constants.OWNER, address(core));
         depositParams.callbackParams = abi.encode(
             IVeloAmmModule.CallbackParams({
                 farm: address(stakingRewards),
@@ -104,12 +103,14 @@ contract Integration is Fixture {
 
             vm.startPrank(Constants.OWNER);
             lpWrapper.emptyRebalance();
-            stakingRewards.notifyRewardAmount(
+            assertEq(
+                counter.value(),
                 IERC20(Constants.VELO).balanceOf(address(stakingRewards))
             );
-
+            stakingRewards.notifyRewardAmount(counter.value());
             skip(7 days);
-
+            counter.reset();
+            assertEq(counter.value(), 0);
             vm.stopPrank();
             vm.startPrank(Constants.DEPOSITOR);
 
@@ -133,6 +134,95 @@ contract Integration is Fixture {
             assertApproxEqAbs(protocolRewards, 1 ether, 1 wei);
             assertApproxEqAbs(userRewards, 9 ether, 7 days);
 
+            vm.stopPrank();
+        }
+    }
+
+    function testSynthetixFarmMultiple() external {
+        ICore.DepositParams memory depositParams;
+        depositParams.tokenIds = new uint256[](1);
+        depositParams.tokenIds[0] = mint(
+            Constants.USDC,
+            Constants.WETH,
+            TICK_SPACING,
+            pool.tickSpacing() * 8,
+            1e9
+        );
+        depositParams.owner = Constants.OWNER;
+        depositParams.strategyParams = abi.encode(
+            IPulseStrategyModule.StrategyParams({
+                tickNeighborhood: pool.tickSpacing() / 4,
+                tickSpacing: pool.tickSpacing(),
+                strategyType: IPulseStrategyModule.StrategyType.Original,
+                width: pool.tickSpacing() * 2
+            })
+        );
+        depositParams.securityParams = new bytes(0);
+        depositParams.slippageD4 = 100;
+
+        vm.startPrank(Constants.OWNER);
+        positionManager.approve(address(core), depositParams.tokenIds[0]);
+        {
+            uint256 nftId = core.deposit(depositParams);
+            core.withdraw(nftId, Constants.OWNER);
+        }
+
+        positionManager.approve(address(core), depositParams.tokenIds[0]);
+        depositParams.owner = address(lpWrapper);
+        Counter counter = new Counter(Constants.OWNER, address(core));
+        depositParams.callbackParams = abi.encode(
+            IVeloAmmModule.CallbackParams({
+                farm: address(stakingRewards),
+                gauge: Constants.GAUGE,
+                counter: address(counter)
+            })
+        );
+
+        uint256 nftId2 = core.deposit(depositParams);
+
+        lpWrapper.initialize(nftId2, 5e5);
+        vm.stopPrank();
+
+        vm.startPrank(Constants.DEPOSITOR);
+        deal(Constants.USDC, Constants.DEPOSITOR, 1e6 * 1e6);
+        deal(Constants.WETH, Constants.DEPOSITOR, 500 ether);
+        IERC20(Constants.USDC).safeApprove(
+            address(lpWrapper),
+            type(uint256).max
+        );
+        IERC20(Constants.WETH).safeApprove(
+            address(lpWrapper),
+            type(uint256).max
+        );
+        {
+            (, , uint256 lpAmount) = lpWrapper.deposit(
+                500 ether,
+                1e6,
+                1e3,
+                Constants.DEPOSITOR
+            );
+            require(lpAmount > 0, "Invalid lp amount");
+            console2.log("Actual lp amount:", lpAmount);
+            lpWrapper.approve(address(stakingRewards), type(uint256).max);
+            stakingRewards.stake(lpWrapper.balanceOf(Constants.DEPOSITOR));
+        }
+        vm.stopPrank();
+
+        uint256 cumulativeCounterValue = 0;
+        for (uint256 i = 0; i < 10; i++) {
+            addRewardToGauge(10 ether);
+            skip(7 days);
+            vm.startPrank(Constants.OWNER);
+            lpWrapper.emptyRebalance();
+            cumulativeCounterValue += counter.value();
+            assertEq(
+                cumulativeCounterValue,
+                IERC20(Constants.VELO).balanceOf(address(stakingRewards))
+            );
+            stakingRewards.notifyRewardAmount(counter.value());
+            skip(7 days);
+            counter.reset();
+            assertEq(counter.value(), 0);
             vm.stopPrank();
         }
     }

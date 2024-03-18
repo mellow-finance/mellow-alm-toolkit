@@ -11,12 +11,8 @@ contract Counter {
         operator = operator_;
     }
 
-    modifier onlyOwner() {
+    function transferOwnership(address newOwner) external {
         require(msg.sender == owner, "Counter: not owner");
-        _;
-    }
-
-    function transferOwnership(address newOwner) external onlyOwner {
         owner = newOwner;
     }
 
@@ -25,7 +21,8 @@ contract Counter {
         value += additionalValue;
     }
 
-    function reset() external onlyOwner {
+    function reset() external {
+        require(msg.sender == owner, "Counter: not owner");
         value = 0;
     }
 }
