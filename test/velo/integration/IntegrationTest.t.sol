@@ -205,7 +205,8 @@ contract Integration is Test {
                 amount0Min: 0,
                 amount1Min: 0,
                 recipient: owner,
-                deadline: block.timestamp
+                deadline: block.timestamp,
+                sqrtPriceX96: 0
             })
         );
 

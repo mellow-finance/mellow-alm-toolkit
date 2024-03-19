@@ -54,10 +54,6 @@ interface INonfungiblePositionManager is
         uint256 amount0,
         uint256 amount1
     );
-    /// @dev This event emits when the metadata of a range of tokens is changed.
-    /// So that the third-party platforms such as NFT market could
-    /// timely update the images and related attributes of the NFTs.
-    event BatchMetadataUpdate(uint256 _fromTokenId, uint256 _toTokenId);
     /// @notice Emitted when a new Token Descriptor is set
     /// @param tokenDescriptor Address of the new Token Descriptor
     event TokenDescriptorChanged(address indexed tokenDescriptor);
@@ -106,12 +102,6 @@ interface INonfungiblePositionManager is
     /// @notice Returns the address of the Owner, that is allowed to set a new TokenDescriptor
     function owner() external view returns (address);
 
-    /// @notice Returns the address of the Gauge Factory, that handles the creation of Gauges
-    function gaugeFactory() external view returns (address);
-
-    /// @notice Returns the address of the Gauge Implementation, that is used by gauges
-    function gaugeImplementation() external view returns (address);
-
     struct MintParams {
         address token0;
         address token1;
@@ -124,6 +114,7 @@ interface INonfungiblePositionManager is
         uint256 amount1Min;
         address recipient;
         uint256 deadline;
+        uint160 sqrtPriceX96;
     }
 
     /// @notice Creates a new position wrapped in a NFT
@@ -188,6 +179,10 @@ interface INonfungiblePositionManager is
     /// deadline The time by which the transaction must be included to effect the change
     /// @return amount0 The amount of token0 accounted to the position's tokens owed
     /// @return amount1 The amount of token1 accounted to the position's tokens owed
+    /// @dev The use of this function can cause a loss to users of the NonfungiblePositionManager
+    /// @dev for tokens that have very high decimals.
+    /// @dev The amount of tokens necessary for the loss is: 3.4028237e+38.
+    /// @dev This is equivalent to 1e20 value with 18 decimals.
     function decreaseLiquidity(
         DecreaseLiquidityParams calldata params
     ) external payable returns (uint256 amount0, uint256 amount1);

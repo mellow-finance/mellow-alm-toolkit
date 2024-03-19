@@ -152,7 +152,8 @@ contract VeloDeployFactory is IVeloDeployFactory, DefaultAccessControl {
                     amount0Min: 0,
                     amount1Min: 0,
                     recipient: address(this),
-                    deadline: block.timestamp
+                    deadline: block.timestamp,
+                    sqrtPriceX96: 0
                 })
             );
             if (actualMintedLiquidity < strategyParams.minInitialLiquidity) {
