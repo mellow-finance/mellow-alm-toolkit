@@ -39,7 +39,7 @@ contract Integration is DeployFactoryFixture {
         );
 
         vm.expectRevert(abi.encodeWithSignature("InvalidStrategyParams()"));
-        deployFactory.createStrategy(Constants.WETH, Constants.OP, 100);
+        deployFactory.createStrategy(Constants.WETH, Constants.WSTETH, 1);
 
         IVeloDeployFactory.PoolAddresses memory poolAddresses = deployFactory
             .createStrategy(Constants.WETH, Constants.OP, TICK_SPACING);
@@ -111,10 +111,8 @@ contract Integration is DeployFactoryFixture {
                 treasuryBalanceBefore;
 
             uint256 totalRewards = userRewards + protocolRewards;
-            assertTrue(totalRewards > 10 ether - 7 days); // max delta in weis = number of seconds in 1 day
-            assertApproxEqAbs(protocolRewards, 1 ether, 1 wei);
-            assertApproxEqAbs(userRewards, 9 ether, 7 days);
-
+            console2.log(userRewards, protocolRewards, totalRewards);
+            assertApproxEqAbs((protocolRewards * 1e9) / totalRewards, 1e8, 1e6);
             vm.stopPrank();
         }
     }

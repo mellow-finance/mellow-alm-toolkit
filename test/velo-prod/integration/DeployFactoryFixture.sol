@@ -138,7 +138,7 @@ contract DeployFactoryFixture is Test {
 
     function movePrice(uint256 coefficient) public {
         vm.startPrank(Constants.OWNER);
-        uint256 amountIn = 1e6 * 1e6 * coefficient;
+        uint256 amountIn = 1e18 * coefficient;
         deal(Constants.OP, Constants.OWNER, amountIn);
         IERC20(Constants.OP).safeIncreaseAllowance(
             address(swapRouter),

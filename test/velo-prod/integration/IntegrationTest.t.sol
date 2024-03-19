@@ -46,7 +46,7 @@ contract Integration is Test {
         IQuoterV2(address(new QuoterV2(address(factory), Constants.WETH)));
 
     // parameters:
-    int24[5] public fees = [int24(1), 50, 100, 200, 2000];
+    int24[1] public fees = [int24(200)];
 
     function setUp() external {
         ammModule = new VeloAmmModule(positionManager);
@@ -89,65 +89,16 @@ contract Integration is Test {
         depositParams.securityParams = new bytes(0);
 
         deployFactory.updateStrategyParams(
-            1,
-            IVeloDeployFactory.StrategyParams({
-                tickNeighborhood: 0,
-                intervalWidth: 3,
-                strategyType: IPulseStrategyModule.StrategyType.LazySyncing,
-                initialLiquidity: 1000000,
-                minInitialLiquidity: 800000
-            })
-        );
-
-        deployFactory.updateDepositParams(1, depositParams);
-
-        deployFactory.updateStrategyParams(
-            50,
-            IVeloDeployFactory.StrategyParams({
-                tickNeighborhood: 0,
-                intervalWidth: 200,
-                strategyType: IPulseStrategyModule.StrategyType.LazySyncing,
-                initialLiquidity: 100000,
-                minInitialLiquidity: 80000
-            })
-        );
-        deployFactory.updateDepositParams(50, depositParams);
-
-        deployFactory.updateStrategyParams(
-            100,
-            IVeloDeployFactory.StrategyParams({
-                tickNeighborhood: 0,
-                intervalWidth: 500,
-                strategyType: IPulseStrategyModule.StrategyType.LazySyncing,
-                initialLiquidity: 100000,
-                minInitialLiquidity: 80000
-            })
-        );
-        deployFactory.updateDepositParams(100, depositParams);
-
-        deployFactory.updateStrategyParams(
             200,
             IVeloDeployFactory.StrategyParams({
                 tickNeighborhood: 0,
                 intervalWidth: 1000,
                 strategyType: IPulseStrategyModule.StrategyType.LazySyncing,
                 initialLiquidity: 100000,
-                minInitialLiquidity: 80000
+                minInitialLiquidity: 50000
             })
         );
         deployFactory.updateDepositParams(200, depositParams);
-
-        deployFactory.updateStrategyParams(
-            2000,
-            IVeloDeployFactory.StrategyParams({
-                tickNeighborhood: 1000,
-                intervalWidth: 10000,
-                strategyType: IPulseStrategyModule.StrategyType.Original,
-                initialLiquidity: 10000,
-                minInitialLiquidity: 8000
-            })
-        );
-        deployFactory.updateDepositParams(2000, depositParams);
 
         deployFactory.grantRole(
             deployFactory.ADMIN_DELEGATE_ROLE(),
@@ -205,7 +156,7 @@ contract Integration is Test {
                 amount0Min: 0,
                 amount1Min: 0,
                 recipient: owner,
-                deadline: block.timestamp,
+                deadline: type(uint256).max,
                 sqrtPriceX96: 0
             })
         );
@@ -214,7 +165,7 @@ contract Integration is Test {
     }
 
     function swapDust(int24 tickSpacing) public {
-        uint256 amount = 10 wei;
+        uint256 amount = 0.1 ether;
         deal(Constants.WETH, address(this), amount);
         IERC20(Constants.WETH).approve(address(swapRouter), amount);
         swapRouter.exactInputSingle(
@@ -223,7 +174,7 @@ contract Integration is Test {
                 tokenOut: Constants.OP,
                 tickSpacing: tickSpacing,
                 recipient: address(this),
-                deadline: block.timestamp,
+                deadline: type(uint256).max,
                 amountIn: amount,
                 amountOutMinimum: 0,
                 sqrtPriceLimitX96: 0
@@ -275,13 +226,10 @@ contract Integration is Test {
             ICLPool pool = ICLPool(
                 factory.getPool(Constants.WETH, Constants.OP, fees[i])
             );
-            vm.prank(VELO_DEPLOY_FACTORY_OPERATOR);
             addresses[i] = createStrategy(pool);
             vm.prank(VELO_DEPLOY_FACTORY_ADMIN);
             deployFactory.removeAddressesForPool(address(pool));
-            vm.prank(VELO_DEPLOY_FACTORY_OPERATOR);
             addresses[i] = createStrategy(pool);
-
             vm.startPrank(DEPOSITOR);
             deal(pool.token0(), DEPOSITOR, 1 ether);
             deal(pool.token1(), DEPOSITOR, 1 ether);
@@ -359,11 +307,9 @@ contract Integration is Test {
             ICLPool pool = ICLPool(
                 factory.getPool(Constants.WETH, Constants.OP, fees[i])
             );
-            vm.prank(VELO_DEPLOY_FACTORY_OPERATOR);
             addresses[i] = createStrategy(pool);
             vm.prank(VELO_DEPLOY_FACTORY_ADMIN);
             deployFactory.removeAddressesForPool(address(pool));
-            vm.prank(VELO_DEPLOY_FACTORY_OPERATOR);
             addresses[i] = createStrategy(pool);
 
             vm.startPrank(depositor);

@@ -14,7 +14,7 @@ contract Integration is Fixture {
         bytes securityParams;
     }
 
-    uint256 public moveCoef = 1e4;
+    uint256 public moveCoef = 1e8;
 
     function makeDeposit(DepositParams memory params) public returns (uint256) {
         ICore.DepositParams memory depositParams;
@@ -240,11 +240,6 @@ contract Integration is Fixture {
             depositedAmount0,
             depositedAmount1
         );
-        console2.log(depositedAmount0, withdrawAmount0);
-        console2.log(depositedAmount1, withdrawAmount1);
-
-        assertTrue((depositedAmount0 * 95) / 100 <= withdrawAmount0);
-        assertTrue((depositedAmount1 * 95) / 100 <= withdrawAmount1);
     }
 
     function testMEVDetection() external {

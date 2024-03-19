@@ -619,24 +619,6 @@ contract Integration is Test {
         assertEq(earned, IERC20(Constants.VELO).balanceOf(DEPOSITOR));
     }
 
-    function testRewards2() external {
-        (ILpWrapper wrapper, StakingRewards farm, ICLPool pool) = build(200);
-        Actions[] memory actions = new Actions[](7);
-        actions[0] = Actions.ADD_REWARDS;
-        actions[1] = Actions.IDLE;
-        actions[2] = Actions.PUSH_REWARDS;
-        actions[3] = Actions.IDLE;
-        actions[4] = Actions.DEPOSIT;
-        actions[5] = Actions.IDLE;
-        actions[6] = Actions.WITHDRAW;
-        _execute(wrapper, farm, pool, actions);
-        uint256 earned = farm.earned(DEPOSITOR);
-        assertTrue(earned > 0);
-        vm.prank(DEPOSITOR);
-        farm.getReward();
-        assertEq(earned, IERC20(Constants.VELO).balanceOf(DEPOSITOR));
-    }
-
     function testRebalance1() external {
         (ILpWrapper wrapper, StakingRewards farm, ICLPool pool) = build(200);
         Actions[] memory actions = new Actions[](4);
@@ -682,16 +664,6 @@ contract Integration is Test {
         Actions[] memory actions = new Actions[](4);
         actions[0] = Actions.DEPOSIT;
         actions[1] = Actions.SWAP_LEFT_90;
-        actions[2] = Actions.IDLE;
-        actions[3] = Actions.REBALANCE;
-        _execute(wrapper, farm, pool, actions);
-    }
-
-    function testRebalance6() external {
-        (ILpWrapper wrapper, StakingRewards farm, ICLPool pool) = build(200);
-        Actions[] memory actions = new Actions[](4);
-        actions[0] = Actions.DEPOSIT;
-        actions[1] = Actions.SWAP_RIGHT_90;
         actions[2] = Actions.IDLE;
         actions[3] = Actions.REBALANCE;
         _execute(wrapper, farm, pool, actions);

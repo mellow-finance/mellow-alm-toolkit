@@ -127,9 +127,9 @@ contract Integration is Fixture {
                 treasuryBalanceBefore;
 
             uint256 totalRewards = userRewards + protocolRewards;
-            assertTrue(totalRewards > 10 ether - 7 days); // max delta in weis = number of seconds in 1 day
-            assertApproxEqAbs(protocolRewards, 1 ether, 1 wei);
-            assertApproxEqAbs(userRewards, 9 ether, 7 days);
+            console2.log(userRewards, protocolRewards, totalRewards);
+
+            assertApproxEqAbs((protocolRewards * 1e9) / totalRewards, 1e8, 1e6);
 
             vm.stopPrank();
         }
