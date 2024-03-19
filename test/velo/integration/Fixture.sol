@@ -217,7 +217,8 @@ contract Fixture is Test {
                 amount0Min: 0,
                 amount1Min: 0,
                 recipient: address(this),
-                deadline: type(uint256).max
+                deadline: type(uint256).max,
+                sqrtPriceX96: 0
             })
         );
     }

@@ -43,6 +43,14 @@ interface ICLFactory {
         address indexed newFeeModule
     );
 
+    /// @notice Emitted when the defaultUnstakedFee of the factory is changed
+    /// @param oldUnstakedFee The defaultUnstakedFee before the defaultUnstakedFee was changed
+    /// @param newUnstakedFee The defaultUnstakedFee after the unstakedFeeModule was changed
+    event DefaultUnstakedFeeChanged(
+        uint24 indexed oldUnstakedFee,
+        uint24 indexed newUnstakedFee
+    );
+
     /// @notice Emitted when a pool is created
     /// @param token0 The first token of the pool by address sort order
     /// @param token1 The second token of the pool by address sort order
@@ -93,20 +101,10 @@ interface ICLFactory {
     /// @return The address of the factory unstakedFeeModule
     function unstakedFeeModule() external view returns (address);
 
-    /// @notice Returns the nonfungible position manager that will manage positions for the pools
-    /// @dev Set once on deployment only
-    /// @return The address of the nonfungible position manager
-    function nft() external view returns (address);
-
-    /// @notice Returns the gauge factory creating gauges for pools created by this factory
-    /// @dev Set once on deployment only
-    /// @return The address of the gauge factory
-    function gaugeFactory() external view returns (address);
-
-    /// @notice The address of the gauge implementation contract used to deploy proxies / clones
-    /// @dev Set once on deployment only
-    /// @return The address of the gauge implementation contract
-    function gaugeImplementation() external view returns (address);
+    /// @notice Returns the current defaultUnstakedFee of the factory
+    /// @dev Can be changed by the current unstaked fee manager via setDefaultUnstakedFee
+    /// @return The default Unstaked Fee of the factory
+    function defaultUnstakedFee() external view returns (uint24);
 
     /// @notice Returns a default fee for a tick spacing.
     /// @dev Use getFee for the most up to date fee for a given pool.
@@ -133,6 +131,15 @@ interface ICLFactory {
         address tokenB,
         int24 tickSpacing
     ) external view returns (address pool);
+
+    /// @notice Return address of pool created by this factory given its `index`
+    /// @param index Index of the pool
+    /// @return The pool address in the given index
+    function allPools(uint256 index) external view returns (address);
+
+    /// @notice Returns the number of pools created from this factory
+    /// @return Number of pools created from this factory
+    function allPoolsLength() external view returns (uint256);
 
     /// @notice Used in VotingEscrow to determine if a contract is a valid pool of the factory
     /// @param pool The address of the pool to check
@@ -191,23 +198,14 @@ interface ICLFactory {
     /// @param _unstakedFeeModule The new unstakedFeeModule of the factory
     function setUnstakedFeeModule(address _unstakedFeeModule) external;
 
+    /// @notice Updates the defaultUnstakedFee of the factory
+    /// @dev Must be called by the current unstaked fee manager
+    /// @param _defaultUnstakedFee The new defaultUnstakedFee of the factory
+    function setDefaultUnstakedFee(uint24 _defaultUnstakedFee) external;
+
     /// @notice Enables a certain tickSpacing
     /// @dev Tick spacings may never be removed once enabled
     /// @param tickSpacing The spacing between ticks to be enforced in the pool
     /// @param fee The default fee associated with a given tick spacing
     function enableTickSpacing(int24 tickSpacing, uint24 fee) external;
-
-    /// @notice Set gauge factory
-    /// @dev Callable once only on initialize
-    /// @param _gaugeFactory The gauge factory that creates gauges for the pools created by this factory
-    /// @param _gaugeImplementation The gauge implementation from which gauges will be created
-    function setGaugeFactory(
-        address _gaugeFactory,
-        address _gaugeImplementation
-    ) external;
-
-    /// @notice Set Nonfungible Position Manager
-    /// @dev Callable once only on initialize
-    /// @param _nft The nonfungible position manager that will manage positions for this Factory
-    function setNonfungiblePositionManager(address _nft) external;
 }

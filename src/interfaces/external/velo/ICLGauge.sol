@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import {INonfungiblePositionManager} from "./INonfungiblePositionManager.sol";
 import {IVoter} from "./IVoter.sol";
 import {ICLPool} from "./ICLPool.sol";
+import {ICLGaugeFactory} from "./ICLGaugeFactory.sol";
 
 interface ICLGauge {
     event NotifyReward(address indexed from, uint256 amount);
@@ -29,8 +30,8 @@ interface ICLGauge {
     /// @notice Address of the CL pool linked to the gauge
     function pool() external view returns (ICLPool);
 
-    /// @notice Address of the forwarder
-    function forwarder() external view returns (address);
+    /// @notice Address of the factory that created this gauge
+    function gaugeFactory() external view returns (ICLGaugeFactory);
 
     /// @notice Address of the FeesVotingReward contract linked to the gauge
     function feesVotingReward() external view returns (address);
@@ -50,17 +51,20 @@ interface ICLGauge {
     /// @notice View to see the rewardRate given the timestamp of the start of the epoch
     function rewardRateByEpoch(uint256) external view returns (uint256);
 
+    /// @notice Cached amount of fees generated from the Pool linked to the Gauge of token0
+    function fees0() external view returns (uint256);
+
+    /// @notice Cached amount of fees generated from the Pool linked to the Gauge of token1
+    function fees1() external view returns (uint256);
+
     /// @notice Cached address of token0, corresponding to token0 of the pool
     function token0() external view returns (address);
 
     /// @notice Cached address of token1, corresponding to token1 of the pool
     function token1() external view returns (address);
 
-    /// @notice Cached amount of fees generated from the Pool linked to the Gauge of token0
-    function fees0() external view returns (uint256);
-
-    /// @notice Cached amount of fees generated from the Pool linked to the Gauge of token1
-    function fees1() external view returns (uint256);
+    /// @notice Cached tick spacing of the pool.
+    function tickSpacing() external view returns (int24);
 
     /// @notice Total amount of rewardToken to distribute for the current rewards period
     function left() external view returns (uint256 _left);
@@ -79,7 +83,6 @@ interface ICLGauge {
     ) external view returns (uint256);
 
     /// @notice Called on gauge creation by CLGaugeFactory
-    /// @param _forwarder The address of the forwarder contract
     /// @param _pool The address of the pool
     /// @param _feesVotingReward The address of the feesVotingReward contract
     /// @param _rewardToken The address of the reward token
@@ -87,9 +90,9 @@ interface ICLGauge {
     /// @param _nft The address of the nft position manager contract
     /// @param _token0 The address of token0 of the pool
     /// @param _token1 The address of token1 of the pool
+    /// @param _tickSpacing The tick spacing of the pool
     /// @param _isPool Whether the attached pool is a real pool or not
     function initialize(
-        address _forwarder,
         address _pool,
         address _feesVotingReward,
         address _rewardToken,
@@ -97,6 +100,7 @@ interface ICLGauge {
         address _nft,
         address _token0,
         address _token1,
+        int24 _tickSpacing,
         bool _isPool
     ) external;
 
@@ -110,6 +114,11 @@ interface ICLGauge {
         address account,
         uint256 tokenId
     ) external view returns (uint256);
+
+    /// @notice Retrieve rewards for all tokens owned by an account
+    /// @dev Throws if not called by the voter
+    /// @param account The account of the user
+    function getReward(address account) external;
 
     /// @notice Retrieve rewards for a tokenId
     /// @dev Throws if not called by the position owner
@@ -171,6 +180,22 @@ interface ICLGauge {
         uint256 amount1Min,
         uint256 deadline
     ) external returns (uint256 amount0, uint256 amount1);
+
+    /// @notice Fetch all tokenIds staked by a given account
+    /// @param depositor The address of the user
+    /// @return The tokenIds of the staked positions
+    function stakedValues(
+        address depositor
+    ) external view returns (uint256[] memory);
+
+    /// @notice Fetch a staked tokenId by index
+    /// @param depositor The address of the user
+    /// @param index The index of the staked tokenId
+    /// @return The tokenId of the staked position
+    function stakedByIndex(
+        address depositor,
+        uint256 index
+    ) external view returns (uint256);
 
     /// @notice Check whether a position is staked in the gauge by a certain user
     /// @param depositor The address of the user
