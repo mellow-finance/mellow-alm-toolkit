@@ -98,8 +98,8 @@ contract LStrategyModule is IStrategyModule {
     }
 
     /**
-     * @dev Retrieves the target positions for rebalancing based on the given PositionInfo, AmmModule, and Oracle.
-     * @param info The PositionInfo containing the pool and token IDs.
+     * @dev Retrieves the target positions for rebalancing based on the given ManagedPositionInfo, AmmModule, and Oracle.
+     * @param info The ManagedPositionInfo containing the pool and token IDs.
      * @param ammModule The AmmModule contract.
      * @param oracle The Oracle contract.
      * @return bool A boolean indicating whether rebalancing is required.
