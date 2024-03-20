@@ -300,14 +300,14 @@ contract PulseAgniBot is IPulseAgniBot {
     function call(
         bytes memory data,
         ICore.TargetPositionInfo[] memory targets
-    ) external returns (uint256[][] memory newTokenIds) {
+    ) external returns (uint256[][] memory newammPositionIds) {
         ISwapRouter.ExactInputSingleParams[] memory swapParams = abi.decode(
             data,
             (ISwapRouter.ExactInputSingleParams[])
         );
         // getting liquidity from all position
         for (uint256 i = 0; i < targets.length; i++) {
-            uint256 tokenId = targets[i].info.tokenIds[0];
+            uint256 tokenId = targets[i].info.ammPositionIds[0];
             (, , , , , , , uint128 liquidity, , , , ) = positionManager
                 .positions(tokenId);
             positionManager.decreaseLiquidity(
@@ -352,7 +352,7 @@ contract PulseAgniBot is IPulseAgniBot {
         }
 
         // creating new positions with minimal liquidity
-        newTokenIds = new uint256[][](targets.length);
+        newammPositionIds = new uint256[][](targets.length);
         for (uint256 i = 0; i < targets.length; i++) {
             IAgniPool pool = IAgniPool(targets[i].info.pool);
             (uint160 sqrtPriceX96, , , , , , ) = pool.slot0();
@@ -423,8 +423,8 @@ contract PulseAgniBot is IPulseAgniBot {
                 "Insufficient amount of liquidity"
             );
             positionManager.approve(msg.sender, tokenId);
-            newTokenIds[i] = new uint256[](1);
-            newTokenIds[i][0] = tokenId;
+            newammPositionIds[i] = new uint256[](1);
+            newammPositionIds[i][0] = tokenId;
         }
     }
 }

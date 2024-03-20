@@ -2,8 +2,8 @@
 pragma solidity ^0.8.0;
 pragma abicoder v2;
 
-import "test/velo/contracts/core/interfaces/callback/ICLFlashCallback.sol";
-import "test/velo/contracts/core/libraries/LowGasSafeMath.sol";
+import "test/velo-prod/contracts/core/interfaces/callback/ICLFlashCallback.sol";
+import "test/velo-prod/contracts/core/libraries/LowGasSafeMath.sol";
 
 import "../base/PeripheryPayments.sol";
 import "../base/PeripheryImmutableState.sol";

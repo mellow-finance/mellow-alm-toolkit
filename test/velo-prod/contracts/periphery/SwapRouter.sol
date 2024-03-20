@@ -2,9 +2,9 @@
 pragma solidity ^0.8.0;
 pragma abicoder v2;
 
-import "test/velo/contracts/core/libraries/SafeCast.sol";
-import "test/velo/contracts/core/libraries/TickMath.sol";
-import "test/velo/contracts/core/interfaces/ICLPool.sol";
+import "test/velo-prod/contracts/core/libraries/SafeCast.sol";
+import "test/velo-prod/contracts/core/libraries/TickMath.sol";
+import "test/velo-prod/contracts/core/interfaces/ICLPool.sol";
 
 import "./interfaces/ISwapRouter.sol";
 import "./base/PeripheryImmutableState.sol";

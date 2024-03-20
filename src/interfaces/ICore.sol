@@ -22,7 +22,7 @@ interface ICore is IERC721Receiver {
         uint24 property;
         address owner;
         address pool;
-        uint256[] tokenIds;
+        uint256[] ammPositionIds;
         bytes callbackParams;
         bytes securityParams;
         bytes strategyParams;
@@ -38,7 +38,7 @@ interface ICore is IERC721Receiver {
     }
 
     struct DepositParams {
-        uint256[] tokenIds;
+        uint256[] ammPositionIds;
         address owner;
         uint16 slippageD4;
         bytes callbackParams;

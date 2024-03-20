@@ -227,8 +227,8 @@ contract VeloDeployFactory is IVeloDeployFactory, DefaultAccessControl {
         {
             ICore.DepositParams
                 memory depositParams = _tickSpacingToDepositParams[tickSpacing];
-            depositParams.tokenIds = new uint256[](1);
-            depositParams.tokenIds[0] = _mint(
+            depositParams.ammPositionIds = new uint256[](1);
+            depositParams.ammPositionIds[0] = _mint(
                 s.immutableParams.core,
                 s.immutableParams.strategyModule,
                 s.immutableParams.veloModule,
@@ -279,11 +279,11 @@ contract VeloDeployFactory is IVeloDeployFactory, DefaultAccessControl {
             positionId
         );
         uint256 initialTotalSupply = 0;
-        for (uint256 i = 0; i < info.tokenIds.length; i++) {
+        for (uint256 i = 0; i < info.ammPositionIds.length; i++) {
             IAmmModule.Position memory position = s
                 .immutableParams
                 .veloModule
-                .getPositionInfo(info.tokenIds[i]);
+                .getPositionInfo(info.ammPositionIds[i]);
             initialTotalSupply += position.liquidity;
         }
         lpWrapper.initialize(positionId, initialTotalSupply);

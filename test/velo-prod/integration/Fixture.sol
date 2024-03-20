@@ -272,7 +272,7 @@ contract Fixture is Test {
         (bool flag, ICore.TargetPositionInfo memory target) = core
             .strategyModule()
             .getTargets(info, core.ammModule(), core.oracle());
-        uint256 tokenId = info.tokenIds[0];
+        uint256 tokenId = info.ammPositionIds[0];
         if (tokenId == 0) revert("Invalid token id");
         if (!flag) revert("Rebalance is not necessary");
         vm.stopPrank();

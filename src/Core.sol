@@ -114,8 +114,8 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
 
         address pool;
         bytes memory protocolParams_ = _protocolParams;
-        for (uint256 i = 0; i < params.tokenIds.length; i++) {
-            uint256 tokenId = params.tokenIds[i];
+        for (uint256 i = 0; i < params.ammPositionIds.length; i++) {
+            uint256 tokenId = params.ammPositionIds[i];
             if (tokenId == 0) revert InvalidParams();
             IAmmModule.Position memory position_ = ammModule.getPositionInfo(
                 tokenId
@@ -140,7 +140,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         _positions.push(
             PositionInfo({
                 owner: params.owner,
-                tokenIds: params.tokenIds,
+                ammPositionIds: params.ammPositionIds,
                 pool: pool,
                 property: ammModule.getProperty(pool),
                 slippageD4: params.slippageD4,
@@ -158,8 +158,8 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         _userIds[info.owner].remove(id);
         delete _positions[id];
         bytes memory protocolParams_ = _protocolParams;
-        for (uint256 i = 0; i < info.tokenIds.length; i++) {
-            uint256 tokenId = info.tokenIds[i];
+        for (uint256 i = 0; i < info.ammPositionIds.length; i++) {
+            uint256 tokenId = info.ammPositionIds[i];
             _beforeRebalance(tokenId, info.callbackParams, protocolParams_);
             _transferFrom(address(this), to, tokenId);
         }
@@ -198,8 +198,8 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
                 sqrtPriceX96,
                 priceX96
             );
-            target.minLiquidities = new uint256[](info.tokenIds.length);
-            for (uint256 j = 0; j < info.tokenIds.length; j++) {
+            target.minLiquidities = new uint256[](info.ammPositionIds.length);
+            for (uint256 j = 0; j < info.ammPositionIds.length; j++) {
                 target.minLiquidities[j] = FullMath.mulDiv(
                     target.liquidityRatiosX96[j],
                     capitalInToken1,
@@ -218,17 +218,18 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
             mstore(targets, iterator)
         }
 
-        uint256[][] memory newTokenIds = IRebalanceCallback(params.callback)
-            .call(params.data, targets);
-        if (newTokenIds.length != iterator) revert InvalidLength();
+        uint256[][] memory newammPositionIds = IRebalanceCallback(
+            params.callback
+        ).call(params.data, targets);
+        if (newammPositionIds.length != iterator) revert InvalidLength();
         for (uint256 i = 0; i < iterator; i++) {
             TargetPositionInfo memory target = targets[i];
-            uint256[] memory tokenIds = newTokenIds[i];
-            if (tokenIds.length != target.liquidityRatiosX96.length) {
+            uint256[] memory ammPositionIds = newammPositionIds[i];
+            if (ammPositionIds.length != target.liquidityRatiosX96.length) {
                 revert InvalidLength();
             }
-            for (uint256 j = 0; j < tokenIds.length; j++) {
-                uint256 tokenId = tokenIds[j];
+            for (uint256 j = 0; j < ammPositionIds.length; j++) {
+                uint256 tokenId = ammPositionIds[j];
                 IAmmModule.Position memory position_ = ammModule
                     .getPositionInfo(tokenId);
                 if (
@@ -249,7 +250,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
                     protocolParams_
                 );
             }
-            _positions[target.id].tokenIds = tokenIds;
+            _positions[target.id].ammPositionIds = ammPositionIds;
         }
     }
 
@@ -258,8 +259,8 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         PositionInfo memory params = _positions[id];
         if (params.owner != msg.sender) revert Forbidden();
         bytes memory protocolParams_ = _protocolParams;
-        for (uint256 i = 0; i < params.tokenIds.length; i++) {
-            uint256 tokenId = params.tokenIds[i];
+        for (uint256 i = 0; i < params.ammPositionIds.length; i++) {
+            uint256 tokenId = params.ammPositionIds[i];
             _beforeRebalance(tokenId, params.callbackParams, protocolParams_);
             _afterRebalance(tokenId, params.callbackParams, protocolParams_);
         }
@@ -279,7 +280,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         uint256 n = target.liquidityRatiosX96.length;
         if (n != target.lowerTicks.length) revert InvalidTarget();
         if (n != target.upperTicks.length) revert InvalidTarget();
-        if (n != target.info.tokenIds.length) revert InvalidTarget();
+        if (n != target.info.ammPositionIds.length) revert InvalidTarget();
         uint256 cumulativeLiquidityX96 = 0;
         for (uint256 i = 0; i < n; i++) {
             cumulativeLiquidityX96 += target.liquidityRatiosX96[i];
@@ -318,8 +319,8 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         uint160 sqrtPriceX96,
         uint256 priceX96
     ) private returns (uint256 capitalInToken1) {
-        for (uint256 i = 0; i < info.tokenIds.length; i++) {
-            uint256 tokenId = info.tokenIds[i];
+        for (uint256 i = 0; i < info.ammPositionIds.length; i++) {
+            uint256 tokenId = info.ammPositionIds[i];
             (uint256 amount0, uint256 amount1) = ammModule.tvl(
                 tokenId,
                 sqrtPriceX96,

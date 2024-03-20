@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.0;
 
-import "test/velo/contracts/core/libraries/FullMath.sol";
-import "test/velo/contracts/core/libraries/UnsafeMath.sol";
-import "test/velo/contracts/core/libraries/FixedPoint96.sol";
+import "test/velo-prod/contracts/core/libraries/FullMath.sol";
+import "test/velo-prod/contracts/core/libraries/UnsafeMath.sol";
+import "test/velo-prod/contracts/core/libraries/FixedPoint96.sol";
 
 /// @title Functions based on Q64.96 sqrt price and liquidity
 /// @notice Exposes two functions from @uniswap/v3-core SqrtPriceMath

@@ -18,8 +18,8 @@ contract Integration is Fixture {
 
     function makeDeposit(DepositParams memory params) public returns (uint256) {
         ICore.DepositParams memory depositParams;
-        depositParams.tokenIds = new uint256[](1);
-        depositParams.tokenIds[0] = mint(
+        depositParams.ammPositionIds = new uint256[](1);
+        depositParams.ammPositionIds[0] = mint(
             Constants.OP,
             Constants.WETH,
             TICK_SPACING,
@@ -47,7 +47,7 @@ contract Integration is Fixture {
         // );
 
         vm.startPrank(Constants.OWNER);
-        positionManager.approve(address(core), depositParams.tokenIds[0]);
+        positionManager.approve(address(core), depositParams.ammPositionIds[0]);
         uint256 nftId = core.deposit(depositParams);
         lpWrapper.initialize(nftId, 5e5);
         vm.stopPrank();

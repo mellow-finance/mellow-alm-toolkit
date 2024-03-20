@@ -43,11 +43,11 @@ contract PulseStrategyModule is IPulseStrategyModule {
             ICore.TargetPositionInfo memory target
         )
     {
-        if (info.tokenIds.length != 1) {
+        if (info.ammPositionIds.length != 1) {
             revert InvalidLength();
         }
         IAmmModule.Position memory position = ammModule.getPositionInfo(
-            info.tokenIds[0]
+            info.ammPositionIds[0]
         );
         StrategyParams memory strategyParams = abi.decode(
             info.strategyParams,

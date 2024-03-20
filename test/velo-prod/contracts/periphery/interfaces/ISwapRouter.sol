@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 pragma abicoder v2;
 
-import "test/velo/contracts/core/interfaces/callback/ICLSwapCallback.sol";
+import "test/velo-prod/contracts/core/interfaces/callback/ICLSwapCallback.sol";
 
 /// @title Router token swapping functionality
 /// @notice Functions for swapping tokens via CL

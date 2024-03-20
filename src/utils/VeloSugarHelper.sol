@@ -47,7 +47,7 @@ contract VeloSugarHelper {
             addresses.lpWrapper == address(0) ||
             position.owner != addresses.lpWrapper
         ) return lp; // empty response
-        if (position.tokenIds.length != 1) return lp; // empty response
+        if (position.ammPositionIds.length != 1) return lp; // empty response
         StakingRewards farm = StakingRewards(addresses.synthetixFarm);
         lp.lpAmount = IERC20(addresses.lpWrapper).balanceOf(user);
         lp.stakedLpAmount = farm.balanceOf(user);
@@ -58,7 +58,7 @@ contract VeloSugarHelper {
         lp.almVault = addresses.lpWrapper;
         ICLGauge gauge = ICLGauge(ICLPool(position.pool).gauge());
         lp.rewardToken = gauge.rewardToken();
-        lp.nft = position.tokenIds[0];
+        lp.nft = position.ammPositionIds[0];
         lp.token0 = ICLPool(position.pool).token0();
         lp.token1 = ICLPool(position.pool).token1();
         lp.tickSpacing = ICLPool(position.pool).tickSpacing();

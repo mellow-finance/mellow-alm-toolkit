@@ -328,7 +328,7 @@ contract Integration is Test {
         ICore.PositionInfo memory info = core.position(wrapper.positionId());
         (uint160 sqrtPriceX96, , , , , ) = ICLPool(info.pool).slot0();
         (uint256 amount0, uint256 amount1) = ammModule.tvl(
-            info.tokenIds[0],
+            info.ammPositionIds[0],
             sqrtPriceX96,
             new bytes(0),
             new bytes(0)
@@ -366,7 +366,7 @@ contract Integration is Test {
         ICore.PositionInfo memory info = core.position(wrapper.positionId());
         (uint160 sqrtPriceX96, , , , , ) = ICLPool(info.pool).slot0();
         (uint256 amount0, uint256 amount1) = ammModule.tvl(
-            info.tokenIds[0],
+            info.ammPositionIds[0],
             sqrtPriceX96,
             new bytes(0),
             new bytes(0)
@@ -484,7 +484,7 @@ contract Integration is Test {
                     ,
                     ,
 
-                ) = positionManager.positions(info.tokenIds[0]);
+                ) = positionManager.positions(info.ammPositionIds[0]);
                 (uint256 target0, uint256 target1) = LiquidityAmounts
                     .getAmountsForLiquidity(
                         sqrtPriceX96,

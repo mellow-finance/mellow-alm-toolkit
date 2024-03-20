@@ -117,12 +117,12 @@ contract LStrategyModule is IStrategyModule {
     {
         int24 tick;
         (, tick) = oracle.getOraclePrice(info.pool);
-        if (info.tokenIds.length != 2) revert InvalidLength();
+        if (info.ammPositionIds.length != 2) revert InvalidLength();
         IAmmModule.Position memory lowerPosition = ammModule.getPositionInfo(
-            info.tokenIds[0]
+            info.ammPositionIds[0]
         );
         IAmmModule.Position memory upperPosition = ammModule.getPositionInfo(
-            info.tokenIds[1]
+            info.ammPositionIds[1]
         );
 
         int24 width = lowerPosition.tickUpper - lowerPosition.tickLower;

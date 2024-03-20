@@ -2,9 +2,9 @@
 pragma solidity ^0.8.0;
 pragma abicoder v2;
 
-import "test/velo/contracts/core/interfaces/ICLFactory.sol";
-import "test/velo/contracts/core/interfaces/callback/ICLMintCallback.sol";
-import "test/velo/contracts/core/libraries/TickMath.sol";
+import "test/velo-prod/contracts/core/interfaces/ICLFactory.sol";
+import "test/velo-prod/contracts/core/interfaces/callback/ICLMintCallback.sol";
+import "test/velo-prod/contracts/core/libraries/TickMath.sol";
 
 import "../libraries/PoolAddress.sol";
 import "../libraries/CallbackValidation.sol";

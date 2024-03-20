@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.0;
 
-import "test/velo/contracts/core/interfaces/ICLPool.sol";
-import "test/velo/contracts/core/libraries/FixedPoint128.sol";
-import "test/velo/contracts/core/libraries/TickMath.sol";
-import "test/velo/contracts/core/libraries/Tick.sol";
+import "test/velo-prod/contracts/core/interfaces/ICLPool.sol";
+import "test/velo-prod/contracts/core/libraries/FixedPoint128.sol";
+import "test/velo-prod/contracts/core/libraries/TickMath.sol";
+import "test/velo-prod/contracts/core/libraries/Tick.sol";
 import "../interfaces/INonfungiblePositionManager.sol";
 import "./LiquidityAmounts.sol";
 import "./PoolAddress.sol";

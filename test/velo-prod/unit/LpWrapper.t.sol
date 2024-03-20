@@ -37,8 +37,8 @@ contract Unit is Fixture {
         positionManager.approve(address(core), tokenId);
 
         ICore.DepositParams memory depositParams;
-        depositParams.tokenIds = new uint256[](1);
-        depositParams.tokenIds[0] = tokenId;
+        depositParams.ammPositionIds = new uint256[](1);
+        depositParams.ammPositionIds[0] = tokenId;
         depositParams.owner = owner;
         depositParams.callbackParams = abi.encode(
             IVeloAmmModule.CallbackParams({
