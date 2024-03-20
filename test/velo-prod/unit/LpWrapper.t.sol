@@ -165,9 +165,8 @@ contract Unit is Fixture {
         lpWrapper.deposit(1 ether, 1 ether, 100 ether, Constants.DEPOSITOR);
 
         uint256 totalSupplyBefore = lpWrapper.totalSupply();
-        IAmmModule.Position memory positionBefore = ammModule.getPositionInfo(
-            tokenId
-        );
+        IAmmModule.AmmPosition memory positionBefore = ammModule
+            .getPositionInfo(tokenId);
 
         (uint256 amount0, uint256 amount1, uint256 lpAmount) = lpWrapper
             .deposit(1 ether, 1 ether, 0.3 ether, Constants.DEPOSITOR);
@@ -178,7 +177,7 @@ contract Unit is Fixture {
         assertEq(lpWrapper.balanceOf(Constants.DEPOSITOR), lpAmount);
 
         uint256 totalSupplyAfter = lpWrapper.totalSupply();
-        IAmmModule.Position memory positionAfter = ammModule.getPositionInfo(
+        IAmmModule.AmmPosition memory positionAfter = ammModule.getPositionInfo(
             tokenId
         );
 
@@ -244,9 +243,8 @@ contract Unit is Fixture {
         lpWrapper.deposit(1 ether, 1 ether, 0.1 ether, Constants.DEPOSITOR);
 
         uint256 totalSupplyBefore = lpWrapper.totalSupply();
-        IAmmModule.Position memory positionBefore = ammModule.getPositionInfo(
-            tokenId
-        );
+        IAmmModule.AmmPosition memory positionBefore = ammModule
+            .getPositionInfo(tokenId);
 
         uint256 depositorBalance = lpWrapper.balanceOf(Constants.DEPOSITOR);
 
@@ -269,7 +267,7 @@ contract Unit is Fixture {
         );
 
         uint256 totalSupplyAfter = lpWrapper.totalSupply();
-        IAmmModule.Position memory positionAfter = ammModule.getPositionInfo(
+        IAmmModule.AmmPosition memory positionAfter = ammModule.getPositionInfo(
             tokenId
         );
 

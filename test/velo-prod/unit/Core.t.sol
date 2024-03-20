@@ -225,7 +225,7 @@ contract Unit is Fixture {
         core.rebalance(rebalanceParams);
 
         ICore.PositionInfo memory infoAfter = core.position(positionId);
-        IAmmModule.Position memory positionAfter = ammModule.getPositionInfo(
+        IAmmModule.AmmPosition memory positionAfter = ammModule.getPositionInfo(
             infoAfter.ammPositionIds[0]
         );
 
