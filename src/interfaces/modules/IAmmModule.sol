@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 interface IAmmModule {
-    struct Position {
+    struct AmmPosition {
         address token0;
         address token1;
         uint24 property; // fee or tickSpacing
@@ -31,7 +31,7 @@ interface IAmmModule {
 
     function getPositionInfo(
         uint256 tokenId
-    ) external view returns (Position memory);
+    ) external view returns (AmmPosition memory);
 
     function getPool(
         address token0,

@@ -74,8 +74,8 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         core.withdraw(positionId, address(this));
 
         uint256 n = info.ammPositionIds.length;
-        IAmmModule.Position[]
-            memory positionsBefore = new IAmmModule.Position[](n);
+        IAmmModule.AmmPosition[]
+            memory positionsBefore = new IAmmModule.AmmPosition[](n);
         for (uint256 i = 0; i < n; i++) {
             positionsBefore[i] = ammModule.getPositionInfo(
                 info.ammPositionIds[i]
@@ -144,9 +144,8 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
             }
         }
 
-        IAmmModule.Position[] memory positionsAfter = new IAmmModule.Position[](
-            n
-        );
+        IAmmModule.AmmPosition[]
+            memory positionsAfter = new IAmmModule.AmmPosition[](n);
         for (uint256 i = 0; i < n; i++) {
             positionsAfter[i] = ammModule.getPositionInfo(
                 info.ammPositionIds[i]
@@ -216,9 +215,8 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
                     address(core),
                     info.ammPositionIds[i]
                 );
-                IAmmModule.Position memory position = ammModule.getPositionInfo(
-                    info.ammPositionIds[i]
-                );
+                IAmmModule.AmmPosition memory position = ammModule
+                    .getPositionInfo(info.ammPositionIds[i]);
                 uint256 liquidity = FullMath.mulDiv(
                     position.liquidity,
                     actualLpAmount,

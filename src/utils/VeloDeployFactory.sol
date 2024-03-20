@@ -280,7 +280,7 @@ contract VeloDeployFactory is IVeloDeployFactory, DefaultAccessControl {
         );
         uint256 initialTotalSupply = 0;
         for (uint256 i = 0; i < info.ammPositionIds.length; i++) {
-            IAmmModule.Position memory position = s
+            IAmmModule.AmmPosition memory position = s
                 .immutableParams
                 .veloModule
                 .getPositionInfo(info.ammPositionIds[i]);
