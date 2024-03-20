@@ -42,7 +42,7 @@ pragma solidity ^0.8.0;
 //         uint256 amount1,
 //         address from
 //     ) external override returns (uint256 actualAmount0, uint256 actualAmount1) {
-//         IAmmModule.AmmPosition memory position = ammModule.getPositionInfo(
+//         IAmmModule.AmmPosition memory position = ammModule.getAmmPosition(
 //             tokenId
 //         );
 //         IERC20(position.token0).safeTransferFrom(from, address(this), amount0);

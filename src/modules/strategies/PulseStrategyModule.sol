@@ -46,7 +46,7 @@ contract PulseStrategyModule is IPulseStrategyModule {
         if (info.ammPositionIds.length != 1) {
             revert InvalidLength();
         }
-        IAmmModule.AmmPosition memory position = ammModule.getPositionInfo(
+        IAmmModule.AmmPosition memory position = ammModule.getAmmPosition(
             info.ammPositionIds[0]
         );
         StrategyParams memory strategyParams = abi.decode(

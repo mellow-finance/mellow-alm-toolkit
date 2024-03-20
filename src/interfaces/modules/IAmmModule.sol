@@ -29,7 +29,7 @@ interface IAmmModule {
         bytes memory
     ) external view returns (uint256 amount0, uint256 amount1);
 
-    function getPositionInfo(
+    function getAmmPosition(
         uint256 tokenId
     ) external view returns (AmmPosition memory);
 

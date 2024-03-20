@@ -283,7 +283,7 @@ contract VeloDeployFactory is IVeloDeployFactory, DefaultAccessControl {
             IAmmModule.AmmPosition memory position = s
                 .immutableParams
                 .veloModule
-                .getPositionInfo(info.ammPositionIds[i]);
+                .getAmmPosition(info.ammPositionIds[i]);
             initialTotalSupply += position.liquidity;
         }
         lpWrapper.initialize(positionId, initialTotalSupply);

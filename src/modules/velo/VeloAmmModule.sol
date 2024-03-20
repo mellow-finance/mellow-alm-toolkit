@@ -97,7 +97,7 @@ contract VeloAmmModule is IVeloAmmModule {
     }
 
     /// @inheritdoc IAmmModule
-    function getPositionInfo(
+    function getAmmPosition(
         uint256 tokenId
     ) public view override returns (AmmPosition memory position) {
         int24 tickSpacing;

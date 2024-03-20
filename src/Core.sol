@@ -117,7 +117,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         for (uint256 i = 0; i < params.ammPositionIds.length; i++) {
             uint256 tokenId = params.ammPositionIds[i];
             if (tokenId == 0) revert InvalidParams();
-            IAmmModule.AmmPosition memory position_ = ammModule.getPositionInfo(
+            IAmmModule.AmmPosition memory position_ = ammModule.getAmmPosition(
                 tokenId
             );
             if (position_.liquidity == 0) revert InvalidParams();
@@ -231,7 +231,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
             for (uint256 j = 0; j < ammPositionIds.length; j++) {
                 uint256 tokenId = ammPositionIds[j];
                 IAmmModule.AmmPosition memory position_ = ammModule
-                    .getPositionInfo(tokenId);
+                    .getAmmPosition(tokenId);
                 if (
                     position_.liquidity < target.minLiquidities[j] ||
                     position_.tickLower != target.lowerTicks[j] ||
