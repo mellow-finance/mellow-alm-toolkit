@@ -67,7 +67,7 @@ interface ICore is IERC721Receiver {
      * @param id The index of the ManagedPositionInfo struct to retrieve.
      * @return The ManagedPositionInfo struct at the specified index.
      */
-    function position(
+    function managedPositionAt(
         uint256 id
     ) external view returns (ManagedPositionInfo memory);
 

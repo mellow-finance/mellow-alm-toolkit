@@ -355,7 +355,7 @@ contract DeployFactoryFixture is Test {
         uint256 id
     ) public returns (PulseVeloBot.SwapParams memory) {
         vm.startPrank(Constants.OWNER);
-        ICore.ManagedPositionInfo memory info = core.position(id);
+        ICore.ManagedPositionInfo memory info = core.managedPositionAt(id);
         (bool flag, ICore.TargetPositionInfo memory target) = core
             .strategyModule()
             .getTargets(info, core.ammModule(), core.oracle());

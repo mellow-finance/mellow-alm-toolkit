@@ -111,7 +111,7 @@ contract Integration is Fixture {
                 while (true) {
                     movePrice(uint256(20));
                     (bool flag, ) = core.strategyModule().getTargets(
-                        core.position(lpWrapper.positionId()),
+                        core.managedPositionAt(lpWrapper.positionId()),
                         core.ammModule(),
                         core.oracle()
                     );
@@ -145,7 +145,7 @@ contract Integration is Fixture {
             core.rebalance(rebalanceParams);
 
             {
-                ICore.ManagedPositionInfo memory info = core.position(
+                ICore.ManagedPositionInfo memory info = core.managedPositionAt(
                     lpWrapper.positionId()
                 );
                 uint160 sqrtPriceX96;

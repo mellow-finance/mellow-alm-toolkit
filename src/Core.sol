@@ -45,7 +45,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     }
 
     /// @inheritdoc ICore
-    function position(
+    function managedPositionAt(
         uint256 id
     ) public view override returns (ManagedPositionInfo memory) {
         return _positions[id];

@@ -325,7 +325,7 @@ contract Integration is Test {
         uint256 ratioD2
     ) private {
         vm.startPrank(user);
-        ICore.ManagedPositionInfo memory info = core.position(
+        ICore.ManagedPositionInfo memory info = core.managedPositionAt(
             wrapper.positionId()
         );
         (uint160 sqrtPriceX96, , , , , ) = ICLPool(info.pool).slot0();
@@ -365,7 +365,7 @@ contract Integration is Test {
         StakingRewards farm
     ) private {
         vm.startPrank(user);
-        ICore.ManagedPositionInfo memory info = core.position(
+        ICore.ManagedPositionInfo memory info = core.managedPositionAt(
             wrapper.positionId()
         );
         (uint160 sqrtPriceX96, , , , , ) = ICLPool(info.pool).slot0();
@@ -435,7 +435,7 @@ contract Integration is Test {
         vm.startPrank(user);
         wrapper.emptyRebalance();
 
-        ICore.ManagedPositionInfo memory info = core.position(
+        ICore.ManagedPositionInfo memory info = core.managedPositionAt(
             wrapper.positionId()
         );
         IVeloAmmModule.CallbackParams memory callbackParams = abi.decode(
@@ -453,7 +453,7 @@ contract Integration is Test {
     function _rebalance(address user, ILpWrapper wrapper) private {
         ICore.RebalanceParams memory rebalanceParams;
         {
-            ICore.ManagedPositionInfo memory info = core.position(
+            ICore.ManagedPositionInfo memory info = core.managedPositionAt(
                 wrapper.positionId()
             );
             ICore.TargetPositionInfo memory target;
@@ -965,7 +965,7 @@ contract Integration is Test {
         actions[1] = Actions.SWAP_LEFT_25;
         actions[2] = Actions.REBALANCE;
 
-        ICore.ManagedPositionInfo memory info = core.position(
+        ICore.ManagedPositionInfo memory info = core.managedPositionAt(
             wrapper.positionId()
         );
 

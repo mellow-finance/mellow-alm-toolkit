@@ -206,7 +206,9 @@ contract Unit is Fixture {
         uint256 positionId,
         ICore.RebalanceParams memory rebalanceParams
     ) private {
-        ICore.ManagedPositionInfo memory infoBefore = core.position(positionId);
+        ICore.ManagedPositionInfo memory infoBefore = core.managedPositionAt(
+            positionId
+        );
         uint256 capitalBefore = 0;
         uint256 capitalAfter = 0;
         (uint160 sqrtPriceX96, int24 tick, , , , ) = pool.slot0();
@@ -224,7 +226,9 @@ contract Unit is Fixture {
 
         core.rebalance(rebalanceParams);
 
-        ICore.ManagedPositionInfo memory infoAfter = core.position(positionId);
+        ICore.ManagedPositionInfo memory infoAfter = core.managedPositionAt(
+            positionId
+        );
         IAmmModule.AmmPosition memory positionAfter = ammModule.getAmmPosition(
             infoAfter.ammPositionIds[0]
         );
@@ -525,7 +529,9 @@ contract Unit is Fixture {
         );
         uint256 positionId = _depositToken(tokenId);
 
-        ICore.ManagedPositionInfo memory info = core.position(positionId);
+        ICore.ManagedPositionInfo memory info = core.managedPositionAt(
+            positionId
+        );
 
         assertEq(info.ammPositionIds.length, 1);
         assertEq(info.ammPositionIds[0], tokenId);
