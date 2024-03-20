@@ -106,7 +106,7 @@ contract LStrategyModule is IStrategyModule {
      * @return target The TargetPositionInfo containing the target positions for rebalancing.
      */
     function getTargets(
-        ICore.PositionInfo memory info,
+        ICore.ManagedPositionInfo memory info,
         IAmmModule ammModule,
         IOracle oracle
     )

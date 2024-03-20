@@ -145,7 +145,7 @@ contract Integration is Fixture {
             core.rebalance(rebalanceParams);
 
             {
-                ICore.PositionInfo memory info = core.position(
+                ICore.ManagedPositionInfo memory info = core.position(
                     lpWrapper.positionId()
                 );
                 uint160 sqrtPriceX96;

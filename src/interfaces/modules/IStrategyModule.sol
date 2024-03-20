@@ -10,7 +10,7 @@ interface IStrategyModule {
     function validateStrategyParams(bytes memory params) external view;
 
     function getTargets(
-        ICore.PositionInfo memory info,
+        ICore.ManagedPositionInfo memory info,
         IAmmModule ammModule,
         IOracle oracleModule
     )

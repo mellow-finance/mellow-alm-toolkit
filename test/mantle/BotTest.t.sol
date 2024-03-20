@@ -104,8 +104,8 @@ pragma solidity ^0.8.0;
 //         IPulseAgniBot bot,
 //         uint256 id
 //     ) public returns (Status, IPulseAgniBot.SwapParams memory swapParams) {
-//         ICore.PositionInfo memory info;
-//         try core.position(id) returns (ICore.PositionInfo memory _info) {
+//         ICore.ManagedPositionInfo memory info;
+//         try core.position(id) returns (ICore.ManagedPositionInfo memory _info) {
 //             info = _info;
 //         } catch {
 //             return (Status.ERROR, swapParams);

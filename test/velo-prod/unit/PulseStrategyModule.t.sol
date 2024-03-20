@@ -363,7 +363,7 @@ contract Unit is Fixture {
     }
 
     function testGetTargets() external {
-        ICore.PositionInfo memory info;
+        ICore.ManagedPositionInfo memory info;
         info.ammPositionIds = new uint256[](2);
 
         vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));

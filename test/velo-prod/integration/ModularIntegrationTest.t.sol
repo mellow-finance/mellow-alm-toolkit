@@ -325,7 +325,9 @@ contract Integration is Test {
         uint256 ratioD2
     ) private {
         vm.startPrank(user);
-        ICore.PositionInfo memory info = core.position(wrapper.positionId());
+        ICore.ManagedPositionInfo memory info = core.position(
+            wrapper.positionId()
+        );
         (uint160 sqrtPriceX96, , , , , ) = ICLPool(info.pool).slot0();
         (uint256 amount0, uint256 amount1) = ammModule.tvl(
             info.ammPositionIds[0],
@@ -363,7 +365,9 @@ contract Integration is Test {
         StakingRewards farm
     ) private {
         vm.startPrank(user);
-        ICore.PositionInfo memory info = core.position(wrapper.positionId());
+        ICore.ManagedPositionInfo memory info = core.position(
+            wrapper.positionId()
+        );
         (uint160 sqrtPriceX96, , , , , ) = ICLPool(info.pool).slot0();
         (uint256 amount0, uint256 amount1) = ammModule.tvl(
             info.ammPositionIds[0],
@@ -431,7 +435,9 @@ contract Integration is Test {
         vm.startPrank(user);
         wrapper.emptyRebalance();
 
-        ICore.PositionInfo memory info = core.position(wrapper.positionId());
+        ICore.ManagedPositionInfo memory info = core.position(
+            wrapper.positionId()
+        );
         IVeloAmmModule.CallbackParams memory callbackParams = abi.decode(
             info.callbackParams,
             (IVeloAmmModule.CallbackParams)
@@ -447,7 +453,7 @@ contract Integration is Test {
     function _rebalance(address user, ILpWrapper wrapper) private {
         ICore.RebalanceParams memory rebalanceParams;
         {
-            ICore.PositionInfo memory info = core.position(
+            ICore.ManagedPositionInfo memory info = core.position(
                 wrapper.positionId()
             );
             ICore.TargetPositionInfo memory target;
@@ -959,7 +965,9 @@ contract Integration is Test {
         actions[1] = Actions.SWAP_LEFT_25;
         actions[2] = Actions.REBALANCE;
 
-        ICore.PositionInfo memory info = core.position(wrapper.positionId());
+        ICore.ManagedPositionInfo memory info = core.position(
+            wrapper.positionId()
+        );
 
         vm.startPrank(WRAPPER_ADMIN);
         wrapper.setPositionParams(

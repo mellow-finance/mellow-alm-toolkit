@@ -275,7 +275,7 @@ contract VeloDeployFactory is IVeloDeployFactory, DefaultAccessControl {
             _poolToAddresses[address(pool)] = poolAddresses;
         }
 
-        ICore.PositionInfo memory info = s.immutableParams.core.position(
+        ICore.ManagedPositionInfo memory info = s.immutableParams.core.position(
             positionId
         );
         uint256 initialTotalSupply = 0;

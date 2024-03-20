@@ -40,7 +40,7 @@ contract VeloSugarHelper {
         uint256 id,
         ICore core
     ) public view returns (Lp memory lp) {
-        ICore.PositionInfo memory position = core.position(id);
+        ICore.ManagedPositionInfo memory position = core.position(id);
         IVeloDeployFactory.PoolAddresses memory addresses = factory
             .poolToAddresses(position.pool);
         if (

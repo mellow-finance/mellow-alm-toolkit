@@ -17,7 +17,7 @@ import "./modules/IStrategyModule.sol";
 import "./oracles/IOracle.sol";
 
 interface ICore is IERC721Receiver {
-    struct PositionInfo {
+    struct ManagedPositionInfo {
         uint16 slippageD4;
         uint24 property;
         address owner;
@@ -34,7 +34,7 @@ interface ICore is IERC721Receiver {
         uint256[] liquidityRatiosX96;
         uint256[] minLiquidities;
         uint256 id;
-        PositionInfo info;
+        ManagedPositionInfo info;
     }
 
     struct DepositParams {
@@ -63,11 +63,13 @@ interface ICore is IERC721Receiver {
     function operatorFlag() external view returns (bool);
 
     /**
-     * @dev Retrieves the PositionInfo struct at the specified index.
-     * @param id The index of the PositionInfo struct to retrieve.
-     * @return The PositionInfo struct at the specified index.
+     * @dev Retrieves the ManagedPositionInfo struct at the specified index.
+     * @param id The index of the ManagedPositionInfo struct to retrieve.
+     * @return The ManagedPositionInfo struct at the specified index.
      */
-    function position(uint256 id) external view returns (PositionInfo memory);
+    function position(
+        uint256 id
+    ) external view returns (ManagedPositionInfo memory);
 
     /**
      * @dev Returns the count of positions in the contract.

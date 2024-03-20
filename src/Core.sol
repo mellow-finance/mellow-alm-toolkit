@@ -23,7 +23,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     bool public operatorFlag;
 
     bytes private _protocolParams;
-    PositionInfo[] private _positions;
+    ManagedPositionInfo[] private _positions;
     mapping(address => EnumerableSet.UintSet) private _userIds;
 
     /**
@@ -47,7 +47,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     /// @inheritdoc ICore
     function position(
         uint256 id
-    ) public view override returns (PositionInfo memory) {
+    ) public view override returns (ManagedPositionInfo memory) {
         return _positions[id];
     }
 
@@ -89,7 +89,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         bytes memory strategyParams,
         bytes memory securityParams
     ) external override {
-        PositionInfo memory info = _positions[id];
+        ManagedPositionInfo memory info = _positions[id];
         if (info.owner != msg.sender) revert Forbidden();
         ammModule.validateCallbackParams(callbackParams);
         strategyModule.validateStrategyParams(strategyParams);
@@ -138,7 +138,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         id = _positions.length;
         _userIds[params.owner].add(id);
         _positions.push(
-            PositionInfo({
+            ManagedPositionInfo({
                 owner: params.owner,
                 ammPositionIds: params.ammPositionIds,
                 pool: pool,
@@ -153,7 +153,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
 
     /// @inheritdoc ICore
     function withdraw(uint256 id, address to) external override {
-        PositionInfo memory info = _positions[id];
+        ManagedPositionInfo memory info = _positions[id];
         if (info.owner != msg.sender) revert Forbidden();
         _userIds[info.owner].remove(id);
         delete _positions[id];
@@ -176,7 +176,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         uint256 iterator = 0;
         bytes memory protocolParams_ = _protocolParams;
         for (uint256 i = 0; i < params.ids.length; i++) {
-            ICore.PositionInfo memory info = _positions[params.ids[i]];
+            ManagedPositionInfo memory info = _positions[params.ids[i]];
             oracle.ensureNoMEV(info.pool, info.securityParams);
             (bool flag, TargetPositionInfo memory target) = strategyModule
                 .getTargets(info, ammModule, oracle);
@@ -256,7 +256,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
 
     /// @inheritdoc ICore
     function emptyRebalance(uint256 id) external override {
-        PositionInfo memory params = _positions[id];
+        ManagedPositionInfo memory params = _positions[id];
         if (params.owner != msg.sender) revert Forbidden();
         bytes memory protocolParams_ = _protocolParams;
         for (uint256 i = 0; i < params.ammPositionIds.length; i++) {
@@ -314,7 +314,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
 
     function _preprocess(
         RebalanceParams memory params,
-        PositionInfo memory info,
+        ManagedPositionInfo memory info,
         bytes memory protocolParams_,
         uint160 sqrtPriceX96,
         uint256 priceX96

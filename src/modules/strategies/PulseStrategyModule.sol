@@ -31,7 +31,7 @@ contract PulseStrategyModule is IPulseStrategyModule {
 
     /// @inheritdoc IStrategyModule
     function getTargets(
-        ICore.PositionInfo memory info,
+        ICore.ManagedPositionInfo memory info,
         IAmmModule ammModule,
         IOracle oracle
     )

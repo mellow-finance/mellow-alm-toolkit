@@ -43,7 +43,7 @@ interface IPulseStrategyModule is IStrategyModule {
      * @return target The target position information for rebalancing.
      */
     function getTargets(
-        ICore.PositionInfo memory info,
+        ICore.ManagedPositionInfo memory info,
         IAmmModule ammModule,
         IOracle oracle
     )

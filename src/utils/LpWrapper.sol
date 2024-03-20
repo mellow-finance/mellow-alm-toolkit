@@ -70,7 +70,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         external
         returns (uint256 actualAmount0, uint256 actualAmount1, uint256 lpAmount)
     {
-        ICore.PositionInfo memory info = core.position(positionId);
+        ICore.ManagedPositionInfo memory info = core.position(positionId);
         core.withdraw(positionId, address(this));
 
         uint256 n = info.ammPositionIds.length;
@@ -198,7 +198,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         external
         returns (uint256 amount0, uint256 amount1, uint256 actualLpAmount)
     {
-        ICore.PositionInfo memory info = core.position(positionId);
+        ICore.ManagedPositionInfo memory info = core.position(positionId);
         core.withdraw(positionId, address(this));
 
         actualLpAmount = balanceOf(msg.sender);

@@ -132,7 +132,7 @@ pragma solidity ^0.8.0;
 //             core.rebalance(rebalanceParams);
 
 //             {
-//                 ICore.PositionInfo memory info = core.position(
+//                 ICore.ManagedPositionInfo memory info = core.position(
 //                     lpWrapper.positionId()
 //                 );
 //                 uint160 sqrtPriceX96;
