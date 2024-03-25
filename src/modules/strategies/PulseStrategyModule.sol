@@ -5,10 +5,6 @@ import "../../interfaces/modules/strategies/IPulseStrategyModule.sol";
 
 import "../../libraries/external/FullMath.sol";
 
-/**
- * @title PulseStrategyModule
- * @dev A strategy module that implements the Pulse V1 strategy and Lazy Pulse strategy.
- */
 contract PulseStrategyModule is IPulseStrategyModule {
     /// @inheritdoc IPulseStrategyModule
     uint256 public constant Q96 = 2 ** 96;
