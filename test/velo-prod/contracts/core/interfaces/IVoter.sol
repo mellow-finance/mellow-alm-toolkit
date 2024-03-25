@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 pragma abicoder v2;
 
-import {IVotingEscrow} from "test/velo/contracts/core/interfaces/IVotingEscrow.sol";
+import {IVotingEscrow} from "test/velo-prod/contracts/core/interfaces/IVotingEscrow.sol";
 
 interface IVoter {
     function ve() external view returns (IVotingEscrow);

@@ -229,7 +229,7 @@ contract Unit is Fixture {
             10000,
             pool
         );
-        IAmmModule.Position memory position = module.getPositionInfo(tokenId);
+        IAmmModule.AmmPosition memory position = module.getAmmPosition(tokenId);
         (
             ,
             ,

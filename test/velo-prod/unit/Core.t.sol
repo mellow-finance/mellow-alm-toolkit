@@ -47,8 +47,8 @@ contract Unit is Fixture {
 
         positionManager.approve(address(core), tokenId);
         ICore.DepositParams memory depositParams;
-        depositParams.tokenIds = new uint256[](1);
-        depositParams.tokenIds[0] = tokenId;
+        depositParams.ammPositionIds = new uint256[](1);
+        depositParams.ammPositionIds[0] = tokenId;
         depositParams.owner = Constants.OWNER;
         depositParams.callbackParams = new bytes(123);
         vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
@@ -111,8 +111,8 @@ contract Unit is Fixture {
         positionManager.approve(address(core), tokenId);
 
         ICore.DepositParams memory depositParams;
-        depositParams.tokenIds = new uint256[](1);
-        depositParams.tokenIds[0] = tokenId;
+        depositParams.ammPositionIds = new uint256[](1);
+        depositParams.ammPositionIds[0] = tokenId;
         depositParams.owner = Constants.OWNER;
         depositParams.callbackParams = abi.encode(
             IVeloAmmModule.CallbackParams({
@@ -206,7 +206,9 @@ contract Unit is Fixture {
         uint256 positionId,
         ICore.RebalanceParams memory rebalanceParams
     ) private {
-        ICore.PositionInfo memory infoBefore = core.position(positionId);
+        ICore.ManagedPositionInfo memory infoBefore = core.managedPositionAt(
+            positionId
+        );
         uint256 capitalBefore = 0;
         uint256 capitalAfter = 0;
         (uint160 sqrtPriceX96, int24 tick, , , , ) = pool.slot0();
@@ -214,7 +216,7 @@ contract Unit is Fixture {
 
         {
             (uint256 amount0, uint256 amount1) = ammModule.tvl(
-                infoBefore.tokenIds[0],
+                infoBefore.ammPositionIds[0],
                 sqrtPriceX96,
                 infoBefore.callbackParams,
                 core.protocolParams()
@@ -224,14 +226,16 @@ contract Unit is Fixture {
 
         core.rebalance(rebalanceParams);
 
-        ICore.PositionInfo memory infoAfter = core.position(positionId);
-        IAmmModule.Position memory positionAfter = ammModule.getPositionInfo(
-            infoAfter.tokenIds[0]
+        ICore.ManagedPositionInfo memory infoAfter = core.managedPositionAt(
+            positionId
+        );
+        IAmmModule.AmmPosition memory positionAfter = ammModule.getAmmPosition(
+            infoAfter.ammPositionIds[0]
         );
 
         {
             (uint256 amount0, uint256 amount1) = ammModule.tvl(
-                infoAfter.tokenIds[0],
+                infoAfter.ammPositionIds[0],
                 sqrtPriceX96,
                 infoAfter.callbackParams,
                 core.protocolParams()
@@ -525,10 +529,12 @@ contract Unit is Fixture {
         );
         uint256 positionId = _depositToken(tokenId);
 
-        ICore.PositionInfo memory info = core.position(positionId);
+        ICore.ManagedPositionInfo memory info = core.managedPositionAt(
+            positionId
+        );
 
-        assertEq(info.tokenIds.length, 1);
-        assertEq(info.tokenIds[0], tokenId);
+        assertEq(info.ammPositionIds.length, 1);
+        assertEq(info.ammPositionIds[0], tokenId);
 
         assertEq(info.owner, Constants.OWNER);
         assertEq(info.slippageD4, 1);
@@ -549,10 +555,10 @@ contract Unit is Fixture {
             10000,
             pool
         );
-        uint256[] memory tokenIds = new uint256[](1);
-        tokenIds[0] = tokenId;
+        uint256[] memory ammPositionIds = new uint256[](1);
+        ammPositionIds[0] = tokenId;
         ICore.DepositParams memory depositParams = ICore.DepositParams({
-            tokenIds: tokenIds,
+            ammPositionIds: ammPositionIds,
             owner: Constants.OWNER,
             slippageD4: 1,
             callbackParams: abi.encode(

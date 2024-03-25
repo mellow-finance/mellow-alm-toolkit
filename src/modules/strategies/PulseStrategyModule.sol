@@ -31,7 +31,7 @@ contract PulseStrategyModule is IPulseStrategyModule {
 
     /// @inheritdoc IStrategyModule
     function getTargets(
-        ICore.PositionInfo memory info,
+        ICore.ManagedPositionInfo memory info,
         IAmmModule ammModule,
         IOracle oracle
     )
@@ -43,11 +43,11 @@ contract PulseStrategyModule is IPulseStrategyModule {
             ICore.TargetPositionInfo memory target
         )
     {
-        if (info.tokenIds.length != 1) {
+        if (info.ammPositionIds.length != 1) {
             revert InvalidLength();
         }
-        IAmmModule.Position memory position = ammModule.getPositionInfo(
-            info.tokenIds[0]
+        IAmmModule.AmmPosition memory position = ammModule.getAmmPosition(
+            info.ammPositionIds[0]
         );
         StrategyParams memory strategyParams = abi.decode(
             info.strategyParams,

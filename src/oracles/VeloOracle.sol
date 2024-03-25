@@ -7,7 +7,7 @@ import "../libraries/external/FullMath.sol";
 import "../libraries/external/TickMath.sol";
 
 contract VeloOracle is IVeloOracle {
-    /// @inheritdoc IVeloOracle
+    /// @inheritdoc IOracle
     function ensureNoMEV(
         address poolAddress,
         bytes memory params
@@ -51,7 +51,7 @@ contract VeloOracle is IVeloOracle {
         }
     }
 
-    /// @inheritdoc IVeloOracle
+    /// @inheritdoc IOracle
     function getOraclePrice(
         address pool
     ) external view override returns (uint160, int24) {
@@ -88,7 +88,7 @@ contract VeloOracle is IVeloOracle {
         return (sqrtPriceX96, tick);
     }
 
-    /// @inheritdoc IVeloOracle
+    /// @inheritdoc IOracle
     function validateSecurityParams(
         bytes memory params
     ) external pure override {

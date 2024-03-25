@@ -98,15 +98,15 @@ contract LStrategyModule is IStrategyModule {
     }
 
     /**
-     * @dev Retrieves the target positions for rebalancing based on the given PositionInfo, AmmModule, and Oracle.
-     * @param info The PositionInfo containing the pool and token IDs.
+     * @dev Retrieves the target positions for rebalancing based on the given ManagedPositionInfo, AmmModule, and Oracle.
+     * @param info The ManagedPositionInfo containing the pool and token IDs.
      * @param ammModule The AmmModule contract.
      * @param oracle The Oracle contract.
      * @return bool A boolean indicating whether rebalancing is required.
      * @return target The TargetPositionInfo containing the target positions for rebalancing.
      */
     function getTargets(
-        ICore.PositionInfo memory info,
+        ICore.ManagedPositionInfo memory info,
         IAmmModule ammModule,
         IOracle oracle
     )
@@ -117,12 +117,12 @@ contract LStrategyModule is IStrategyModule {
     {
         int24 tick;
         (, tick) = oracle.getOraclePrice(info.pool);
-        if (info.tokenIds.length != 2) revert InvalidLength();
-        IAmmModule.Position memory lowerPosition = ammModule.getPositionInfo(
-            info.tokenIds[0]
+        if (info.ammPositionIds.length != 2) revert InvalidLength();
+        IAmmModule.AmmPosition memory lowerPosition = ammModule.getAmmPosition(
+            info.ammPositionIds[0]
         );
-        IAmmModule.Position memory upperPosition = ammModule.getPositionInfo(
-            info.tokenIds[1]
+        IAmmModule.AmmPosition memory upperPosition = ammModule.getAmmPosition(
+            info.ammPositionIds[1]
         );
 
         int24 width = lowerPosition.tickUpper - lowerPosition.tickLower;

@@ -2,11 +2,11 @@
 pragma solidity ^0.8.0;
 pragma abicoder v2;
 
-import "test/velo/contracts/core/libraries/SafeCast.sol";
-import "test/velo/contracts/core/libraries/TickMath.sol";
+import "test/velo-prod/contracts/core/libraries/SafeCast.sol";
+import "test/velo-prod/contracts/core/libraries/TickMath.sol";
 // import "test/velo/contracts/core/libraries/TickBitmap.sol";
-import "test/velo/contracts/core/interfaces/ICLPool.sol";
-import "test/velo/contracts/core/interfaces/callback/ICLSwapCallback.sol";
+import "test/velo-prod/contracts/core/interfaces/ICLPool.sol";
+import "test/velo-prod/contracts/core/interfaces/callback/ICLSwapCallback.sol";
 
 import "../interfaces/IQuoterV2.sol";
 import "../base/PeripheryImmutableState.sol";

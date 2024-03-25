@@ -308,7 +308,7 @@ contract PulseVeloBot is IPulseVeloBot {
         );
         // getting liquidity from all position
         for (uint256 i = 0; i < targets.length; i++) {
-            uint256 tokenId = targets[i].info.tokenIds[0];
+            uint256 tokenId = targets[i].info.ammPositionIds[0];
             (, , , , , , , uint128 liquidity, , , , ) = positionManager
                 .positions(tokenId);
             positionManager.decreaseLiquidity(

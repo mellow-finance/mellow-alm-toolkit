@@ -363,8 +363,8 @@ contract Unit is Fixture {
     }
 
     function testGetTargets() external {
-        ICore.PositionInfo memory info;
-        info.tokenIds = new uint256[](2);
+        ICore.ManagedPositionInfo memory info;
+        info.ammPositionIds = new uint256[](2);
 
         vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
         pulseStrategyModule.getTargets(
@@ -386,8 +386,8 @@ contract Unit is Fixture {
             pool
         );
 
-        info.tokenIds = new uint256[](1);
-        info.tokenIds[0] = tokenId;
+        info.ammPositionIds = new uint256[](1);
+        info.ammPositionIds[0] = tokenId;
         info.pool = address(pool);
         info.strategyParams = abi.encode(
             IPulseStrategyModule.StrategyParams({

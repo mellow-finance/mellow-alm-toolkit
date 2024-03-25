@@ -20,8 +20,8 @@ contract Integration is Fixture {
 
     function testSynthetixFarm() external {
         ICore.DepositParams memory depositParams;
-        depositParams.tokenIds = new uint256[](1);
-        depositParams.tokenIds[0] = mint(
+        depositParams.ammPositionIds = new uint256[](1);
+        depositParams.ammPositionIds[0] = mint(
             Constants.OP,
             Constants.WETH,
             TICK_SPACING,
@@ -41,13 +41,13 @@ contract Integration is Fixture {
         depositParams.slippageD4 = 100;
 
         vm.startPrank(Constants.OWNER);
-        positionManager.approve(address(core), depositParams.tokenIds[0]);
+        positionManager.approve(address(core), depositParams.ammPositionIds[0]);
         {
             uint256 nftId = core.deposit(depositParams);
             core.withdraw(nftId, Constants.OWNER);
         }
 
-        positionManager.approve(address(core), depositParams.tokenIds[0]);
+        positionManager.approve(address(core), depositParams.ammPositionIds[0]);
         depositParams.owner = address(lpWrapper);
         Counter counter = new Counter(Constants.OWNER, address(core));
         depositParams.callbackParams = abi.encode(
@@ -137,8 +137,8 @@ contract Integration is Fixture {
 
     function testSynthetixFarmMultiple() external {
         ICore.DepositParams memory depositParams;
-        depositParams.tokenIds = new uint256[](1);
-        depositParams.tokenIds[0] = mint(
+        depositParams.ammPositionIds = new uint256[](1);
+        depositParams.ammPositionIds[0] = mint(
             Constants.OP,
             Constants.WETH,
             TICK_SPACING,
@@ -158,13 +158,13 @@ contract Integration is Fixture {
         depositParams.slippageD4 = 100;
 
         vm.startPrank(Constants.OWNER);
-        positionManager.approve(address(core), depositParams.tokenIds[0]);
+        positionManager.approve(address(core), depositParams.ammPositionIds[0]);
         {
             uint256 nftId = core.deposit(depositParams);
             core.withdraw(nftId, Constants.OWNER);
         }
 
-        positionManager.approve(address(core), depositParams.tokenIds[0]);
+        positionManager.approve(address(core), depositParams.ammPositionIds[0]);
         depositParams.owner = address(lpWrapper);
         Counter counter = new Counter(Constants.OWNER, address(core));
         depositParams.callbackParams = abi.encode(

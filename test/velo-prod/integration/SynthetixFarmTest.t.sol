@@ -8,8 +8,8 @@ contract Integration is Fixture {
 
     function testSynthetixFarm() external {
         ICore.DepositParams memory depositParams;
-        depositParams.tokenIds = new uint256[](1);
-        depositParams.tokenIds[0] = mint(
+        depositParams.ammPositionIds = new uint256[](1);
+        depositParams.ammPositionIds[0] = mint(
             Constants.OP,
             Constants.WETH,
             TICK_SPACING,
@@ -47,13 +47,13 @@ contract Integration is Fixture {
         );
 
         vm.startPrank(Constants.OWNER);
-        positionManager.approve(address(core), depositParams.tokenIds[0]);
+        positionManager.approve(address(core), depositParams.ammPositionIds[0]);
         {
             uint256 nftId = core.deposit(depositParams);
             core.withdraw(nftId, Constants.OWNER);
         }
 
-        positionManager.approve(address(core), depositParams.tokenIds[0]);
+        positionManager.approve(address(core), depositParams.ammPositionIds[0]);
         depositParams.owner = address(lpWrapper);
 
         uint256 nftId2 = core.deposit(depositParams);
@@ -111,7 +111,7 @@ contract Integration is Fixture {
                 while (true) {
                     movePrice(uint256(20));
                     (bool flag, ) = core.strategyModule().getTargets(
-                        core.position(lpWrapper.positionId()),
+                        core.managedPositionAt(lpWrapper.positionId()),
                         core.ammModule(),
                         core.oracle()
                     );
@@ -145,7 +145,7 @@ contract Integration is Fixture {
             core.rebalance(rebalanceParams);
 
             {
-                ICore.PositionInfo memory info = core.position(
+                ICore.ManagedPositionInfo memory info = core.managedPositionAt(
                     lpWrapper.positionId()
                 );
                 uint160 sqrtPriceX96;
@@ -153,7 +153,7 @@ contract Integration is Fixture {
 
                 (uint256 amount0, uint256 amount1) = PositionValue.total(
                     positionManager,
-                    info.tokenIds[0],
+                    info.ammPositionIds[0],
                     sqrtPriceX96
                 );
                 uint256 priceX96 = FullMath.mulDiv(
@@ -166,7 +166,7 @@ contract Integration is Fixture {
                 console2.log("Capital usdc:", capital);
                 console2.log(
                     "New position params:",
-                    vm.toString(info.tokenIds[0])
+                    vm.toString(info.ammPositionIds[0])
                 );
             }
         }

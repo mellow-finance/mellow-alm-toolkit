@@ -187,7 +187,7 @@ pragma solidity ^0.8.0;
 //         uint256 id
 //     ) public returns (PulseAgniBot.SwapParams memory) {
 //         vm.startPrank(Constants.OWNER);
-//         ICore.PositionInfo memory info = core.position(id);
+//         ICore.ManagedPositionInfo memory info = core.position(id);
 //         (bool flag, ICore.TargetPositionInfo memory target) = core
 //             .strategyModule()
 //             .getTargets(info, core.ammModule(), core.oracle());

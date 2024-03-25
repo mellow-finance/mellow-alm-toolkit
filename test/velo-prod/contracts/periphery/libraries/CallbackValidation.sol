@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.0;
 
-import "test/velo/contracts/core/interfaces/ICLPool.sol";
+import "test/velo-prod/contracts/core/interfaces/ICLPool.sol";
 import "./PoolAddress.sol";
 
 /// @notice Provides validation for callbacks from CL Pools

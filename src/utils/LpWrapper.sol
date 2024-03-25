@@ -54,7 +54,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         uint256 initialTotalSupply
     ) external {
         if (positionId != 0) revert AlreadyInitialized();
-        if (core.position(positionId_).owner != address(this))
+        if (core.managedPositionAt(positionId_).owner != address(this))
             revert Forbidden();
         positionId = positionId_;
         _mint(address(this), initialTotalSupply);
@@ -70,14 +70,18 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         external
         returns (uint256 actualAmount0, uint256 actualAmount1, uint256 lpAmount)
     {
-        ICore.PositionInfo memory info = core.position(positionId);
+        ICore.ManagedPositionInfo memory info = core.managedPositionAt(
+            positionId
+        );
         core.withdraw(positionId, address(this));
 
-        uint256 n = info.tokenIds.length;
-        IAmmModule.Position[]
-            memory positionsBefore = new IAmmModule.Position[](n);
+        uint256 n = info.ammPositionIds.length;
+        IAmmModule.AmmPosition[]
+            memory positionsBefore = new IAmmModule.AmmPosition[](n);
         for (uint256 i = 0; i < n; i++) {
-            positionsBefore[i] = ammModule.getPositionInfo(info.tokenIds[i]);
+            positionsBefore[i] = ammModule.getAmmPosition(
+                info.ammPositionIds[i]
+            );
         }
 
         uint256[] memory amounts0 = new uint256[](n);
@@ -125,7 +129,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
                 ).delegatecall(
                         abi.encodeWithSelector(
                             IAmmDepositWithdrawModule.deposit.selector,
-                            info.tokenIds[i],
+                            info.ammPositionIds[i],
                             amounts0[i],
                             amounts1[i],
                             msg.sender
@@ -142,16 +146,20 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
             }
         }
 
-        IAmmModule.Position[] memory positionsAfter = new IAmmModule.Position[](
-            n
-        );
+        IAmmModule.AmmPosition[]
+            memory positionsAfter = new IAmmModule.AmmPosition[](n);
         for (uint256 i = 0; i < n; i++) {
-            positionsAfter[i] = ammModule.getPositionInfo(info.tokenIds[i]);
+            positionsAfter[i] = ammModule.getAmmPosition(
+                info.ammPositionIds[i]
+            );
         }
 
         uint256 totalSupply_ = totalSupply();
         for (uint256 i = 0; i < n; i++) {
-            IERC721(positionManager).approve(address(core), info.tokenIds[i]);
+            IERC721(positionManager).approve(
+                address(core),
+                info.ammPositionIds[i]
+            );
         }
 
         lpAmount = type(uint256).max;
@@ -172,7 +180,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
 
         positionId = core.deposit(
             ICore.DepositParams({
-                tokenIds: info.tokenIds,
+                ammPositionIds: info.ammPositionIds,
                 owner: info.owner,
                 slippageD4: info.slippageD4,
                 callbackParams: info.callbackParams,
@@ -192,7 +200,9 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         external
         returns (uint256 amount0, uint256 amount1, uint256 actualLpAmount)
     {
-        ICore.PositionInfo memory info = core.position(positionId);
+        ICore.ManagedPositionInfo memory info = core.managedPositionAt(
+            positionId
+        );
         core.withdraw(positionId, address(this));
 
         actualLpAmount = balanceOf(msg.sender);
@@ -204,14 +214,13 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         _burn(msg.sender, actualLpAmount);
 
         {
-            for (uint256 i = 0; i < info.tokenIds.length; i++) {
+            for (uint256 i = 0; i < info.ammPositionIds.length; i++) {
                 IERC721(positionManager).approve(
                     address(core),
-                    info.tokenIds[i]
+                    info.ammPositionIds[i]
                 );
-                IAmmModule.Position memory position = ammModule.getPositionInfo(
-                    info.tokenIds[i]
-                );
+                IAmmModule.AmmPosition memory position = ammModule
+                    .getAmmPosition(info.ammPositionIds[i]);
                 uint256 liquidity = FullMath.mulDiv(
                     position.liquidity,
                     actualLpAmount,
@@ -223,7 +232,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
                 ).delegatecall(
                         abi.encodeWithSelector(
                             IAmmDepositWithdrawModule.withdraw.selector,
-                            info.tokenIds[i],
+                            info.ammPositionIds[i],
                             liquidity,
                             to
                         )
@@ -245,7 +254,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
 
         positionId = core.deposit(
             ICore.DepositParams({
-                tokenIds: info.tokenIds,
+                ammPositionIds: info.ammPositionIds,
                 owner: info.owner,
                 slippageD4: info.slippageD4,
                 callbackParams: info.callbackParams,
