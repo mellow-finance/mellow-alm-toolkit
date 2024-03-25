@@ -6,6 +6,7 @@ import "../interfaces/utils/IVeloDeployFactoryHelper.sol";
 import "./LpWrapper.sol";
 
 contract VeloDeployFactoryHelper is IVeloDeployFactoryHelper {
+    /// @inheritdoc IVeloDeployFactoryHelper
     function createLpWrapper(
         ICore core,
         IAmmDepositWithdrawModule ammDepositWithdrawModule,

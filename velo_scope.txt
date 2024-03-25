@@ -7,7 +7,7 @@
 #src/interfaces/oracles/IOracle.sol
 #src/interfaces/oracles/IVeloOracle.sol
 #src/interfaces/utils/ICounter.sol
-#src/interfaces/utils/ILpWrapper.
+#src/interfaces/utils/ILpWrapper.sol
 #src/interfaces/utils/IRebalanceCallback.sol
 #src/interfaces/utils/IVeloDeployFactory.sol
 #src/interfaces/utils/IVeloDeployFactoryHelper.sol

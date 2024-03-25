@@ -13,7 +13,7 @@ contract VeloDepositWithdrawModule is IVeloDepositWithdrawModule {
         positionManager = positionManager_;
     }
 
-    /// @inheritdoc IVeloDepositWithdrawModule
+    /// @inheritdoc IAmmDepositWithdrawModule
     function deposit(
         uint256 tokenId,
         uint256 amount0,
@@ -44,7 +44,7 @@ contract VeloDepositWithdrawModule is IVeloDepositWithdrawModule {
         }
     }
 
-    /// @inheritdoc IVeloDepositWithdrawModule
+    /// @inheritdoc IAmmDepositWithdrawModule
     function withdraw(
         uint256 tokenId,
         uint256 liquidity,

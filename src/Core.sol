@@ -218,13 +218,13 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
             mstore(targets, iterator)
         }
 
-        uint256[][] memory newammPositionIds = IRebalanceCallback(
+        uint256[][] memory newAmmPositionIds = IRebalanceCallback(
             params.callback
         ).call(params.data, targets);
-        if (newammPositionIds.length != iterator) revert InvalidLength();
+        if (newAmmPositionIds.length != iterator) revert InvalidLength();
         for (uint256 i = 0; i < iterator; i++) {
             TargetPositionInfo memory target = targets[i];
-            uint256[] memory ammPositionIds = newammPositionIds[i];
+            uint256[] memory ammPositionIds = newAmmPositionIds[i];
             if (ammPositionIds.length != target.liquidityRatiosX96.length) {
                 revert InvalidLength();
             }
