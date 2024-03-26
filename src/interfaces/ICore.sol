@@ -1,20 +1,12 @@
 // SPDX-License-Identifier: BSL-1.1
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-import "./modules/IAmmModule.sol";
-import "./modules/IStrategyModule.sol";
-import "./oracles/IOracle.sol";
-
 import "./utils/IRebalanceCallback.sol";
 
-import "./modules/IAmmModule.sol";
 import "./modules/IStrategyModule.sol";
-
-import "./oracles/IOracle.sol";
 
 interface ICore is IERC721Receiver {
     /**
