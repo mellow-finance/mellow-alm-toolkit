@@ -10,7 +10,6 @@ interface IStrategyModule {
     /**
      * @dev Validates the strategy parameters.
      * @param params The encoded strategy parameters.
-     * @notice throws InvalidParams if the tick neighborhood or tick spacing is zero.
      */
     function validateStrategyParams(bytes memory params) external view;
 
