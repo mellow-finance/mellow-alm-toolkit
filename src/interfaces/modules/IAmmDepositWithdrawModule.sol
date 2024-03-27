@@ -31,8 +31,7 @@ interface IAmmDepositWithdrawModule {
     /**
      * @dev Withdraws a specified amount of liquidity from a position identified by tokenId and
      * transfers the corresponding amounts of token0 and token1 to a recipient address. This operation
-     * reduces the liquidity in the pool and collects tokens proportionally from all positions
-     * associated with the tokenId.
+     * reduces the liquidity in the pool and collects tokens from the position associated with the tokenId.
      *
      * @param tokenId The ID of the AMM position token from which liquidity is to be withdrawn.
      * @param liquidity The amount of liquidity to withdraw.
@@ -40,7 +39,7 @@ interface IAmmDepositWithdrawModule {
      * @return actualAmount0 The actual amount of token0 that was collected and transferred.
      * @return actualAmount1 The actual amount of token1 that was collected and transferred.
      *
-     * @notice This function will proportionally collect tokens from position associated with the specified tokenId.
+     * @notice This function will collect tokens from position associated with the specified tokenId.
      */
     function withdraw(
         uint256 tokenId,

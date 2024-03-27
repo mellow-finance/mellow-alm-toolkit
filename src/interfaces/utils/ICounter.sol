@@ -29,7 +29,7 @@ interface ICounter {
     function add(uint256 additionalValue) external;
 
     /**
-     * @dev Resets the counter to zero. Can be called by the owner or operator.
+     * @dev Resets the counter to zero. Can only be called by the current owner.
      */
     function reset() external;
 }
