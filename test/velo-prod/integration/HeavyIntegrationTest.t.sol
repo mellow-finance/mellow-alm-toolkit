@@ -314,7 +314,7 @@ contract Integration is Fixture {
             rebalanceParams.data = abi.encode(ammParams);
 
             vm.startPrank(Constants.OWNER);
-            vm.expectRevert(bytes4(0xd9218acd));
+            vm.expectRevert(bytes4(0x47793fd1));
             core.rebalance(rebalanceParams);
             vm.stopPrank();
         }

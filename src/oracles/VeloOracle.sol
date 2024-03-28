@@ -39,6 +39,7 @@ contract VeloOracle is IVeloOracle {
                 observationCardinality;
             (uint32 timestamp, int56 tickCumulative, , ) = ICLPool(poolAddress)
                 .observations(index);
+            if (timestamp == 0) revert NotEnoughObservations();
             int24 tick = int24(
                 (nextCumulativeTick - tickCumulative) /
                     int56(uint56(nextTimestamp - timestamp))
