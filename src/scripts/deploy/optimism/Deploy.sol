@@ -30,26 +30,26 @@ contract Deploy is Script {
     address public constant OP = 0x4200000000000000000000000000000000000042;
     address public constant VELO = 0x9560e827aF36c94D2Ac33a39bCE1Fe78631088Db;
 
-    address public constant VELO_DEPLOY_FACTORY_ADMIN =
-        address(bytes20(keccak256("VELO_DEPLOY_FACTORY_ADMIN")));
-    address public constant VELO_DEPLOY_FACTORY_OPERATOR =
-        address(bytes20(keccak256("VELO_DEPLOY_FACTORY_OPERATOR")));
-    address public constant CORE_ADMIN =
-        address(bytes20(keccak256("CORE_ADMIN")));
-    address public constant CORE_OPERATOR =
-        address(bytes20(keccak256("CORE_OPERATOR")));
-    address public constant MELLOW_PROTOCOL_TREASURY =
-        address(bytes20(keccak256("MELLOW_PROTOCOL_TREASURY")));
-    address public constant WRAPPER_ADMIN =
-        address(bytes20(keccak256("WRAPPER_ADMIN")));
-    address public constant FARM_OWNER =
-        address(bytes20(keccak256("FARM_OWNER")));
-    address public constant FARM_OPERATOR =
-        address(bytes20(keccak256("FARM_OPERATOR")));
-    uint32 public constant MELLOW_PROTOCOL_FEE = 1e8;
-    address public constant DEPOSITOR =
-        address(bytes20(keccak256("DEPOSITOR")));
-    address public constant USER = address(bytes20(keccak256("USER")));
+    address public immutable VELO_DEPLOY_FACTORY_ADMIN =
+        vm.envAddress("VELO_DEPLOY_FACTORY_ADMIN_ADDRESS");
+    address public immutable VELO_DEPLOY_FACTORY_OPERATOR =
+        vm.envAddress("VELO_DEPLOY_FACTORY_OPERATOR_ADDRESS");
+    address public immutable CORE_ADMIN = vm.envAddress("CORE_ADMIN_ADDRESS");
+    address public immutable CORE_OPERATOR =
+        vm.envAddress("CORE_OPERATOR_ADDRESS");
+    address public immutable MELLOW_PROTOCOL_TREASURY =
+        vm.envAddress("MELLOW_PROTOCOL_TREASURY_ADDRESS");
+    address public immutable WRAPPER_ADMIN =
+        vm.envAddress("WRAPPER_ADMIN_ADDRESS");
+    address public immutable FARM_OWNER = vm.envAddress("FARM_OWNER_ADDRESS");
+    address public immutable FARM_OPERATOR =
+        vm.envAddress("FARM_OPERATOR_ADDRESS");
+    uint32 public immutable MELLOW_PROTOCOL_FEE = 1e8;
+    address public immutable DEPOSITOR = vm.envAddress("DEPOSITOR_ADDRESS");
+    address public immutable USER = vm.envAddress("USER_ADDRESS");
+
+    address public immutable DEPLOYER =
+        0x7ee9247b6199877F86703644c97784495549aC5E;
 
     INonfungiblePositionManager public positionManager =
         INonfungiblePositionManager(0xbB5DFE1380333CEE4c2EeBd7202c80dE2256AdF4);
@@ -64,17 +64,13 @@ contract Deploy is Script {
     VeloDeployFactory public deployFactory;
     VeloDeployFactoryHelper public deployFactoryHelper;
 
-    function _deployContract() private {
+    function _deployContracts() private {
+        vm.startBroadcast(uint256(bytes32(vm.envBytes("DEPLOYER_PK"))));
         ammModule = new VeloAmmModule(positionManager);
         dwModule = new VeloDepositWithdrawModule(positionManager);
         strategyModule = new PulseStrategyModule();
         oracle = new VeloOracle();
         core = new Core(ammModule, strategyModule, oracle, CORE_ADMIN);
-        vm.startPrank(CORE_ADMIN);
-        core.grantRole(core.ADMIN_DELEGATE_ROLE(), CORE_ADMIN);
-        core.grantRole(core.OPERATOR(), CORE_OPERATOR);
-        vm.stopPrank();
-
         deployFactoryHelper = new VeloDeployFactoryHelper();
         deployFactory = new VeloDeployFactory(
             VELO_DEPLOY_FACTORY_ADMIN,
@@ -82,8 +78,11 @@ contract Deploy is Script {
             dwModule,
             deployFactoryHelper
         );
+        vm.stopBroadcast();
 
-        vm.prank(CORE_ADMIN);
+        vm.startBroadcast(uint256(bytes32(vm.envBytes("CORE_ADMIN_PK"))));
+        core.grantRole(core.ADMIN_DELEGATE_ROLE(), CORE_ADMIN);
+        core.grantRole(core.OPERATOR(), CORE_OPERATOR);
         core.setProtocolParams(
             abi.encode(
                 IVeloAmmModule.ProtocolParams({
@@ -93,7 +92,10 @@ contract Deploy is Script {
             )
         );
 
-        vm.startPrank(VELO_DEPLOY_FACTORY_ADMIN);
+        vm.stopBroadcast();
+        vm.startBroadcast(
+            uint256(bytes32(vm.envBytes("VELO_DEPLOY_FACTORY_ADMIN_PK")))
+        );
 
         deployFactory.updateMutableParams(
             IVeloDeployFactory.MutableParams({
@@ -179,7 +181,7 @@ contract Deploy is Script {
             VELO_DEPLOY_FACTORY_OPERATOR
         );
 
-        vm.stopPrank();
+        vm.stopBroadcast();
     }
 
     function deal(address token, address user, uint256 amount) public view {
@@ -188,7 +190,7 @@ contract Deploy is Script {
             revert(
                 string(
                     abi.encodePacked(
-                        "Isufficient balance. Required: ",
+                        "Insufficient balance. Required: ",
                         vm.toString(amount),
                         "; Actual: ",
                         vm.toString(userBalance)
@@ -198,112 +200,28 @@ contract Deploy is Script {
         }
     }
 
-    function _swap(
-        address user,
-        ICLPool pool,
-        bool dir,
-        uint256 amount
-    ) private returns (uint256) {
-        vm.startPrank(user);
-        address tokenIn = dir ? pool.token0() : pool.token1();
-        address tokenOut = dir ? pool.token1() : pool.token0();
-        deal(tokenIn, user, amount);
-        IERC20(tokenIn).approve(address(swapRouter), amount);
-        uint256 amountOut = swapRouter.exactInputSingle(
-            ISwapRouter.ExactInputSingleParams({
-                tokenIn: tokenIn,
-                tokenOut: tokenOut,
-                tickSpacing: pool.tickSpacing(),
-                recipient: address(this),
-                deadline: block.timestamp,
-                amountIn: amount,
-                amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
-            })
-        );
-        vm.stopPrank();
-        return amountOut;
-    }
-
-    function mint(
-        ICLPool pool,
-        uint128 liquidity,
-        int24 width,
-        address owner
-    ) public returns (uint256 tokenId) {
-        vm.startPrank(owner);
-
-        (uint160 sqrtPriceX96, int24 tick, , , , ) = pool.slot0();
-        int24 tickLower = tick - width / 2;
-
-        {
-            int24 tickSpacing = pool.tickSpacing();
-            int24 remainder = tickLower % tickSpacing;
-            if (remainder < 0) remainder += tickSpacing;
-            tickLower -= remainder;
-        }
-        int24 tickUpper = tickLower + width;
-
-        (uint256 amount0, uint256 amount1) = LiquidityAmounts
-            .getAmountsForLiquidity(
-                sqrtPriceX96,
-                TickMath.getSqrtRatioAtTick(tickLower),
-                TickMath.getSqrtRatioAtTick(tickUpper),
-                liquidity + 1
-            );
-
-        deal(pool.token0(), owner, amount0);
-        deal(pool.token1(), owner, amount1);
-
-        IERC20(pool.token0()).approve(address(positionManager), amount0);
-        IERC20(pool.token1()).approve(address(positionManager), amount1);
-
-        (tokenId, , , ) = positionManager.mint(
-            INonfungiblePositionManager.MintParams({
-                token0: pool.token0(),
-                token1: pool.token1(),
-                tickLower: tickLower,
-                tickUpper: tickUpper,
-                tickSpacing: pool.tickSpacing(),
-                amount0Desired: amount0,
-                amount1Desired: amount1,
-                amount0Min: 0,
-                amount1Min: 0,
-                recipient: owner,
-                deadline: block.timestamp,
-                sqrtPriceX96: 0
-            })
-        );
-
-        vm.stopPrank();
-    }
-
     function createStrategy(
         ICLPool pool
     ) public returns (IVeloDeployFactory.PoolAddresses memory addresses) {
+        vm.startBroadcast(
+            uint256(bytes32(vm.envBytes("VELO_DEPLOY_FACTORY_ADMIN_PK")))
+        );
         pool.increaseObservationCardinalityNext(2);
-        mint(pool, 1e19, pool.tickSpacing() * 1000, address(this));
-        _swap(address(123), pool, false, 1 gwei);
-        vm.startPrank(VELO_DEPLOY_FACTORY_OPERATOR);
-        deal(pool.token0(), VELO_DEPLOY_FACTORY_OPERATOR, 1e6);
-        deal(pool.token1(), VELO_DEPLOY_FACTORY_OPERATOR, 1e6);
-
-        IERC20(pool.token0()).approve(address(deployFactory), 1e6);
-        IERC20(pool.token1()).approve(address(deployFactory), 1e6);
+        deal(pool.token0(), address(deployFactory), 1e6);
+        deal(pool.token1(), address(deployFactory), 1e6);
 
         addresses = deployFactory.createStrategy(
             pool.token0(),
             pool.token1(),
             pool.tickSpacing()
         );
-        vm.stopPrank();
+        vm.stopBroadcast();
     }
 
     function build(
         int24 tickSpacing
     ) public returns (ILpWrapper wrapper, StakingRewards farm, ICLPool pool) {
         pool = ICLPool(factory.getPool(WETH, OP, tickSpacing));
-        vm.prank(VELO_DEPLOY_FACTORY_OPERATOR);
         IVeloDeployFactory.PoolAddresses memory addresses = createStrategy(
             pool
         );
@@ -311,11 +229,32 @@ contract Deploy is Script {
         farm = StakingRewards(addresses.synthetixFarm);
     }
 
+    function _validateBalances() private view {
+        require(
+            DEPLOYER.balance > 0.07 ether,
+            "Insufficient balance for DEPOSITOR_ADDRESS"
+        );
+        require(
+            vm.envAddress("VELO_DEPLOY_FACTORY_ADMIN_ADDRESS").balance >
+                0.07 ether,
+            "Insufficient balance for VELO_DEPLOY_FACTORY_ADMIN_ADDRESS"
+        );
+        require(
+            vm.envAddress("CORE_ADMIN_PK").balance > 0.07 ether,
+            "Insufficient balance for CORE_ADMIN_PK"
+        );
+    }
+
     function run() external {
-        _deployContract();
-        (ILpWrapper wrapper, StakingRewards farm, ICLPool pool) = build(200);
-        console2.log("Wrapper:", address(wrapper));
-        console2.log("StakingRewards:", address(farm));
-        console2.log("ICLPool:", address(pool));
+        _validateBalances();
+        _deployContracts();
+        if (false) {
+            (ILpWrapper wrapper, StakingRewards farm, ICLPool pool) = build(
+                200
+            );
+            console2.log("Wrapper:", address(wrapper));
+            console2.log("StakingRewards:", address(farm));
+            console2.log("ICLPool:", address(pool));
+        }
     }
 }
