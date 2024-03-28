@@ -78,6 +78,9 @@ contract Deploy is Script {
             dwModule,
             deployFactoryHelper
         );
+
+        IERC20(WETH).transfer(address(deployFactory), 1e6);
+        IERC20(OP).transfer(address(deployFactory), 1e6);
         vm.stopBroadcast();
 
         vm.startBroadcast(uint256(bytes32(vm.envBytes("CORE_ADMIN_PK"))));
@@ -231,16 +234,16 @@ contract Deploy is Script {
 
     function _validateBalances() private view {
         require(
-            DEPLOYER.balance > 0.07 ether,
+            DEPLOYER.balance >= 0.07 ether,
             "Insufficient balance for DEPOSITOR_ADDRESS"
         );
         require(
-            vm.envAddress("VELO_DEPLOY_FACTORY_ADMIN_ADDRESS").balance >
+            vm.envAddress("VELO_DEPLOY_FACTORY_ADMIN_ADDRESS").balance >=
                 0.07 ether,
             "Insufficient balance for VELO_DEPLOY_FACTORY_ADMIN_ADDRESS"
         );
         require(
-            vm.envAddress("CORE_ADMIN_PK").balance > 0.07 ether,
+            vm.envAddress("CORE_ADMIN_ADDRESS").balance >= 0.03 ether,
             "Insufficient balance for CORE_ADMIN_PK"
         );
     }
@@ -248,13 +251,9 @@ contract Deploy is Script {
     function run() external {
         _validateBalances();
         _deployContracts();
-        if (false) {
-            (ILpWrapper wrapper, StakingRewards farm, ICLPool pool) = build(
-                200
-            );
-            console2.log("Wrapper:", address(wrapper));
-            console2.log("StakingRewards:", address(farm));
-            console2.log("ICLPool:", address(pool));
-        }
+        (ILpWrapper wrapper, StakingRewards farm, ICLPool pool) = build(200);
+        console2.log("Wrapper:", address(wrapper));
+        console2.log("StakingRewards:", address(farm));
+        console2.log("ICLPool:", address(pool));
     }
 }
