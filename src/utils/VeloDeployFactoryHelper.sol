@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BSL-1.1
 pragma solidity ^0.8.0;
 
+import "@synthetix/contracts/StakingRewards.sol";
+
 import "../interfaces/utils/IVeloDeployFactoryHelper.sol";
 
 import "./LpWrapper.sol";
@@ -28,5 +30,14 @@ contract VeloDeployFactoryHelper is IVeloDeployFactoryHelper {
         wrapper.revokeRole(wrapper.ADMIN_DELEGATE_ROLE(), address(this));
         wrapper.revokeRole(wrapper.ADMIN_ROLE(), address(this));
         return wrapper;
+    }
+
+    function createStakingRewards(
+        address owner,
+        address operator,
+        address reward,
+        address token
+    ) external returns (address) {
+        return address(new StakingRewards(owner, operator, reward, token));
     }
 }

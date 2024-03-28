@@ -22,4 +22,19 @@ interface IVeloDeployFactoryHelper {
         address admin,
         address operator
     ) external returns (ILpWrapper);
+
+    /**
+     * @dev Creates a new StakingReward contract.
+     * @param owner The address of the owner for the StakingReward contract.
+     * @param operator The address of the operator for the StakingReward contract.
+     * @param reward The address of the reward token for the StakingReward contract.
+     * @param token The address of the token for the StakingReward contract.
+     * @return The address of the newly created StakingReward contract.
+     */
+    function createStakingRewards(
+        address owner,
+        address operator,
+        address reward,
+        address token
+    ) external returns (address);
 }
