@@ -238,13 +238,11 @@ contract VeloDeployFactory is IVeloDeployFactory, DefaultAccessControl {
             );
 
             depositParams.owner = address(lpWrapper);
-            address farm = address(
-                new StakingRewards(
-                    s.mutableParams.farmOwner,
-                    s.mutableParams.farmOperator,
-                    s.mutableParams.rewardsToken,
-                    address(lpWrapper)
-                )
+            address farm = s.immutableParams.helper.createStakingRewards(
+                s.mutableParams.farmOwner,
+                s.mutableParams.farmOperator,
+                s.mutableParams.rewardsToken,
+                address(lpWrapper)
             );
             depositParams.callbackParams = abi.encode(
                 IVeloAmmModule.CallbackParams({
