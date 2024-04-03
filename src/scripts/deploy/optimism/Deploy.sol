@@ -20,6 +20,8 @@ import "../../../modules/strategies/PulseStrategyModule.sol";
 
 import "../../../oracles/VeloOracle.sol";
 
+import "../../../bots/PulseVeloBot.sol";
+
 contract Deploy is Script {
     // constants:
     address public constant QUOTER_V2 =
@@ -65,24 +67,23 @@ contract Deploy is Script {
     VeloDeployFactoryHelper public deployFactoryHelper;
 
     function _deployContracts() private {
-        vm.startBroadcast(uint256(bytes32(vm.envBytes("DEPLOYER_PK"))));
-        ammModule = new VeloAmmModule(positionManager);
-        dwModule = new VeloDepositWithdrawModule(positionManager);
-        strategyModule = new PulseStrategyModule();
-        oracle = new VeloOracle();
-        core = new Core(ammModule, strategyModule, oracle, CORE_ADMIN);
-        deployFactoryHelper = new VeloDeployFactoryHelper();
-        deployFactory = new VeloDeployFactory(
-            VELO_DEPLOY_FACTORY_ADMIN,
-            core,
-            dwModule,
-            deployFactoryHelper
+        ammModule = VeloAmmModule(0x1CB63257cC13F69c23853ea443A569afeab5828a);
+        dwModule = VeloDepositWithdrawModule(
+            0xD4c1804eCbE56FB7C56E0743deABaDA28d275108
+        );
+        strategyModule = PulseStrategyModule(
+            0x606D456eF070c852d665134DADcAd569007CC2Dc
+        );
+        oracle = VeloOracle(0xfE728994DBD750Ac69B7d027d0639c36BB3B2568);
+        core = Core(0x1e262505662Bd9C5146CaaDc94E359504B7E1dBd);
+        deployFactoryHelper = VeloDeployFactoryHelper(
+            0x26Bb3b1A96cFBd9D77a41e5d89Ccd774457921dC
+        );
+        deployFactory = VeloDeployFactory(
+            0xa0D05F130d7433232d7253EcdD32F5420c1663B0
         );
 
-        IERC20(WETH).transfer(address(deployFactory), 1e6);
-        IERC20(OP).transfer(address(deployFactory), 1e6);
-        vm.stopBroadcast();
-
+        if (true) return;
         vm.startBroadcast(uint256(bytes32(vm.envBytes("CORE_ADMIN_PK"))));
         core.grantRole(core.ADMIN_DELEGATE_ROLE(), CORE_ADMIN);
         core.grantRole(core.OPERATOR(), CORE_OPERATOR);
@@ -94,8 +95,8 @@ contract Deploy is Script {
                 })
             )
         );
-
         vm.stopBroadcast();
+
         vm.startBroadcast(
             uint256(bytes32(vm.envBytes("VELO_DEPLOY_FACTORY_ADMIN_PK")))
         );
@@ -111,7 +112,9 @@ contract Deploy is Script {
 
         ICore.DepositParams memory depositParams;
         depositParams.slippageD4 = 5;
-        depositParams.securityParams = new bytes(0);
+        depositParams.securityParams = abi.encode(
+            IVeloOracle.SecurityParams({lookback: 50, maxAllowedDelta: 20})
+        );
 
         deployFactory.updateStrategyParams(
             1,
@@ -206,13 +209,11 @@ contract Deploy is Script {
     function createStrategy(
         ICLPool pool
     ) public returns (IVeloDeployFactory.PoolAddresses memory addresses) {
+        deal(pool.token0(), address(deployFactory), 1e6);
+        deal(pool.token1(), address(deployFactory), 1e6);
         vm.startBroadcast(
             uint256(bytes32(vm.envBytes("VELO_DEPLOY_FACTORY_ADMIN_PK")))
         );
-        pool.increaseObservationCardinalityNext(2);
-        deal(pool.token0(), address(deployFactory), 1e6);
-        deal(pool.token1(), address(deployFactory), 1e6);
-
         addresses = deployFactory.createStrategy(
             pool.token0(),
             pool.token1(),
@@ -233,27 +234,57 @@ contract Deploy is Script {
     }
 
     function _validateBalances() private view {
-        require(
-            DEPLOYER.balance >= 0.07 ether,
-            "Insufficient balance for DEPOSITOR_ADDRESS"
-        );
+        // require(
+        //     DEPLOYER.balance >= 0.03 ether,
+        //     "Insufficient balance for DEPOSITOR_ADDRESS"
+        // );
         require(
             vm.envAddress("VELO_DEPLOY_FACTORY_ADMIN_ADDRESS").balance >=
-                0.07 ether,
+                0.03 ether,
             "Insufficient balance for VELO_DEPLOY_FACTORY_ADMIN_ADDRESS"
         );
-        require(
-            vm.envAddress("CORE_ADMIN_ADDRESS").balance >= 0.03 ether,
-            "Insufficient balance for CORE_ADMIN_PK"
+        // require(
+        //     vm.envAddress("CORE_ADMIN_ADDRESS").balance >= 0.03 ether,
+        //     "Insufficient balance for CORE_ADMIN_PK"
+        // );
+    }
+
+    function deposit() public {
+        vm.startBroadcast(uint256(bytes32(vm.envBytes("DEPLOYER_PK"))));
+
+        ILpWrapper wrapper = ILpWrapper(
+            0x6af1B61009226fDC08279CEF95F6C2B629FF48B2
         );
+        StakingRewards farm = StakingRewards(
+            0x64962e2f640E1F6CC85872a2356672C0E6Bb1f68
+        );
+
+        // wrapper.deposit(
+        //     IERC20(WETH).balanceOf(DEPLOYER),
+        //     IERC20(OP).balanceOf(DEPLOYER),
+        //     1,
+        //     DEPLOYER
+        // );
+
+        uint256 balance = IERC20(address(wrapper)).balanceOf(DEPLOYER);
+        IERC20(address(wrapper)).approve(address(farm), type(uint256).max);
+        farm.stake(balance);
+
+        vm.stopBroadcast();
     }
 
     function run() external {
-        _validateBalances();
-        _deployContracts();
-        (ILpWrapper wrapper, StakingRewards farm, ICLPool pool) = build(200);
-        console2.log("Wrapper:", address(wrapper));
-        console2.log("StakingRewards:", address(farm));
-        console2.log("ICLPool:", address(pool));
+        // _validateBalances();
+        // _deployContracts();
+        // (ILpWrapper wrapper, StakingRewards farm, ) = build(50);
+        // console2.log("Wrapper:", address(wrapper));
+        // console2.log("StakingRewards:", address(farm));
+        // deposit();
+        // vm.broadcast(uint256(bytes32(vm.envBytes("DEPLOYER_PK"))));
+        // PulseVeloBot bot = new PulseVeloBot(
+        //     IQuoterV2(QUOTER_V2),
+        //     ISwapRouter(SWAP_ROUTER),
+        //     positionManager
+        // );
     }
 }
