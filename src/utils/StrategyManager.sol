@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/Strings.sol";
 
-import {IVeloDeployFactory, ILpWrapper} from "../interfaces/utils/IVeloDeployFactory.sol";
+import {IVeloDeployFactory, ILpWrapper, ICore} from "../interfaces/utils/IVeloDeployFactory.sol";
 import {DefaultAccessControl} from "./DefaultAccessControl.sol";
 
 import {IVeloOracle} from "../interfaces/oracles/IVeloOracle.sol";
@@ -26,28 +26,9 @@ contract StrategyManager is DefaultAccessControl {
         if (params.length == 0) return "No parameters found";
         (
             uint16 slippageD4,
-            bytes memory callbackParams_,
             bytes memory strategyParams_,
             bytes memory securityParams_
-        ) = abi.decode(params, (uint16, bytes, bytes, bytes));
-        string memory callbackParamsStr;
-        {
-            IVeloAmmModule.CallbackParams memory callbackParams = abi.decode(
-                callbackParams_,
-                (IVeloAmmModule.CallbackParams)
-            );
-            callbackParamsStr = string(
-                abi.encodePacked(
-                    "\nCallback Params: ",
-                    "\ncounter: ",
-                    Strings.toHexString(callbackParams.counter),
-                    "\nfarm: ",
-                    Strings.toHexString(callbackParams.farm),
-                    "\ngauge: ",
-                    Strings.toHexString(callbackParams.gauge)
-                )
-            );
-        }
+        ) = abi.decode(params, (uint16, bytes, bytes));
         string memory securityParamsStr;
         {
             IVeloOracle.SecurityParams memory securityParams = abi.decode(
@@ -87,7 +68,6 @@ contract StrategyManager is DefaultAccessControl {
             abi.encodePacked(
                 "Slippage: ",
                 Strings.toString(slippageD4),
-                callbackParamsStr,
                 strategyParamsStr,
                 securityParamsStr
             )
@@ -96,14 +76,12 @@ contract StrategyManager is DefaultAccessControl {
 
     function addParameters(
         uint16 slippageD4,
-        bytes memory callbackParams,
         bytes memory strategyParams,
         bytes memory securityParams
     ) external {
         _requireAtLeastOperator();
         _parametersById[nextId++] = abi.encode(
             slippageD4,
-            callbackParams,
             strategyParams,
             securityParams
         );
@@ -135,10 +113,13 @@ contract StrategyManager is DefaultAccessControl {
 
             (
                 uint16 slippageD4,
-                bytes memory callbackParams,
                 bytes memory strategyParams,
                 bytes memory securityParams
-            ) = abi.decode(params, (uint16, bytes, bytes, bytes));
+            ) = abi.decode(params, (uint16, bytes, bytes));
+            ILpWrapper wrapper = ILpWrapper(addresses.lpWrapper);
+            bytes memory callbackParams = ICore(wrapper.core())
+                .managedPositionAt(wrapper.positionId())
+                .callbackParams;
             ILpWrapper(addresses.lpWrapper).setPositionParams(
                 slippageD4,
                 callbackParams,
