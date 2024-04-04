@@ -220,6 +220,7 @@ contract VeloDeployFactory is IVeloDeployFactory, DefaultAccessControl {
                 )
             ),
             s.mutableParams.lpWrapperAdmin,
+            s.mutableParams.lpWrapperManager,
             s.mutableParams.farmOperator
         );
 

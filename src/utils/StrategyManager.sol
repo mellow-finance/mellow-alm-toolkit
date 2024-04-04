@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/Strings.sol";
 
-import {IVeloDeployFactory, ILpWrapper} from "../interfaces/utils/IVeloDeployFactory.sol";
+import {IVeloDeployFactory, ILpWrapper, ICore} from "../interfaces/utils/IVeloDeployFactory.sol";
 import {DefaultAccessControl} from "./DefaultAccessControl.sol";
 
 import {IVeloOracle} from "../interfaces/oracles/IVeloOracle.sol";
@@ -16,7 +16,6 @@ contract StrategyManager is DefaultAccessControl {
     constructor(address admin) DefaultAccessControl(admin) {}
 
     mapping(uint256 => bytes) private _parametersById;
-    mapping(address => uint256) public poolToId;
     uint256 public nextId = 1;
 
     function parametersById(
@@ -26,28 +25,9 @@ contract StrategyManager is DefaultAccessControl {
         if (params.length == 0) return "No parameters found";
         (
             uint16 slippageD4,
-            bytes memory callbackParams_,
             bytes memory strategyParams_,
             bytes memory securityParams_
-        ) = abi.decode(params, (uint16, bytes, bytes, bytes));
-        string memory callbackParamsStr;
-        {
-            IVeloAmmModule.CallbackParams memory callbackParams = abi.decode(
-                callbackParams_,
-                (IVeloAmmModule.CallbackParams)
-            );
-            callbackParamsStr = string(
-                abi.encodePacked(
-                    "\nCallback Params: ",
-                    "\ncounter: ",
-                    Strings.toHexString(callbackParams.counter),
-                    "\nfarm: ",
-                    Strings.toHexString(callbackParams.farm),
-                    "\ngauge: ",
-                    Strings.toHexString(callbackParams.gauge)
-                )
-            );
-        }
+        ) = abi.decode(params, (uint16, bytes, bytes));
         string memory securityParamsStr;
         {
             IVeloOracle.SecurityParams memory securityParams = abi.decode(
@@ -87,7 +67,6 @@ contract StrategyManager is DefaultAccessControl {
             abi.encodePacked(
                 "Slippage: ",
                 Strings.toString(slippageD4),
-                callbackParamsStr,
                 strategyParamsStr,
                 securityParamsStr
             )
@@ -96,49 +75,44 @@ contract StrategyManager is DefaultAccessControl {
 
     function addParameters(
         uint16 slippageD4,
-        bytes memory callbackParams,
         bytes memory strategyParams,
         bytes memory securityParams
     ) external {
         _requireAtLeastOperator();
         _parametersById[nextId++] = abi.encode(
             slippageD4,
-            callbackParams,
             strategyParams,
             securityParams
         );
     }
 
-    function setIds(address[] memory pools, uint256[] memory ids) external {
-        _requireAtLeastOperator();
-        if (pools.length != ids.length) revert InvalidLength();
-        for (uint256 i = 0; i < pools.length; i++) {
-            poolToId[pools[i]] = ids[i];
-        }
-    }
-
     function updateParameters(
         IVeloDeployFactory factory,
-        address[] memory pools
+        address[] memory pools,
+        uint256[] memory ids
     ) external {
         _requireAtLeastOperator();
+        if (pools.length != ids.length) revert InvalidLength();
 
         for (uint256 i = 0; i < pools.length; i++) {
             address pool = pools[i];
             IVeloDeployFactory.PoolAddresses memory addresses = factory
                 .poolToAddresses(pool);
             if (address(addresses.synthetixFarm) == address(0)) continue;
-            uint256 id = poolToId[pool];
+            uint256 id = ids[i];
             if (id == 0) continue;
             bytes memory params = _parametersById[id];
             if (params.length == 0) continue;
 
             (
                 uint16 slippageD4,
-                bytes memory callbackParams,
                 bytes memory strategyParams,
                 bytes memory securityParams
-            ) = abi.decode(params, (uint16, bytes, bytes, bytes));
+            ) = abi.decode(params, (uint16, bytes, bytes));
+            ILpWrapper wrapper = ILpWrapper(addresses.lpWrapper);
+            bytes memory callbackParams = ICore(wrapper.core())
+                .managedPositionAt(wrapper.positionId())
+                .callbackParams;
             ILpWrapper(addresses.lpWrapper).setPositionParams(
                 slippageD4,
                 callbackParams,
