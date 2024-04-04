@@ -16,7 +16,6 @@ contract StrategyManager is DefaultAccessControl {
     constructor(address admin) DefaultAccessControl(admin) {}
 
     mapping(uint256 => bytes) private _parametersById;
-    mapping(address => uint256) public poolToId;
     uint256 public nextId = 1;
 
     function parametersById(
@@ -87,26 +86,20 @@ contract StrategyManager is DefaultAccessControl {
         );
     }
 
-    function setIds(address[] memory pools, uint256[] memory ids) external {
-        _requireAtLeastOperator();
-        if (pools.length != ids.length) revert InvalidLength();
-        for (uint256 i = 0; i < pools.length; i++) {
-            poolToId[pools[i]] = ids[i];
-        }
-    }
-
     function updateParameters(
         IVeloDeployFactory factory,
-        address[] memory pools
+        address[] memory pools,
+        uint256[] memory ids
     ) external {
         _requireAtLeastOperator();
+        if (pools.length != ids.length) revert InvalidLength();
 
         for (uint256 i = 0; i < pools.length; i++) {
             address pool = pools[i];
             IVeloDeployFactory.PoolAddresses memory addresses = factory
                 .poolToAddresses(pool);
             if (address(addresses.synthetixFarm) == address(0)) continue;
-            uint256 id = poolToId[pool];
+            uint256 id = ids[i];
             if (id == 0) continue;
             bytes memory params = _parametersById[id];
             if (params.length == 0) continue;

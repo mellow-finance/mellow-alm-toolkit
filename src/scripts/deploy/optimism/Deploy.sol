@@ -22,6 +22,9 @@ import "../../../oracles/VeloOracle.sol";
 
 import "../../../bots/PulseVeloBot.sol";
 
+import "../../../utils/Compounder.sol";
+import "../../../utils/StrategyManager.sol";
+
 contract Deploy is Script {
     // constants:
     address public constant QUOTER_V2 =
@@ -104,6 +107,7 @@ contract Deploy is Script {
         deployFactory.updateMutableParams(
             IVeloDeployFactory.MutableParams({
                 lpWrapperAdmin: WRAPPER_ADMIN,
+                lpWrapperManager: address(0),
                 farmOwner: FARM_OWNER,
                 farmOperator: FARM_OPERATOR,
                 rewardsToken: VELO
@@ -273,18 +277,80 @@ contract Deploy is Script {
         vm.stopBroadcast();
     }
 
+    function br(string memory s) public {
+        vm.startBroadcast(uint256(bytes32(vm.envBytes(s))));
+    }
+
     function run() external {
-        // _validateBalances();
-        // _deployContracts();
-        // (ILpWrapper wrapper, StakingRewards farm, ) = build(50);
-        // console2.log("Wrapper:", address(wrapper));
-        // console2.log("StakingRewards:", address(farm));
-        // deposit();
-        // vm.broadcast(uint256(bytes32(vm.envBytes("DEPLOYER_PK"))));
-        // PulseVeloBot bot = new PulseVeloBot(
-        //     IQuoterV2(QUOTER_V2),
-        //     ISwapRouter(SWAP_ROUTER),
-        //     positionManager
-        // );
+        br("DEPLOYER_PK");
+
+        Compounder compounder = new Compounder(DEPLOYER);
+        StrategyManager manager = new StrategyManager(DEPLOYER);
+
+        int24[5] memory tickSpacings = [int24(1), 50, 100, 200, 2000];
+        for (uint256 i = 0; i < 5; i++) {
+            int24 width = tickSpacings[i] * 10;
+            int24 maxAllowedDelta = tickSpacings[i] / 100;
+            if (maxAllowedDelta < 10) maxAllowedDelta = 10;
+            manager.addParameters(
+                1,
+                abi.encode(
+                    IPulseStrategyModule.StrategyParams({
+                        tickSpacing: tickSpacings[i],
+                        tickNeighborhood: 0,
+                        width: width,
+                        strategyType: IPulseStrategyModule
+                            .StrategyType
+                            .LazySyncing
+                    })
+                ),
+                abi.encode(
+                    IVeloOracle.SecurityParams({
+                        lookback: 50,
+                        maxAllowedDelta: maxAllowedDelta
+                    })
+                )
+            );
+        }
+
+        deployFactory = VeloDeployFactory(
+            0xa0D05F130d7433232d7253EcdD32F5420c1663B0
+        );
+        address farm = 0x64962e2f640E1F6CC85872a2356672C0E6Bb1f68;
+        address wrapper = 0x6af1B61009226fDC08279CEF95F6C2B629FF48B2;
+
+        vm.stopBroadcast();
+
+        br("FARM_OWNER_PK");
+        StakingRewards(farm).setRewardsDistribution(address(compounder));
+        vm.stopBroadcast();
+        br("FARM_OPERATOR_PK");
+        Counter(0xb0d58655BDA6f3490DC8feB285c47898928709cc).transferOwnership(
+            address(compounder)
+        );
+        vm.stopBroadcast();
+        br("WRAPPER_ADMIN_PK");
+        LpWrapper(wrapper).grantRole(
+            LpWrapper(wrapper).ADMIN_DELEGATE_ROLE(),
+            vm.envAddress("WRAPPER_ADMIN_ADDRESS")
+        );
+        LpWrapper(wrapper).grantRole(
+            LpWrapper(wrapper).OPERATOR(),
+            address(compounder)
+        );
+        LpWrapper(wrapper).grantRole(
+            LpWrapper(wrapper).ADMIN_ROLE(),
+            address(manager)
+        );
+        vm.stopBroadcast();
+
+        br("DEPLOYER_PK");
+        address[] memory pools = new address[](1);
+        pools[0] = factory.getPool(WETH, OP, 200);
+        compounder.compound(deployFactory, pools);
+        uint256[] memory ids = new uint256[](1);
+        ids[0] = 4;
+        manager.updateParameters(deployFactory, pools, ids);
+        vm.stopBroadcast();
     }
 }
