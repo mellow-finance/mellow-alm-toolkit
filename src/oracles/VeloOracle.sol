@@ -67,7 +67,7 @@ contract VeloOracle is IVeloOracle {
         if (observationCardinality < 2) revert NotEnoughObservations();
         (uint32 blockTimestamp, int56 tickCumulative, , ) = ICLPool(pool)
             .observations(observationIndex);
-        if (block.timestamp != blockTimestamp)
+        if (block.timestamp > blockTimestamp + 14)
             return (spotSqrtPriceX96, spotTick);
         uint16 previousObservationIndex = observationCardinality - 1;
         if (observationIndex != 0)

@@ -194,6 +194,17 @@ contract VeloAmmModule is IVeloAmmModule {
         address to,
         uint256 tokenId
     ) external virtual override {
+        if (from != address(this)) {
+            // transfers unclaimed fees back to the user or to the callback address
+            INonfungiblePositionManager(positionManager).collect(
+                INonfungiblePositionManager.CollectParams({
+                    tokenId: tokenId,
+                    recipient: from,
+                    amount0Max: type(uint128).max,
+                    amount1Max: type(uint128).max
+                })
+            );
+        }
         INonfungiblePositionManager(positionManager).transferFrom(
             from,
             to,
