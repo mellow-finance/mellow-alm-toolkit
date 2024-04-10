@@ -104,6 +104,10 @@ contract VeloDeployFactory is IVeloDeployFactory, DefaultAccessControl {
                 veloModule.positionManager()
             );
 
+        oracle.ensureNoMEV(
+            address(pool),
+            _tickSpacingToDepositParams[pool.tickSpacing()].securityParams
+        );
         (uint160 sqrtPriceX96, int24 tick) = oracle.getOraclePrice(
             address(pool)
         );
@@ -139,8 +143,7 @@ contract VeloDeployFactory is IVeloDeployFactory, DefaultAccessControl {
             _prepareToken(token0, address(positionManager), amount0);
             _prepareToken(token1, address(positionManager), amount1);
 
-            uint128 actualMintedLiquidity;
-            (tokenId, actualMintedLiquidity, , ) = positionManager.mint(
+            (tokenId, , , ) = positionManager.mint(
                 INonfungiblePositionManager.MintParams({
                     token0: token0,
                     token1: token1,
@@ -156,9 +159,6 @@ contract VeloDeployFactory is IVeloDeployFactory, DefaultAccessControl {
                     sqrtPriceX96: 0
                 })
             );
-            if (actualMintedLiquidity < strategyParams.minInitialLiquidity) {
-                revert PriceManipulationDetected();
-            }
         }
 
         positionManager.approve(address(core), tokenId);

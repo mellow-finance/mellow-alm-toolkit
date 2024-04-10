@@ -62,7 +62,6 @@ interface IVeloDeployFactory {
         int24 intervalWidth; // Width of the interval for strategy execution
         IPulseStrategyModule.StrategyType strategyType; // Type of strategy
         uint128 initialLiquidity; // Initial liquidity value
-        uint128 minInitialLiquidity; // Minimum initial liquidity value
     }
 
     /**
