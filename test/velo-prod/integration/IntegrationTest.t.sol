@@ -95,8 +95,7 @@ contract Integration is Test {
                 tickNeighborhood: 0,
                 intervalWidth: 1000,
                 strategyType: IPulseStrategyModule.StrategyType.LazySyncing,
-                initialLiquidity: 100000,
-                minInitialLiquidity: 50000
+                initialLiquidity: 100000
             })
         );
         deployFactory.updateDepositParams(200, depositParams);

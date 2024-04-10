@@ -126,8 +126,7 @@ contract Deploy is Script {
                 tickNeighborhood: 0,
                 intervalWidth: 3,
                 strategyType: IPulseStrategyModule.StrategyType.LazySyncing,
-                initialLiquidity: 1000000,
-                minInitialLiquidity: 800000
+                initialLiquidity: 1000000
             })
         );
 
@@ -139,8 +138,7 @@ contract Deploy is Script {
                 tickNeighborhood: 0,
                 intervalWidth: 200,
                 strategyType: IPulseStrategyModule.StrategyType.LazySyncing,
-                initialLiquidity: 100000,
-                minInitialLiquidity: 80000
+                initialLiquidity: 100000
             })
         );
         deployFactory.updateDepositParams(50, depositParams);
@@ -151,8 +149,7 @@ contract Deploy is Script {
                 tickNeighborhood: 0,
                 intervalWidth: 500,
                 strategyType: IPulseStrategyModule.StrategyType.LazySyncing,
-                initialLiquidity: 100000,
-                minInitialLiquidity: 80000
+                initialLiquidity: 100000
             })
         );
         deployFactory.updateDepositParams(100, depositParams);
@@ -163,8 +160,7 @@ contract Deploy is Script {
                 tickNeighborhood: 0,
                 intervalWidth: 1000,
                 strategyType: IPulseStrategyModule.StrategyType.LazySyncing,
-                initialLiquidity: 100000,
-                minInitialLiquidity: 80000
+                initialLiquidity: 100000
             })
         );
         deployFactory.updateDepositParams(200, depositParams);
@@ -175,8 +171,7 @@ contract Deploy is Script {
                 tickNeighborhood: 1000,
                 intervalWidth: 10000,
                 strategyType: IPulseStrategyModule.StrategyType.Original,
-                initialLiquidity: 10000,
-                minInitialLiquidity: 8000
+                initialLiquidity: 10000
             })
         );
         deployFactory.updateDepositParams(2000, depositParams);
