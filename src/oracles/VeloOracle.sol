@@ -55,38 +55,8 @@ contract VeloOracle is IVeloOracle {
     /// @inheritdoc IOracle
     function getOraclePrice(
         address pool
-    ) external view override returns (uint160, int24) {
-        (
-            uint160 spotSqrtPriceX96,
-            int24 spotTick,
-            uint16 observationIndex,
-            uint16 observationCardinality,
-            ,
-
-        ) = ICLPool(pool).slot0();
-        if (observationCardinality < 2) revert NotEnoughObservations();
-        (uint32 blockTimestamp, int56 tickCumulative, , ) = ICLPool(pool)
-            .observations(observationIndex);
-        if (block.timestamp > blockTimestamp + 14)
-            return (spotSqrtPriceX96, spotTick);
-        uint16 previousObservationIndex = observationCardinality - 1;
-        if (observationIndex != 0)
-            previousObservationIndex = observationIndex - 1;
-        if (previousObservationIndex == observationCardinality)
-            revert NotEnoughObservations();
-        (
-            uint32 previousBlockTimestamp,
-            int56 previousTickCumulative,
-            ,
-
-        ) = ICLPool(pool).observations(previousObservationIndex);
-        int56 tickCumulativesDelta = tickCumulative - previousTickCumulative;
-        int24 tick = int24(
-            tickCumulativesDelta /
-                int56(uint56(blockTimestamp - previousBlockTimestamp))
-        );
-        uint160 sqrtPriceX96 = TickMath.getSqrtRatioAtTick(tick);
-        return (sqrtPriceX96, tick);
+    ) external view override returns (uint160 sqrtPriceX96, int24 tick) {
+        (sqrtPriceX96, tick, , , , ) = ICLPool(pool).slot0();
     }
 
     /// @inheritdoc IOracle
