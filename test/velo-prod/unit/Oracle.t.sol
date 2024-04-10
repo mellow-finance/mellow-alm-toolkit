@@ -79,7 +79,7 @@ contract Unit is Fixture {
                 IVeloOracle.SecurityParams({lookback: 1, maxAllowedDelta: 0})
             )
         );
-        vm.expectRevert(abi.encodeWithSignature("NotEnoughObservations()"));
+        vm.expectRevert(abi.encodeWithSignature("PriceManipulationDetected()"));
         oracle.ensureNoMEV(
             address(pool),
             abi.encode(
@@ -97,7 +97,7 @@ contract Unit is Fixture {
         (, int24 spotTick, , , , ) = pool.slot0();
         movePrice(spotTick + 100, pool);
         vm.stopPrank();
-        vm.expectRevert(abi.encodeWithSignature("NotEnoughObservations()"));
+        vm.expectRevert(abi.encodeWithSignature("PriceManipulationDetected()"));
         oracle.ensureNoMEV(
             address(pool),
             abi.encode(
@@ -141,7 +141,7 @@ contract Unit is Fixture {
             (, int24 tick) = oracle.getOraclePrice(address(pool));
             assertEq(tick, spotTick);
         }
-        skip(1);
+        skip(15);
         {
             (uint160 sqrtPriceX96, int24 tick) = oracle.getOraclePrice(
                 address(pool)

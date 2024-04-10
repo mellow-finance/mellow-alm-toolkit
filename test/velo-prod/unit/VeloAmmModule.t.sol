@@ -472,7 +472,7 @@ contract Unit is Fixture {
             abi.encode(
                 IVeloAmmModule.CallbackParams({
                     farm: address(1),
-                    gauge: address(2),
+                    gauge: address(pool.gauge()),
                     counter: address(1)
                 })
             )
