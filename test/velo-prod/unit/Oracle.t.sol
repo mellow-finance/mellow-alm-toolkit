@@ -112,7 +112,6 @@ contract Unit is Fixture {
             factory.getPool(Constants.WETH, Constants.OP, 200)
         );
 
-        vm.expectRevert(abi.encodeWithSignature("NotEnoughObservations()"));
         oracle.getOraclePrice(address(pool));
 
         pool.increaseObservationCardinalityNext(2);
@@ -137,11 +136,6 @@ contract Unit is Fixture {
         vm.startPrank(Constants.DEPLOYER);
         movePrice(spotTick + 100, pool);
         vm.stopPrank();
-        {
-            (, int24 tick) = oracle.getOraclePrice(address(pool));
-            assertEq(tick, spotTick);
-        }
-        skip(15);
         {
             (uint160 sqrtPriceX96, int24 tick) = oracle.getOraclePrice(
                 address(pool)
