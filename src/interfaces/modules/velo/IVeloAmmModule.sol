@@ -23,6 +23,7 @@ interface IVeloAmmModule is IAmmModule {
     error AddressZero(); // Thrown when an address is zero
     error InvalidParams(); // Thrown when input parameters are invalid
     error InvalidLength(); // Thrown when array lengths are mismatched or invalid
+    error InvalidGauge(); // Thrown when the gauge is invalid
 
     /**
      * @dev Struct representing callback parameters for operations associated with the Velo protocol.

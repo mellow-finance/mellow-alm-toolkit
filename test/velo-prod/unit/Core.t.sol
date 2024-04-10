@@ -501,7 +501,7 @@ contract Unit is Fixture {
         bytes memory defaultCallbackParams = abi.encode(
             IVeloAmmModule.CallbackParams({
                 farm: address(1),
-                gauge: address(1),
+                gauge: address(pool.gauge()),
                 counter: address(1)
             })
         );

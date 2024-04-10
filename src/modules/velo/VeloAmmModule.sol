@@ -36,7 +36,7 @@ contract VeloAmmModule is IVeloAmmModule {
     }
 
     /// @inheritdoc IAmmModule
-    function validateCallbackParams(bytes memory params) external pure {
+    function validateCallbackParams(bytes memory params) external view {
         if (params.length == 0) return;
         if (params.length != 0x60) revert InvalidLength();
         IVeloAmmModule.CallbackParams memory params_ = abi.decode(
@@ -46,6 +46,9 @@ contract VeloAmmModule is IVeloAmmModule {
         if (params_.farm == address(0)) revert AddressZero();
         if (params_.gauge == address(0)) revert AddressZero();
         if (params_.counter == address(0)) revert AddressZero();
+        ICLPool pool = ICLGauge(params_.gauge).pool();
+        if (!factory.isPair(address(pool))) revert InvalidGauge();
+        if (pool.gauge() != params_.gauge) revert InvalidGauge();
     }
 
     /// @inheritdoc IAmmModule
@@ -196,5 +199,16 @@ contract VeloAmmModule is IVeloAmmModule {
             to,
             tokenId
         );
+        if (to == address(this)) {
+            // transfers unclaimed fees back to the user or to the callback address
+            INonfungiblePositionManager(positionManager).collect(
+                INonfungiblePositionManager.CollectParams({
+                    tokenId: tokenId,
+                    recipient: from,
+                    amount0Max: type(uint128).max,
+                    amount1Max: type(uint128).max
+                })
+            );
+        }
     }
 }
