@@ -74,7 +74,8 @@ contract Integration is Fixture {
                 500 ether,
                 1e6,
                 1e3,
-                Constants.DEPOSITOR
+                Constants.DEPOSITOR,
+                type(uint256).max
             );
             require(lpAmount > 0, "Invalid lp amount");
             console2.log("Actual lp amount:", lpAmount);
@@ -93,7 +94,13 @@ contract Integration is Fixture {
                     uint256 amount0,
                     uint256 amount1,
                     uint256 actualAmountLp
-                ) = lpWrapper.withdraw(1e6, 0, 0, Constants.DEPOSITOR);
+                ) = lpWrapper.withdraw(
+                        1e6,
+                        0,
+                        0,
+                        Constants.DEPOSITOR,
+                        type(uint256).max
+                    );
 
                 console2.log(
                     "Actual withdrawal amounts for depositor:",

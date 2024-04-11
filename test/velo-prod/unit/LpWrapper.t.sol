@@ -162,7 +162,13 @@ contract Unit is Fixture {
         IERC20(pool.token1()).approve(address(lpWrapper), 1 ether);
 
         vm.expectRevert(abi.encodeWithSignature("InsufficientLpAmount()"));
-        lpWrapper.deposit(1 ether, 1 ether, 100 ether, Constants.DEPOSITOR);
+        lpWrapper.deposit(
+            1 ether,
+            1 ether,
+            100 ether,
+            Constants.DEPOSITOR,
+            type(uint256).max
+        );
 
         uint256 totalSupplyBefore = lpWrapper.totalSupply();
         IAmmModule.AmmPosition memory positionBefore = ammModule.getAmmPosition(
@@ -170,7 +176,13 @@ contract Unit is Fixture {
         );
 
         (uint256 amount0, uint256 amount1, uint256 lpAmount) = lpWrapper
-            .deposit(1 ether, 1 ether, 0.3 ether, Constants.DEPOSITOR);
+            .deposit(
+                1 ether,
+                1 ether,
+                0.3 ether,
+                Constants.DEPOSITOR,
+                type(uint256).max
+            );
 
         assertTrue(amount0 >= 8e14);
         assertTrue(amount1 >= 0.99 ether);
@@ -206,7 +218,13 @@ contract Unit is Fixture {
         }
 
         vm.expectRevert(abi.encodeWithSignature("DepositCallFailed()"));
-        lpWrapper.deposit(1 ether, 1 ether, 100 ether, Constants.DEPOSITOR);
+        lpWrapper.deposit(
+            1 ether,
+            1 ether,
+            100 ether,
+            Constants.DEPOSITOR,
+            type(uint256).max
+        );
 
         vm.stopPrank();
     }
@@ -241,7 +259,13 @@ contract Unit is Fixture {
         IERC20(pool.token0()).approve(address(lpWrapper), 1 ether);
         IERC20(pool.token1()).approve(address(lpWrapper), 1 ether);
 
-        lpWrapper.deposit(1 ether, 1 ether, 0.1 ether, Constants.DEPOSITOR);
+        lpWrapper.deposit(
+            1 ether,
+            1 ether,
+            0.1 ether,
+            Constants.DEPOSITOR,
+            type(uint256).max
+        );
 
         uint256 totalSupplyBefore = lpWrapper.totalSupply();
         IAmmModule.AmmPosition memory positionBefore = ammModule.getAmmPosition(
@@ -257,10 +281,17 @@ contract Unit is Fixture {
             balance / 2,
             type(uint256).max,
             type(uint256).max,
-            Constants.DEPOSITOR
+            Constants.DEPOSITOR,
+            type(uint256).max
         );
 
-        lpWrapper.withdraw(balance / 2, 0, 0, Constants.DEPOSITOR);
+        lpWrapper.withdraw(
+            balance / 2,
+            0,
+            0,
+            Constants.DEPOSITOR,
+            type(uint256).max
+        );
 
         assertApproxEqAbs(
             depositorBalance - balance / 2,

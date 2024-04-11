@@ -347,7 +347,8 @@ contract Integration is Test {
             amount0,
             amount1,
             (lpAmount * 95) / 100,
-            user
+            user,
+            type(uint256).max
         );
         IERC20(address(wrapper)).approve(address(farm), lpAmount);
         farm.stake(lpAmount);
@@ -380,7 +381,8 @@ contract Integration is Test {
             lpAmount,
             (amount0 * 95) / 100,
             (amount1 * 95) / 100,
-            user
+            user,
+            type(uint256).max
         );
         vm.stopPrank();
     }

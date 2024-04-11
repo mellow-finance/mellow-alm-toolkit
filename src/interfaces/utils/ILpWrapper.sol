@@ -19,6 +19,7 @@ interface ILpWrapper {
     error AlreadyInitialized(); // Thrown if the wrapper is already initialized
     error DepositCallFailed(); // Thrown when a deposit operation fails due to deletage call to the AmmDepositWithdrawModule
     error WithdrawCallFailed(); // Thrown when a withdrawal operation fails due to deletage call to the AmmDepositWithdrawModule
+    error Deadline(); // Thrown when the deadline for a function call has passed
 
     /**
      * @dev Returns the address of the position manager.
@@ -75,6 +76,7 @@ interface ILpWrapper {
      * @param amount1 Amount of token1 to deposit.
      * @param minLpAmount Minimum amount of LP tokens required to be minted.
      * @param to Address to receive the minted LP tokens.
+     * @param deadline Timestamp by which the deposit operation must be executed.
      * @return actualAmount0 Actual amount of token0 deposited.
      * @return actualAmount1 Actual amount of token1 deposited.
      * @return lpAmount Amount of LP tokens minted.
@@ -83,7 +85,8 @@ interface ILpWrapper {
         uint256 amount0,
         uint256 amount1,
         uint256 minLpAmount,
-        address to
+        address to,
+        uint256 deadline
     )
         external
         returns (
@@ -98,6 +101,7 @@ interface ILpWrapper {
      * @param minAmount0 Minimum amount of asset 0 to receive.
      * @param minAmount1 Minimum amount of asset 1 to receive.
      * @param to Address to transfer the underlying assets to.
+     * @param deadline Timestamp by which the withdrawal operation must be executed.
      * @return amount0 Actual amount of asset 0 received.
      * @return amount1 Actual amount of asset 1 received.
      * @return actualLpAmount Actual amount of LP tokens withdrawn.
@@ -106,7 +110,8 @@ interface ILpWrapper {
         uint256 lpAmount,
         uint256 minAmount0,
         uint256 minAmount1,
-        address to
+        address to,
+        uint256 deadline
     )
         external
         returns (uint256 amount0, uint256 amount1, uint256 actualLpAmount);
