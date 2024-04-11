@@ -65,11 +65,13 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         uint256 amount0,
         uint256 amount1,
         uint256 minLpAmount,
-        address to
+        address to,
+        uint256 deadline
     )
         external
         returns (uint256 actualAmount0, uint256 actualAmount1, uint256 lpAmount)
     {
+        if (block.timestamp > deadline) revert Deadline();
         ICore.ManagedPositionInfo memory info = core.managedPositionAt(
             positionId
         );
@@ -87,8 +89,6 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         uint256[] memory amounts0 = new uint256[](n);
         uint256[] memory amounts1 = new uint256[](n);
         {
-            uint256 totalAmount0 = 0;
-            uint256 totalAmount1 = 0;
             {
                 (uint160 sqrtPriceX96, ) = oracle.getOraclePrice(info.pool);
                 for (uint256 i = 0; i < n; i++) {
@@ -100,26 +100,29 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
                             positionsBefore[i].tickLower,
                             positionsBefore[i].tickUpper
                         );
-                    totalAmount0 += amounts0[i];
-                    totalAmount1 += amounts1[i];
+                    actualAmount0 += amounts0[i];
+                    actualAmount1 += amounts1[i];
                 }
             }
             for (uint256 i = 0; i < n; i++) {
-                if (totalAmount0 != 0) {
+                if (actualAmount0 != 0) {
                     amounts0[i] = FullMath.mulDiv(
                         amount0,
                         amounts0[i],
-                        totalAmount0
+                        actualAmount0
                     );
                 }
-                if (totalAmount1 != 0) {
+                if (actualAmount1 != 0) {
                     amounts1[i] = FullMath.mulDiv(
                         amount1,
                         amounts1[i],
-                        totalAmount1
+                        actualAmount1
                     );
                 }
             }
+            // used to avoid stack too deep error
+            actualAmount0 = 0;
+            actualAmount1 = 0;
         }
         if (amount0 > 0 || amount1 > 0) {
             for (uint256 i = 0; i < n; i++) {
@@ -195,11 +198,13 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         uint256 lpAmount,
         uint256 minAmount0,
         uint256 minAmount1,
-        address to
+        address to,
+        uint256 deadline
     )
         external
         returns (uint256 amount0, uint256 amount1, uint256 actualLpAmount)
     {
+        if (block.timestamp > deadline) revert Deadline();
         ICore.ManagedPositionInfo memory info = core.managedPositionAt(
             positionId
         );

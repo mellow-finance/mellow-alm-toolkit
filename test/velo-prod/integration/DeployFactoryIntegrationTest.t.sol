@@ -62,7 +62,8 @@ contract Integration is DeployFactoryFixture {
                 500 ether,
                 1e6,
                 1e3,
-                Constants.DEPOSITOR
+                Constants.DEPOSITOR,
+                type(uint256).max
             );
             require(lpAmount > 0, "Invalid lp amount");
             console2.log("Actual lp amount:", lpAmount);

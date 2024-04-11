@@ -239,7 +239,8 @@ contract Integration is Test {
                 1 ether,
                 1 ether,
                 1 ether,
-                DEPOSITOR
+                DEPOSITOR,
+                type(uint256).max
             );
 
             uint256 balance = IERC20(addresses[i].lpWrapper).balanceOf(
@@ -321,7 +322,8 @@ contract Integration is Test {
                 1 ether,
                 1 ether,
                 1 ether,
-                depositor
+                depositor,
+                type(uint256).max
             );
 
             uint256 balance = IERC20(addresses[i].lpWrapper).balanceOf(

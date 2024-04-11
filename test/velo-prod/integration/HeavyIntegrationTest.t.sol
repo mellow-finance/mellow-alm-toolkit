@@ -81,7 +81,8 @@ contract Integration is Fixture {
                 wethAmount / 1e6,
                 usdcAmount / 1e6,
                 1e8,
-                Constants.DEPOSITOR
+                Constants.DEPOSITOR,
+                type(uint256).max
             );
             require(lpAmount > 1e8, "Invalid lp amount");
             console2.log("Actual lp amount:", lpAmount);
@@ -100,7 +101,13 @@ contract Integration is Fixture {
                 uint256 amount0,
                 uint256 amount1,
                 uint256 actualAmountLp
-            ) = lpWrapper.withdraw(lpAmount, 0, 0, Constants.DEPOSITOR);
+            ) = lpWrapper.withdraw(
+                    lpAmount,
+                    0,
+                    0,
+                    Constants.DEPOSITOR,
+                    type(uint256).max
+                );
 
             console2.log(
                 "Actual withdrawal amounts for depositor:",
@@ -125,7 +132,13 @@ contract Integration is Fixture {
                 uint256 actualAmount0,
                 uint256 actualAmount1,
                 uint256 lpAmount
-            ) = lpWrapper.deposit(amount0, amount1, 0, Constants.DEPOSITOR);
+            ) = lpWrapper.deposit(
+                    amount0,
+                    amount1,
+                    0,
+                    Constants.DEPOSITOR,
+                    type(uint256).max
+                );
 
             console2.log(
                 "Actual deposit amounts for depositor:",
@@ -168,7 +181,8 @@ contract Integration is Fixture {
                 wethAmount / 1e6,
                 usdcAmount / 1e6,
                 1e8,
-                Constants.DEPOSITOR
+                Constants.DEPOSITOR,
+                type(uint256).max
             );
             require(lpAmount > 1e8, "Invalid lp amount");
             console2.log("Actual lp amount:", lpAmount);
@@ -226,7 +240,8 @@ contract Integration is Fixture {
                 lpAmount,
                 0,
                 0,
-                Constants.DEPOSITOR
+                Constants.DEPOSITOR,
+                type(uint256).max
             );
             vm.stopPrank();
         }
@@ -278,7 +293,8 @@ contract Integration is Fixture {
                 wethAmount / 1e6,
                 usdcAmount / 1e6,
                 1e8,
-                Constants.DEPOSITOR
+                Constants.DEPOSITOR,
+                type(uint256).max
             );
             require(lpAmount > 1e8, "Invalid lp amount");
             console2.log("Actual lp amount:", lpAmount);
@@ -330,7 +346,8 @@ contract Integration is Fixture {
                 lpAmount,
                 0,
                 0,
-                Constants.DEPOSITOR
+                Constants.DEPOSITOR,
+                type(uint256).max
             );
             vm.stopPrank();
         }
