@@ -320,4 +320,10 @@ contract VeloDeployFactory is IVeloDeployFactory, DefaultAccessControl {
     function getStorage() external pure returns (Storage memory) {
         return _contractStorage();
     }
+
+    receive() external payable {
+        if (msg.value > 0) {
+            payable(tx.origin).transfer(msg.value);
+        }
+    }
 }

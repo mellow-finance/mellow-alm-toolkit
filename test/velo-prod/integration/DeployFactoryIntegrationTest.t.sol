@@ -46,7 +46,7 @@ contract Integration is DeployFactoryFixture {
 
         vm.stopPrank();
 
-        lpWrapper = LpWrapper(poolAddresses.lpWrapper);
+        lpWrapper = LpWrapper(payable(poolAddresses.lpWrapper));
         stakingRewards = StakingRewards(poolAddresses.synthetixFarm);
 
         vm.startPrank(Constants.DEPOSITOR);
