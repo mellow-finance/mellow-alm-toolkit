@@ -320,6 +320,7 @@ contract Integration is Test {
         StakingRewards farm,
         uint256 ratioD2
     ) private {
+        deal(address(positionManager), 1 ether);
         vm.startPrank(user);
         ICore.ManagedPositionInfo memory info = core.managedPositionAt(
             wrapper.positionId()

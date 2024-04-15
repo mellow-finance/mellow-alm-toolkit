@@ -78,12 +78,12 @@ contract Deploy is Script {
             0x606D456eF070c852d665134DADcAd569007CC2Dc
         );
         oracle = VeloOracle(0xfE728994DBD750Ac69B7d027d0639c36BB3B2568);
-        core = Core(0x1e262505662Bd9C5146CaaDc94E359504B7E1dBd);
+        core = Core(payable(0x1e262505662Bd9C5146CaaDc94E359504B7E1dBd));
         deployFactoryHelper = VeloDeployFactoryHelper(
             0x26Bb3b1A96cFBd9D77a41e5d89Ccd774457921dC
         );
         deployFactory = VeloDeployFactory(
-            0xa0D05F130d7433232d7253EcdD32F5420c1663B0
+            payable(0xa0D05F130d7433232d7253EcdD32F5420c1663B0)
         );
 
         if (true) return;
@@ -309,10 +309,12 @@ contract Deploy is Script {
         }
 
         deployFactory = VeloDeployFactory(
-            0xa0D05F130d7433232d7253EcdD32F5420c1663B0
+            payable(0xa0D05F130d7433232d7253EcdD32F5420c1663B0)
         );
         address farm = 0x64962e2f640E1F6CC85872a2356672C0E6Bb1f68;
-        address wrapper = 0x6af1B61009226fDC08279CEF95F6C2B629FF48B2;
+        address payable wrapper = payable(
+            0x6af1B61009226fDC08279CEF95F6C2B629FF48B2
+        );
 
         vm.stopBroadcast();
 

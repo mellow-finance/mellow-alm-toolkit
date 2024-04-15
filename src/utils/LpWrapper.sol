@@ -291,4 +291,10 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         _requireAtLeastOperator();
         core.emptyRebalance(positionId);
     }
+
+    receive() external payable {
+        if (msg.value > 0) {
+            payable(tx.origin).transfer(msg.value);
+        }
+    }
 }
