@@ -31,6 +31,7 @@ contract VeloDeployFactoryHelper is IVeloDeployFactoryHelper {
         }
         wrapper.grantRole(wrapper.ADMIN_DELEGATE_ROLE(), address(this));
         wrapper.grantRole(wrapper.OPERATOR(), operator);
+        wrapper.revokeRole(wrapper.OPERATOR(), address(this));
         wrapper.revokeRole(wrapper.ADMIN_DELEGATE_ROLE(), address(this));
         wrapper.revokeRole(wrapper.ADMIN_ROLE(), address(this));
         return wrapper;
