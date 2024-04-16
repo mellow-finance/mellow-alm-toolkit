@@ -37,7 +37,6 @@ contract VeloAmmModule is IVeloAmmModule {
 
     /// @inheritdoc IAmmModule
     function validateCallbackParams(bytes memory params) external view {
-        if (params.length == 0) return;
         if (params.length != 0x60) revert InvalidLength();
         IVeloAmmModule.CallbackParams memory params_ = abi.decode(
             params,
@@ -139,7 +138,6 @@ contract VeloAmmModule is IVeloAmmModule {
         bytes memory callbackParams,
         bytes memory protocolParams
     ) external virtual override {
-        if (callbackParams.length == 0) return;
         CallbackParams memory callbackParams_ = abi.decode(
             callbackParams,
             (CallbackParams)
@@ -182,7 +180,6 @@ contract VeloAmmModule is IVeloAmmModule {
         bytes memory callbackParams,
         bytes memory
     ) external virtual override {
-        if (callbackParams.length == 0) return;
         address gauge = abi.decode(callbackParams, (CallbackParams)).gauge;
         INonfungiblePositionManager(positionManager).approve(gauge, tokenId);
         ICLGauge(gauge).deposit(tokenId);

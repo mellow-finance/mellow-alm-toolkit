@@ -69,13 +69,17 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     }
 
     /// @inheritdoc ICore
-    function setOperatorFlag(bool operatorFlag_) external override {
+    function setOperatorFlag(
+        bool operatorFlag_
+    ) external override nonReentrant {
         _requireAdmin();
         operatorFlag = operatorFlag_;
     }
 
     /// @inheritdoc ICore
-    function setProtocolParams(bytes memory params) external override {
+    function setProtocolParams(
+        bytes memory params
+    ) external override nonReentrant {
         _requireAdmin();
         ammModule.validateProtocolParams(params);
         _protocolParams = params;
@@ -88,7 +92,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         bytes memory callbackParams,
         bytes memory strategyParams,
         bytes memory securityParams
-    ) external override {
+    ) external override nonReentrant {
         ManagedPositionInfo memory info = _positions[id];
         if (info.owner != msg.sender) revert Forbidden();
         ammModule.validateCallbackParams(callbackParams);
@@ -105,7 +109,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     /// @inheritdoc ICore
     function deposit(
         DepositParams memory params
-    ) external override returns (uint256 id) {
+    ) external override nonReentrant returns (uint256 id) {
         ammModule.validateCallbackParams(params.callbackParams);
         strategyModule.validateStrategyParams(params.strategyParams);
         oracle.validateSecurityParams(params.securityParams);
@@ -161,7 +165,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     }
 
     /// @inheritdoc ICore
-    function withdraw(uint256 id, address to) external override {
+    function withdraw(uint256 id, address to) external override nonReentrant {
         ManagedPositionInfo memory info = _positions[id];
         if (info.owner != msg.sender) revert Forbidden();
         _userIds[info.owner].remove(id);
@@ -264,7 +268,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     }
 
     /// @inheritdoc ICore
-    function emptyRebalance(uint256 id) external override {
+    function emptyRebalance(uint256 id) external override nonReentrant {
         ManagedPositionInfo memory params = _positions[id];
         if (params.owner != msg.sender) revert Forbidden();
         bytes memory protocolParams_ = _protocolParams;
