@@ -39,12 +39,13 @@ contract Integration is Fixture {
         depositParams.securityParams = params.securityParams;
         depositParams.slippageD4 = params.slippageD4;
         depositParams.owner = address(lpWrapper);
-        // depositParams.callbackParams = abi.encode(
-        //     IVeloAmmModule.CallbackParams({
-        //         farm: address(stakingRewards),
-        //         gauge: address(pool.gauge())
-        //     })
-        // );
+        depositParams.callbackParams = abi.encode(
+            IVeloAmmModule.CallbackParams({
+                farm: address(stakingRewards),
+                gauge: address(pool.gauge()),
+                counter: address(new Counter(address(core), address(core)))
+            })
+        );
 
         vm.startPrank(Constants.OWNER);
         positionManager.approve(address(core), depositParams.ammPositionIds[0]);

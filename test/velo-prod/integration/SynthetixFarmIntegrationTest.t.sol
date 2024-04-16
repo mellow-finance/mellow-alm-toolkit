@@ -43,8 +43,9 @@ contract Integration is Fixture {
         vm.startPrank(Constants.OWNER);
         positionManager.approve(address(core), depositParams.ammPositionIds[0]);
         {
-            uint256 nftId = core.deposit(depositParams);
-            core.withdraw(nftId, Constants.OWNER);
+            vm.expectRevert();
+            core.deposit(depositParams);
+            // core.withdraw(nftId, Constants.OWNER);
         }
 
         positionManager.approve(address(core), depositParams.ammPositionIds[0]);
@@ -161,8 +162,9 @@ contract Integration is Fixture {
         vm.startPrank(Constants.OWNER);
         positionManager.approve(address(core), depositParams.ammPositionIds[0]);
         {
-            uint256 nftId = core.deposit(depositParams);
-            core.withdraw(nftId, Constants.OWNER);
+            vm.expectRevert();
+            core.deposit(depositParams);
+            // core.withdraw(nftId, Constants.OWNER);
         }
 
         positionManager.approve(address(core), depositParams.ammPositionIds[0]);

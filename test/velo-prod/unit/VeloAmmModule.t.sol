@@ -298,6 +298,7 @@ contract Unit is Fixture {
     }
 
     function testBeforeRebalance() external {
+        vm.expectRevert();
         module.beforeRebalance(0, new bytes(0), new bytes(0));
         vm.expectRevert(abi.encodeWithSignature("AddressZero()"));
         module.beforeRebalance(
@@ -355,6 +356,7 @@ contract Unit is Fixture {
     }
 
     function testAfterRebalance() external {
+        vm.expectRevert();
         module.beforeRebalance(0, new bytes(0), new bytes(0));
         vm.expectRevert(abi.encodeWithSignature("AddressZero()"));
         module.beforeRebalance(

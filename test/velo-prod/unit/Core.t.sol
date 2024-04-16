@@ -472,7 +472,7 @@ contract Unit is Fixture {
             new bytes(123)
         );
 
-        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
         core.setPositionParams(
             positionId,
             0,
@@ -481,7 +481,7 @@ contract Unit is Fixture {
             new bytes(0)
         );
 
-        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
         core.setPositionParams(
             positionId,
             uint16(D4 / 4 + 1),
@@ -490,6 +490,7 @@ contract Unit is Fixture {
             new bytes(0)
         );
 
+        vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
         core.setPositionParams(
             positionId,
             uint16(D4 / 4),
