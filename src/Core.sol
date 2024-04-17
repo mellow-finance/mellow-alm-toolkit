@@ -125,9 +125,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
             IAmmModule.AmmPosition memory position_ = ammModule.getAmmPosition(
                 tokenId
             );
-            if (position_.liquidity != 0) {
-                hasLiquidity = true;
-            }
+            if (position_.liquidity != 0) hasLiquidity = true;
             address pool_ = ammModule.getPool(
                 position_.token0,
                 position_.token1,
