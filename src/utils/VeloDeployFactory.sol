@@ -220,7 +220,6 @@ contract VeloDeployFactory is IVeloDeployFactory, DefaultAccessControl {
                 )
             ),
             s.mutableParams.lpWrapperAdmin,
-            s.mutableParams.lpWrapperManager,
             s.mutableParams.farmOperator
         );
 
@@ -242,7 +241,7 @@ contract VeloDeployFactory is IVeloDeployFactory, DefaultAccessControl {
             address farm = s.immutableParams.helper.createStakingRewards(
                 s.mutableParams.farmOwner,
                 s.mutableParams.farmOperator,
-                s.mutableParams.rewardsToken,
+                ICLGauge(pool.gauge()).rewardToken(),
                 address(lpWrapper)
             );
             depositParams.callbackParams = abi.encode(
@@ -322,8 +321,6 @@ contract VeloDeployFactory is IVeloDeployFactory, DefaultAccessControl {
     }
 
     receive() external payable {
-        if (msg.value > 0) {
-            payable(tx.origin).transfer(msg.value);
-        }
+        payable(tx.origin).transfer(msg.value);
     }
 }

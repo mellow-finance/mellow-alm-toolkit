@@ -40,10 +40,8 @@ interface IVeloDeployFactory {
      */
     struct MutableParams {
         address lpWrapperAdmin; // Admin address for the LP wrapper
-        address lpWrapperManager; // Manager address for the LP wrapper (strategyManager)
         address farmOwner; // Owner address for the farm
         address farmOperator; // Operator address for the farm (compounder)
-        address rewardsToken; // Address of the rewards token
     }
 
     /**
