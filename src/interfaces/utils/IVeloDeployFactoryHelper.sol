@@ -12,8 +12,7 @@ interface IVeloDeployFactoryHelper {
      * @param symbol The symbol of the LP wrapper contract.
      * @param admin The address of the admin for the LP wrapper contract.
      * @param manager The address of the manager contract for auto update of parameters.
-     * @param operator The address of the operator for the LP wrapper contract.
-     * @return The newly created LP wrapper contract.
+     * @return ILpWrapper The newly created LP wrapper contract.
      */
     function createLpWrapper(
         ICore core,
@@ -21,8 +20,7 @@ interface IVeloDeployFactoryHelper {
         string memory name,
         string memory symbol,
         address admin,
-        address manager,
-        address operator
+        address manager
     ) external returns (ILpWrapper);
 
     /**

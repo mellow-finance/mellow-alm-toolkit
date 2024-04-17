@@ -118,36 +118,29 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
 
         address pool;
         bytes memory protocolParams_ = _protocolParams;
-        {
-            bool hasLiquidity = false;
-            for (uint256 i = 0; i < params.ammPositionIds.length; i++) {
-                uint256 tokenId = params.ammPositionIds[i];
-                if (tokenId == 0) revert InvalidParams();
-                IAmmModule.AmmPosition memory position_ = ammModule
-                    .getAmmPosition(tokenId);
-                if (position_.liquidity != 0) {
-                    hasLiquidity = true;
-                }
-                address pool_ = ammModule.getPool(
-                    position_.token0,
-                    position_.token1,
-                    position_.property
-                );
-                if (pool_ == address(0)) revert InvalidParams();
-                if (i == 0) {
-                    pool = pool_;
-                } else if (pool != pool_) {
-                    revert InvalidParams();
-                }
-                _transferFrom(msg.sender, address(this), tokenId);
-                _afterRebalance(
-                    tokenId,
-                    params.callbackParams,
-                    protocolParams_
-                );
+        bool hasLiquidity = false;
+        for (uint256 i = 0; i < params.ammPositionIds.length; i++) {
+            uint256 tokenId = params.ammPositionIds[i];
+            if (tokenId == 0) revert InvalidParams();
+            IAmmModule.AmmPosition memory position_ = ammModule.getAmmPosition(
+                tokenId
+            );
+            if (position_.liquidity != 0) hasLiquidity = true;
+            address pool_ = ammModule.getPool(
+                position_.token0,
+                position_.token1,
+                position_.property
+            );
+            if (pool_ == address(0)) revert InvalidParams();
+            if (i == 0) {
+                pool = pool_;
+            } else if (pool != pool_) {
+                revert InvalidParams();
             }
-            if (!hasLiquidity) revert InvalidParams();
+            _transferFrom(msg.sender, address(this), tokenId);
+            _afterRebalance(tokenId, params.callbackParams, protocolParams_);
         }
+        if (!hasLiquidity) revert InvalidParams();
         id = _positions.length;
         _userIds[params.owner].add(id);
         _positions.push(

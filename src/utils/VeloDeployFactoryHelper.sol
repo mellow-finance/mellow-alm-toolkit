@@ -15,8 +15,7 @@ contract VeloDeployFactoryHelper is IVeloDeployFactoryHelper {
         string memory name,
         string memory symbol,
         address admin,
-        address manager,
-        address operator
+        address manager
     ) external returns (ILpWrapper) {
         LpWrapper wrapper = new LpWrapper(
             core,
@@ -29,11 +28,8 @@ contract VeloDeployFactoryHelper is IVeloDeployFactoryHelper {
         if (manager != address(0)) {
             wrapper.grantRole(wrapper.ADMIN_ROLE(), manager);
         }
-        wrapper.grantRole(wrapper.ADMIN_DELEGATE_ROLE(), address(this));
-        wrapper.grantRole(wrapper.OPERATOR(), operator);
-        wrapper.revokeRole(wrapper.OPERATOR(), address(this));
-        wrapper.revokeRole(wrapper.ADMIN_DELEGATE_ROLE(), address(this));
-        wrapper.revokeRole(wrapper.ADMIN_ROLE(), address(this));
+        wrapper.renounceRole(wrapper.OPERATOR(), address(this));
+        wrapper.renounceRole(wrapper.ADMIN_ROLE(), address(this));
         return wrapper;
     }
 
