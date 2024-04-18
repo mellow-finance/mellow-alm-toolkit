@@ -110,66 +110,6 @@ contract Integration is Test {
             })
         );
 
-        ICore.DepositParams memory depositParams;
-        depositParams.slippageD4 = 5;
-        depositParams.securityParams = new bytes(0);
-
-        deployFactory.updateStrategyParams(
-            1,
-            IVeloDeployFactory.StrategyParams({
-                tickNeighborhood: 0,
-                intervalWidth: 3,
-                strategyType: IPulseStrategyModule.StrategyType.LazySyncing,
-                initialLiquidity: 1000000
-            })
-        );
-
-        deployFactory.updateDepositParams(1, depositParams);
-
-        deployFactory.updateStrategyParams(
-            50,
-            IVeloDeployFactory.StrategyParams({
-                tickNeighborhood: 0,
-                intervalWidth: 200,
-                strategyType: IPulseStrategyModule.StrategyType.LazySyncing,
-                initialLiquidity: 100000
-            })
-        );
-        deployFactory.updateDepositParams(50, depositParams);
-
-        deployFactory.updateStrategyParams(
-            100,
-            IVeloDeployFactory.StrategyParams({
-                tickNeighborhood: 0,
-                intervalWidth: 500,
-                strategyType: IPulseStrategyModule.StrategyType.LazySyncing,
-                initialLiquidity: 100000
-            })
-        );
-        deployFactory.updateDepositParams(100, depositParams);
-
-        deployFactory.updateStrategyParams(
-            200,
-            IVeloDeployFactory.StrategyParams({
-                tickNeighborhood: 0,
-                intervalWidth: 1000,
-                strategyType: IPulseStrategyModule.StrategyType.LazySyncing,
-                initialLiquidity: 100000
-            })
-        );
-        deployFactory.updateDepositParams(200, depositParams);
-
-        deployFactory.updateStrategyParams(
-            2000,
-            IVeloDeployFactory.StrategyParams({
-                tickNeighborhood: 1000,
-                intervalWidth: 10000,
-                strategyType: IPulseStrategyModule.StrategyType.Original,
-                initialLiquidity: 10000
-            })
-        );
-        deployFactory.updateDepositParams(2000, depositParams);
-
         deployFactory.grantRole(
             deployFactory.ADMIN_DELEGATE_ROLE(),
             VELO_DEPLOY_FACTORY_ADMIN
@@ -242,17 +182,28 @@ contract Integration is Test {
         pool.increaseObservationCardinalityNext(2);
         mint(pool, 1e19, pool.tickSpacing() * 1000, address(this));
         _swap(address(123), pool, false, 1 gwei);
+        uint256 tokenId = mint(
+            pool,
+            100000,
+            1000,
+            VELO_DEPLOY_FACTORY_OPERATOR
+        );
         vm.startPrank(VELO_DEPLOY_FACTORY_OPERATOR);
-        deal(pool.token0(), VELO_DEPLOY_FACTORY_OPERATOR, 1e6);
-        deal(pool.token1(), VELO_DEPLOY_FACTORY_OPERATOR, 1e6);
-
-        IERC20(pool.token0()).approve(address(deployFactory), 1e6);
-        IERC20(pool.token1()).approve(address(deployFactory), 1e6);
-
+        positionManager.approve(address(deployFactory), tokenId);
         addresses = deployFactory.createStrategy(
-            pool.token0(),
-            pool.token1(),
-            pool.tickSpacing()
+            IVeloDeployFactory.DeployParams({
+                securityParams: abi.encode(
+                    IVeloOracle.SecurityParams({
+                        lookback: 1,
+                        maxAge: 7 days,
+                        maxAllowedDelta: type(int24).max
+                    })
+                ),
+                slippageD4: 5,
+                tokenId: tokenId,
+                tickNeighborhood: 0,
+                strategyType: IPulseStrategyModule.StrategyType.LazySyncing
+            })
         );
         vm.stopPrank();
     }
@@ -581,7 +532,6 @@ contract Integration is Test {
         pool = ICLPool(
             factory.getPool(Constants.WETH, Constants.OP, tickSpacing)
         );
-        vm.prank(VELO_DEPLOY_FACTORY_OPERATOR);
         IVeloDeployFactory.PoolAddresses memory addresses = createStrategy(
             pool
         );

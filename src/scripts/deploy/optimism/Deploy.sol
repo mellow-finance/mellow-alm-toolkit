@@ -122,62 +122,6 @@ contract Deploy is Script {
             })
         );
 
-        deployFactory.updateStrategyParams(
-            1,
-            IVeloDeployFactory.StrategyParams({
-                tickNeighborhood: 0,
-                intervalWidth: 3,
-                strategyType: IPulseStrategyModule.StrategyType.LazySyncing,
-                initialLiquidity: 1000000
-            })
-        );
-
-        deployFactory.updateDepositParams(1, depositParams);
-
-        deployFactory.updateStrategyParams(
-            50,
-            IVeloDeployFactory.StrategyParams({
-                tickNeighborhood: 0,
-                intervalWidth: 200,
-                strategyType: IPulseStrategyModule.StrategyType.LazySyncing,
-                initialLiquidity: 100000
-            })
-        );
-        deployFactory.updateDepositParams(50, depositParams);
-
-        deployFactory.updateStrategyParams(
-            100,
-            IVeloDeployFactory.StrategyParams({
-                tickNeighborhood: 0,
-                intervalWidth: 500,
-                strategyType: IPulseStrategyModule.StrategyType.LazySyncing,
-                initialLiquidity: 100000
-            })
-        );
-        deployFactory.updateDepositParams(100, depositParams);
-
-        deployFactory.updateStrategyParams(
-            200,
-            IVeloDeployFactory.StrategyParams({
-                tickNeighborhood: 0,
-                intervalWidth: 1000,
-                strategyType: IPulseStrategyModule.StrategyType.LazySyncing,
-                initialLiquidity: 100000
-            })
-        );
-        deployFactory.updateDepositParams(200, depositParams);
-
-        deployFactory.updateStrategyParams(
-            2000,
-            IVeloDeployFactory.StrategyParams({
-                tickNeighborhood: 1000,
-                intervalWidth: 10000,
-                strategyType: IPulseStrategyModule.StrategyType.Original,
-                initialLiquidity: 10000
-            })
-        );
-        deployFactory.updateDepositParams(2000, depositParams);
-
         deployFactory.grantRole(
             deployFactory.ADMIN_DELEGATE_ROLE(),
             VELO_DEPLOY_FACTORY_ADMIN
@@ -210,16 +154,25 @@ contract Deploy is Script {
     function createStrategy(
         ICLPool pool
     ) public returns (IVeloDeployFactory.PoolAddresses memory addresses) {
-        deal(pool.token0(), address(deployFactory), 1e6);
-        deal(pool.token1(), address(deployFactory), 1e6);
         vm.startBroadcast(
             uint256(bytes32(vm.envBytes("VELO_DEPLOY_FACTORY_ADMIN_PK")))
         );
-        addresses = deployFactory.createStrategy(
-            pool.token0(),
-            pool.token1(),
-            pool.tickSpacing()
-        );
+
+        // addresses = deployFactory.createStrategy(
+        //     IVeloDeployFactory.DeployParams({
+        //         securityParams: abi.encode(
+        //             IVeloOracle.SecurityParams({
+        //                 lookback: 1,
+        //                 maxAge: 7 days,
+        //                 maxAllowedDelta: type(int24).max
+        //             })
+        //         ),
+        //         slippageD4: 5,
+        //         tokenId: tokenId,
+        //         tickNeighborhood: 0,
+        //         strategyType: IPulseStrategyModule.StrategyType.LazySyncing
+        //     })
+        // );
         vm.stopBroadcast();
     }
 

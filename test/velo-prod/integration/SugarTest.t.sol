@@ -87,31 +87,31 @@ contract Integration is DeployFactoryFixture {
     }
 
     function testSynthetixFarm() external {
+        uint256 tokenId = mint(
+            pool.token0(),
+            pool.token1(),
+            pool.tickSpacing(),
+            pool.tickSpacing() * 4,
+            1e8
+        );
         vm.startPrank(Constants.OWNER);
-        deal(Constants.WETH, address(Constants.OWNER), 1 ether);
-        deal(Constants.OP, address(Constants.OWNER), 2000 * 1e6);
-        IERC20(Constants.WETH).safeApprove(
-            address(deployFactory),
-            type(uint256).max
-        );
-        IERC20(Constants.OP).safeApprove(
-            address(deployFactory),
-            type(uint256).max
-        );
-
-        vm.expectRevert(abi.encodeWithSignature("PoolNotFound()"));
-        deployFactory.createStrategy(
-            Constants.WETH,
-            Constants.OP,
-            TICK_SPACING + 1
-        );
-
-        vm.expectRevert(abi.encodeWithSignature("InvalidStrategyParams()"));
-        deployFactory.createStrategy(Constants.WSTETH, Constants.WETH, 1);
-
+        positionManager.approve(address(deployFactory), tokenId);
         IVeloDeployFactory.PoolAddresses memory poolAddresses = deployFactory
-            .createStrategy(Constants.WETH, Constants.OP, TICK_SPACING);
-
+            .createStrategy(
+                IVeloDeployFactory.DeployParams({
+                    securityParams: abi.encode(
+                        IVeloOracle.SecurityParams({
+                            lookback: 1,
+                            maxAge: 7 days,
+                            maxAllowedDelta: type(int24).max
+                        })
+                    ),
+                    slippageD4: 5,
+                    tokenId: tokenId,
+                    tickNeighborhood: 0,
+                    strategyType: IPulseStrategyModule.StrategyType.LazySyncing
+                })
+            );
         vm.stopPrank();
 
         lpWrapper = LpWrapper(payable(poolAddresses.lpWrapper));
