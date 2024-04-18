@@ -50,7 +50,12 @@ contract Integration is Fixture {
 
         positionManager.approve(address(core), depositParams.ammPositionIds[0]);
         depositParams.owner = address(lpWrapper);
-        Counter counter = new Counter(Constants.OWNER, address(core));
+        Counter counter = new Counter(
+            Constants.OWNER,
+            address(core),
+            Constants.VELO,
+            address(stakingRewards)
+        );
         depositParams.callbackParams = abi.encode(
             IVeloAmmModule.CallbackParams({
                 farm: address(stakingRewards),
@@ -169,7 +174,12 @@ contract Integration is Fixture {
 
         positionManager.approve(address(core), depositParams.ammPositionIds[0]);
         depositParams.owner = address(lpWrapper);
-        Counter counter = new Counter(Constants.OWNER, address(core));
+        Counter counter = new Counter(
+            Constants.OWNER,
+            address(core),
+            Constants.VELO,
+            address(stakingRewards)
+        );
         depositParams.callbackParams = abi.encode(
             IVeloAmmModule.CallbackParams({
                 farm: address(stakingRewards),

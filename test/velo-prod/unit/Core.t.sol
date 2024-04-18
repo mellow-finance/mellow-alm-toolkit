@@ -58,7 +58,14 @@ contract Unit is Fixture {
             IVeloAmmModule.CallbackParams({
                 gauge: address(pool.gauge()),
                 farm: address(1),
-                counter: address(new Counter(Constants.OWNER, address(core)))
+                counter: address(
+                    new Counter(
+                        Constants.OWNER,
+                        address(core),
+                        Constants.VELO,
+                        address(1)
+                    )
+                )
             })
         );
 
@@ -118,7 +125,14 @@ contract Unit is Fixture {
             IVeloAmmModule.CallbackParams({
                 gauge: address(pool.gauge()),
                 farm: address(1),
-                counter: address(new Counter(Constants.OWNER, address(core)))
+                counter: address(
+                    new Counter(
+                        Constants.OWNER,
+                        address(core),
+                        Constants.VELO,
+                        address(1)
+                    )
+                )
             })
         );
         depositParams.strategyParams = abi.encode(
@@ -567,7 +581,12 @@ contract Unit is Fixture {
                     gauge: address(pool.gauge()),
                     farm: address(1),
                     counter: address(
-                        new Counter(Constants.OWNER, address(core))
+                        new Counter(
+                            Constants.OWNER,
+                            address(core),
+                            Constants.VELO,
+                            address(1)
+                        )
                     )
                 })
             ),

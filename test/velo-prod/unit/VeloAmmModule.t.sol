@@ -16,14 +16,28 @@ contract Unit is Fixture {
 
     address public testFarmAddress = address(123);
     address public counterAddress =
-        address(new Counter(Constants.OWNER, Constants.OWNER));
+        address(
+            new Counter(
+                Constants.OWNER,
+                Constants.OWNER,
+                Constants.VELO,
+                testFarmAddress
+            )
+        );
 
     bytes public defaultCallbackParams =
         abi.encode(
             IVeloAmmModule.CallbackParams({
                 farm: testFarmAddress,
                 gauge: address(pool.gauge()),
-                counter: address(new Counter(address(this), address(this)))
+                counter: address(
+                    new Counter(
+                        address(this),
+                        address(this),
+                        Constants.VELO,
+                        testFarmAddress
+                    )
+                )
             })
         );
 
