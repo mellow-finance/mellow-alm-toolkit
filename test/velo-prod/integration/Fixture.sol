@@ -281,7 +281,7 @@ contract Fixture is Test {
         (uint256 amount0, uint256 amount1) = ammModule.tvl(
             tokenId,
             sqrtPriceX96,
-            new bytes(0),
+            info.callbackParams,
             new bytes(0)
         );
 

@@ -5,6 +5,7 @@ import "../../interfaces/modules/velo/IVeloAmmModule.sol";
 
 import "../../libraries/external/LiquidityAmounts.sol";
 import "../../libraries/external/TickMath.sol";
+import "../../libraries/external/velo/PositionValue.sol";
 
 contract VeloAmmModule is IVeloAmmModule {
     using SafeERC20 for IERC20;
@@ -70,29 +71,23 @@ contract VeloAmmModule is IVeloAmmModule {
     function tvl(
         uint256 tokenId,
         uint160 sqrtRatioX96,
-        bytes memory,
+        bytes memory callbackParams,
         bytes memory
-    ) external view override returns (uint256, uint256) {
-        (
-            ,
-            ,
-            ,
-            ,
-            ,
-            int24 tickLower,
-            int24 tickUpper,
-            uint128 liquidity,
-            ,
-            ,
-            ,
-
-        ) = INonfungiblePositionManager(positionManager).positions(tokenId);
+    ) external view override returns (uint256 amount0, uint256 amount1) {
+        address gauge = abi.decode(callbackParams, (CallbackParams)).gauge;
+        if (IERC721(positionManager).ownerOf(tokenId) != gauge) {
+            return
+                PositionValue.total(
+                    INonfungiblePositionManager(positionManager),
+                    tokenId,
+                    sqrtRatioX96
+                );
+        }
         return
-            getAmountsForLiquidity(
-                liquidity,
-                sqrtRatioX96,
-                tickLower,
-                tickUpper
+            PositionValue.principal(
+                INonfungiblePositionManager(positionManager),
+                tokenId,
+                sqrtRatioX96
             );
     }
 
@@ -143,6 +138,12 @@ contract VeloAmmModule is IVeloAmmModule {
             (CallbackParams)
         );
         if (callbackParams_.farm == address(0)) revert AddressZero();
+        if (
+            !ICLGauge(callbackParams_.gauge).stakedContains(
+                address(this),
+                tokenId
+            )
+        ) return;
         ProtocolParams memory protocolParams_ = abi.decode(
             protocolParams,
             (ProtocolParams)
@@ -185,6 +186,7 @@ contract VeloAmmModule is IVeloAmmModule {
         bytes memory
     ) external virtual override {
         address gauge = abi.decode(callbackParams, (CallbackParams)).gauge;
+        if (!ICLGauge(gauge).voter().isAlive(gauge)) return;
         INonfungiblePositionManager(positionManager).approve(gauge, tokenId);
         ICLGauge(gauge).deposit(tokenId);
     }
