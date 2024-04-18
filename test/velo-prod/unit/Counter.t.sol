@@ -13,7 +13,7 @@ contract Unit is Fixture {
     address newOwner = address(3);
 
     function testConstructor() external {
-        counter = new Counter(owner, operator);
+        counter = new Counter(owner, operator, Constants.VELO, address(1));
 
         assertEq(counter.value(), 0);
         assertEq(counter.owner(), owner);
@@ -21,7 +21,7 @@ contract Unit is Fixture {
     }
 
     function testTransferOwnership() external {
-        counter = new Counter(owner, operator);
+        counter = new Counter(owner, operator, Constants.VELO, address(1));
 
         vm.expectRevert("Counter: not owner");
         counter.transferOwnership(newOwner);
@@ -39,33 +39,33 @@ contract Unit is Fixture {
     }
 
     function testAdd() external {
-        counter = new Counter(owner, operator);
+        counter = new Counter(owner, operator, Constants.VELO, address(1));
 
         vm.expectRevert("Counter: not operator");
-        counter.add(123);
+        counter.add(123, Constants.VELO, address(1));
 
         vm.startPrank(owner);
         vm.expectRevert("Counter: not operator");
-        counter.add(123);
+        counter.add(123, Constants.VELO, address(1));
         vm.stopPrank();
 
         vm.startPrank(operator);
         assertEq(counter.value(), 0);
-        counter.add(123);
+        counter.add(123, Constants.VELO, address(1));
         assertEq(counter.value(), 123);
-        counter.add(123);
+        counter.add(123, Constants.VELO, address(1));
         assertEq(counter.value(), 246);
-        counter.add(123);
+        counter.add(123, Constants.VELO, address(1));
         assertEq(counter.value(), 369);
         vm.stopPrank();
     }
 
     function testReset() external {
-        counter = new Counter(owner, operator);
+        counter = new Counter(owner, operator, Constants.VELO, address(1));
 
         vm.startPrank(operator);
         assertEq(counter.value(), 0);
-        counter.add(369);
+        counter.add(369, Constants.VELO, address(1));
         assertEq(counter.value(), 369);
         vm.stopPrank();
 

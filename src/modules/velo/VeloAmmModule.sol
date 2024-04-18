@@ -168,7 +168,11 @@ contract VeloAmmModule is IVeloAmmModule {
             balance -= protocolReward;
             if (balance > 0) {
                 IERC20(token).safeTransfer(callbackParams_.farm, balance);
-                ICounter(callbackParams_.counter).add(balance);
+                ICounter(callbackParams_.counter).add(
+                    balance,
+                    token,
+                    callbackParams_.farm
+                );
             }
         }
         ICLGauge(callbackParams_.gauge).withdraw(tokenId);

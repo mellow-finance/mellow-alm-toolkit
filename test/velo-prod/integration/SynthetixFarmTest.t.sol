@@ -34,7 +34,12 @@ contract Integration is Fixture {
             })
         );
 
-        Counter counter = new Counter(Constants.OWNER, address(core));
+        Counter counter = new Counter(
+            Constants.OWNER,
+            address(core),
+            Constants.VELO,
+            address(stakingRewards)
+        );
 
         depositParams.securityParams = new bytes(0);
         depositParams.slippageD4 = 100;

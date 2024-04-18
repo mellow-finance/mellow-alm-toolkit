@@ -251,7 +251,9 @@ contract VeloDeployFactory is IVeloDeployFactory, DefaultAccessControl {
                     counter: address(
                         new Counter(
                             s.mutableParams.farmOperator,
-                            address(s.immutableParams.core)
+                            address(s.immutableParams.core),
+                            ICLGauge(pool.gauge()).rewardToken(),
+                            farm
                         )
                     )
                 })

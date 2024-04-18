@@ -43,7 +43,14 @@ contract Integration is Fixture {
             IVeloAmmModule.CallbackParams({
                 farm: address(stakingRewards),
                 gauge: address(pool.gauge()),
-                counter: address(new Counter(address(core), address(core)))
+                counter: address(
+                    new Counter(
+                        address(core),
+                        address(core),
+                        Constants.VELO,
+                        address(stakingRewards)
+                    )
+                )
             })
         );
 
