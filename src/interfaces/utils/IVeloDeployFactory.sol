@@ -18,11 +18,8 @@ import "./IVeloDeployFactoryHelper.sol";
  */
 interface IVeloDeployFactory {
     // Custom errors for operation failures
+    error InvalidParams();
     error LpWrapperAlreadyCreated();
-    error InvalidStrategyParams();
-    error InvalidState();
-    error PriceManipulationDetected();
-    error PoolNotFound();
 
     /**
      * @dev Represents the immutable parameters for the VeloDeployFactory contract.
@@ -45,24 +42,6 @@ interface IVeloDeployFactory {
     }
 
     /**
-     * @dev Holds the immutable and mutable parameters for the IVeloDeployFactory contract.
-     */
-    struct Storage {
-        ImmutableParams immutableParams;
-        MutableParams mutableParams;
-    }
-
-    /**
-     * @dev Represents the parameters for configuring a strategy.
-     */
-    struct StrategyParams {
-        int24 tickNeighborhood; // Neighborhood value for the tick
-        int24 intervalWidth; // Width of the interval for strategy execution
-        IPulseStrategyModule.StrategyType strategyType; // Type of strategy
-        uint128 initialLiquidity; // Initial liquidity value
-    }
-
-    /**
      * @dev Stores addresses related to a specific pool.
      */
     struct PoolAddresses {
@@ -71,74 +50,36 @@ interface IVeloDeployFactory {
     }
 
     /**
-     * @dev Maps tick spacing to strategy parameters.
-     * @param tickSpacing Tick spacing value
-     * @return Strategy parameters for the given tick spacing
+     * @dev Represents the parameters for configuring a strategy.
      */
-    function tickSpacingToStrategyParams(
-        int24 tickSpacing
-    ) external view returns (StrategyParams memory);
-
-    /**
-     * @dev Maps tick spacing to deposit parameters.
-     * @param tickSpacing Tick spacing value
-     * @return Deposit parameters for the given tick spacing
-     */
-    function tickSpacingToDepositParams(
-        int24 tickSpacing
-    ) external view returns (ICore.DepositParams memory);
-
-    /**
-     * @dev Updates the strategy parameters for a given tick spacing. Only users with the ADMIN_ROLE are authorized to call this function.
-     * This allows for dynamic adjustment of strategy configurations based on changing market conditions or strategic insights, ensuring
-     * that strategy operations can be optimized over time.
-     *
-     * @param tickSpacing The tick spacing value that identifies the specific context or pool for which the strategy parameters are being updated.
-     * @param params The new strategy parameters to apply, including settings such as tick neighborhood, interval width, and liquidity thresholds.
-     * Requirements:
-     * - Caller must have the ADMIN_ROLE.
-     */
-    function updateStrategyParams(
-        int24 tickSpacing,
-        StrategyParams memory params
-    ) external;
-
-    /**
-     * @dev Updates the deposit parameters for a given tick spacing. This function is restricted to users with the ADMIN role, allowing for
-     * controlled modification of deposit behavior in response to protocol needs or governance decisions.
-     *
-     * @param tickSpacing The tick spacing value that identifies the specific context or pool for which the deposit parameters are being updated.
-     * @param params The new deposit parameters to apply, aimed at managing liquidity positions effectively.
-     * Requirements:
-     * - Caller must have the ADMIN_ROLE.
-     */
-    function updateDepositParams(
-        int24 tickSpacing,
-        ICore.DepositParams memory params
-    ) external;
+    struct DeployParams {
+        bytes securityParams;
+        uint16 slippageD4;
+        int24 tickNeighborhood;
+        uint256 tokenId;
+        IPulseStrategyModule.StrategyType strategyType;
+    }
 
     /**
      * @dev Updates the mutable parameters of the contract, accessible only to users with the ADMIN_ROLE. This function enables post-deployment
      * adjustments to key operational settings, reflecting the evolving nature of protocol management and governance.
      *
-     * @param params The new mutable parameters to be applied, including administrative and operational settings crucial for protocol functionality.
+     * @param newMutableParams The new mutable parameters to be applied, including administrative and operational settings crucial for protocol functionality.
      * Requirements:
      * - Caller must have the ADMIN_ROLE.
      */
-    function updateMutableParams(MutableParams memory params) external;
+    function updateMutableParams(
+        MutableParams memory newMutableParams
+    ) external;
 
     /**
-     * @dev Creates a strategy for the given token pair and tick spacing.
-     * @param token0 Address of the first token
-     * @param token1 Address of the second token
-     * @param tickSpacing Tick spacing value
-     * @return PoolAddresses addresses related to the created pool
+     * @dev Creates a strategy for the given deployParams
+     * @param params DeployParams for the strategy
+     * @return poolAddresses addresses related to the created pool
      */
     function createStrategy(
-        address token0,
-        address token1,
-        int24 tickSpacing
-    ) external returns (PoolAddresses memory);
+        DeployParams calldata params
+    ) external returns (PoolAddresses memory poolAddresses);
 
     /**
      * @dev Maps a pool address to its associated addresses.
@@ -166,8 +107,17 @@ interface IVeloDeployFactory {
     function removeAddressesForPool(address pool) external;
 
     /**
-     * @dev Retrieves the contract's storage containing both immutable and mutable parameters.
-     * @return The contract's storage
+     * @dev Retrieves the immutable parameters for the VeloDeployFactory contract.
+     * @return ImmutableParams Immutable parameters for the VeloDeployFactory
      */
-    function getStorage() external view returns (Storage memory);
+    function getImmutableParams()
+        external
+        view
+        returns (ImmutableParams memory);
+
+    /**
+     * @dev Retrieves the mutable parameters for the VeloDeployFactory contract.
+     * @return MutableParams Mutable parameters for the VeloDeployFactory
+     */
+    function getMutableParams() external view returns (MutableParams memory);
 }
