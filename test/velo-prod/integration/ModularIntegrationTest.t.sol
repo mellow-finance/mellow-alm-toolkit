@@ -979,7 +979,11 @@ contract Integration is Test {
                 })
             ),
             abi.encode(
-                IVeloOracle.SecurityParams({lookback: 1, maxAllowedDelta: 1})
+                IVeloOracle.SecurityParams({
+                    lookback: 1,
+                    maxAllowedDelta: 1,
+                    maxAge: 7 days
+                })
             )
         );
         vm.stopPrank();
@@ -1001,7 +1005,8 @@ contract Integration is Test {
             abi.encode(
                 IVeloOracle.SecurityParams({
                     lookback: 1,
-                    maxAllowedDelta: 10000
+                    maxAllowedDelta: 10000,
+                    maxAge: 7 days
                 })
             )
         );

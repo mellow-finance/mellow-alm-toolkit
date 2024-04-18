@@ -276,7 +276,8 @@ contract Integration is Fixture {
                 securityParams: abi.encode(
                     IVeloOracle.SecurityParams({
                         lookback: 10,
-                        maxAllowedDelta: 10
+                        maxAllowedDelta: 10,
+                        maxAge: 7 days
                     })
                 )
             })
@@ -377,7 +378,8 @@ contract Integration is Fixture {
             abi.encode(
                 IVeloOracle.SecurityParams({
                     lookback: 1000,
-                    maxAllowedDelta: 10
+                    maxAllowedDelta: 10,
+                    maxAge: 7 days
                 })
             )
         );
@@ -408,18 +410,30 @@ contract Integration is Fixture {
         vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
         oracle.validateSecurityParams(
             abi.encode(
-                IVeloOracle.SecurityParams({lookback: 0, maxAllowedDelta: 0})
+                IVeloOracle.SecurityParams({
+                    lookback: 0,
+                    maxAllowedDelta: 0,
+                    maxAge: 7 days
+                })
             )
         );
         vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
         oracle.validateSecurityParams(
             abi.encode(
-                IVeloOracle.SecurityParams({lookback: 1, maxAllowedDelta: -1})
+                IVeloOracle.SecurityParams({
+                    lookback: 1,
+                    maxAllowedDelta: -1,
+                    maxAge: 7 days
+                })
             )
         );
         oracle.validateSecurityParams(
             abi.encode(
-                IVeloOracle.SecurityParams({lookback: 10, maxAllowedDelta: 10})
+                IVeloOracle.SecurityParams({
+                    lookback: 10,
+                    maxAllowedDelta: 10,
+                    maxAge: 7 days
+                })
             )
         );
     }

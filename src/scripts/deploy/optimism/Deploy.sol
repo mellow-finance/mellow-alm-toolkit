@@ -115,7 +115,11 @@ contract Deploy is Script {
         ICore.DepositParams memory depositParams;
         depositParams.slippageD4 = 5;
         depositParams.securityParams = abi.encode(
-            IVeloOracle.SecurityParams({lookback: 50, maxAllowedDelta: 20})
+            IVeloOracle.SecurityParams({
+                lookback: 50,
+                maxAllowedDelta: 20,
+                maxAge: 7 days
+            })
         );
 
         deployFactory.updateStrategyParams(
@@ -300,7 +304,8 @@ contract Deploy is Script {
                 abi.encode(
                     IVeloOracle.SecurityParams({
                         lookback: 50,
-                        maxAllowedDelta: maxAllowedDelta
+                        maxAllowedDelta: maxAllowedDelta,
+                        maxAge: 7 days
                     })
                 )
             );

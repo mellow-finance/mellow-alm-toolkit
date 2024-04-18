@@ -64,7 +64,11 @@ contract Unit is Fixture {
         );
         depositParams.slippageD4 = 1;
         depositParams.securityParams = abi.encode(
-            IVeloOracle.SecurityParams({lookback: 1, maxAllowedDelta: 100000})
+            IVeloOracle.SecurityParams({
+                lookback: 1,
+                maxAllowedDelta: 100000,
+                maxAge: 7 days
+            })
         );
 
         id = core.deposit(depositParams);

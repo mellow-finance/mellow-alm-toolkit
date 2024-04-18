@@ -464,7 +464,11 @@ contract DeployFactoryFixture is Test {
             })
         );
         depositParams.securityParams = abi.encode(
-            IVeloOracle.SecurityParams({lookback: 1, maxAllowedDelta: 10})
+            IVeloOracle.SecurityParams({
+                lookback: 1,
+                maxAllowedDelta: 10,
+                maxAge: 7 days
+            })
         );
 
         deployFactory.updateDepositParams(TICK_SPACING, depositParams);
