@@ -443,16 +443,6 @@ contract DeployFactoryFixture is Test {
             IVeloDeployFactoryHelper(address(new VeloDeployFactoryHelper()))
         );
 
-        deployFactory.updateStrategyParams(
-            TICK_SPACING,
-            IVeloDeployFactory.StrategyParams({
-                intervalWidth: 800,
-                tickNeighborhood: 200,
-                initialLiquidity: 1e9,
-                strategyType: IPulseStrategyModule.StrategyType.Original
-            })
-        );
-
         ICore.DepositParams memory depositParams;
         depositParams.slippageD4 = 100;
         depositParams.strategyParams = abi.encode(
@@ -464,16 +454,19 @@ contract DeployFactoryFixture is Test {
             })
         );
         depositParams.securityParams = abi.encode(
-            IVeloOracle.SecurityParams({lookback: 1, maxAllowedDelta: 10})
+            IVeloOracle.SecurityParams({
+                lookback: 1,
+                maxAllowedDelta: 10,
+                maxAge: 7 days
+            })
         );
-
-        deployFactory.updateDepositParams(TICK_SPACING, depositParams);
 
         deployFactory.updateMutableParams(
             IVeloDeployFactory.MutableParams({
                 lpWrapperAdmin: Constants.OWNER,
                 farmOwner: Constants.OWNER,
-                farmOperator: Constants.OWNER
+                farmOperator: Constants.OWNER,
+                minInitialLiquidity: 1000
             })
         );
 

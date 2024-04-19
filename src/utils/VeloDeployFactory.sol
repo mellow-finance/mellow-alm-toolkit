@@ -6,23 +6,14 @@ import "../interfaces/utils/IVeloDeployFactory.sol";
 import "./Counter.sol";
 import "./DefaultAccessControl.sol";
 
-contract VeloDeployFactory is IVeloDeployFactory, DefaultAccessControl {
-    using SafeERC20 for IERC20;
-
+contract VeloDeployFactory is
+    DefaultAccessControl,
+    IERC721Receiver,
+    IVeloDeployFactory
+{
     mapping(address => PoolAddresses) private _poolToAddresses;
-    mapping(int24 => IVeloDeployFactory.StrategyParams)
-        private _tickSpacingToStrategyParams;
-    mapping(int24 => ICore.DepositParams) private _tickSpacingToDepositParams;
-
-    bytes32 internal constant _STORAGE_SLOT = keccak256("VeloDeployFactory");
-
-    function _contractStorage() internal pure returns (Storage storage s) {
-        bytes32 position = _STORAGE_SLOT;
-
-        assembly {
-            s.slot := position
-        }
-    }
+    ImmutableParams private _immutableParams;
+    MutableParams private _mutableParams;
 
     constructor(
         address admin_,
@@ -30,7 +21,7 @@ contract VeloDeployFactory is IVeloDeployFactory, DefaultAccessControl {
         IVeloDepositWithdrawModule ammDepositWithdrawModule_,
         IVeloDeployFactoryHelper helper_
     ) DefaultAccessControl(admin_) {
-        ImmutableParams memory immutableParams = ImmutableParams({
+        _immutableParams = ImmutableParams({
             core: core_,
             strategyModule: IPulseStrategyModule(
                 address(core_.strategyModule())
@@ -39,255 +30,153 @@ contract VeloDeployFactory is IVeloDeployFactory, DefaultAccessControl {
             depositWithdrawModule: ammDepositWithdrawModule_,
             helper: helper_
         });
-        _contractStorage().immutableParams = immutableParams;
     }
 
     /// @inheritdoc IVeloDeployFactory
-    function updateStrategyParams(
-        int24 tickSpacing,
-        StrategyParams memory params
+    function updateMutableParams(
+        MutableParams memory newMutableParams
     ) external {
         _requireAdmin();
-        _tickSpacingToStrategyParams[tickSpacing] = params;
-    }
-
-    /// @inheritdoc IVeloDeployFactory
-    function updateDepositParams(
-        int24 tickSpacing,
-        ICore.DepositParams memory params
-    ) external {
-        _requireAdmin();
-        _tickSpacingToDepositParams[tickSpacing] = params;
-    }
-
-    /// @inheritdoc IVeloDeployFactory
-    function updateMutableParams(MutableParams memory params) external {
-        _requireAdmin();
-        _contractStorage().mutableParams = params;
-    }
-
-    function _prepareToken(address token, address to, uint256 amount) private {
-        IERC20(token).safeIncreaseAllowance(address(to), amount);
-        uint256 balance = IERC20(token).balanceOf(address(this));
-        if (balance >= amount) return;
-        amount -= balance;
-        uint256 allowance = IERC20(token).allowance(msg.sender, address(this));
-        uint256 userBalance = IERC20(token).balanceOf(msg.sender);
-        if (allowance < amount || userBalance < amount)
-            revert(
-                string(
-                    abi.encodePacked(
-                        "Invalid ",
-                        IERC20Metadata(token).symbol(),
-                        " allowance or balance. Required: ",
-                        Strings.toString(amount),
-                        "; User balance: ",
-                        Strings.toString(userBalance),
-                        "; User allowance: ",
-                        Strings.toString(allowance),
-                        "."
-                    )
-                )
-            );
-        IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
-    }
-
-    function _mint(
-        ICore core,
-        IPulseStrategyModule strategyModule,
-        IVeloAmmModule veloModule,
-        IOracle oracle,
-        StrategyParams memory strategyParams,
-        ICLPool pool
-    ) private returns (uint256 tokenId) {
-        INonfungiblePositionManager positionManager = INonfungiblePositionManager(
-                veloModule.positionManager()
-            );
-
-        oracle.ensureNoMEV(
-            address(pool),
-            _tickSpacingToDepositParams[pool.tickSpacing()].securityParams
-        );
-        (uint160 sqrtPriceX96, int24 tick) = oracle.getOraclePrice(
-            address(pool)
-        );
-
-        int24 tickSpacing = pool.tickSpacing();
-
-        (
-            bool isRebalanceRequired,
-            ICore.TargetPositionInfo memory target
-        ) = strategyModule.calculateTarget(
-                tick,
-                type(int24).min,
-                type(int24).min,
-                IPulseStrategyModule.StrategyParams({
-                    tickNeighborhood: strategyParams.tickNeighborhood,
-                    tickSpacing: tickSpacing,
-                    strategyType: IPulseStrategyModule.StrategyType.Original,
-                    width: strategyParams.intervalWidth
-                })
-            );
-
-        if (!isRebalanceRequired) revert InvalidState();
-        {
-            (uint256 amount0, uint256 amount1) = veloModule
-                .getAmountsForLiquidity(
-                    strategyParams.initialLiquidity,
-                    sqrtPriceX96,
-                    target.lowerTicks[0],
-                    target.upperTicks[0]
-                );
-            address token0 = pool.token0();
-            address token1 = pool.token1();
-            _prepareToken(token0, address(positionManager), amount0);
-            _prepareToken(token1, address(positionManager), amount1);
-
-            (tokenId, , , ) = positionManager.mint(
-                INonfungiblePositionManager.MintParams({
-                    token0: token0,
-                    token1: token1,
-                    tickSpacing: tickSpacing,
-                    tickLower: target.lowerTicks[0],
-                    tickUpper: target.upperTicks[0],
-                    amount0Desired: amount0,
-                    amount1Desired: amount1,
-                    amount0Min: 0,
-                    amount1Min: 0,
-                    recipient: address(this),
-                    deadline: block.timestamp,
-                    sqrtPriceX96: 0
-                })
-            );
+        if (
+            newMutableParams.farmOperator == address(0) ||
+            newMutableParams.farmOwner == address(0) ||
+            newMutableParams.lpWrapperAdmin == address(0) ||
+            newMutableParams.minInitialLiquidity == 0
+        ) {
+            revert InvalidParams();
         }
 
-        positionManager.approve(address(core), tokenId);
+        _mutableParams = newMutableParams;
     }
 
     /// @inheritdoc IVeloDeployFactory
     function createStrategy(
-        address token0,
-        address token1,
-        int24 tickSpacing
+        DeployParams calldata params
     ) external returns (PoolAddresses memory poolAddresses) {
         _requireAtLeastOperator();
 
-        Storage memory s = _contractStorage();
+        if (
+            params.slippageD4 == 0 ||
+            params.securityParams.length == 0 ||
+            params.tokenId == 0
+        ) {
+            revert InvalidParams();
+        }
+
+        ImmutableParams memory immutableParams = _immutableParams;
+        MutableParams memory mutableParams = _mutableParams;
+
+        ICore core = immutableParams.core;
+        IVeloAmmModule ammModule = immutableParams.veloModule;
+        IAmmModule.AmmPosition memory position = ammModule.getAmmPosition(
+            params.tokenId
+        );
+        if (position.liquidity < mutableParams.minInitialLiquidity)
+            revert InvalidParams();
+
         ICLPool pool = ICLPool(
-            s.immutableParams.veloModule.getPool(
-                token0,
-                token1,
-                uint24(tickSpacing)
+            ammModule.getPool(
+                position.token0,
+                position.token1,
+                position.property
             )
         );
-
-        if (address(pool) == address(0)) {
-            revert PoolNotFound();
-        }
 
         if (_poolToAddresses[address(pool)].lpWrapper != address(0)) {
             revert LpWrapperAlreadyCreated();
         }
 
-        StrategyParams memory strategyParams = _tickSpacingToStrategyParams[
-            tickSpacing
-        ];
-        if (strategyParams.intervalWidth == 0) {
-            revert InvalidStrategyParams();
-        }
+        core.oracle().ensureNoMEV(address(pool), params.securityParams);
 
-        ILpWrapper lpWrapper = s.immutableParams.helper.createLpWrapper(
-            s.immutableParams.core,
-            s.immutableParams.depositWithdrawModule,
+        ILpWrapper lpWrapper = immutableParams.helper.createLpWrapper(
+            core,
+            immutableParams.depositWithdrawModule,
             string(
                 abi.encodePacked(
                     "MellowVelodromeStrategy-",
-                    IERC20Metadata(token0).symbol(),
+                    IERC20Metadata(position.token0).symbol(),
                     "-",
-                    IERC20Metadata(token1).symbol(),
+                    IERC20Metadata(position.token1).symbol(),
                     "-",
-                    Strings.toString(tickSpacing)
+                    Strings.toString(position.property)
                 )
             ),
             string(
                 abi.encodePacked(
                     "MVS-",
-                    IERC20Metadata(token0).symbol(),
+                    IERC20Metadata(position.token0).symbol(),
                     "-",
-                    IERC20Metadata(token1).symbol(),
+                    IERC20Metadata(position.token1).symbol(),
                     "-",
-                    Strings.toString(tickSpacing)
+                    Strings.toString(position.property)
                 )
             ),
-            s.mutableParams.lpWrapperAdmin,
-            s.mutableParams.farmOperator
+            mutableParams.lpWrapperAdmin,
+            mutableParams.farmOperator
         );
 
-        uint256 positionId;
-        {
-            ICore.DepositParams
-                memory depositParams = _tickSpacingToDepositParams[tickSpacing];
-            depositParams.ammPositionIds = new uint256[](1);
-            depositParams.ammPositionIds[0] = _mint(
-                s.immutableParams.core,
-                s.immutableParams.strategyModule,
-                s.immutableParams.veloModule,
-                s.immutableParams.core.oracle(),
-                strategyParams,
-                pool
-            );
-
-            depositParams.owner = address(lpWrapper);
-            address farm = s.immutableParams.helper.createStakingRewards(
-                s.mutableParams.farmOwner,
-                s.mutableParams.farmOperator,
-                ICLGauge(pool.gauge()).rewardToken(),
+        ICore.DepositParams memory depositParams;
+        depositParams.securityParams = params.securityParams;
+        depositParams.slippageD4 = params.slippageD4;
+        depositParams.ammPositionIds = new uint256[](1);
+        depositParams.ammPositionIds[0] = params.tokenId;
+        depositParams.owner = address(lpWrapper);
+        poolAddresses.lpWrapper = address(lpWrapper);
+        address gauge = pool.gauge();
+        address rewardToken = ICLGauge(gauge).rewardToken();
+        poolAddresses.synthetixFarm = immutableParams
+            .helper
+            .createStakingRewards(
+                mutableParams.farmOwner,
+                mutableParams.farmOperator,
+                rewardToken,
                 address(lpWrapper)
             );
-            depositParams.callbackParams = abi.encode(
-                IVeloAmmModule.CallbackParams({
-                    farm: farm,
-                    gauge: address(pool.gauge()),
-                    counter: address(
-                        new Counter(
-                            s.mutableParams.farmOperator,
-                            address(s.immutableParams.core),
-                            ICLGauge(pool.gauge()).rewardToken(),
-                            farm
-                        )
+        depositParams.callbackParams = abi.encode(
+            IVeloAmmModule.CallbackParams({
+                farm: poolAddresses.synthetixFarm,
+                gauge: address(gauge),
+                counter: address(
+                    new Counter(
+                        mutableParams.farmOperator,
+                        address(core),
+                        rewardToken,
+                        poolAddresses.synthetixFarm
                     )
-                })
-            );
-            depositParams.strategyParams = abi.encode(
-                IPulseStrategyModule.StrategyParams({
-                    tickNeighborhood: strategyParams.tickNeighborhood,
-                    tickSpacing: pool.tickSpacing(),
-                    strategyType: strategyParams.strategyType,
-                    width: strategyParams.intervalWidth
-                })
-            );
+                )
+            })
+        );
+        depositParams.strategyParams = abi.encode(
+            IPulseStrategyModule.StrategyParams({
+                tickNeighborhood: params.tickNeighborhood,
+                tickSpacing: int24(position.property),
+                strategyType: params.strategyType,
+                width: position.tickUpper - position.tickLower
+            })
+        );
 
-            positionId = s.immutableParams.core.deposit(depositParams);
-            poolAddresses = PoolAddresses({
-                lpWrapper: address(lpWrapper),
-                synthetixFarm: farm
-            });
-            _poolToAddresses[address(pool)] = poolAddresses;
-        }
+        _poolToAddresses[address(pool)] = poolAddresses;
+        INonfungiblePositionManager(ammModule.positionManager()).transferFrom(
+            msg.sender,
+            address(this),
+            params.tokenId
+        );
+        INonfungiblePositionManager(ammModule.positionManager()).approve(
+            address(core),
+            params.tokenId
+        );
 
-        ICore.ManagedPositionInfo memory info = s
-            .immutableParams
-            .core
-            .managedPositionAt(positionId);
-        uint256 initialTotalSupply = 0;
-        for (uint256 i = 0; i < info.ammPositionIds.length; i++) {
-            IAmmModule.AmmPosition memory position = s
-                .immutableParams
-                .veloModule
-                .getAmmPosition(info.ammPositionIds[i]);
-            initialTotalSupply += position.liquidity;
-        }
-        lpWrapper.initialize(positionId, initialTotalSupply);
+        lpWrapper.initialize(core.deposit(depositParams), position.liquidity);
+    }
+
+    /// @inheritdoc IERC721Receiver
+    function onERC721Received(
+        address,
+        address,
+        uint256,
+        bytes calldata
+    ) external pure returns (bytes4) {
+        return IERC721Receiver.onERC721Received.selector;
     }
 
     /// @inheritdoc IVeloDeployFactory
@@ -298,31 +187,22 @@ contract VeloDeployFactory is IVeloDeployFactory, DefaultAccessControl {
     }
 
     /// @inheritdoc IVeloDeployFactory
-    function tickSpacingToStrategyParams(
-        int24 tickSpacing
-    ) external view returns (StrategyParams memory) {
-        return _tickSpacingToStrategyParams[tickSpacing];
+    function getImmutableParams()
+        external
+        view
+        returns (ImmutableParams memory)
+    {
+        return _immutableParams;
     }
 
     /// @inheritdoc IVeloDeployFactory
-    function tickSpacingToDepositParams(
-        int24 tickSpacing
-    ) external view returns (ICore.DepositParams memory) {
-        return _tickSpacingToDepositParams[tickSpacing];
+    function getMutableParams() external view returns (MutableParams memory) {
+        return _mutableParams;
     }
 
     /// @inheritdoc IVeloDeployFactory
     function removeAddressesForPool(address pool) external {
         _requireAdmin();
         delete _poolToAddresses[pool];
-    }
-
-    /// @inheritdoc IVeloDeployFactory
-    function getStorage() external pure returns (Storage memory) {
-        return _contractStorage();
-    }
-
-    receive() external payable {
-        payable(tx.origin).transfer(msg.value);
     }
 }

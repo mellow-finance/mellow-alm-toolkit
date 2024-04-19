@@ -95,12 +95,12 @@ contract VeloSugarHelper {
     }
 
     function full(address user) public view returns (Lp[] memory data) {
-        IVeloDeployFactory.Storage memory s = factory.getStorage();
-        uint256 n = s.immutableParams.core.positionCount();
+        ICore core = factory.getImmutableParams().core;
+        uint256 n = core.positionCount();
         data = new Lp[](n);
         uint256 iterator = 0;
         for (uint256 i = 0; i < n; i++) {
-            data[iterator] = getData(user, i, s.immutableParams.core);
+            data[iterator] = getData(user, i, core);
             if (data[iterator].initialized) iterator++;
         }
         if (iterator < n) {

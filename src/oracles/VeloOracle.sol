@@ -29,6 +29,8 @@ contract VeloOracle is IVeloOracle {
         if (observationCardinality < lookback + 1)
             revert NotEnoughObservations();
 
+        uint32 minimalTimestamp = uint32(block.timestamp) -
+            securityParams.maxAge;
         (uint32 nextTimestamp, int56 nextCumulativeTick, , ) = ICLPool(
             poolAddress
         ).observations(observationIndex);
@@ -40,6 +42,7 @@ contract VeloOracle is IVeloOracle {
             (uint32 timestamp, int56 tickCumulative, , ) = ICLPool(poolAddress)
                 .observations(index);
             if (timestamp == 0) revert NotEnoughObservations();
+            if (timestamp < minimalTimestamp) return;
             int24 tick = int24(
                 (nextCumulativeTick - tickCumulative) /
                     int56(uint56(nextTimestamp - timestamp))
@@ -64,12 +67,16 @@ contract VeloOracle is IVeloOracle {
         bytes memory params
     ) external pure override {
         if (params.length == 0) return;
-        if (params.length != 0x40) revert InvalidLength();
+        if (params.length != 0x60) revert InvalidLength();
         SecurityParams memory securityParams = abi.decode(
             params,
             (SecurityParams)
         );
-        if (securityParams.lookback == 0 || securityParams.maxAllowedDelta < 0)
-            revert InvalidParams();
+        if (
+            securityParams.lookback == 0 ||
+            securityParams.maxAge == 0 ||
+            securityParams.maxAge > 7 days ||
+            securityParams.maxAllowedDelta < 0
+        ) revert InvalidParams();
     }
 }

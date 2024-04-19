@@ -91,7 +91,11 @@ contract Unit is Fixture {
         core.deposit(depositParams);
 
         depositParams.securityParams = abi.encode(
-            IVeloOracle.SecurityParams({lookback: 100, maxAllowedDelta: 100})
+            IVeloOracle.SecurityParams({
+                lookback: 100,
+                maxAllowedDelta: 100,
+                maxAge: 7 days
+            })
         );
 
         assertEq(positionManager.ownerOf(tokenId), Constants.OWNER);
@@ -145,7 +149,11 @@ contract Unit is Fixture {
         );
         depositParams.slippageD4 = 1;
         depositParams.securityParams = abi.encode(
-            IVeloOracle.SecurityParams({lookback: 1, maxAllowedDelta: 100000})
+            IVeloOracle.SecurityParams({
+                lookback: 1,
+                maxAllowedDelta: 100000,
+                maxAge: 7 days
+            })
         );
 
         id = core.deposit(depositParams);
@@ -521,7 +529,11 @@ contract Unit is Fixture {
             })
         );
         bytes memory defaultSecurityParams = abi.encode(
-            IVeloOracle.SecurityParams({lookback: 100, maxAllowedDelta: 100})
+            IVeloOracle.SecurityParams({
+                lookback: 100,
+                maxAllowedDelta: 100,
+                maxAge: 7 days
+            })
         );
 
         core.setPositionParams(
@@ -601,7 +613,8 @@ contract Unit is Fixture {
             securityParams: abi.encode(
                 IVeloOracle.SecurityParams({
                     lookback: 100,
-                    maxAllowedDelta: 100
+                    maxAllowedDelta: 100,
+                    maxAge: 7 days
                 })
             )
         });
