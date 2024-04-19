@@ -37,6 +37,15 @@ contract VeloDeployFactory is
         MutableParams memory newMutableParams
     ) external {
         _requireAdmin();
+        if (
+            newMutableParams.farmOperator == address(0) ||
+            newMutableParams.farmOwner == address(0) ||
+            newMutableParams.lpWrapperAdmin == address(0) ||
+            newMutableParams.minInitialLiquidity == 0
+        ) {
+            revert InvalidParams();
+        }
+
         _mutableParams = newMutableParams;
     }
 
@@ -62,7 +71,8 @@ contract VeloDeployFactory is
         IAmmModule.AmmPosition memory position = ammModule.getAmmPosition(
             params.tokenId
         );
-        if (position.liquidity < 1000) revert InvalidParams();
+        if (position.liquidity < mutableParams.minInitialLiquidity)
+            revert InvalidParams();
 
         ICLPool pool = ICLPool(
             ammModule.getPool(

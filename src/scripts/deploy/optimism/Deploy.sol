@@ -108,7 +108,8 @@ contract Deploy is Script {
             IVeloDeployFactory.MutableParams({
                 lpWrapperAdmin: WRAPPER_ADMIN,
                 farmOwner: FARM_OWNER,
-                farmOperator: FARM_OPERATOR
+                farmOperator: FARM_OPERATOR,
+                minInitialLiquidity: 1000
             })
         );
 

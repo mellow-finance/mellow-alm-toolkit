@@ -74,21 +74,20 @@ contract VeloAmmModule is IVeloAmmModule {
         bytes memory callbackParams,
         bytes memory
     ) external view override returns (uint256 amount0, uint256 amount1) {
+        (amount0, amount1) = PositionValue.principal(
+            INonfungiblePositionManager(positionManager),
+            tokenId,
+            sqrtRatioX96
+        );
         address gauge = abi.decode(callbackParams, (CallbackParams)).gauge;
         if (IERC721(positionManager).ownerOf(tokenId) != gauge) {
-            return
-                PositionValue.total(
-                    INonfungiblePositionManager(positionManager),
-                    tokenId,
-                    sqrtRatioX96
-                );
-        }
-        return
-            PositionValue.principal(
+            (uint256 fees0, uint256 fees1) = PositionValue.fees(
                 INonfungiblePositionManager(positionManager),
-                tokenId,
-                sqrtRatioX96
+                tokenId
             );
+            amount0 += fees0;
+            amount1 += fees1;
+        }
     }
 
     /// @inheritdoc IAmmModule
@@ -138,19 +137,15 @@ contract VeloAmmModule is IVeloAmmModule {
             (CallbackParams)
         );
         if (callbackParams_.farm == address(0)) revert AddressZero();
-        if (
-            !ICLGauge(callbackParams_.gauge).stakedContains(
-                address(this),
-                tokenId
-            )
-        ) return;
         ProtocolParams memory protocolParams_ = abi.decode(
             protocolParams,
             (ProtocolParams)
         );
         if (protocolParams_.feeD9 > MAX_PROTOCOL_FEE) revert InvalidFee();
-        ICLGauge(callbackParams_.gauge).getReward(tokenId);
-        address token = ICLGauge(callbackParams_.gauge).rewardToken();
+        address gauge = callbackParams_.gauge;
+        if (IERC721(positionManager).ownerOf(tokenId) != gauge) return;
+        ICLGauge(gauge).getReward(tokenId);
+        address token = ICLGauge(gauge).rewardToken();
         uint256 balance = IERC20(token).balanceOf(address(this));
         if (balance > 0) {
             uint256 protocolReward = FullMath.mulDiv(
@@ -176,7 +171,7 @@ contract VeloAmmModule is IVeloAmmModule {
                 );
             }
         }
-        ICLGauge(callbackParams_.gauge).withdraw(tokenId);
+        ICLGauge(gauge).withdraw(tokenId);
     }
 
     /// @inheritdoc IAmmModule

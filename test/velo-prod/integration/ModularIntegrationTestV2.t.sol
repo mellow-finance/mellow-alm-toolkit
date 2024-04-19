@@ -110,7 +110,8 @@ contract Integration is Test {
             IVeloDeployFactory.MutableParams({
                 lpWrapperAdmin: WRAPPER_ADMIN,
                 farmOwner: FARM_OWNER,
-                farmOperator: FARM_OPERATOR
+                farmOperator: FARM_OPERATOR,
+                minInitialLiquidity: 1000
             })
         );
 
@@ -212,7 +213,7 @@ contract Integration is Test {
         vm.stopPrank();
     }
 
-    function _logFees(ILpWrapper wrapper) private {
+    function _logFees(ILpWrapper wrapper) private view {
         ICore.ManagedPositionInfo memory info = core.managedPositionAt(
             wrapper.positionId()
         );

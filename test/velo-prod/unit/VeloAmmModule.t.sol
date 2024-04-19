@@ -142,20 +142,6 @@ contract Unit is Fixture {
             10000,
             pool
         );
-        (
-            ,
-            ,
-            ,
-            ,
-            ,
-            int24 tickLower,
-            int24 tickUpper,
-            uint128 liquidity,
-            ,
-            ,
-            ,
-
-        ) = positionManager.positions(tokenId);
         (uint160 sqrtPriceX96, , , , , ) = pool.slot0();
         {
             (uint256 amount0, uint256 amount1) = module.tvl(
