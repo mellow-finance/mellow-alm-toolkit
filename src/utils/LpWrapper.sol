@@ -186,7 +186,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
             ICore.DepositParams({
                 ammPositionIds: info.ammPositionIds,
                 owner: info.owner,
-                slippageD4: info.slippageD4,
+                slippageD9: info.slippageD9,
                 callbackParams: info.callbackParams,
                 strategyParams: info.strategyParams,
                 securityParams: info.securityParams
@@ -262,7 +262,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
             ICore.DepositParams({
                 ammPositionIds: info.ammPositionIds,
                 owner: info.owner,
-                slippageD4: info.slippageD4,
+                slippageD9: info.slippageD9,
                 callbackParams: info.callbackParams,
                 strategyParams: info.strategyParams,
                 securityParams: info.securityParams
@@ -272,7 +272,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
 
     /// @inheritdoc ILpWrapper
     function setPositionParams(
-        uint16 slippageD4,
+        uint32 slippageD9,
         bytes memory callbackParams,
         bytes memory strategyParams,
         bytes memory securityParams
@@ -280,7 +280,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         _requireAdmin();
         core.setPositionParams(
             positionId,
-            slippageD4,
+            slippageD9,
             callbackParams,
             strategyParams,
             securityParams

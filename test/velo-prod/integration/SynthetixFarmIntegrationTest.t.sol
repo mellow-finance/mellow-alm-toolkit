@@ -38,7 +38,7 @@ contract Integration is Fixture {
             })
         );
         depositParams.securityParams = new bytes(0);
-        depositParams.slippageD4 = 100;
+        depositParams.slippageD9 = 100 * 1e5;
 
         vm.startPrank(Constants.OWNER);
         positionManager.approve(address(core), depositParams.ammPositionIds[0]);
@@ -162,7 +162,7 @@ contract Integration is Fixture {
             })
         );
         depositParams.securityParams = new bytes(0);
-        depositParams.slippageD4 = 100;
+        depositParams.slippageD9 = 100 * 1e5;
 
         vm.startPrank(Constants.OWNER);
         positionManager.approve(address(core), depositParams.ammPositionIds[0]);

@@ -54,10 +54,10 @@ interface IVeloDeployFactory {
      * @dev Represents the parameters for configuring a strategy.
      */
     struct DeployParams {
-        bytes securityParams;
-        uint16 slippageD4;
         int24 tickNeighborhood;
+        uint32 slippageD9;
         uint256 tokenId;
+        bytes securityParams;
         IPulseStrategyModule.StrategyType strategyType;
     }
 

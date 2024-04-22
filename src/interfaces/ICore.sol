@@ -18,10 +18,10 @@ interface ICore is IERC721Receiver {
     struct ManagedPositionInfo {
         /**
          * @notice Determines the portion of the Total Value Locked (TVL) in the ManagedPosition that can be used to pay for rebalancer services.
-         * @dev Value is multiplied by 1e4. For instance, slippageD4 = 10 corresponds to 1% of the position.
+         * @dev Value is multiplied by 1e9. For instance, slippageD9 = 10'000'000 corresponds to 1% of the position.
          * This allows for fine-grained control over the economic parameters governing rebalancing actions.
          */
-        uint16 slippageD4;
+        uint32 slippageD9;
         /**
          * @notice A pool parameter corresponding to the ManagedPosition, usually representing tickSpacing or fee.
          * @dev This parameter helps in identifying and utilizing specific characteristics of the pool that are relevant to the management of the position.
@@ -65,6 +65,11 @@ interface ICore is IERC721Receiver {
      */
     struct TargetPositionInfo {
         /**
+         * @notice Index of the ManagedPosition.
+         * @dev Serves as a unique identifier for the ManagedPosition being targeted for rebalancing. This facilitates tracking and management within the broader system.
+         */
+        uint256 id;
+        /**
          * @notice Array of lower ticks corresponding to the expected AMM Positions after rebalancing.
          * @dev These ticks define the lower bound of the price ranges for each targeted AMM position. They are integral in determining the optimal positioning and allocation of liquidity within the AMM environment post-rebalance.
          */
@@ -85,11 +90,6 @@ interface ICore is IERC721Receiver {
          */
         uint256[] minLiquidities;
         /**
-         * @notice Index of the ManagedPosition.
-         * @dev Serves as a unique identifier for the ManagedPosition being targeted for rebalancing. This facilitates tracking and management within the broader system.
-         */
-        uint256 id;
-        /**
          * @notice Information about the original corresponding ManagedPosition.
          * @dev Captures the initial state and parameters of the ManagedPosition prior to rebalancing. This includes detailed information necessary for the rebalancer to accurately target the desired end state.
          */
@@ -102,20 +102,20 @@ interface ICore is IERC721Receiver {
      */
     struct DepositParams {
         /**
-         * @notice Array of NFTs from the AMM protocol corresponding to the ManagedPosition.
-         * @dev Enables the aggregation of multiple AMM positions under a single managed position, facilitating collective management and strategic oversight.
+         * @notice Defines the portion of the Total Value Locked (TVL) in the ManagedPosition that can be used to pay for rebalancer services.
+         * @dev The value is multiplied by 1e9, meaning a `slippageD9` value of 10'000'000 corresponds to 1% of the position. This parameter allows for precise economic management of the position with regard to rebalancing costs.
          */
-        uint256[] ammPositionIds;
+        uint32 slippageD9;
         /**
          * @notice The owner of the position, who is authorized to perform actions such as withdraw, emptyRebalance, and parameter updates.
          * @dev Ensures that only the designated owner has the authority to manage and modify the position, safeguarding against unauthorized interventions.
          */
         address owner;
         /**
-         * @notice Defines the portion of the Total Value Locked (TVL) in the ManagedPosition that can be used to pay for rebalancer services.
-         * @dev The value is multiplied by 1e4, meaning a `slippageD4` value of 10 corresponds to 1% of the position. This parameter allows for precise economic management of the position with regard to rebalancing costs.
+         * @notice Array of NFTs from the AMM protocol corresponding to the ManagedPosition.
+         * @dev Enables the aggregation of multiple AMM positions under a single managed position, facilitating collective management and strategic oversight.
          */
-        uint16 slippageD4;
+        uint256[] ammPositionIds;
         /**
          * @notice A byte array containing custom data for the corresponding AmmModule.
          * @dev Stores operational data such as staking details, reward collection mechanisms, etc., providing a flexible interface for AMM-specific functionalities.
@@ -288,9 +288,9 @@ interface ICore is IERC721Receiver {
      * for maintaining the relevance and efficiency of the position's strategy and security posture over time.
      *
      * @param id The unique identifier of the managed position to update.
-     * @param slippageD4 The maximum allowable proportion of the position's capital that can be allocated
-     * as compensation to rebalancers for their services. This value is scaled by a factor of 10,000 (1e4),
-     * such that a value of 10,000 represents 100%, allowing for fine-grained control over rebalancing compensation.
+     * @param slippageD9 The maximum allowable proportion of the position's capital that can be allocated
+     * as compensation to rebalancers for their services. This value is scaled by a factor of 1,000,000,000 (1e9),
+     * such that a value of 1,000,000,000 represents 100%, allowing for fine-grained control over rebalancing compensation.
      * @param callbackParams Custom data for the callback operation, facilitating specific interactions
      * and operational adjustments during the rebalancing or other contract-driven processes.
      * @param strategyParams Custom data defining the strategic parameters of the position, enabling
@@ -306,7 +306,7 @@ interface ICore is IERC721Receiver {
      */
     function setPositionParams(
         uint256 id,
-        uint16 slippageD4,
+        uint32 slippageD9,
         bytes memory callbackParams,
         bytes memory strategyParams,
         bytes memory securityParams

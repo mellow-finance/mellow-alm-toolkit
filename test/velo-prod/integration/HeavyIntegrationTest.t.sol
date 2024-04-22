@@ -10,7 +10,7 @@ contract Integration is Fixture {
         int24 width;
         int24 tickNeighborhood;
         int24 tickSpacing;
-        uint16 slippageD4;
+        uint32 slippageD9;
         bytes securityParams;
     }
 
@@ -37,7 +37,7 @@ contract Integration is Fixture {
             })
         );
         depositParams.securityParams = params.securityParams;
-        depositParams.slippageD4 = params.slippageD4;
+        depositParams.slippageD9 = params.slippageD9;
         depositParams.owner = address(lpWrapper);
         depositParams.callbackParams = abi.encode(
             IVeloAmmModule.CallbackParams({
@@ -69,7 +69,7 @@ contract Integration is Fixture {
                 tickSpacing: tickSpacing,
                 width: tickSpacing * 4,
                 tickNeighborhood: tickSpacing,
-                slippageD4: 100,
+                slippageD9: 100 * 1e5,
                 securityParams: new bytes(0)
             })
         );
@@ -165,7 +165,7 @@ contract Integration is Fixture {
                 tickSpacing: tickSpacing,
                 width: tickSpacing * 10,
                 tickNeighborhood: tickSpacing,
-                slippageD4: 100,
+                slippageD9: 100 * 1e5,
                 securityParams: new bytes(0)
             })
         );
@@ -272,7 +272,7 @@ contract Integration is Fixture {
                 tickSpacing: tickSpacing,
                 width: tickSpacing * 10,
                 tickNeighborhood: tickSpacing,
-                slippageD4: 100,
+                slippageD9: 100 * 1e5,
                 securityParams: abi.encode(
                     IVeloOracle.SecurityParams({
                         lookback: 10,

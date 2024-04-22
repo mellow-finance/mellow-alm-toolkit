@@ -34,7 +34,7 @@ contract VeloSugarHelper {
     }
 
     constructor(address _factory) {
-        factory = VeloDeployFactory(payable(_factory));
+        factory = VeloDeployFactory(_factory);
     }
 
     function getData(

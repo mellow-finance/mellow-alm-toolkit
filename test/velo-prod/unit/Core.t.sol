@@ -84,7 +84,7 @@ contract Unit is Fixture {
         vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
         core.deposit(depositParams);
 
-        depositParams.slippageD4 = 1;
+        depositParams.slippageD9 = 1 * 1e5;
         depositParams.securityParams = new bytes(123);
 
         vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
@@ -147,7 +147,7 @@ contract Unit is Fixture {
                 tickNeighborhood: 100
             })
         );
-        depositParams.slippageD4 = 1;
+        depositParams.slippageD9 = 1 * 1e5;
         depositParams.securityParams = abi.encode(
             IVeloOracle.SecurityParams({
                 lookback: 1,
@@ -271,7 +271,7 @@ contract Unit is Fixture {
         );
 
         assertTrue(
-            FullMath.mulDiv(capitalBefore, D4 - infoBefore.slippageD4, D4) <=
+            FullMath.mulDiv(capitalBefore, D9 - infoBefore.slippageD9, D9) <=
                 capitalAfter
         );
 
@@ -506,7 +506,7 @@ contract Unit is Fixture {
         vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
         core.setPositionParams(
             positionId,
-            uint16(D4 / 4 + 1),
+            uint16(D9 / 4 + 1),
             new bytes(0),
             defaultStrategyParams,
             new bytes(0)
@@ -515,7 +515,7 @@ contract Unit is Fixture {
         vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
         core.setPositionParams(
             positionId,
-            uint16(D4 / 4),
+            uint16(D9 / 4),
             new bytes(0),
             defaultStrategyParams,
             new bytes(0)
@@ -538,7 +538,7 @@ contract Unit is Fixture {
 
         core.setPositionParams(
             positionId,
-            uint16(D4 / 4),
+            uint16(D9 / 4),
             defaultCallbackParams,
             defaultStrategyParams,
             defaultSecurityParams
@@ -564,7 +564,7 @@ contract Unit is Fixture {
         assertEq(info.ammPositionIds[0], tokenId);
 
         assertEq(info.owner, Constants.OWNER);
-        assertEq(info.slippageD4, 1);
+        assertEq(info.slippageD9, 1e5);
         assertTrue(info.strategyParams.length != 0);
         assertTrue(info.callbackParams.length != 0);
         assertTrue(info.securityParams.length != 0);
@@ -587,7 +587,7 @@ contract Unit is Fixture {
         ICore.DepositParams memory depositParams = ICore.DepositParams({
             ammPositionIds: ammPositionIds,
             owner: Constants.OWNER,
-            slippageD4: 1,
+            slippageD9: 1 * 1e5,
             callbackParams: abi.encode(
                 IVeloAmmModule.CallbackParams({
                     gauge: address(pool.gauge()),

@@ -56,7 +56,7 @@ contract VeloDeployFactory is
         _requireAtLeastOperator();
 
         if (
-            params.slippageD4 == 0 ||
+            params.slippageD9 == 0 ||
             params.securityParams.length == 0 ||
             params.tokenId == 0
         ) {
@@ -159,7 +159,7 @@ contract VeloDeployFactory is
         ICore.DepositParams memory depositParams;
         {
             depositParams.securityParams = params.securityParams;
-            depositParams.slippageD4 = params.slippageD4;
+            depositParams.slippageD9 = params.slippageD9;
             depositParams.ammPositionIds = new uint256[](1);
             depositParams.ammPositionIds[0] = params.tokenId;
             depositParams.owner = address(lpWrapper);

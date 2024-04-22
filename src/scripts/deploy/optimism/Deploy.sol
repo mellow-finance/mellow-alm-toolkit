@@ -114,7 +114,7 @@ contract Deploy is Script {
         );
 
         ICore.DepositParams memory depositParams;
-        depositParams.slippageD4 = 5;
+        depositParams.slippageD9 = 5 * 1e5;
         depositParams.securityParams = abi.encode(
             IVeloOracle.SecurityParams({
                 lookback: 50,

@@ -444,7 +444,7 @@ contract DeployFactoryFixture is Test {
         );
 
         ICore.DepositParams memory depositParams;
-        depositParams.slippageD4 = 100;
+        depositParams.slippageD9 = 100 * 1e5;
         depositParams.strategyParams = abi.encode(
             IPulseStrategyModule.StrategyParams({
                 tickSpacing: TICK_SPACING,
