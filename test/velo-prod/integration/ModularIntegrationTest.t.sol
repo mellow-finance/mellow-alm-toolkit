@@ -105,6 +105,7 @@ contract Integration is Test {
         deployFactory.updateMutableParams(
             IVeloDeployFactory.MutableParams({
                 lpWrapperAdmin: WRAPPER_ADMIN,
+                lpWrapperManager: address(0),
                 farmOwner: FARM_OWNER,
                 farmOperator: FARM_OPERATOR,
                 minInitialLiquidity: 1000

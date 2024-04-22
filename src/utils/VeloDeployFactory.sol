@@ -42,10 +42,7 @@ contract VeloDeployFactory is
             newMutableParams.farmOwner == address(0) ||
             newMutableParams.lpWrapperAdmin == address(0) ||
             newMutableParams.minInitialLiquidity == 0
-        ) {
-            revert InvalidParams();
-        }
-
+        ) revert InvalidParams();
         _mutableParams = newMutableParams;
     }
 
@@ -153,7 +150,7 @@ contract VeloDeployFactory is
                 )
             ),
             mutableParams.lpWrapperAdmin,
-            mutableParams.farmOperator
+            mutableParams.lpWrapperManager
         );
 
         ICore.DepositParams memory depositParams;

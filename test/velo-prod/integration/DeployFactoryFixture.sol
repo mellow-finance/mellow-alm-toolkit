@@ -464,6 +464,7 @@ contract DeployFactoryFixture is Test {
         deployFactory.updateMutableParams(
             IVeloDeployFactory.MutableParams({
                 lpWrapperAdmin: Constants.OWNER,
+                lpWrapperManager: address(0),
                 farmOwner: Constants.OWNER,
                 farmOperator: Constants.OWNER,
                 minInitialLiquidity: 1000

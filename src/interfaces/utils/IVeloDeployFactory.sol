@@ -37,6 +37,7 @@ interface IVeloDeployFactory {
      */
     struct MutableParams {
         address lpWrapperAdmin; // Admin address for the LP wrapper
+        address lpWrapperManager; // Manager address for the LP wrapper
         address farmOwner; // Owner address for the farm
         address farmOperator; // Operator address for the farm (compounder)
         uint256 minInitialLiquidity; // Minimum initial liquidity for the LP wrapper
