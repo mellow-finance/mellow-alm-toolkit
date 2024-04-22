@@ -506,7 +506,7 @@ contract Unit is Fixture {
         vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
         core.setPositionParams(
             positionId,
-            uint16(D9 / 4 + 1),
+            uint32(D9 / 20 + 1),
             new bytes(0),
             defaultStrategyParams,
             new bytes(0)
@@ -515,7 +515,7 @@ contract Unit is Fixture {
         vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
         core.setPositionParams(
             positionId,
-            uint16(D9 / 4),
+            uint32(D9 / 20),
             new bytes(0),
             defaultStrategyParams,
             new bytes(0)
@@ -536,9 +536,18 @@ contract Unit is Fixture {
             })
         );
 
+        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
         core.setPositionParams(
             positionId,
-            uint16(D9 / 4),
+            uint32(D9 / 20 + 1),
+            defaultCallbackParams,
+            defaultStrategyParams,
+            defaultSecurityParams
+        );
+
+        core.setPositionParams(
+            positionId,
+            uint32(D9 / 20),
             defaultCallbackParams,
             defaultStrategyParams,
             defaultSecurityParams
