@@ -444,7 +444,7 @@ contract DeployFactoryFixture is Test {
         );
 
         ICore.DepositParams memory depositParams;
-        depositParams.slippageD4 = 100;
+        depositParams.slippageD9 = 100 * 1e5;
         depositParams.strategyParams = abi.encode(
             IPulseStrategyModule.StrategyParams({
                 tickSpacing: TICK_SPACING,
@@ -464,6 +464,7 @@ contract DeployFactoryFixture is Test {
         deployFactory.updateMutableParams(
             IVeloDeployFactory.MutableParams({
                 lpWrapperAdmin: Constants.OWNER,
+                lpWrapperManager: address(0),
                 farmOwner: Constants.OWNER,
                 farmOperator: Constants.OWNER,
                 minInitialLiquidity: 1000

@@ -42,7 +42,7 @@ contract Integration is Fixture {
         );
 
         depositParams.securityParams = new bytes(0);
-        depositParams.slippageD4 = 100;
+        depositParams.slippageD9 = 100 * 1e5;
         depositParams.callbackParams = abi.encode(
             IVeloAmmModule.CallbackParams({
                 farm: address(stakingRewards),

@@ -107,6 +107,7 @@ contract Deploy is Script {
         deployFactory.updateMutableParams(
             IVeloDeployFactory.MutableParams({
                 lpWrapperAdmin: WRAPPER_ADMIN,
+                lpWrapperManager: address(0),
                 farmOwner: FARM_OWNER,
                 farmOperator: FARM_OPERATOR,
                 minInitialLiquidity: 1000
@@ -114,7 +115,7 @@ contract Deploy is Script {
         );
 
         ICore.DepositParams memory depositParams;
-        depositParams.slippageD4 = 5;
+        depositParams.slippageD9 = 5 * 1e5;
         depositParams.securityParams = abi.encode(
             IVeloOracle.SecurityParams({
                 lookback: 50,

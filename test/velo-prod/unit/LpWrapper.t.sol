@@ -62,7 +62,7 @@ contract Unit is Fixture {
                 tickNeighborhood: 100
             })
         );
-        depositParams.slippageD4 = 1;
+        depositParams.slippageD9 = 1 * 1e5;
         depositParams.securityParams = abi.encode(
             IVeloOracle.SecurityParams({
                 lookback: 1,

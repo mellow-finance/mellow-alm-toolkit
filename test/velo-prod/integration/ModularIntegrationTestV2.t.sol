@@ -109,6 +109,7 @@ contract Integration is Test {
         deployFactory.updateMutableParams(
             IVeloDeployFactory.MutableParams({
                 lpWrapperAdmin: WRAPPER_ADMIN,
+                lpWrapperManager: address(0),
                 farmOwner: FARM_OWNER,
                 farmOperator: FARM_OPERATOR,
                 minInitialLiquidity: 1000
@@ -143,7 +144,11 @@ contract Integration is Test {
             int24 tickSpacing = pool.tickSpacing();
             int24 remainder = tickLower % tickSpacing;
             if (remainder < 0) remainder += tickSpacing;
-            tickLower -= remainder;
+            if (remainder > tickSpacing / 2) {
+                tickLower += tickSpacing - remainder;
+            } else {
+                tickLower -= remainder;
+            }
         }
         int24 tickUpper = tickLower + width;
 
@@ -204,7 +209,7 @@ contract Integration is Test {
                         maxAllowedDelta: type(int24).max
                     })
                 ),
-                slippageD4: 5,
+                slippageD9: 5 * 1e5,
                 tokenId: tokenId,
                 tickNeighborhood: 0,
                 strategyType: IPulseStrategyModule.StrategyType.LazySyncing

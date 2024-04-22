@@ -78,6 +78,7 @@ contract Integration is Test {
         deployFactory.updateMutableParams(
             IVeloDeployFactory.MutableParams({
                 lpWrapperAdmin: WRAPPER_ADMIN,
+                lpWrapperManager: address(0),
                 farmOwner: FARM_OWNER,
                 farmOperator: FARM_OPERATOR,
                 minInitialLiquidity: 1000
@@ -190,7 +191,7 @@ contract Integration is Test {
                         maxAllowedDelta: type(int24).max
                     })
                 ),
-                slippageD4: 5,
+                slippageD9: 5 * 1e5,
                 tokenId: tokenId,
                 tickNeighborhood: 0,
                 strategyType: IPulseStrategyModule.StrategyType.LazySyncing

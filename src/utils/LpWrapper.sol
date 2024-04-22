@@ -30,17 +30,17 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
      * @dev Constructor function for the LpWrapper contract.
      * @param core_ The address of the ICore contract.
      * @param ammDepositWithdrawModule_ The address of the IAmmDepositWithdrawModule contract.
-     * @param name The name of the ERC20 token.
-     * @param symbol The symbol of the ERC20 token.
+     * @param name_ The name of the ERC20 token.
+     * @param symbol_ The symbol of the ERC20 token.
      * @param admin The address of the admin.
      */
     constructor(
         ICore core_,
         IAmmDepositWithdrawModule ammDepositWithdrawModule_,
-        string memory name,
-        string memory symbol,
+        string memory name_,
+        string memory symbol_,
         address admin
-    ) ERC20(name, symbol) DefaultAccessControl(admin) {
+    ) ERC20(name_, symbol_) DefaultAccessControl(admin) {
         core = core_;
         ammModule = core.ammModule();
         positionManager = ammModule.positionManager();
@@ -186,7 +186,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
             ICore.DepositParams({
                 ammPositionIds: info.ammPositionIds,
                 owner: info.owner,
-                slippageD4: info.slippageD4,
+                slippageD9: info.slippageD9,
                 callbackParams: info.callbackParams,
                 strategyParams: info.strategyParams,
                 securityParams: info.securityParams
@@ -262,7 +262,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
             ICore.DepositParams({
                 ammPositionIds: info.ammPositionIds,
                 owner: info.owner,
-                slippageD4: info.slippageD4,
+                slippageD9: info.slippageD9,
                 callbackParams: info.callbackParams,
                 strategyParams: info.strategyParams,
                 securityParams: info.securityParams
@@ -272,7 +272,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
 
     /// @inheritdoc ILpWrapper
     function setPositionParams(
-        uint16 slippageD4,
+        uint32 slippageD9,
         bytes memory callbackParams,
         bytes memory strategyParams,
         bytes memory securityParams
@@ -280,7 +280,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         _requireAdmin();
         core.setPositionParams(
             positionId,
-            slippageD4,
+            slippageD9,
             callbackParams,
             strategyParams,
             securityParams

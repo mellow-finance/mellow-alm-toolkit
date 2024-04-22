@@ -10,7 +10,7 @@ import "./utils/DefaultAccessControl.sol";
 contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     using EnumerableSet for EnumerableSet.UintSet;
 
-    uint256 public constant D4 = 1e4;
+    uint256 public constant D9 = 1e9;
     uint256 public constant Q96 = 2 ** 96;
 
     /// @inheritdoc ICore
@@ -88,7 +88,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     /// @inheritdoc ICore
     function setPositionParams(
         uint256 id,
-        uint16 slippageD4,
+        uint32 slippageD9,
         bytes memory callbackParams,
         bytes memory strategyParams,
         bytes memory securityParams
@@ -98,11 +98,11 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         ammModule.validateCallbackParams(callbackParams);
         strategyModule.validateStrategyParams(strategyParams);
         oracle.validateSecurityParams(securityParams);
-        if (slippageD4 * 4 > D4 || slippageD4 == 0) revert InvalidParams();
+        if (slippageD9 * 20 > D9 || slippageD9 == 0) revert InvalidParams();
         info.callbackParams = callbackParams;
         info.strategyParams = strategyParams;
         info.securityParams = securityParams;
-        info.slippageD4 = slippageD4;
+        info.slippageD9 = slippageD9;
         _positions[id] = info;
     }
 
@@ -113,7 +113,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         ammModule.validateCallbackParams(params.callbackParams);
         strategyModule.validateStrategyParams(params.strategyParams);
         oracle.validateSecurityParams(params.securityParams);
-        if (params.slippageD4 * 4 > D4 || params.slippageD4 == 0)
+        if (params.slippageD9 * 20 > D9 || params.slippageD9 == 0)
             revert InvalidParams();
 
         address pool;
@@ -149,7 +149,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
                 ammPositionIds: params.ammPositionIds,
                 pool: pool,
                 property: ammModule.getProperty(pool),
-                slippageD4: params.slippageD4,
+                slippageD9: params.slippageD9,
                 callbackParams: params.callbackParams,
                 strategyParams: params.strategyParams,
                 securityParams: params.securityParams
@@ -213,8 +213,8 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
                 );
                 target.minLiquidities[j] = FullMath.mulDiv(
                     target.minLiquidities[j],
-                    D4 - info.slippageD4,
-                    D4
+                    D9 - info.slippageD9,
+                    D9
                 );
             }
             targets[iterator++] = target;

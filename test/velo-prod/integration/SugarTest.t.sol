@@ -106,7 +106,7 @@ contract Integration is DeployFactoryFixture {
                             maxAllowedDelta: type(int24).max
                         })
                     ),
-                    slippageD4: 5,
+                    slippageD9: 5 * 1e5,
                     tokenId: tokenId,
                     tickNeighborhood: 0,
                     strategyType: IPulseStrategyModule.StrategyType.LazySyncing

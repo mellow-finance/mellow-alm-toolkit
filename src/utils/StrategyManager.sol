@@ -24,10 +24,10 @@ contract StrategyManager is DefaultAccessControl {
         bytes memory params = _parametersById[id];
         if (params.length == 0) return "No parameters found";
         (
-            uint16 slippageD4,
+            uint32 slippageD9,
             bytes memory strategyParams_,
             bytes memory securityParams_
-        ) = abi.decode(params, (uint16, bytes, bytes));
+        ) = abi.decode(params, (uint32, bytes, bytes));
         string memory securityParamsStr;
         {
             IVeloOracle.SecurityParams memory securityParams = abi.decode(
@@ -66,7 +66,7 @@ contract StrategyManager is DefaultAccessControl {
         response = string(
             abi.encodePacked(
                 "Slippage: ",
-                Strings.toString(slippageD4),
+                Strings.toString(slippageD9),
                 strategyParamsStr,
                 securityParamsStr
             )
@@ -74,13 +74,13 @@ contract StrategyManager is DefaultAccessControl {
     }
 
     function addParameters(
-        uint16 slippageD4,
+        uint32 slippageD9,
         bytes memory strategyParams,
         bytes memory securityParams
     ) external {
         _requireAtLeastOperator();
         _parametersById[nextId++] = abi.encode(
-            slippageD4,
+            slippageD9,
             strategyParams,
             securityParams
         );
@@ -105,16 +105,16 @@ contract StrategyManager is DefaultAccessControl {
             if (params.length == 0) continue;
 
             (
-                uint16 slippageD4,
+                uint32 slippageD9,
                 bytes memory strategyParams,
                 bytes memory securityParams
-            ) = abi.decode(params, (uint16, bytes, bytes));
+            ) = abi.decode(params, (uint32, bytes, bytes));
             ILpWrapper wrapper = ILpWrapper(addresses.lpWrapper);
             bytes memory callbackParams = ICore(wrapper.core())
                 .managedPositionAt(wrapper.positionId())
                 .callbackParams;
             ILpWrapper(addresses.lpWrapper).setPositionParams(
-                slippageD4,
+                slippageD9,
                 callbackParams,
                 strategyParams,
                 securityParams
