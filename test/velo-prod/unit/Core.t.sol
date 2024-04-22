@@ -539,7 +539,7 @@ contract Unit is Fixture {
         vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
         core.setPositionParams(
             positionId,
-            uint32(D9 / 20 + 1),
+            uint32(D9 / 4 + 1),
             defaultCallbackParams,
             defaultStrategyParams,
             defaultSecurityParams
@@ -547,7 +547,7 @@ contract Unit is Fixture {
 
         core.setPositionParams(
             positionId,
-            uint32(D9 / 20),
+            uint32(D9 / 4),
             defaultCallbackParams,
             defaultStrategyParams,
             defaultSecurityParams
