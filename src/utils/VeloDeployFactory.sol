@@ -67,15 +67,14 @@ contract VeloDeployFactory is
         MutableParams memory mutableParams = _mutableParams;
 
         ICore core = immutableParams.core;
-        IVeloAmmModule ammModule = immutableParams.veloModule;
-        IAmmModule.AmmPosition memory position = ammModule.getAmmPosition(
-            params.tokenId
-        );
+        IAmmModule.AmmPosition memory position = immutableParams
+            .veloModule
+            .getAmmPosition(params.tokenId);
         if (position.liquidity < mutableParams.minInitialLiquidity)
             revert InvalidParams();
 
         ICLPool pool = ICLPool(
-            ammModule.getPool(
+            immutableParams.veloModule.getPool(
                 position.token0,
                 position.token1,
                 position.property
@@ -87,6 +86,48 @@ contract VeloDeployFactory is
         }
 
         core.oracle().ensureNoMEV(address(pool), params.securityParams);
+
+        IPulseStrategyModule.StrategyParams
+            memory strategyParams = IPulseStrategyModule.StrategyParams({
+                tickNeighborhood: params.tickNeighborhood,
+                tickSpacing: int24(position.property),
+                strategyType: params.strategyType,
+                width: position.tickUpper - position.tickLower
+            });
+
+        {
+            (, int24 tick, , , , ) = pool.slot0();
+            (
+                bool isRebalanceRequired,
+                ICore.TargetPositionInfo memory target
+            ) = immutableParams.strategyModule.calculateTarget(
+                    tick,
+                    0,
+                    0,
+                    strategyParams
+                );
+            assert(isRebalanceRequired);
+            if (
+                position.tickLower != target.lowerTicks[0] ||
+                position.tickUpper != target.upperTicks[0]
+            )
+                revert(
+                    string(
+                        abi.encodePacked(
+                            "Invalid ticks. expected: {",
+                            Strings.toString(target.lowerTicks[0]),
+                            ", ",
+                            Strings.toString(target.upperTicks[0]),
+                            "}, actual: {",
+                            Strings.toString(position.tickLower),
+                            ", ",
+                            Strings.toString(position.tickUpper),
+                            "}, spot: ",
+                            Strings.toString(tick)
+                        )
+                    )
+                );
+        }
 
         ILpWrapper lpWrapper = immutableParams.helper.createLpWrapper(
             core,
@@ -116,55 +157,45 @@ contract VeloDeployFactory is
         );
 
         ICore.DepositParams memory depositParams;
-        depositParams.securityParams = params.securityParams;
-        depositParams.slippageD4 = params.slippageD4;
-        depositParams.ammPositionIds = new uint256[](1);
-        depositParams.ammPositionIds[0] = params.tokenId;
-        depositParams.owner = address(lpWrapper);
-        poolAddresses.lpWrapper = address(lpWrapper);
-        address gauge = pool.gauge();
-        address rewardToken = ICLGauge(gauge).rewardToken();
-        poolAddresses.synthetixFarm = immutableParams
-            .helper
-            .createStakingRewards(
-                mutableParams.farmOwner,
-                mutableParams.farmOperator,
-                rewardToken,
-                address(lpWrapper)
-            );
-        depositParams.callbackParams = abi.encode(
-            IVeloAmmModule.CallbackParams({
-                farm: poolAddresses.synthetixFarm,
-                gauge: address(gauge),
-                counter: address(
-                    new Counter(
-                        mutableParams.farmOperator,
-                        address(core),
-                        rewardToken,
-                        poolAddresses.synthetixFarm
+        {
+            depositParams.securityParams = params.securityParams;
+            depositParams.slippageD4 = params.slippageD4;
+            depositParams.ammPositionIds = new uint256[](1);
+            depositParams.ammPositionIds[0] = params.tokenId;
+            depositParams.owner = address(lpWrapper);
+            poolAddresses.lpWrapper = address(lpWrapper);
+            address gauge = pool.gauge();
+            address rewardToken = ICLGauge(gauge).rewardToken();
+            poolAddresses.synthetixFarm = immutableParams
+                .helper
+                .createStakingRewards(
+                    mutableParams.farmOwner,
+                    mutableParams.farmOperator,
+                    rewardToken,
+                    address(lpWrapper)
+                );
+            depositParams.callbackParams = abi.encode(
+                IVeloAmmModule.CallbackParams({
+                    farm: poolAddresses.synthetixFarm,
+                    gauge: address(gauge),
+                    counter: address(
+                        new Counter(
+                            mutableParams.farmOperator,
+                            address(core),
+                            rewardToken,
+                            poolAddresses.synthetixFarm
+                        )
                     )
-                )
-            })
-        );
-        depositParams.strategyParams = abi.encode(
-            IPulseStrategyModule.StrategyParams({
-                tickNeighborhood: params.tickNeighborhood,
-                tickSpacing: int24(position.property),
-                strategyType: params.strategyType,
-                width: position.tickUpper - position.tickLower
-            })
-        );
-
-        _poolToAddresses[address(pool)] = poolAddresses;
-        INonfungiblePositionManager(ammModule.positionManager()).transferFrom(
-            msg.sender,
-            address(this),
-            params.tokenId
-        );
-        INonfungiblePositionManager(ammModule.positionManager()).approve(
-            address(core),
-            params.tokenId
-        );
+                })
+            );
+            depositParams.strategyParams = abi.encode(strategyParams);
+            _poolToAddresses[address(pool)] = poolAddresses;
+        }
+        INonfungiblePositionManager positionManager = INonfungiblePositionManager(
+                immutableParams.veloModule.positionManager()
+            );
+        positionManager.transferFrom(msg.sender, address(this), params.tokenId);
+        positionManager.approve(address(core), params.tokenId);
 
         lpWrapper.initialize(core.deposit(depositParams), position.liquidity);
     }

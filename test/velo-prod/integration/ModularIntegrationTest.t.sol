@@ -139,7 +139,11 @@ contract Integration is Test {
             int24 tickSpacing = pool.tickSpacing();
             int24 remainder = tickLower % tickSpacing;
             if (remainder < 0) remainder += tickSpacing;
-            tickLower -= remainder;
+            if (remainder > tickSpacing / 2) {
+                tickLower += tickSpacing - remainder;
+            } else {
+                tickLower -= remainder;
+            }
         }
         int24 tickUpper = tickLower + width;
 
