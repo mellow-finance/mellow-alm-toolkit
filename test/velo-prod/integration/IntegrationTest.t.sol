@@ -55,7 +55,7 @@ contract Integration is Test {
         oracle = new VeloOracle();
         core = new Core(ammModule, strategyModule, oracle, CORE_ADMIN);
 
-        deployFactoryHelper = new VeloDeployFactoryHelper();
+        deployFactoryHelper = new VeloDeployFactoryHelper(Constants.WETH);
         deployFactory = new VeloDeployFactory(
             VELO_DEPLOY_FACTORY_ADMIN,
             core,
