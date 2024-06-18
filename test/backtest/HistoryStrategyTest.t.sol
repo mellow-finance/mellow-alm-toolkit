@@ -60,8 +60,8 @@ contract HistoryTest is Integration {
     }
 
     function _setUp() private {
-        deal(address(token0), address(this), type(uint256).max, false);
-        deal(address(token1), address(this), type(uint256).max, false);
+        deal(address(token0), address(this), type(uint256).max / 2, false);
+        deal(address(token1), address(this), type(uint256).max / 2, false);
 
         token0.approve(address(this), type(uint256).max);
         token1.approve(address(this), type(uint256).max);
@@ -142,6 +142,7 @@ contract HistoryTest is Integration {
         int24 tickLower,
         int24 tickUpper
     ) private {
+        // uint128 liquidityBefore = pool.liquidity();
         pool.mint(
             address(this),
             tickLower,
@@ -149,6 +150,7 @@ contract HistoryTest is Integration {
             liquidity,
             abi.encode(address(this))
         );
+        //   console2.log(int256((int128(pool.liquidity()) - int128(liquidityBefore))));//, liquidity);
     }
 
     function _burn(
@@ -157,27 +159,68 @@ contract HistoryTest is Integration {
         int24 tickUpper,
         address owner
     ) private {
-        vm.startPrank(owner);
-        pool.burn(tickLower, tickUpper, liquidity);
+        vm.startPrank(address(this));
+        try pool.burn(tickLower, tickUpper, liquidity) {} catch Error(
+            string memory reason
+        ) {
+            console2.log(reason);
+        }
         vm.stopPrank();
     }
 
-    function _getNextTransactionBlock() private view returns (uint256 nextBlock){
-        nextBlock = swapTransaction.block < mintTransaction.block ? swapTransaction.block : mintTransaction.block;
-        nextBlock = burnTransaction.block < nextBlock ? burnTransaction.block : nextBlock;
+    function _getNextTransactionBlock()
+        private
+        view
+        returns (uint256 nextBlock)
+    {
+        nextBlock = swapTransaction.block < mintTransaction.block
+            ? swapTransaction.block
+            : mintTransaction.block;
+        nextBlock = burnTransaction.block < nextBlock
+            ? burnTransaction.block
+            : nextBlock;
     }
 
-    function _simulateNextTransaction(PoolTranactions memory transactions) private returns (bool isEnd)  {
+    function _simulateNextTransaction(
+        PoolTranactions memory transactions
+    ) private returns (bool isEnd) {
         actualBlock = _getNextTransactionBlock();
-        if (actualBlock == swapTransaction.block && swapIndex < transactions.swap.length) {
+        if (actualBlock == type(uint256).max) {
+            return true;
+        }
+        if (actualBlock == swapTransaction.block) {
             _swap(swapTransaction.amount0, swapTransaction.amount1);
-            swapTransaction = transactions.swap[swapIndex++];
-        } else if (actualBlock == mintTransaction.block && mintIndex < transactions.mint.length) {
-            //_mint(mintTransaction.liquidity, mintTransaction.tickLower, mintTransaction.tickUpper);
-            mintTransaction = transactions.mint[mintIndex++];
-        } else if (actualBlock == burnTransaction.block && burnIndex < transactions.burn.length) {
-            //_burn(burnTransaction.liquidity, burnTransaction.tickLower, burnTransaction.tickUpper, burnTransaction.owner);
-            burnTransaction = transactions.burn[burnIndex++];
+            swapIndex++;
+            if (swapIndex < transactions.swap.length) {
+                swapTransaction = transactions.swap[swapIndex];
+            } else {
+                swapTransaction.block = type(uint256).max;
+            }
+        } else if (actualBlock == mintTransaction.block) {
+            _mint(
+                mintTransaction.liquidity,
+                mintTransaction.tickLower,
+                mintTransaction.tickUpper
+            );
+            mintIndex++;
+            if (mintIndex < transactions.mint.length) {
+                mintTransaction = transactions.mint[mintIndex];
+            } else {
+                mintTransaction.block = type(uint256).max;
+            }
+        } else if (actualBlock == burnTransaction.block) {
+            _burn(
+                burnTransaction.liquidity,
+                burnTransaction.tickLower,
+                burnTransaction.tickUpper,
+                burnTransaction.owner
+            );
+            burnIndex++;
+            if (burnIndex < transactions.burn.length) {
+                burnTransaction = transactions.burn[burnIndex];
+            } else {
+                burnTransaction.block = type(uint256).max;
+            }
         } else {
             return true;
         }
@@ -186,17 +229,19 @@ contract HistoryTest is Integration {
 
     function testSimulateTransactions() public {
         PoolTranactions memory transactions = _readTransactions();
-        
+
         string memory forkUrl = vm.envString("OPTIMISM_RPC");
         actualBlock = _getNextTransactionBlock();
-        uint256 forkId = vm.createFork(forkUrl, actualBlock-1);
+        uint256 forkId = vm.createFork(forkUrl, actualBlock / 1000 - 1);
         vm.selectFork(forkId);
         _setUp();
-        //_burn(burnTransaction.liquidity, burnTransaction.tickLower, burnTransaction.tickUpper, burnTransaction.owner);
-        //return;
-        while (!_simulateNextTransaction(transactions)) {
-            (,int24 tick,,,,) = pool.slot0();
-            console2.log(tick);
-        }
+
+        (, int24 tick, , , , ) = pool.slot0();
+        console2.log(tick);
+        console2.log(pool.liquidity());
+        while (!_simulateNextTransaction(transactions)) {}
+        (, tick, , , , ) = pool.slot0();
+        console2.log(tick);
+        console2.log(pool.liquidity());
     }
 }

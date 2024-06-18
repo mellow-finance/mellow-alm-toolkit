@@ -9,14 +9,13 @@ load_dotenv()
 class MintTransaction:
     def __init__(self, log):
         self.txHash = log.transactionHash.hex()
-        self.block = log.blockNumber
+        self.block = log.blockNumber*1000 + log.transactionIndex
         self.tickLower = int.from_bytes(log.topics[2], byteorder='big', signed=True)
         self.tickUpper = int.from_bytes(log.topics[3], byteorder='big', signed=True)
         self.__extractData(log.data)
 
     def __extractData(self, data):
         data_bytes = bytes(data)
-        #self.sender = '0x' + data_bytes[12:32].hex()
         liquidity = data_bytes[32:64]
         amount0 = data_bytes[64:96]
         amount1 = data_bytes[96:128]
@@ -32,7 +31,7 @@ class MintTransaction:
 class BurnTransaction:
     def __init__(self, log):
         self.txHash = log.transactionHash.hex()
-        self.block = log.blockNumber
+        self.block = log.blockNumber*1000 + log.transactionIndex
         self.owner = log.topics[1][12:32].hex()
         self.tickLower = int.from_bytes(log.topics[2], byteorder='big', signed=True)
         self.tickUpper = int.from_bytes(log.topics[3], byteorder='big', signed=True)
@@ -55,7 +54,7 @@ class BurnTransaction:
 class SwapTransaction:
     def __init__(self, log):
         self.txHash = log.transactionHash.hex()
-        self.block = log.blockNumber
+        self.block = log.blockNumber*1000 + log.transactionIndex
         self.__extractData(log.data)
 
     def __extractData(self, data):
@@ -87,7 +86,6 @@ class SwapLogLoader:
         self.poolAddress = poolAddress
         self.startBlock = startBlock
         self.endBlock = endBlock
-        self.__csvInitialized = False
         self.path = 'data/' + self.chainId + "/" + self.poolAddress
         with open(self.abiFile) as f:
             self.abiPool = json.load(f)
@@ -186,6 +184,6 @@ class SwapLogLoader:
 
 #swapLogLoader = SwapLogLoader('10', "velodrome", "0x2d5814480EC2698B46B5b3f3287A89d181612228", 118000000, 121385392)
 #swapLogLoader = SwapLogLoader('10', "velodrome", "0x3241738149B24C9164dA14Fa2040159FFC6Dd237", 121085392, 121385392)
-swapLogLoader = SwapLogLoader('10', "velodrome", "0x1e60272caDcFb575247a666c11DBEA146299A2c4", 121385292, 121385392)
+swapLogLoader = SwapLogLoader('10', "velodrome", "0x1e60272caDcFb575247a666c11DBEA146299A2c4", 117069418, 117994418)
 # weth-op 0x1e60272caDcFb575247a666c11DBEA146299A2c4
 swapLogLoader.loadSwaps()
