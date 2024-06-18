@@ -33,7 +33,7 @@ class BurnTransaction:
     def __init__(self, log):
         self.txHash = log.transactionHash.hex()
         self.block = log.blockNumber
-        self.owner = '0x' + log.topics[1][12:32].hex()
+        self.owner = log.topics[1][12:32].hex()
         self.tickLower = int.from_bytes(log.topics[2], byteorder='big', signed=True)
         self.tickUpper = int.from_bytes(log.topics[3], byteorder='big', signed=True)
         self.__extractData(log.data)
@@ -186,6 +186,6 @@ class SwapLogLoader:
 
 #swapLogLoader = SwapLogLoader('10', "velodrome", "0x2d5814480EC2698B46B5b3f3287A89d181612228", 118000000, 121385392)
 #swapLogLoader = SwapLogLoader('10', "velodrome", "0x3241738149B24C9164dA14Fa2040159FFC6Dd237", 121085392, 121385392)
-swapLogLoader = SwapLogLoader('10', "velodrome", "0x1e60272caDcFb575247a666c11DBEA146299A2c4", 121380392, 121385392)
+swapLogLoader = SwapLogLoader('10', "velodrome", "0x1e60272caDcFb575247a666c11DBEA146299A2c4", 121385292, 121385392)
 # weth-op 0x1e60272caDcFb575247a666c11DBEA146299A2c4
 swapLogLoader.loadSwaps()

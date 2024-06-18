@@ -91,18 +91,14 @@ contract HistoryTest is Integration {
     ) external {
         require(msg.sender == address(pool), "Unauthorized callback");
         address recipient = abi.decode(data, (address));
-        if (amount0Delta < 0) {
-            token0.safeTransfer(recipient, uint256(-amount0Delta));
-        } else {
+        if (amount0Delta > 0) {
             token0.safeTransferFrom(
                 recipient,
                 address(pool),
                 uint256(amount0Delta)
             );
         }
-        if (amount1Delta < 0) {
-            token1.safeTransfer(recipient, uint256(-amount1Delta));
-        } else {
+        if (amount1Delta > 0) {
             token1.safeTransferFrom(
                 recipient,
                 address(pool),
@@ -177,10 +173,10 @@ contract HistoryTest is Integration {
             _swap(swapTransaction.amount0, swapTransaction.amount1);
             swapTransaction = transactions.swap[swapIndex++];
         } else if (actualBlock == mintTransaction.block && mintIndex < transactions.mint.length) {
-            _mint(mintTransaction.liquidity, mintTransaction.tickLower, mintTransaction.tickUpper);
+            //_mint(mintTransaction.liquidity, mintTransaction.tickLower, mintTransaction.tickUpper);
             mintTransaction = transactions.mint[mintIndex++];
         } else if (actualBlock == burnTransaction.block && burnIndex < transactions.burn.length) {
-            _burn(burnTransaction.liquidity, burnTransaction.tickLower, burnTransaction.tickUpper, burnTransaction.owner);
+            //_burn(burnTransaction.liquidity, burnTransaction.tickLower, burnTransaction.tickUpper, burnTransaction.owner);
             burnTransaction = transactions.burn[burnIndex++];
         } else {
             return true;
@@ -191,19 +187,13 @@ contract HistoryTest is Integration {
     function testSimulateTransactions() public {
         PoolTranactions memory transactions = _readTransactions();
         
-        //string memory forkUrl = vm.envString("OPTIMISM_RPC");
-        //actualBlock = _getNextTransactionBlock();
-        //uint256 forkId = vm.createFork(forkUrl, actualBlock-1);
-        //vm.selectFork(forkId);
+        string memory forkUrl = vm.envString("OPTIMISM_RPC");
+        actualBlock = _getNextTransactionBlock();
+        uint256 forkId = vm.createFork(forkUrl, actualBlock-1);
+        vm.selectFork(forkId);
         _setUp();
-
-        console2.log(address(token0), address(token1));
-        console2.log("balance0 pool", token0.balanceOf(address(pool)));
-        console2.log("balance1 pool", token1.balanceOf(address(pool)));
-        console2.log("balance0 this", token0.balanceOf(address(this)));
-        console2.log("balance1 this", token1.balanceOf(address(this)));
-        _swap(swapTransaction.amount0, swapTransaction.amount1);
-        return;
+        //_burn(burnTransaction.liquidity, burnTransaction.tickLower, burnTransaction.tickUpper, burnTransaction.owner);
+        //return;
         while (!_simulateNextTransaction(transactions)) {
             (,int24 tick,,,,) = pool.slot0();
             console2.log(tick);
