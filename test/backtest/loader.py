@@ -76,17 +76,18 @@ class SwapTransaction:
                 for key, value in self.__dict__.items() if not key.startswith('_')}
     
 class SwapLogLoader:
-    def __init__(self, chainId, dex, poolAddress, startBlock, endBlock):
+    def __init__(self, chainId, dex, poolAddress, startBlock):
 
         self.chainId = chainId
         self.__readSettings(dex)
-
-        print("rpc_url", self.rpcUrl)
+        self.__connect()
         
         self.poolAddress = poolAddress
         self.startBlock = startBlock
-        self.endBlock = endBlock
-        self.path = 'data/' + self.chainId + "/" + self.poolAddress
+        self.endBlock = self.rpc.eth.block_number
+        self.path = 'data/' + self.chainId + "/" + self.poolAddress + "/" 
+        os.makedirs(self.path, exist_ok=True)
+        self.part = 1
         with open(self.abiFile) as f:
             self.abiPool = json.load(f)
         self.swaps = []
@@ -94,9 +95,9 @@ class SwapLogLoader:
         self.burns = []
 
     def __getFilename(self, name):
-        return self.path + "_" + name
+        return self.path + name
 
-    def connect(self):
+    def __connect(self):
         self.rpc = Web3(HTTPProvider(self.rpcUrl))
         if self.rpc.is_connected():
             print("Connected async to chain %s node" % (self.chainId))
@@ -131,7 +132,6 @@ class SwapLogLoader:
         pass
 
     def loadSwaps(self):
-        self.connect()
         self.__getTokenDecimals()
         fromBlock = self.startBlock
         toBlock = fromBlock + self.logBatch
@@ -166,8 +166,12 @@ class SwapLogLoader:
 
             fromBlock += self.logBatch
             toBlock += self.logBatch
-
-        self.writeToJsonFile()
+            if len(self.swaps) + len(self.mints) + len(self.burns) > 10000:
+                self.writeToJsonFile()
+                self.part += 1
+                self.swaps = []
+                self.mints = []
+                self.burns = []
 
     def writeToJsonFile(self):
         data = {
@@ -175,7 +179,7 @@ class SwapLogLoader:
             'mint': [instance.toDict() for instance in self.mints],
             'burn': [instance.toDict() for instance in self.burns],
         }
-        with open(self.__getFilename("transactions")+".json", 'w') as file:
+        with open(self.__getFilename("transactions")+"_"+str(self.part)+".json", 'w') as file:
             json.dump(data, file, indent=4)
 
     def appendToCsv(self, obj):
@@ -184,6 +188,6 @@ class SwapLogLoader:
 
 #swapLogLoader = SwapLogLoader('10', "velodrome", "0x2d5814480EC2698B46B5b3f3287A89d181612228", 118000000, 121385392)
 #swapLogLoader = SwapLogLoader('10', "velodrome", "0x3241738149B24C9164dA14Fa2040159FFC6Dd237", 121085392, 121385392)
-swapLogLoader = SwapLogLoader('10', "velodrome", "0x1e60272caDcFb575247a666c11DBEA146299A2c4", 117069418, 117994418)
+swapLogLoader = SwapLogLoader('10', "velodrome", "0x1e60272caDcFb575247a666c11DBEA146299A2c4", 117069418)
 # weth-op 0x1e60272caDcFb575247a666c11DBEA146299A2c4
 swapLogLoader.loadSwaps()

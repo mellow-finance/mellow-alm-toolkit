@@ -2,7 +2,7 @@
   "10": {
     "rpc_env": "OPTIMISM_RPC",
     "name": "optimism",
-    "logBatch": 5000,
+    "logBatch": 20000,
     "abiErc20File": "./abi/erc20.json",
     "dex": {
       "velodrome": {

@@ -74,7 +74,7 @@ contract HistoryTest is Integration {
         returns (PoolTranactions memory transactions)
     {
         string
-            memory path = "test/backtest/data/10/0x1e60272caDcFb575247a666c11DBEA146299A2c4_transactions.json";
+            memory path = "test/backtest/data/10/0x1e60272caDcFb575247a666c11DBEA146299A2c4/transactions_1.json";
         string memory json = vm.readFile(path);
         bytes memory data = vm.parseJson(json);
         transactions = abi.decode(data, (PoolTranactions));
@@ -156,8 +156,7 @@ contract HistoryTest is Integration {
     function _burn(
         uint128 liquidity,
         int24 tickLower,
-        int24 tickUpper,
-        address owner
+        int24 tickUpper
     ) private {
         vm.startPrank(address(this));
         try pool.burn(tickLower, tickUpper, liquidity) {} catch Error(
@@ -212,8 +211,7 @@ contract HistoryTest is Integration {
             _burn(
                 burnTransaction.liquidity,
                 burnTransaction.tickLower,
-                burnTransaction.tickUpper,
-                burnTransaction.owner
+                burnTransaction.tickUpper
             );
             burnIndex++;
             if (burnIndex < transactions.burn.length) {
