@@ -40,16 +40,26 @@ struct PoolTranactions {
 }
 
 contract HistoryTest is Integration {
+    using SafeERC20 for ERC20;
     address public constant USER = address(bytes20(keccak256("USER")));
     ICLPool private pool;
     ERC20 private token0;
     ERC20 private token1;
+    Swap swapTransaction;
+    Mint mintTransaction;
+    Burn burnTransaction;
+    uint256 swapIndex;
+    uint256 mintIndex;
+    uint256 burnIndex;
+    uint256 actualBlock;
 
     function setUp() external override {
         pool = ICLPool(factory.getPool(Constants.WETH, Constants.OP, 200));
         token0 = ERC20(pool.token0());
         token1 = ERC20(pool.token1());
+    }
 
+    function _setUp() private {
         deal(address(token0), address(this), type(uint256).max, false);
         deal(address(token1), address(this), type(uint256).max, false);
 
@@ -61,7 +71,6 @@ contract HistoryTest is Integration {
 
     function _readTransactions()
         private
-        view
         returns (PoolTranactions memory transactions)
     {
         string
@@ -69,6 +78,10 @@ contract HistoryTest is Integration {
         string memory json = vm.readFile(path);
         bytes memory data = vm.parseJson(json);
         transactions = abi.decode(data, (PoolTranactions));
+
+        swapTransaction = transactions.swap[0];
+        mintTransaction = transactions.mint[0];
+        burnTransaction = transactions.burn[0];
     }
 
     function uniswapV3SwapCallback(
@@ -79,18 +92,18 @@ contract HistoryTest is Integration {
         require(msg.sender == address(pool), "Unauthorized callback");
         address recipient = abi.decode(data, (address));
         if (amount0Delta < 0) {
-            token0.transfer(recipient, uint256(-amount0Delta));
+            token0.safeTransfer(recipient, uint256(-amount0Delta));
         } else {
-            token0.transferFrom(
+            token0.safeTransferFrom(
                 recipient,
                 address(pool),
                 uint256(amount0Delta)
             );
         }
         if (amount1Delta < 0) {
-            token1.transfer(recipient, uint256(-amount1Delta));
+            token1.safeTransfer(recipient, uint256(-amount1Delta));
         } else {
-            token1.transferFrom(
+            token1.safeTransferFrom(
                 recipient,
                 address(pool),
                 uint256(amount1Delta)
@@ -106,10 +119,10 @@ contract HistoryTest is Integration {
         require(msg.sender == address(pool), "Unauthorized callback");
         address sender = abi.decode(data, (address));
         if (amount0Owed > 0) {
-            token0.transferFrom(sender, address(pool), amount0Owed);
+            token0.safeTransferFrom(sender, address(pool), amount0Owed);
         }
         if (amount1Owed > 0) {
-            token1.transferFrom(sender, address(pool), amount1Owed);
+            token1.safeTransferFrom(sender, address(pool), amount1Owed);
         }
     }
 
@@ -153,14 +166,47 @@ contract HistoryTest is Integration {
         vm.stopPrank();
     }
 
+    function _getNextTransactionBlock() private view returns (uint256 nextBlock){
+        nextBlock = swapTransaction.block < mintTransaction.block ? swapTransaction.block : mintTransaction.block;
+        nextBlock = burnTransaction.block < nextBlock ? burnTransaction.block : nextBlock;
+    }
+
+    function _simulateNextTransaction(PoolTranactions memory transactions) private returns (bool isEnd)  {
+        actualBlock = _getNextTransactionBlock();
+        if (actualBlock == swapTransaction.block && swapIndex < transactions.swap.length) {
+            _swap(swapTransaction.amount0, swapTransaction.amount1);
+            swapTransaction = transactions.swap[swapIndex++];
+        } else if (actualBlock == mintTransaction.block && mintIndex < transactions.mint.length) {
+            _mint(mintTransaction.liquidity, mintTransaction.tickLower, mintTransaction.tickUpper);
+            mintTransaction = transactions.mint[mintIndex++];
+        } else if (actualBlock == burnTransaction.block && burnIndex < transactions.burn.length) {
+            _burn(burnTransaction.liquidity, burnTransaction.tickLower, burnTransaction.tickUpper, burnTransaction.owner);
+            burnTransaction = transactions.burn[burnIndex++];
+        } else {
+            return true;
+        }
+        return false;
+    }
+
     function testSimulateTransactions() public {
         PoolTranactions memory transactions = _readTransactions();
+        
+        //string memory forkUrl = vm.envString("OPTIMISM_RPC");
+        //actualBlock = _getNextTransactionBlock();
+        //uint256 forkId = vm.createFork(forkUrl, actualBlock-1);
+        //vm.selectFork(forkId);
+        _setUp();
 
-        // Swap memory swap = transactions.swap[0];
-        // _swap(swap.amount0, swap.amount1);
-        //Mint memory mint = transactions.mint[0];
-        //_mint(mint.liquidity, mint.tickLower, mint.tickUpper);
-        //Burn memory burn = transactions.burn[0];
-        //_burn(burn.liquidity, burn.tickLower, burn.tickUpper, burn.owner);
+        console2.log(address(token0), address(token1));
+        console2.log("balance0 pool", token0.balanceOf(address(pool)));
+        console2.log("balance1 pool", token1.balanceOf(address(pool)));
+        console2.log("balance0 this", token0.balanceOf(address(this)));
+        console2.log("balance1 this", token1.balanceOf(address(this)));
+        _swap(swapTransaction.amount0, swapTransaction.amount1);
+        return;
+        while (!_simulateNextTransaction(transactions)) {
+            (,int24 tick,,,,) = pool.slot0();
+            console2.log(tick);
+        }
     }
 }
