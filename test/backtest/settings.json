@@ -1,16 +1,18 @@
 {
-    "10": {
-        "rpc_env": "RPC_OPTIMISM",
-        "name": "optimism",
-        "logBatch": 100000,
-        "abiErc20File": "./abi/erc20.json",
-        "dex": {
-                "velodrome": {
-                    "swapTopic": "0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67",
-                    "manager": "0xbB5DFE1380333CEE4c2EeBd7202c80dE2256AdF4",
-                    "factory": "0x548118C7E0B865C2CfA94D15EC86B666468ac758",
-                    "abiFile": "./abi/velodrom_abi.json"
-                }
-            }
+  "10": {
+    "rpc_env": "OPTIMISM_RPC",
+    "name": "optimism",
+    "logBatch": 5000,
+    "abiErc20File": "./abi/erc20.json",
+    "dex": {
+      "velodrome": {
+        "swapTopic": "0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67",
+        "burnTopic": "0x0c396cd989a39f4459b5fa1aed6a9a8dcdbc45908acfd67e028cd568da98982c",
+        "mintTopic": "0x7a53080ba414158be7ec69b987b5fb7d07dee101fe85488f0853ae16239d0bde",
+        "manager": "0xbB5DFE1380333CEE4c2EeBd7202c80dE2256AdF4",
+        "factory": "0x548118C7E0B865C2CfA94D15EC86B666468ac758",
+        "abiFile": "./abi/velodrom_abi.json"
+      }
     }
+  }
 }

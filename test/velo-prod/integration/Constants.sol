@@ -39,6 +39,7 @@ library Constants {
     address public constant WETH = 0x4200000000000000000000000000000000000006;
     address public constant VELO = 0x9560e827aF36c94D2Ac33a39bCE1Fe78631088Db;
     address public constant WSTETH = 0x1F32b1c2345538c0c6f582fCB022739c4A194Ebb;
+    address public constant USDC = 0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85;
 
     address public constant NONFUNGIBLE_POSITION_MANAGER =
         0xbB5DFE1380333CEE4c2EeBd7202c80dE2256AdF4;
