@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSL-1.1
 pragma solidity ^0.8.0;
 import "../../test/velo-prod/integration/IntegrationTest.t.sol";
-import  {Vm} from  "forge-std/Vm.sol";
+import "../../test/velo-prod/contracts/periphery/interfaces/external/IWETH9.sol";
 
 struct Swap {
     int256 amount0;
@@ -34,16 +34,27 @@ struct Burn {
     bytes32 txHash;
 }
 
+struct CommonTransaction {
+    uint256 typeTransaction; // 0 - swap, 1 - mint, 2 - burn
+    int256 amount0;
+    int256 amount1;
+    uint256 block;
+    uint128 liquidity;
+    int24 tickLower;
+    int24 tickUpper;
+    bytes32 txHash;
+}
+
 struct PoolTranactions {
     Burn[] burn;
     Mint[] mint;
     Swap[] swap;
 }
 
-contract HistoryTest is StdCheats {
+contract HistoryTest is Test {
     using SafeERC20 for ERC20;
     ICLFactory public factory = ICLFactory(Constants.VELO_FACTORY);
-    Vm private constant vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
+    //Vm private constant vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
     bool isInit;
     ICLPool private pool;
     ERC20 private token0;
@@ -57,21 +68,27 @@ contract HistoryTest is StdCheats {
     uint256 actualBlock;
 
     event call(address from);
+    event Balances(uint256 amount0, uint256 amount1);
+    event poolToken(address pool, address token0, address token1);
+    event Transaction(uint256 tp, int256 amount0, int256 amount1, uint128 liquidity, int24 tickLower, int24 tickUpper);
 
     constructor() {
         pool = ICLPool(factory.getPool(Constants.WETH, Constants.OP, 200));
         token0 = ERC20(pool.token0());
         token1 = ERC20(pool.token1());
+        emit poolToken(address(pool), address(token0), address(token1));
     }
 
-    function _setUp() private {
-        deal(address(token0), address(this), type(uint256).max / 2, false);
-        deal(address(token1), address(this), type(uint256).max / 2, false);
-
+    function setUp() public {
+        if (address(this).balance > 0) {
+            IWETH9(Constants.WETH).deposit{value: address(this).balance}();
+        }
         token0.approve(address(this), type(uint256).max);
         token1.approve(address(this), type(uint256).max);
         token0.approve(address(pool), type(uint256).max);
         token1.approve(address(pool), type(uint256).max);
+
+        emit Balances(IERC20(Constants.WETH).balanceOf(address(this)), IERC20(Constants.OP).balanceOf(address(this)));
         
         isInit = true;
     }
@@ -165,6 +182,50 @@ contract HistoryTest is StdCheats {
         }
     }
 
+    function poolTransaction(CommonTransaction[] memory transactions) public {
+        CommonTransaction memory transaction;
+        for (uint256 i = 0; i < transactions.length; i++) {
+            transaction = transactions[i];
+            if (transaction.typeTransaction == 1) {
+                _swap(transaction.amount0, transaction.amount1);
+            } else if (transaction.typeTransaction == 2) {
+                _mint(transaction.liquidity, transaction.tickLower, transaction.tickUpper);
+            } else if (transaction.typeTransaction == 3) {
+                _burn(transaction.liquidity, transaction.tickLower, transaction.tickUpper);
+            }
+            emit Transaction(transaction.typeTransaction, transaction.amount0, transaction.amount1, transaction.liquidity, transaction.tickLower, transaction.tickUpper);
+        }
+    }
+
+    /* function _init() private {
+        string memory forkUrl = vm.envString("OPTIMISM_RPC");
+        actualBlock = _getNextTransactionBlock();
+        uint256 forkId = vm.createFork(forkUrl, actualBlock / 1000 - 1);
+        vm.selectFork(forkId);
+        _setUp();
+        isInit = true;
+    }
+    
+    function testSimulateTransactions(string memory path) public {
+        emit call(msg.sender);
+        //vm.startPrank(address(this));
+        //return;
+//
+        //if (!isInit) {
+        //    _setUp();
+        //}
+        PoolTranactions memory transactions = _readTransactions(path);
+
+        return;
+        (, int24 tick, , , , ) = pool.slot0();
+        console2.log(tick);
+        console2.log(pool.liquidity());
+        while (!_simulateNextTransaction(transactions)) {}
+        (, tick, , , , ) = pool.slot0();
+        console2.log(tick);
+        console2.log(pool.liquidity());
+    }
+
     function _getNextTransactionBlock()
         private
         view
@@ -222,30 +283,5 @@ contract HistoryTest is StdCheats {
         }
         return false;
     }
-
-    /* function _init() private {
-        string memory forkUrl = vm.envString("OPTIMISM_RPC");
-        actualBlock = _getNextTransactionBlock();
-        uint256 forkId = vm.createFork(forkUrl, actualBlock / 1000 - 1);
-        vm.selectFork(forkId);
-        _setUp();
-        isInit = true;
-    } */
-
-    function testSimulateTransactions(string memory path) public {
-        emit call(msg.sender);
-        return;
-        if (!isInit) {
-            _setUp();
-        }
-        PoolTranactions memory transactions = _readTransactions(path);
-
-        (, int24 tick, , , , ) = pool.slot0();
-        console2.log(tick);
-        console2.log(pool.liquidity());
-        while (!_simulateNextTransaction(transactions)) {}
-        (, tick, , , , ) = pool.slot0();
-        console2.log(tick);
-        console2.log(pool.liquidity());
-    }
+ */
 }

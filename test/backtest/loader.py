@@ -8,6 +8,7 @@ load_dotenv()
 
 class MintTransaction:
     def __init__(self, log):
+        self.typeTransaction = 2
         self.txHash = log.transactionHash.hex()
         self.block = log.blockNumber*1000 + log.transactionIndex
         self.tickLower = int.from_bytes(log.topics[2], byteorder='big', signed=True)
@@ -30,9 +31,10 @@ class MintTransaction:
 
 class BurnTransaction:
     def __init__(self, log):
+        self.typeTransaction = 3
         self.txHash = log.transactionHash.hex()
         self.block = log.blockNumber*1000 + log.transactionIndex
-        self.owner = log.topics[1][12:32].hex()
+        #self.owner = log.topics[1][12:32].hex()
         self.tickLower = int.from_bytes(log.topics[2], byteorder='big', signed=True)
         self.tickUpper = int.from_bytes(log.topics[3], byteorder='big', signed=True)
         self.__extractData(log.data)
@@ -53,23 +55,22 @@ class BurnTransaction:
 
 class SwapTransaction:
     def __init__(self, log):
+        self.typeTransaction = 1
         self.txHash = log.transactionHash.hex()
         self.block = log.blockNumber*1000 + log.transactionIndex
+        self.tickLower = 0
+        self.tickUpper = 0
         self.__extractData(log.data)
 
     def __extractData(self, data):
         data_bytes = bytes(data)
         amount0_bytes = data_bytes[:32]
         amount1_bytes = data_bytes[32:64]
-        sqrtPriceX96_bytes = data_bytes[64:96]
         liquidity_bytes = data_bytes[96:128]
-        tick_bytes = data_bytes[128:160]
 
+        self.liquidity = int.from_bytes(liquidity_bytes, byteorder='big', signed=False)
         self.amount0 = int.from_bytes(amount0_bytes, byteorder='big', signed=True)
         self.amount1 = int.from_bytes(amount1_bytes, byteorder='big', signed=True)
-        self.sqrtPriceX96 = int.from_bytes(sqrtPriceX96_bytes, byteorder='big', signed=False)
-        self.liquidity = int.from_bytes(liquidity_bytes, byteorder='big', signed=False)
-        self.tick = int.from_bytes(tick_bytes, byteorder='big', signed=True)
 
     def toDict(self):
         return {key: (value.hex() if isinstance(value, HexBytes) else value) 
@@ -90,9 +91,7 @@ class SwapLogLoader:
         self.part = 1
         with open(self.abiFile) as f:
             self.abiPool = json.load(f)
-        self.swaps = []
-        self.mints = []
-        self.burns = []
+        self.trans = []
 
     def __getFilename(self, name):
         return self.path + name
@@ -136,55 +135,45 @@ class SwapLogLoader:
         fromBlock = self.startBlock
         toBlock = fromBlock + self.logBatch
         while fromBlock < self.endBlock:
+            lasLenLogs = len(self.trans)
             filter_params = {
                 'fromBlock': fromBlock,
                 'toBlock': toBlock,
                 'address': self.poolAddress,
                 'topics': [self.swapTopic]
             }
-            logs = self.rpc.eth.get_logs(filter_params)
-            for log in logs:
-                self.swaps.append(SwapTransaction(log))
-            swapLogs = len(logs)
+            try:
+                logs = self.rpc.eth.get_logs(filter_params)
+            except:
+                print("an error during get_logs")
+                continue
 
+            for log in logs:
+                self.trans.append(SwapTransaction(log))
 
             filter_params['topics'] = [self.mintTopic]
             logs = self.rpc.eth.get_logs(filter_params)
             for log in logs:
-                self.mints.append(MintTransaction(log))
-            mintLogs = len(logs)
-
+                self.trans.append(MintTransaction(log))
 
             filter_params['topics'] = [self.burnTopic]
             logs = self.rpc.eth.get_logs(filter_params)
             for log in logs:
                 tran = BurnTransaction(log)
                 if tran.liquidity > 0:
-                    self.burns.append(tran)
-            burnLogs = len(logs)
-            print(f"from [{fromBlock}, {toBlock}] blocks recieved: {swapLogs} swap logs | {mintLogs} mint logs | {burnLogs} burn logs")
+                    self.trans.append(tran)
+            print(f"from [{fromBlock}, {toBlock}] blocks recieved: {len(self.trans) - lasLenLogs} logs")
 
             fromBlock += self.logBatch
             toBlock += self.logBatch
-            if len(self.swaps) + len(self.mints) + len(self.burns) > 10000:
-                self.writeToJsonFile()
-                self.part += 1
-                self.swaps = []
-                self.mints = []
-                self.burns = []
 
-    def writeToJsonFile(self):
-        data = {
-            'swap': [instance.toDict() for instance in self.swaps],
-            'mint': [instance.toDict() for instance in self.mints],
-            'burn': [instance.toDict() for instance in self.burns],
-        }
-        with open(self.__getFilename("transactions")+"_"+str(self.part)+".json", 'w') as file:
+        self.writeTransToJsonFile()
+
+    def writeTransToJsonFile(self):
+        data = [instance.toDict() for instance in self.trans]
+        with open(self.__getFilename("transactions")+".json", 'w') as file:
             json.dump(data, file, indent=4)
 
-    def appendToCsv(self, obj):
-        data = obj.toDict()
-        self.writer.writerow(data)
 
 #swapLogLoader = SwapLogLoader('10', "velodrome", "0x2d5814480EC2698B46B5b3f3287A89d181612228", 118000000, 121385392)
 #swapLogLoader = SwapLogLoader('10', "velodrome", "0x3241738149B24C9164dA14Fa2040159FFC6Dd237", 121085392, 121385392)
