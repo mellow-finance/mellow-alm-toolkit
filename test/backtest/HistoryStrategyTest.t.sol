@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BSL-1.1
 pragma solidity ^0.8.0;
 import "../../test/velo-prod/integration/IntegrationTest.t.sol";
+import  {Vm} from  "forge-std/Vm.sol";
 
 struct Swap {
     int256 amount0;
@@ -39,9 +40,11 @@ struct PoolTranactions {
     Swap[] swap;
 }
 
-contract HistoryTest is Integration {
+contract HistoryTest is StdCheats {
     using SafeERC20 for ERC20;
-    address public constant USER = address(bytes20(keccak256("USER")));
+    ICLFactory public factory = ICLFactory(Constants.VELO_FACTORY);
+    Vm private constant vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
+    bool isInit;
     ICLPool private pool;
     ERC20 private token0;
     ERC20 private token1;
@@ -53,7 +56,9 @@ contract HistoryTest is Integration {
     uint256 burnIndex;
     uint256 actualBlock;
 
-    function setUp() external override {
+    event call(address from);
+
+    constructor() {
         pool = ICLPool(factory.getPool(Constants.WETH, Constants.OP, 200));
         token0 = ERC20(pool.token0());
         token1 = ERC20(pool.token1());
@@ -67,21 +72,16 @@ contract HistoryTest is Integration {
         token1.approve(address(this), type(uint256).max);
         token0.approve(address(pool), type(uint256).max);
         token1.approve(address(pool), type(uint256).max);
+        
+        isInit = true;
     }
 
-    function _readTransactions()
-        private
-        returns (PoolTranactions memory transactions)
-    {
-        string
-            memory path = "test/backtest/data/10/0x1e60272caDcFb575247a666c11DBEA146299A2c4/transactions_1.json";
+    function _readTransactions(
+        string memory path
+    ) private view returns (PoolTranactions memory transactions) {
         string memory json = vm.readFile(path);
         bytes memory data = vm.parseJson(json);
         transactions = abi.decode(data, (PoolTranactions));
-
-        swapTransaction = transactions.swap[0];
-        mintTransaction = transactions.mint[0];
-        burnTransaction = transactions.burn[0];
     }
 
     function uniswapV3SwapCallback(
@@ -158,13 +158,11 @@ contract HistoryTest is Integration {
         int24 tickLower,
         int24 tickUpper
     ) private {
-        vm.startPrank(address(this));
         try pool.burn(tickLower, tickUpper, liquidity) {} catch Error(
             string memory reason
         ) {
             console2.log(reason);
         }
-        vm.stopPrank();
     }
 
     function _getNextTransactionBlock()
@@ -225,14 +223,22 @@ contract HistoryTest is Integration {
         return false;
     }
 
-    function testSimulateTransactions() public {
-        PoolTranactions memory transactions = _readTransactions();
-
+    /* function _init() private {
         string memory forkUrl = vm.envString("OPTIMISM_RPC");
         actualBlock = _getNextTransactionBlock();
         uint256 forkId = vm.createFork(forkUrl, actualBlock / 1000 - 1);
         vm.selectFork(forkId);
         _setUp();
+        isInit = true;
+    } */
+
+    function testSimulateTransactions(string memory path) public {
+        emit call(msg.sender);
+        return;
+        if (!isInit) {
+            _setUp();
+        }
+        PoolTranactions memory transactions = _readTransactions(path);
 
         (, int24 tick, , , , ) = pool.slot0();
         console2.log(tick);
