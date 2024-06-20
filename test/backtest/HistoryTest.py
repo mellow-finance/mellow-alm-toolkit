@@ -13,6 +13,7 @@ OP_HOLDER = '0x790b4086D106Eafd913e71843AED987eFE291c92'
 OP_ADRESS = '0x4200000000000000000000000000000000000042'
 WETH_ADRESS = '0x4200000000000000000000000000000000000006'
 TRANSACTION_BATCH = 100
+BLOCK_VALID_POSITION = 117109417
 # Start Anvil with custom code size limit
 #anvil_process = subprocess.Popen([
 #    'anvil',
@@ -45,7 +46,7 @@ class HistoryTest:
     def __connect(self):
         self.rpc = Web3(HTTPProvider(self.rpcUrl))
         if self.rpc.is_connected():
-            print("Connected async to chain %s node" % (CHAIN_ID))
+            print("Connected to chain %s node" % (CHAIN_ID))
         else:
             print("Failed to connect to %s node" % (CHAIN_ID))
             exit(1)
@@ -106,7 +107,7 @@ class HistoryTest:
         nonce = self.rpc.eth.get_transaction_count(OPERATOR)
         txData = {
             'from': OPERATOR,
-            'chainId': CHAIN_ID,  # Update the chain ID if necessary
+            'chainId': CHAIN_ID,
             'gas': GAS_LIMIT,
             'data': self.bytecodeTest,
             'nonce': nonce,
@@ -126,10 +127,16 @@ class HistoryTest:
         self.testContract = self.rpc.eth.contract(address=self.testContractAddress, abi=self.abiTest)
 
         self.__grantTokens(receipt.contractAddress)
-        self.__setUp()
+        self.__init()
+        return
+        self.strategyModule = self.testContract.functions.strategyModule().call()
+        print(f"strategyModule {self.strategyModule}")
+        self.pulseVeloBot = self.testContract.functions.pulseVeloBot().call()
+        print(f"pulseVeloBot {self.pulseVeloBot}")
 
-    def __setUp(self):
-        txData = self.testContract.functions.setUp().build_transaction({
+
+    def __init(self):
+        txData = self.testContract.functions.init().build_transaction({
             'from': OPERATOR,
             'chainId': CHAIN_ID,
             'gas': GAS_LIMIT,
@@ -138,21 +145,36 @@ class HistoryTest:
         })
         receipt = self.__sendTransaction(txData)
 
+    def __setUpStrategy(self):
+        txData = self.testContract.functions.setUpStrategy().build_transaction({
+            'from': OPERATOR,
+            'chainId': CHAIN_ID,
+            'gas': GAS_LIMIT,
+            'nonce': self.rpc.eth.get_transaction_count(OPERATOR),
+            'gasPrice': self.rpc.eth.gas_price,
+        })
+        return self.__sendTransaction(txData)
+
     def simulate(self):
-        self.__setUp()
+        reciept = self.__setUpStrategy()
+        if reciept.status != 1:
+            print(f"set up staretegy is finished with {reciept.status}")
+            print(reciept)
+            exit(1)
         filePath =  os.path.abspath('data/10/0x1e60272caDcFb575247a666c11DBEA146299A2c4/transactions.json')
         data = None
         with open(filePath, 'r') as file:
             data = json.load(file)
         data = sorted(data, key=lambda x: x["block"])
         successAll = 0
+        isSetUp = False
         for step in range(len(data)//TRANSACTION_BATCH):
             formatted_transactions = [
                 {
                     "typeTransaction": tx["typeTransaction"],
                     "amount0": int(tx["amount0"]),
                     "amount1": int(tx["amount1"]),
-                    "block": tx["block"],
+                    "block": tx["block"]//1000,
                     "liquidity": int(tx["liquidity"]),
                     "tickLower": tx["tickLower"],
                     "tickUpper": tx["tickUpper"],
@@ -177,6 +199,14 @@ class HistoryTest:
             successBatch = self.testContract.functions.poolTransaction(formatted_transactions).call()
             successAll += successBatch
             print(f"{step}-th batch: {100*successBatch/TRANSACTION_BATCH}% | total: {100*successAll/((step+1)*TRANSACTION_BATCH)}%")
+
+            #if not isSetUp and formatted_transactions[len(formatted_transactions)-1]['block'] > BLOCK_VALID_POSITION:
+            #    reciept = self.__setUpStrategy()
+            #    print(f"set up staretegy is finished with {reciept.status}")
+            #    if reciept.status != 1:
+            #        print(reciept)
+            #        exit(1)
+            #    isSetUp = True
         
 swapLogLoader = HistoryTest("velodrome", "0x1e60272caDcFb575247a666c11DBEA146299A2c4", 117069418)
 swapLogLoader.simulate()

@@ -2,37 +2,8 @@
 pragma solidity ^0.8.0;
 import "../../test/velo-prod/integration/IntegrationTest.t.sol";
 import "../../test/velo-prod/contracts/periphery/interfaces/external/IWETH9.sol";
-
-struct Swap {
-    int256 amount0;
-    int256 amount1;
-    uint256 block;
-    uint128 liquidity;
-    uint256 sqrtPriceX96;
-    int24 tick;
-    bytes32 txHash;
-}
-
-struct Mint {
-    int256 amount0;
-    int256 amount1;
-    uint256 block;
-    uint128 liquidity;
-    int24 tickLower;
-    int24 tickUpper;
-    bytes32 txHash;
-}
-
-struct Burn {
-    int256 amount0;
-    int256 amount1;
-    uint256 block;
-    uint128 liquidity;
-    address owner;
-    int24 tickLower;
-    int24 tickUpper;
-    bytes32 txHash;
-}
+import "../../src/modules/strategies/PulseStrategyModule.sol";
+import "../../src/bots/PulseVeloBot.sol";
 
 struct CommonTransaction {
     uint256 typeTransaction; // 0 - swap, 1 - mint, 2 - burn
@@ -45,26 +16,26 @@ struct CommonTransaction {
     bytes32 txHash;
 }
 
-struct PoolTranactions {
-    Burn[] burn;
-    Mint[] mint;
-    Swap[] swap;
-}
-
 contract HistoryTest is Test {
     using SafeERC20 for ERC20;
-    ICLFactory public factory = ICLFactory(Constants.VELO_FACTORY);
-    bool isInit;
+    uint32 public immutable MELLOW_PROTOCOL_FEE = 1e8;
+    address public immutable MELLOW_PROTOCOL_TREASURY = address(bytes20((keccak256("treasury"))));
+
+    ICLFactory public immutable factory = ICLFactory(Constants.VELO_FACTORY);
+    VeloOracle public immutable oracle = new VeloOracle();
+    INonfungiblePositionManager public immutable manager = INonfungiblePositionManager(Constants.NONFUNGIBLE_POSITION_MANAGER);
+    PulseStrategyModule public immutable strategyModule = new PulseStrategyModule();
+    VeloDeployFactoryHelper public immutable velotrDeployFactoryHelper = new VeloDeployFactoryHelper();
+    VeloAmmModule public immutable ammModule = new VeloAmmModule(manager);
+    VeloDepositWithdrawModule public immutable veloDepositWithdrawModule = new VeloDepositWithdrawModule(manager);
+    Core public immutable core = new Core(ammModule, strategyModule, oracle, address(this));
+    VeloDeployFactory public immutable veloDeployFactory = new VeloDeployFactory(address(this), core, veloDepositWithdrawModule, velotrDeployFactoryHelper);
+
+    IPulseStrategyModule.StrategyParams public strategyParams;
     ICLPool private pool;
     ERC20 private token0;
     ERC20 private token1;
-    Swap swapTransaction;
-    Mint mintTransaction;
-    Burn burnTransaction;
-    uint256 swapIndex;
-    uint256 mintIndex;
-    uint256 burnIndex;
-    uint256 actualBlock;
+    uint256 tokenId;
 
     event call(address from);
     event Balances(uint256 amount0, uint256 amount1);
@@ -80,36 +51,97 @@ contract HistoryTest is Test {
 
     constructor() {
         pool = ICLPool(factory.getPool(Constants.WETH, Constants.OP, 200));
+        pool.increaseObservationCardinalityNext(100);
         token0 = ERC20(pool.token0());
         token1 = ERC20(pool.token1());
         emit poolToken(address(pool), address(token0), address(token1));
     }
 
-    function setUp() public {
-        if (address(this).balance > 0) {
+    function setUpStrategy() public {
+        if (tokenId != 0) {
+            revert("strategy is alredy set up");
+        }
+        init();
+        int24 tickSpacing = pool.tickSpacing();
+        strategyParams.strategyType = IPulseStrategyModule.StrategyType.LazySyncing;
+        strategyParams.tickNeighborhood = 0;
+        strategyParams.tickSpacing = tickSpacing;
+        strategyParams.width = tickSpacing;
+        strategyModule.validateStrategyParams(abi.encode(strategyParams));
+
+        (uint160 sqrtPriceX96, int24 tick, , , , ) = pool.slot0();
+        int24 tickLower = tickSpacing * (tick / tickSpacing);
+        int24 tickUpper = tickLower + tickSpacing;
+        uint128 liquidity = 4188 * 10**18;
+        (uint256 amount0, uint256 amount1) = LiquidityAmounts
+                    .getAmountsForLiquidity(
+                        sqrtPriceX96,
+                        TickMath.getSqrtRatioAtTick(tickLower),
+                        TickMath.getSqrtRatioAtTick(tickUpper),
+                        liquidity + 1
+                    );
+
+        (tokenId, , , ) = manager.mint(
+            INonfungiblePositionManager.MintParams({
+                token0: pool.token0(),
+                token1: pool.token1(),
+                tickLower: tickLower,
+                tickUpper: tickUpper,
+                tickSpacing: pool.tickSpacing(),
+                amount0Desired: amount0,
+                amount1Desired: amount1,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: address(this),
+                deadline: block.timestamp,
+                sqrtPriceX96: 0
+            })
+        );
+        manager.approve(address(veloDeployFactory), tokenId);
+
+        veloDeployFactory.updateMutableParams(IVeloDeployFactory.MutableParams({
+            lpWrapperAdmin: address(this),
+            lpWrapperManager: address(this),
+            farmOwner: address(this),
+            farmOperator: address(this),
+            minInitialLiquidity: 10**18
+        }));
+        
+        veloDeployFactory.createStrategy(IVeloDeployFactory.DeployParams({
+            tickNeighborhood: 0,
+            slippageD9: 1e8,
+            tokenId: tokenId,
+            securityParams: abi.encode(IVeloOracle.SecurityParams({
+                lookback: 1,
+                maxAge: 1 days,
+                maxAllowedDelta: 10
+            })),
+            strategyType: IPulseStrategyModule.StrategyType.LazySyncing
+        }));
+    }
+
+    function init() public {
+        if (address(this).balance > 0){
             IWETH9(Constants.WETH).deposit{value: address(this).balance}();
         }
         token0.approve(address(this), type(uint256).max);
-        token1.approve(address(this), type(uint256).max);
         token0.approve(address(pool), type(uint256).max);
+        token0.approve(address(manager), type(uint256).max);
+        token1.approve(address(this), type(uint256).max);
         token1.approve(address(pool), type(uint256).max);
-
+        token1.approve(address(manager), type(uint256).max);
         emit Balances(
             IERC20(Constants.WETH).balanceOf(address(this)),
             IERC20(Constants.OP).balanceOf(address(this))
         );
-
-        isInit = true;
     }
 
-    function _readTransactions(
-        string memory path
-    ) private view returns (PoolTranactions memory transactions) {
-        string memory json = vm.readFile(path);
-        bytes memory data = vm.parseJson(json);
-        transactions = abi.decode(data, (PoolTranactions));
+    function testInitPosition() public {        
+        deal(address(token0), address(this), 10**24);
+        deal(address(token1), address(this), 10**24);
+        setUpStrategy();
     }
-
+    
     function uniswapV3SwapCallback(
         int256 amount0Delta,
         int256 amount1Delta,
@@ -204,6 +236,17 @@ contract HistoryTest is Test {
         return result;
     }
 
+    function checkPosition() public {
+        ICore.ManagedPositionInfo memory info;
+        info.slippageD9 = 10**8;
+        info.owner = address(this);
+        info.pool = address(pool);
+
+        (bool isRebalanceRequired,
+            ICore.TargetPositionInfo memory target) = strategyModule.getTargets(info, ammModule, oracle);
+        //pulseVeloBot.call
+    }
+    
     function poolTransaction(
         CommonTransaction[] memory transactions
     ) public returns (uint256 successfulTransactions) {
