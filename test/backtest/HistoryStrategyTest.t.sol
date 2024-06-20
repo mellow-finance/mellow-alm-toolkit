@@ -30,6 +30,7 @@ contract HistoryTest is Test {
     VeloDepositWithdrawModule public immutable veloDepositWithdrawModule = new VeloDepositWithdrawModule(manager);
     Core public immutable core = new Core(ammModule, strategyModule, oracle, address(this));
     VeloDeployFactory public immutable veloDeployFactory = new VeloDeployFactory(address(this), core, veloDepositWithdrawModule, velotrDeployFactoryHelper);
+    PulseVeloBot public immutable pulseVeloBot = new PulseVeloBot(IQuoterV2(address(0)), ISwapRouter(address(0)), manager);
 
     IPulseStrategyModule.StrategyParams public strategyParams;
     ICLPool private pool;
@@ -118,6 +119,20 @@ contract HistoryTest is Test {
             })),
             strategyType: IPulseStrategyModule.StrategyType.LazySyncing
         }));
+
+        rebalance();
+    }
+
+    function rebalance() public returns (uint256) { //(int24 tikLower, int24 tickUpper, int24 tick){
+        uint256[] memory ids = new uint256[](1);
+        ids[0] = 0;
+        core.rebalance(ICore.RebalanceParams({
+            ids: ids,
+            callback: address(pulseVeloBot),
+            data: abi.encode(new ISwapRouter.ExactInputSingleParams[](0))
+        }));
+        ICore.ManagedPositionInfo memory position = core.managedPositionAt(0);
+        return position.ammPositionIds[0];
     }
 
     function init() public {

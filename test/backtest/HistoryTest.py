@@ -154,6 +154,19 @@ class HistoryTest:
             'gasPrice': self.rpc.eth.gas_price,
         })
         return self.__sendTransaction(txData)
+    
+    def __rebalance(self):
+        txData = self.testContract.functions.rebalance().build_transaction({
+            'from': OPERATOR,
+            'chainId': CHAIN_ID,
+            'gas': GAS_LIMIT,
+            'nonce': self.rpc.eth.get_transaction_count(OPERATOR),
+            'gasPrice': self.rpc.eth.gas_price,
+        })
+        reciept = self.__sendTransaction(txData)
+        if reciept.status == 1:
+            return self.testContract.functions.rebalance().call()
+        return 0
 
     def simulate(self):
         reciept = self.__setUpStrategy()
@@ -199,14 +212,8 @@ class HistoryTest:
             successBatch = self.testContract.functions.poolTransaction(formatted_transactions).call()
             successAll += successBatch
             print(f"{step}-th batch: {100*successBatch/TRANSACTION_BATCH}% | total: {100*successAll/((step+1)*TRANSACTION_BATCH)}%")
-
-            #if not isSetUp and formatted_transactions[len(formatted_transactions)-1]['block'] > BLOCK_VALID_POSITION:
-            #    reciept = self.__setUpStrategy()
-            #    print(f"set up staretegy is finished with {reciept.status}")
-            #    if reciept.status != 1:
-            #        print(reciept)
-            #        exit(1)
-            #    isSetUp = True
+            tokenId = self.__rebalance()
+            print(f"tokenId {tokenId}")
         
 swapLogLoader = HistoryTest("velodrome", "0x1e60272caDcFb575247a666c11DBEA146299A2c4", 117069418)
 swapLogLoader.simulate()
