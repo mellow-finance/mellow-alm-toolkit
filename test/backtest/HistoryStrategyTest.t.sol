@@ -54,7 +54,6 @@ struct PoolTranactions {
 contract HistoryTest is Test {
     using SafeERC20 for ERC20;
     ICLFactory public factory = ICLFactory(Constants.VELO_FACTORY);
-    //Vm private constant vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
     bool isInit;
     ICLPool private pool;
     ERC20 private token0;
@@ -149,12 +148,16 @@ contract HistoryTest is Test {
         }
     }
 
-    function _swap(int256 amount0, int256 amount1) private {
+    function _swap(
+        int256 amount0,
+        int256 amount1
+    ) private returns (bool result) {
         bool zeroForOne = amount0 > 0 ? true : false;
         int256 amountSpecified = zeroForOne ? amount0 : amount1;
         uint160 sqrtPriceLimitX96 = zeroForOne
             ? TickMath.MIN_SQRT_RATIO + 1
             : TickMath.MAX_SQRT_RATIO - 1;
+        result = true;
         try
             pool.swap(
                 address(this),
@@ -163,14 +166,18 @@ contract HistoryTest is Test {
                 sqrtPriceLimitX96,
                 abi.encode(address(this))
             )
-        {} catch {}
+        {} catch {
+            result = false;
+        }
+        return result;
     }
 
     function _mint(
         uint128 liquidity,
         int24 tickLower,
         int24 tickUpper
-    ) private {
+    ) private returns (bool result) {
+        result = true;
         try
             pool.mint(
                 address(this),
@@ -179,44 +186,56 @@ contract HistoryTest is Test {
                 liquidity,
                 abi.encode(address(this))
             )
-        {} catch {}
+        {} catch {
+            result = false;
+        }
+        return result;
     }
 
     function _burn(
         uint128 liquidity,
         int24 tickLower,
         int24 tickUpper
-    ) private {
-        try pool.burn(tickLower, tickUpper, liquidity) {} catch {}
+    ) private returns (bool result) {
+        result = true;
+        try pool.burn(tickLower, tickUpper, liquidity) {} catch {
+            result = false;
+        }
+        return result;
     }
 
-    function poolTransaction(CommonTransaction[] memory transactions) public {
+    function poolTransaction(
+        CommonTransaction[] memory transactions
+    ) public returns (uint256 successfulTransactions) {
         CommonTransaction memory transaction;
         for (uint256 i = 0; i < transactions.length; i++) {
             transaction = transactions[i];
             if (transaction.typeTransaction == 1) {
-                _swap(transaction.amount0, transaction.amount1);
+                if (_swap(transaction.amount0, transaction.amount1)) {
+                    successfulTransactions++;
+                }
             } else if (transaction.typeTransaction == 2) {
-                _mint(
-                    transaction.liquidity,
-                    transaction.tickLower,
-                    transaction.tickUpper
-                );
+                if (
+                    _mint(
+                        transaction.liquidity,
+                        transaction.tickLower,
+                        transaction.tickUpper
+                    )
+                ) {
+                    successfulTransactions++;
+                }
             } else if (transaction.typeTransaction == 3) {
-                _burn(
-                    transaction.liquidity,
-                    transaction.tickLower,
-                    transaction.tickUpper
-                );
+                if (
+                    _burn(
+                        transaction.liquidity,
+                        transaction.tickLower,
+                        transaction.tickUpper
+                    )
+                ) {
+                    successfulTransactions++;
+                }
             }
-            emit Transaction(
-                transaction.typeTransaction,
-                transaction.amount0,
-                transaction.amount1,
-                transaction.liquidity,
-                transaction.tickLower,
-                transaction.tickUpper
-            );
         }
+        return successfulTransactions;
     }
 }

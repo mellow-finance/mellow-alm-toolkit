@@ -11,8 +11,8 @@ GAS_LIMIT = 30000000
 OPERATOR = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266'
 OP_HOLDER = '0x790b4086D106Eafd913e71843AED987eFE291c92'
 OP_ADRESS = '0x4200000000000000000000000000000000000042'
-WETH_ADRESS = '0x420000000000000000000000000000000000006'
-TRANSACTION_BATCH = 10
+WETH_ADRESS = '0x4200000000000000000000000000000000000006'
+TRANSACTION_BATCH = 100
 # Start Anvil with custom code size limit
 #anvil_process = subprocess.Popen([
 #    'anvil',
@@ -65,18 +65,18 @@ class HistoryTest:
             data = json.load(f)
             self.abiTest = data["abi"]
             self.bytecodeTest = data['bytecode']['object']
+        with open(self.abiErc20File) as f:
+            self.abiErc20 = json.load(f)
 
     def __sendTransaction(self, txData):
         txHash = self.rpc.eth.send_transaction(txData)
         return self.rpc.eth.wait_for_transaction_receipt(txHash)
 
     def __grantTokens(self, to):
-        with open(self.abiErc20File) as f:
-            abiErc20 = json.load(f)
         #transfer WETH
         balance = self.rpc.eth.get_balance(to)
         amount0 = 10**8
-        self.opContract = self.rpc.eth.contract(address=OP_ADRESS, abi=abiErc20)
+        self.opContract = self.rpc.eth.contract(address=OP_ADRESS, abi=self.abiErc20)
         amount1 = self.opContract.functions.balanceOf(OP_HOLDER).call()
         self.__grantEth(to, amount0)
         print("ETH transferred", balance, self.rpc.eth.get_balance(to), "transfer amount0", amount0)
@@ -145,6 +145,7 @@ class HistoryTest:
         with open(filePath, 'r') as file:
             data = json.load(file)
         data = sorted(data, key=lambda x: x["block"])
+        successAll = 0
         for step in range(len(data)//TRANSACTION_BATCH):
             formatted_transactions = [
                 {
@@ -159,8 +160,7 @@ class HistoryTest:
                 }
                 for tx in data[step*TRANSACTION_BATCH:(step+1)*TRANSACTION_BATCH]
             ]
-            print(f"send {step}-th batch")
-                
+
             txData = self.testContract.functions.poolTransaction(formatted_transactions).build_transaction({
                 'from': OPERATOR,
                 'chainId': CHAIN_ID,
@@ -170,7 +170,13 @@ class HistoryTest:
             })
 
             receipt = self.__sendTransaction(txData)
-            print(f"finish {step}-th batch with status {receipt.status}\n")
+            if receipt.status != 1:
+                print(f"ERROR at call {step} batch, transactions from {step*TRANSACTION_BATCH} to {(step+1)*TRANSACTION_BATCH}")
+                print(formatted_transactions)
+                continue
+            successBatch = self.testContract.functions.poolTransaction(formatted_transactions).call()
+            successAll += successBatch
+            print(f"{step}-th batch: {100*successBatch/TRANSACTION_BATCH}% | total: {100*successAll/((step+1)*TRANSACTION_BATCH)}%")
         
 swapLogLoader = HistoryTest("velodrome", "0x1e60272caDcFb575247a666c11DBEA146299A2c4", 117069418)
 swapLogLoader.simulate()
