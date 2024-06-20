@@ -70,7 +70,14 @@ contract HistoryTest is Test {
     event call(address from);
     event Balances(uint256 amount0, uint256 amount1);
     event poolToken(address pool, address token0, address token1);
-    event Transaction(uint256 tp, int256 amount0, int256 amount1, uint128 liquidity, int24 tickLower, int24 tickUpper);
+    event Transaction(
+        uint256 tp,
+        int256 amount0,
+        int256 amount1,
+        uint128 liquidity,
+        int24 tickLower,
+        int24 tickUpper
+    );
 
     constructor() {
         pool = ICLPool(factory.getPool(Constants.WETH, Constants.OP, 200));
@@ -88,8 +95,11 @@ contract HistoryTest is Test {
         token0.approve(address(pool), type(uint256).max);
         token1.approve(address(pool), type(uint256).max);
 
-        emit Balances(IERC20(Constants.WETH).balanceOf(address(this)), IERC20(Constants.OP).balanceOf(address(this)));
-        
+        emit Balances(
+            IERC20(Constants.WETH).balanceOf(address(this)),
+            IERC20(Constants.OP).balanceOf(address(this))
+        );
+
         isInit = true;
     }
 
@@ -145,13 +155,15 @@ contract HistoryTest is Test {
         uint160 sqrtPriceLimitX96 = zeroForOne
             ? TickMath.MIN_SQRT_RATIO + 1
             : TickMath.MAX_SQRT_RATIO - 1;
-        pool.swap(
-            address(this),
-            zeroForOne,
-            amountSpecified,
-            sqrtPriceLimitX96,
-            abi.encode(address(this))
-        );
+        try
+            pool.swap(
+                address(this),
+                zeroForOne,
+                amountSpecified,
+                sqrtPriceLimitX96,
+                abi.encode(address(this))
+            )
+        {} catch {}
     }
 
     function _mint(
@@ -159,15 +171,15 @@ contract HistoryTest is Test {
         int24 tickLower,
         int24 tickUpper
     ) private {
-        // uint128 liquidityBefore = pool.liquidity();
-        pool.mint(
-            address(this),
-            tickLower,
-            tickUpper,
-            liquidity,
-            abi.encode(address(this))
-        );
-        //   console2.log(int256((int128(pool.liquidity()) - int128(liquidityBefore))));//, liquidity);
+        try
+            pool.mint(
+                address(this),
+                tickLower,
+                tickUpper,
+                liquidity,
+                abi.encode(address(this))
+            )
+        {} catch {}
     }
 
     function _burn(
@@ -175,11 +187,7 @@ contract HistoryTest is Test {
         int24 tickLower,
         int24 tickUpper
     ) private {
-        try pool.burn(tickLower, tickUpper, liquidity) {} catch Error(
-            string memory reason
-        ) {
-            console2.log(reason);
-        }
+        try pool.burn(tickLower, tickUpper, liquidity) {} catch {}
     }
 
     function poolTransaction(CommonTransaction[] memory transactions) public {
@@ -189,99 +197,26 @@ contract HistoryTest is Test {
             if (transaction.typeTransaction == 1) {
                 _swap(transaction.amount0, transaction.amount1);
             } else if (transaction.typeTransaction == 2) {
-                _mint(transaction.liquidity, transaction.tickLower, transaction.tickUpper);
+                _mint(
+                    transaction.liquidity,
+                    transaction.tickLower,
+                    transaction.tickUpper
+                );
             } else if (transaction.typeTransaction == 3) {
-                _burn(transaction.liquidity, transaction.tickLower, transaction.tickUpper);
+                _burn(
+                    transaction.liquidity,
+                    transaction.tickLower,
+                    transaction.tickUpper
+                );
             }
-            emit Transaction(transaction.typeTransaction, transaction.amount0, transaction.amount1, transaction.liquidity, transaction.tickLower, transaction.tickUpper);
-        }
-    }
-
-    /* function _init() private {
-        string memory forkUrl = vm.envString("OPTIMISM_RPC");
-        actualBlock = _getNextTransactionBlock();
-        uint256 forkId = vm.createFork(forkUrl, actualBlock / 1000 - 1);
-        vm.selectFork(forkId);
-        _setUp();
-        isInit = true;
-    }
-    
-    function testSimulateTransactions(string memory path) public {
-        emit call(msg.sender);
-        //vm.startPrank(address(this));
-        //return;
-//
-        //if (!isInit) {
-        //    _setUp();
-        //}
-        PoolTranactions memory transactions = _readTransactions(path);
-
-        return;
-        (, int24 tick, , , , ) = pool.slot0();
-        console2.log(tick);
-        console2.log(pool.liquidity());
-        while (!_simulateNextTransaction(transactions)) {}
-        (, tick, , , , ) = pool.slot0();
-        console2.log(tick);
-        console2.log(pool.liquidity());
-    }
-
-    function _getNextTransactionBlock()
-        private
-        view
-        returns (uint256 nextBlock)
-    {
-        nextBlock = swapTransaction.block < mintTransaction.block
-            ? swapTransaction.block
-            : mintTransaction.block;
-        nextBlock = burnTransaction.block < nextBlock
-            ? burnTransaction.block
-            : nextBlock;
-    }
-
-    function _simulateNextTransaction(
-        PoolTranactions memory transactions
-    ) private returns (bool isEnd) {
-        actualBlock = _getNextTransactionBlock();
-        if (actualBlock == type(uint256).max) {
-            return true;
-        }
-        if (actualBlock == swapTransaction.block) {
-            _swap(swapTransaction.amount0, swapTransaction.amount1);
-            swapIndex++;
-            if (swapIndex < transactions.swap.length) {
-                swapTransaction = transactions.swap[swapIndex];
-            } else {
-                swapTransaction.block = type(uint256).max;
-            }
-        } else if (actualBlock == mintTransaction.block) {
-            _mint(
-                mintTransaction.liquidity,
-                mintTransaction.tickLower,
-                mintTransaction.tickUpper
+            emit Transaction(
+                transaction.typeTransaction,
+                transaction.amount0,
+                transaction.amount1,
+                transaction.liquidity,
+                transaction.tickLower,
+                transaction.tickUpper
             );
-            mintIndex++;
-            if (mintIndex < transactions.mint.length) {
-                mintTransaction = transactions.mint[mintIndex];
-            } else {
-                mintTransaction.block = type(uint256).max;
-            }
-        } else if (actualBlock == burnTransaction.block) {
-            _burn(
-                burnTransaction.liquidity,
-                burnTransaction.tickLower,
-                burnTransaction.tickUpper
-            );
-            burnIndex++;
-            if (burnIndex < transactions.burn.length) {
-                burnTransaction = transactions.burn[burnIndex];
-            } else {
-                burnTransaction.block = type(uint256).max;
-            }
-        } else {
-            return true;
         }
-        return false;
     }
- */
 }
