@@ -18,6 +18,7 @@ struct CommonTransaction {
 
 contract HistoryTest is Test {
     using SafeERC20 for ERC20;
+    uint256 constant Q96 = 2 ** 96;
     uint32 public immutable MELLOW_PROTOCOL_FEE = 1e8;
     address public immutable MELLOW_PROTOCOL_TREASURY =
         address(bytes20((keccak256("treasury"))));
@@ -38,6 +39,8 @@ contract HistoryTest is Test {
     ICLPool private pool;
     ERC20 private token0;
     ERC20 private token1;
+    uint128 public tokensOwed0;
+    uint128 public tokensOwed1;
     uint256 public tokenId;
 
     event call(address from);
@@ -58,7 +61,6 @@ contract HistoryTest is Test {
         address velotrDeployFactoryHelper_,
         address ammModule_,
         address veloDepositWithdrawModule_,
-        address core_,
         address pulseVeloBot_
     ) {
         oracle = IVeloOracle(oracle_);
@@ -70,7 +72,7 @@ contract HistoryTest is Test {
         veloDepositWithdrawModule = IVeloDepositWithdrawModule(
             veloDepositWithdrawModule_
         );
-        core = new Core(ammModule, strategyModule, oracle, address(this));//ICore(core_); // 
+        core = new Core(ammModule, strategyModule, oracle, address(this)); //ICore(core_); //
         core.setProtocolParams(
             abi.encode(
                 IVeloAmmModule.ProtocolParams({
@@ -80,7 +82,12 @@ contract HistoryTest is Test {
             )
         );
         core.setOperatorFlag(false);
-        veloDeployFactory = new VeloDeployFactory(address(this), core, veloDepositWithdrawModule, velotrDeployFactoryHelper);
+        veloDeployFactory = new VeloDeployFactory(
+            address(this),
+            core,
+            veloDepositWithdrawModule,
+            velotrDeployFactoryHelper
+        );
         pulseVeloBot = IPulseVeloBot(pulseVeloBot_);
         pool = ICLPool(factory.getPool(Constants.WETH, Constants.OP, 200));
         pool.increaseObservationCardinalityNext(100);
@@ -89,23 +96,29 @@ contract HistoryTest is Test {
         emit poolToken(address(pool), address(token0), address(token1));
     }
 
-    function setUpStrategy() public {
+    function setUpStrategy(int24 width) public {
         if (tokenId != 0) {
             revert("strategy is alredy set up");
         }
         init();
         int24 tickSpacing = pool.tickSpacing();
-        strategyParams.strategyType = IPulseStrategyModule
+        /* strategyParams.strategyType = IPulseStrategyModule
             .StrategyType
             .LazySyncing;
         strategyParams.tickNeighborhood = 0;
         strategyParams.tickSpacing = tickSpacing;
         strategyParams.width = tickSpacing;
-        strategyModule.validateStrategyParams(abi.encode(strategyParams));
+        strategyModule.validateStrategyParams(abi.encode(strategyParams)); */
 
         (uint160 sqrtPriceX96, int24 tick, , , , ) = pool.slot0();
+
         int24 tickLower = tickSpacing * (tick / tickSpacing);
         int24 tickUpper = tickLower + tickSpacing;
+        if (width > 1) {
+            tickLower -= tickSpacing * (width / 2);
+            tickUpper += tickSpacing * (width / 2);
+        }
+
         uint128 liquidity = 4188 * 10 ** 18;
         (uint256 amount0, uint256 amount1) = LiquidityAmounts
             .getAmountsForLiquidity(
@@ -142,7 +155,7 @@ contract HistoryTest is Test {
                 minInitialLiquidity: 10 ** 18
             })
         );
-        
+
         veloDeployFactory.createStrategy(
             IVeloDeployFactory.DeployParams({
                 tickNeighborhood: 0,
@@ -179,7 +192,7 @@ contract HistoryTest is Test {
     function testInitPosition() public {
         deal(address(token0), address(this), 10 ** 24);
         deal(address(token1), address(this), 10 ** 24);
-        setUpStrategy();
+        setUpStrategy(1);
     }
 
     function uniswapV3SwapCallback(
@@ -276,19 +289,6 @@ contract HistoryTest is Test {
         return result;
     }
 
-    function checkPosition() public {
-        ICore.ManagedPositionInfo memory info;
-        info.slippageD9 = 10 ** 8;
-        info.owner = address(this);
-        info.pool = address(pool);
-
-        (
-            bool isRebalanceRequired,
-            ICore.TargetPositionInfo memory target
-        ) = strategyModule.getTargets(info, ammModule, oracle);
-        //pulseVeloBot.call
-    }
-
     function poolTransaction(
         CommonTransaction[] memory transactions
     ) public returns (uint256 successfulTransactions) {
@@ -324,19 +324,56 @@ contract HistoryTest is Test {
         }
         return successfulTransactions;
     }
+    function positionView()
+        external
+        view
+        returns (uint256 totalValueInToken0, uint256 totalValueInToken1)
+    {
+        (
+            ,
+            ,
+            ,
+            ,
+            ,
+            int24 tickLower,
+            int24 tickUpper,
+            uint128 liquidity,
+            ,
+            ,
+            ,
+
+        ) = manager.positions(tokenId);
+        (uint160 sqrtPriceX96, , , , , ) = pool.slot0();
+
+        (uint256 amount0, uint256 amount1) = LiquidityAmounts
+            .getAmountsForLiquidity(
+                sqrtPriceX96,
+                TickMath.getSqrtRatioAtTick(tickLower),
+                TickMath.getSqrtRatioAtTick(tickUpper),
+                liquidity
+            );
+        uint256 priceX96 = uint256(sqrtPriceX96) * uint256(sqrtPriceX96);
+        uint256 price = priceX96 / (Q96 * Q96);
+        totalValueInToken0 = amount0 + (amount1 / price);
+        totalValueInToken1 = amount1 + (amount0 * price);
+    }
 
     function _rebalance() private {
-        core.rebalance(
-            ICore.RebalanceParams({
-                ids: new uint256[](1),
-                callback: address(pulseVeloBot),
-                data: abi.encode(new ISwapRouter.ExactInputSingleParams[](0))
-            })
-        );
-        ICore.ManagedPositionInfo memory position = core.managedPositionAt(0);
-        tokenId = position.ammPositionIds[0];
-        //tokenId = position.ammPositionIds[0];
-        //require(tokenId != 0, "no position rebalanced");
-        //return position.ammPositionIds[0];
+        try
+            core.rebalance(
+                ICore.RebalanceParams({
+                    ids: new uint256[](1),
+                    callback: address(pulseVeloBot),
+                    data: abi.encode(
+                        new ISwapRouter.ExactInputSingleParams[](0)
+                    )
+                })
+            )
+        {
+            ICore.ManagedPositionInfo memory position = core.managedPositionAt(
+                0
+            );
+            tokenId = position.ammPositionIds[0];
+        } catch {}
     }
 }

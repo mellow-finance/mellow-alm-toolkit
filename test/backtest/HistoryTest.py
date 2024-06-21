@@ -14,19 +14,22 @@ OP_HOLDER = '0x790b4086D106Eafd913e71843AED987eFE291c92'
 OP_ADRESS = '0x4200000000000000000000000000000000000042'
 WETH_ADRESS = '0x4200000000000000000000000000000000000006'
 ZERO_ADRESS = '0x0000000000000000000000000000000000000000'
-TRANSACTION_BATCH = 10
+TRANSACTION_BATCH = 100
 BLOCK_VALID_POSITION = 117109417
 
 # Start Anvil with custom code size limit
-#anvil_process = subprocess.Popen([
-#    'anvil',
-#    '--fork-url', 'https://opt-mainnet.g.alchemy.com/v2/oPPlIjgGxGvQx3qKFOhzbhvZPUsm6amk',
-#    '--fork-block-number', '117069417',
-#    '--gas-limit', '1000000000',
-#    '--gas-price', '1',
-#    '--auto-impersonate',
-#    '--code-size-limit', '50000'
-#])
+PORT = '8546'
+anvil_process = subprocess.Popen([
+    'anvil',
+    '--fork-url', os.environ.get("OPTIMISM_RPC"),
+    '--fork-block-number', '117078536',
+    '--gas-limit', '1000000000',
+    '--gas-price', '1',
+    '--auto-impersonate',
+    '--code-size-limit', '50000',
+    '--port', PORT
+])
+
 SmartContracts = {
     'VeloOracle': '',
     'PulseStrategyModule': '',
@@ -34,7 +37,6 @@ SmartContracts = {
     'VeloAmmModule': '',
     'VeloDepositWithdrawModule': '',
     'PulseVeloBot': '',
-    'Core': '',
 }
 
 
@@ -43,7 +45,7 @@ class HistoryTest:
         
         self.__readSettings(dex)
         self.__connect()
-        # Set the default account (assumes accounts are unlocked)
+        
         self.rpc.eth.default_account = ADMIN
         
         self.poolAddress = poolAddress
@@ -66,14 +68,12 @@ class HistoryTest:
             'VeloAmmModule': [NONFUNGIBLE_POSITION_MANAGER],
             'VeloDepositWithdrawModule': [NONFUNGIBLE_POSITION_MANAGER],
             'PulseVeloBot': [ZERO_ADRESS, ZERO_ADRESS, NONFUNGIBLE_POSITION_MANAGER],
-            'Core': [SmartContracts['VeloAmmModule'], SmartContracts['PulseStrategyModule'], SmartContracts['VeloOracle'], ADMIN],
             'HistoryTest': [
                 SmartContracts['VeloOracle'], 
                 SmartContracts['PulseStrategyModule'], 
                 SmartContracts['VeloDeployFactoryHelper'], 
                 SmartContracts['VeloAmmModule'],
                 SmartContracts['VeloDepositWithdrawModule'], 
-                SmartContracts['Core'], 
                 SmartContracts['PulseVeloBot'], 
             ]
         }
@@ -91,7 +91,7 @@ class HistoryTest:
             settings = json.load(f)
             self.settings = settings[str(CHAIN_ID)]
 
-        self.rpcUrl = 'http://127.0.0.1:8545'
+        self.rpcUrl = 'http://127.0.0.1:' + PORT
         self.abiErc20File = self.settings['abiErc20File']
         self.abiFile = self.settings['dex'][dex]['abiFile']
 
@@ -211,7 +211,7 @@ class HistoryTest:
         receipt = self.__sendTransaction(txData)
 
     def __setUpStrategy(self):
-        txData = self.testContract.functions.setUpStrategy().build_transaction({
+        txData = self.testContract.functions.setUpStrategy(2).build_transaction({
             'chainId': CHAIN_ID,
             'gas': GAS_LIMIT,
             'nonce': self.rpc.eth.get_transaction_count(ADMIN),
@@ -243,7 +243,6 @@ class HistoryTest:
             data = json.load(file)
         data = sorted(data, key=lambda x: x["block"])
         successAll = 0
-        isSetUp = False
         for step in range(len(data)//TRANSACTION_BATCH):
             formatted_transactions = [
                 {
@@ -273,9 +272,9 @@ class HistoryTest:
                 continue
             successBatch = self.testContract.functions.poolTransaction(formatted_transactions).call()
             successAll += successBatch
-            print(f"{step}-th batch: {100*successBatch/TRANSACTION_BATCH}% | total: {100*successAll/((step+1)*TRANSACTION_BATCH)}%")
             tokenId = self.testContract.functions.tokenId().call()
-            print(f"tokenId {tokenId}")
-        
+            [token0Pos, token1Pos] = self.testContract.functions.positionView().call()
+            print(f"{step}-th batch: {100*successBatch/TRANSACTION_BATCH}% | total: {100*successAll/((step+1)*TRANSACTION_BATCH)}% tokenId {tokenId} position {token0Pos} WETH | {token1Pos} OP")
+time.sleep(3)
 swapLogLoader = HistoryTest("velodrome", "0x1e60272caDcFb575247a666c11DBEA146299A2c4", 117069418)
 swapLogLoader.simulate()
