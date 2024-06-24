@@ -174,9 +174,8 @@ class SwapLogLoader:
         with open(self.__getFilename("transactions")+".json", 'w') as file:
             json.dump(data, file, indent=4)
 
-
 #swapLogLoader = SwapLogLoader('10', "velodrome", "0x2d5814480EC2698B46B5b3f3287A89d181612228", 118000000, 121385392)
-#swapLogLoader = SwapLogLoader('10', "velodrome", "0x3241738149B24C9164dA14Fa2040159FFC6Dd237", 121085392, 121385392)
-swapLogLoader = SwapLogLoader('10', "velodrome", "0x1e60272caDcFb575247a666c11DBEA146299A2c4", 117069418)
+swapLogLoader = SwapLogLoader('10', "velodrome", "0x3241738149B24C9164dA14Fa2040159FFC6Dd237", 117044401)
+#swapLogLoader = SwapLogLoader('10', "velodrome", "0x1e60272caDcFb575247a666c11DBEA146299A2c4", 117069418)
 # weth-op 0x1e60272caDcFb575247a666c11DBEA146299A2c4
 swapLogLoader.loadSwaps()

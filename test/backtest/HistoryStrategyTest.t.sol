@@ -19,11 +19,12 @@ struct CommonTransaction {
 contract HistoryTest is Test {
     using SafeERC20 for ERC20;
     uint256 constant Q96 = 2 ** 96;
+    uint256 constant Q128 = 2 ** 128;
     uint32 public immutable MELLOW_PROTOCOL_FEE = 1e8;
     address public immutable MELLOW_PROTOCOL_TREASURY =
         address(bytes20((keccak256("treasury"))));
 
-    ICLFactory public immutable factory = ICLFactory(Constants.VELO_FACTORY);
+    ICLFactory public factory;
     INonfungiblePositionManager public immutable manager =
         INonfungiblePositionManager(Constants.NONFUNGIBLE_POSITION_MANAGER);
     IVeloOracle private oracle;
@@ -39,9 +40,15 @@ contract HistoryTest is Test {
     ICLPool private pool;
     ERC20 private token0;
     ERC20 private token1;
-    uint128 public tokensOwed0;
-    uint128 public tokensOwed1;
     uint256 public tokenId;
+    uint256 public totalValueInToken0;
+    uint256 public totalValueInToken1;
+    uint256 public totalValueInToken0Last;
+    uint256 public totalValueInToken1Last;
+    uint256 public fee0;
+    uint256 public fee1;
+    uint256 public fee0Cummulative;
+    uint256 public fee1Cummulative;
 
     event call(address from);
     event Balances(uint256 amount0, uint256 amount1);
@@ -56,6 +63,7 @@ contract HistoryTest is Test {
     );
 
     constructor(
+        address pool_,
         address oracle_,
         address strategyModule_,
         address velotrDeployFactoryHelper_,
@@ -72,7 +80,7 @@ contract HistoryTest is Test {
         veloDepositWithdrawModule = IVeloDepositWithdrawModule(
             veloDepositWithdrawModule_
         );
-        core = new Core(ammModule, strategyModule, oracle, address(this)); //ICore(core_); //
+        core = new Core(ammModule, strategyModule, oracle, address(this));
         core.setProtocolParams(
             abi.encode(
                 IVeloAmmModule.ProtocolParams({
@@ -89,7 +97,8 @@ contract HistoryTest is Test {
             velotrDeployFactoryHelper
         );
         pulseVeloBot = IPulseVeloBot(pulseVeloBot_);
-        pool = ICLPool(factory.getPool(Constants.WETH, Constants.OP, 200));
+        pool = ICLPool(pool_); //ICLPool(factory.getPool(Constants.USDC, Constants.WETH, 30000));
+        factory = ICLFactory(pool.factory());
         pool.increaseObservationCardinalityNext(100);
         token0 = ERC20(pool.token0());
         token1 = ERC20(pool.token1());
@@ -102,13 +111,6 @@ contract HistoryTest is Test {
         }
         init();
         int24 tickSpacing = pool.tickSpacing();
-        /* strategyParams.strategyType = IPulseStrategyModule
-            .StrategyType
-            .LazySyncing;
-        strategyParams.tickNeighborhood = 0;
-        strategyParams.tickSpacing = tickSpacing;
-        strategyParams.width = tickSpacing;
-        strategyModule.validateStrategyParams(abi.encode(strategyParams)); */
 
         (uint160 sqrtPriceX96, int24 tick, , , , ) = pool.slot0();
 
@@ -117,9 +119,13 @@ contract HistoryTest is Test {
         if (width > 1) {
             tickLower -= tickSpacing * (width / 2);
             tickUpper += tickSpacing * (width / 2);
+            tickLower -= tickSpacing * (width % 2);
         }
-
-        uint128 liquidity = 4188 * 10 ** 18;
+        uint128 liquidity = LiquidityAmounts.getLiquidityForAmount1(
+            TickMath.getSqrtRatioAtTick(tickLower),
+            TickMath.getSqrtRatioAtTick(tickUpper),
+            10 ** ERC20(pool.token1()).decimals()
+        );
         (uint256 amount0, uint256 amount1) = LiquidityAmounts
             .getAmountsForLiquidity(
                 sqrtPriceX96,
@@ -128,7 +134,7 @@ contract HistoryTest is Test {
                 liquidity + 1
             );
 
-        (tokenId, , , ) = manager.mint(
+        (tokenId, liquidity, , ) = manager.mint(
             INonfungiblePositionManager.MintParams({
                 token0: pool.token0(),
                 token1: pool.token1(),
@@ -152,10 +158,9 @@ contract HistoryTest is Test {
                 lpWrapperManager: address(0),
                 farmOwner: address(this),
                 farmOperator: address(this),
-                minInitialLiquidity: 10 ** 18
+                minInitialLiquidity: liquidity - 1
             })
         );
-
         veloDeployFactory.createStrategy(
             IVeloDeployFactory.DeployParams({
                 tickNeighborhood: 0,
@@ -184,15 +189,9 @@ contract HistoryTest is Test {
         token1.approve(address(pool), type(uint256).max);
         token1.approve(address(manager), type(uint256).max);
         emit Balances(
-            IERC20(Constants.WETH).balanceOf(address(this)),
-            IERC20(Constants.OP).balanceOf(address(this))
+            IERC20(token0).balanceOf(address(this)),
+            IERC20(token1).balanceOf(address(this))
         );
-    }
-
-    function testInitPosition() public {
-        deal(address(token0), address(this), 10 ** 24);
-        deal(address(token1), address(this), 10 ** 24);
-        setUpStrategy(1);
     }
 
     function uniswapV3SwapCallback(
@@ -200,7 +199,7 @@ contract HistoryTest is Test {
         int256 amount1Delta,
         bytes calldata data
     ) external {
-        require(msg.sender == address(pool), "Unauthorized callback");
+        require(msg.sender == address(pool), "Unauthorized swap callback");
         address recipient = abi.decode(data, (address));
         if (amount0Delta > 0) {
             token0.safeTransferFrom(
@@ -223,7 +222,7 @@ contract HistoryTest is Test {
         uint256 amount1Owed,
         bytes calldata data
     ) external {
-        require(msg.sender == address(pool), "Unauthorized callback");
+        require(msg.sender == address(pool), "Unauthorized mint callback");
         address sender = abi.decode(data, (address));
         if (amount0Owed > 0) {
             token0.safeTransferFrom(sender, address(pool), amount0Owed);
@@ -324,11 +323,80 @@ contract HistoryTest is Test {
         }
         return successfulTransactions;
     }
-    function positionView()
-        external
+
+    function _getFeeGrowthInside(
+        int24 tickCurrent,
+        int24 tickLower,
+        int24 tickUpper
+    )
+        private
         view
-        returns (uint256 totalValueInToken0, uint256 totalValueInToken1)
+        returns (uint256 feeGrowthInside0X128, uint256 feeGrowthInside1X128)
     {
+        if (tickLower > tickUpper) {
+            (tickLower, tickUpper) = (tickUpper, tickLower);
+        }
+
+        (
+            ,
+            ,
+            ,
+            uint256 lowerFeeGrowthOutside0X128,
+            uint256 lowerFeeGrowthOutside1X128,
+            ,
+            ,
+            ,
+            ,
+
+        ) = pool.ticks(tickLower);
+        (
+            ,
+            ,
+            ,
+            uint256 upperFeeGrowthOutside0X128,
+            uint256 upperFeeGrowthOutside1X128,
+            ,
+            ,
+            ,
+            ,
+
+        ) = pool.ticks(tickUpper);
+
+        if (tickCurrent < tickLower) {
+            feeGrowthInside0X128 = lowerFeeGrowthOutside0X128 >
+                upperFeeGrowthOutside0X128
+                ? lowerFeeGrowthOutside0X128 - upperFeeGrowthOutside0X128
+                : 0;
+            feeGrowthInside1X128 = lowerFeeGrowthOutside1X128 >
+                upperFeeGrowthOutside1X128
+                ? lowerFeeGrowthOutside1X128 - upperFeeGrowthOutside1X128
+                : 0;
+        } else if (tickCurrent < tickUpper) {
+            uint256 feeGrowthGlobal0X128 = pool.feeGrowthGlobal0X128();
+            uint256 feeGrowthGlobal1X128 = pool.feeGrowthGlobal1X128();
+            uint256 delta0 = lowerFeeGrowthOutside0X128 +
+                upperFeeGrowthOutside0X128;
+            feeGrowthInside0X128 = delta0 > feeGrowthGlobal0X128
+                ? feeGrowthGlobal0X128
+                : feeGrowthGlobal0X128 - delta0;
+            uint256 delta1 = lowerFeeGrowthOutside1X128 +
+                upperFeeGrowthOutside1X128;
+            feeGrowthInside1X128 = delta1 > feeGrowthGlobal1X128
+                ? feeGrowthGlobal1X128
+                : feeGrowthGlobal1X128 - delta1;
+        } else {
+            feeGrowthInside0X128 = upperFeeGrowthOutside0X128 >
+                lowerFeeGrowthOutside0X128
+                ? upperFeeGrowthOutside0X128 - lowerFeeGrowthOutside0X128
+                : 0;
+            feeGrowthInside1X128 = upperFeeGrowthOutside1X128 >
+                lowerFeeGrowthOutside1X128
+                ? upperFeeGrowthOutside1X128 - lowerFeeGrowthOutside1X128
+                : 0;
+        }
+    }
+
+    function _positionView() private {
         (
             ,
             ,
@@ -338,27 +406,43 @@ contract HistoryTest is Test {
             int24 tickLower,
             int24 tickUpper,
             uint128 liquidity,
-            ,
-            ,
+            uint256 feeGrowthInside0LastX128,
+            uint256 feeGrowthInside1LastX128,
             ,
 
         ) = manager.positions(tokenId);
-        (uint160 sqrtPriceX96, , , , , ) = pool.slot0();
 
-        (uint256 amount0, uint256 amount1) = LiquidityAmounts
+        (uint160 sqrtPriceX96, int24 tick, , , , ) = pool.slot0();
+        (
+            uint256 feeGrowthInside0X128,
+            uint256 feeGrowthInside1X128
+        ) = _getFeeGrowthInside(tick, tickLower, tickUpper);
+
+        fee0 = feeGrowthInside0X128 > feeGrowthInside0LastX128
+            ? FullMath.mulDiv(
+                liquidity,
+                feeGrowthInside0X128 - feeGrowthInside0LastX128,
+                Q128
+            )
+            : 0;
+        fee1 = feeGrowthInside1X128 > feeGrowthInside1LastX128
+            ? FullMath.mulDiv(
+                liquidity,
+                feeGrowthInside1X128 - feeGrowthInside1LastX128,
+                Q128
+            )
+            : 0;
+        (totalValueInToken0Last, totalValueInToken1Last) = LiquidityAmounts
             .getAmountsForLiquidity(
                 sqrtPriceX96,
                 TickMath.getSqrtRatioAtTick(tickLower),
                 TickMath.getSqrtRatioAtTick(tickUpper),
                 liquidity
             );
-        uint256 priceX96 = uint256(sqrtPriceX96) * uint256(sqrtPriceX96);
-        uint256 price = priceX96 / (Q96 * Q96);
-        totalValueInToken0 = amount0 + (amount1 / price);
-        totalValueInToken1 = amount1 + (amount0 * price);
     }
 
     function _rebalance() private {
+        _positionView();
         try
             core.rebalance(
                 ICore.RebalanceParams({
@@ -373,7 +457,12 @@ contract HistoryTest is Test {
             ICore.ManagedPositionInfo memory position = core.managedPositionAt(
                 0
             );
-            tokenId = position.ammPositionIds[0];
+            uint256 tokenIdNew = position.ammPositionIds[0];
+            if (tokenIdNew != tokenId) {
+                tokenId = tokenIdNew;
+                fee0Cummulative += fee0;
+                fee1Cummulative += fee1;
+            }
         } catch {}
     }
 }
