@@ -25,6 +25,7 @@
     "compile": "forge build",
     "solc:velo": "cat velo_scope.txt | xargs ls -d 2>/dev/null | xargs wc -l",
     "load": "cd test/backtest && env $(cat ../../.env | xargs) python3 loader.py",
-    "backtest": "forge build && cd test/backtest && env $(cat ../../.env | xargs) python3 HistoryTest.py"
+    "backtest": "forge build && cd test/backtest && env $(cat ../../.env | xargs) python3 HistoryTest.py",
+    "deploy": "forge script src/scripts/deploy/optimism/DeployVeloLazy.s.sol --broadcast --verify --rpc-url $(grep OPTIMISM_RPC .env | cut -d '=' -f2,3,4,5)"
   }
 }
