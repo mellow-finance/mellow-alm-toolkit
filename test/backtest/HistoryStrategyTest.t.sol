@@ -5,11 +5,11 @@ import "../../test/velo-prod/contracts/periphery/interfaces/external/IWETH9.sol"
 import "../../src/modules/strategies/PulseStrategyModule.sol";
 import "../../src/bots/PulseVeloBot.sol";
 
-struct CommonTransaction {
-    uint256 typeTransaction; // 0 - swap, 1 - mint, 2 - burn
+struct SwapTransaction {
     int256 amount0;
     int256 amount1;
     uint256 block;
+    uint160 sqrtPriceX96;
     uint128 liquidity;
     int24 tickLower;
     int24 tickUpper;
@@ -106,6 +106,7 @@ contract HistoryTest is Test {
     }
 
     function setUpStrategy(int24 width) public {
+        _setUpPool();
         if (tokenId != 0) {
             revert("strategy is alredy set up");
         }
@@ -178,6 +179,47 @@ contract HistoryTest is Test {
         );
     }
 
+    function _setUpPool() private {
+        (uint160 sqrtPriceX96, int24 tick, , , , ) = pool.slot0();
+        tick = tick - (tick % pool.tickSpacing());
+        int24 tickLower = tick - 10000;
+        int24 tickUpper = tick + 10000;
+
+        uint128 liquidity = LiquidityAmounts.getLiquidityForAmounts(
+            sqrtPriceX96,
+            TickMath.getSqrtRatioAtTick(tickLower),
+            TickMath.getSqrtRatioAtTick(tickUpper),
+            10000 * 10 ** ERC20(pool.token0()).decimals(),
+            10000 * 10 ** ERC20(pool.token1()).decimals()
+        );
+        (uint256 amount0, uint256 amount1) = LiquidityAmounts
+            .getAmountsForLiquidity(
+                sqrtPriceX96,
+                TickMath.getSqrtRatioAtTick(tickLower),
+                TickMath.getSqrtRatioAtTick(tickUpper),
+                liquidity + 1
+            );
+
+        /// @dev mint fake position to cover all range
+        (uint256 tokenId_, uint256 liquidity_, , ) = manager.mint(
+            INonfungiblePositionManager.MintParams({
+                token0: pool.token0(),
+                token1: pool.token1(),
+                tickLower: tickLower,
+                tickUpper: tickUpper,
+                tickSpacing: pool.tickSpacing(),
+                amount0Desired: amount0,
+                amount1Desired: amount1,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: address(this),
+                deadline: block.timestamp,
+                sqrtPriceX96: 0
+            })
+        );
+        console2.log("fake", tokenId_, liquidity_);
+    }
+
     function init() public {
         if (address(this).balance > 0) {
             IWETH9(Constants.WETH).deposit{value: address(this).balance}();
@@ -232,7 +274,7 @@ contract HistoryTest is Test {
         }
     }
 
-    function _swap(
+    function _swapAmount(
         int256 amount0,
         int256 amount1
     ) private returns (bool result) {
@@ -251,6 +293,28 @@ contract HistoryTest is Test {
                 abi.encode(address(this))
             )
         {} catch {
+            result = false;
+        }
+        return result;
+    }
+
+    function _swapToPrice(
+        uint160 sqrtPriceLimitX96
+    ) private returns (bool result) {
+        (uint160 sqrtPrice, , , , , ) = pool.slot0();
+        bool zeroForOne = sqrtPriceLimitX96 < sqrtPrice ? true : false;
+
+        result = true;
+        try
+            pool.swap(
+                address(this),
+                zeroForOne,
+                type(int256).max,
+                sqrtPriceLimitX96,
+                abi.encode(address(this))
+            )
+        {
+        } catch {
             result = false;
         }
         return result;
@@ -289,36 +353,12 @@ contract HistoryTest is Test {
     }
 
     function poolTransaction(
-        CommonTransaction[] memory transactions
+        SwapTransaction[] memory transactions
     ) public returns (uint256 successfulTransactions) {
-        CommonTransaction memory transaction;
         for (uint256 i = 0; i < transactions.length; i++) {
-            transaction = transactions[i];
-            if (transaction.typeTransaction == 1) {
-                if (_swap(transaction.amount0, transaction.amount1)) {
-                    successfulTransactions++;
-                    _rebalance();
-                }
-            } else if (transaction.typeTransaction == 2) {
-                if (
-                    _mint(
-                        transaction.liquidity,
-                        transaction.tickLower,
-                        transaction.tickUpper
-                    )
-                ) {
-                    successfulTransactions++;
-                }
-            } else if (transaction.typeTransaction == 3) {
-                if (
-                    _burn(
-                        transaction.liquidity,
-                        transaction.tickLower,
-                        transaction.tickUpper
-                    )
-                ) {
-                    successfulTransactions++;
-                }
+            if (_swapToPrice(transactions[i].sqrtPriceX96)) {
+                successfulTransactions++;
+                _rebalance();
             }
         }
         return successfulTransactions;
@@ -462,6 +502,8 @@ contract HistoryTest is Test {
                 tokenId = tokenIdNew;
                 fee0Cummulative += fee0;
                 fee1Cummulative += fee1;
+                fee0 = 0;
+                fee1 = 0;
             }
         } catch {}
     }

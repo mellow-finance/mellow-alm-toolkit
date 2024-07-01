@@ -25,6 +25,6 @@
     "compile": "forge build",
     "solc:velo": "cat velo_scope.txt | xargs ls -d 2>/dev/null | xargs wc -l",
     "load": "cd test/backtest && env $(cat ../../.env | xargs) python3 loader.py",
-    "test": "cd test/backtest && env $(cat ../../.env | xargs) python3 HistoryTest.py"
+    "backtest": "forge build && cd test/backtest && env $(cat ../../.env | xargs) python3 HistoryTest.py"
   }
 }

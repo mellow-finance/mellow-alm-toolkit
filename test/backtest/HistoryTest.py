@@ -17,16 +17,19 @@ USDC_ADDRESS = '0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85'
 ZERO_ADRESS = '0x0000000000000000000000000000000000000000'
 NONFUNGIBLE_POSITION_MANAGER = '0xbB5DFE1380333CEE4c2EeBd7202c80dE2256AdF4'
 
-POOL = '0x3241738149B24C9164dA14Fa2040159FFC6Dd237'
+POOL_ADDRESS = "0x3241738149B24C9164dA14Fa2040159FFC6Dd237" # old USDC-WETH
+#POOL_ADDRESS = "0x478946BcD4a5a22b316470F5486fAfb928C0bA25" # new USDC-WETH
+
 TOKEN_0 = USDC_ADDRESS
 TOKEN_1 = WETH_ADRESS
 
-POS_WIDTH = 2 # in tickSpasings
+POS_WIDTH = 1 # in tickSpasings
 TRANSACTION_BATCH = 100 # simute batch
 
 FROK_BLOK = {
     '0x1e60272caDcFb575247a666c11DBEA146299A2c4': '117078536',
     '0x3241738149B24C9164dA14Fa2040159FFC6Dd237': '117078536',
+    '0x478946BcD4a5a22b316470F5486fAfb928C0bA25': '121535851'
 }
 CSV_HEADER = ['step', 'tokenId', 'amount0', 'amount1', 'fee0', 'fee1', 'volume']
 
@@ -60,7 +63,7 @@ PORT = str(PORT)
 anvil_process = subprocess.Popen([
     'anvil',
     '--fork-url', os.environ.get("OPTIMISM_RPC"),
-    '--fork-block-number', FROK_BLOK[POOL],
+    '--fork-block-number', FROK_BLOK[POOL_ADDRESS],
     '--gas-limit', '1000000000',
     '--gas-price', '1',
     '--auto-impersonate',
@@ -85,7 +88,7 @@ class HistoryTest:
         
         self.rpc.eth.default_account = ADMIN
         
-        self.poolAddress = POOL
+        self.poolAddress = POOL_ADDRESS
         self.endBlock = self.rpc.eth.block_number
         self.path = 'data/' + str(CHAIN_ID) + "/" + self.poolAddress + "/" 
         os.makedirs(self.path, exist_ok=True)
@@ -221,7 +224,7 @@ class HistoryTest:
         for tokenAddress in tokenAddresses:
             if tokenAddress == WETH_ADRESS:
                 balance = self.rpc.eth.get_balance(to)
-                amount0 = 10**8
+                amount0 = 10**18
                 self.__grantEth(to, amount0)
                 print("ETH transferred", balance, self.rpc.eth.get_balance(to), "transfer amount0", amount0)
             else:
@@ -297,10 +300,10 @@ class HistoryTest:
         for step in range(len(data)//TRANSACTION_BATCH):
             formatted_transactions = [
                 {
-                    "typeTransaction": tx["typeTransaction"],
                     "amount0": int(tx["amount0"]),
                     "amount1": int(tx["amount1"]),
                     "block": tx["block"]//1000,
+                    "sqrtPriceX96": tx["sqrtPriceX96"],
                     "liquidity": int(tx["liquidity"]),
                     "tickLower": tx["tickLower"],
                     "tickUpper": tx["tickUpper"],
@@ -331,7 +334,9 @@ class HistoryTest:
                 tokenIdPrev = tokenId
                 volume = 0
 
-            print(f"{step}-th batch: {100*successBatch/TRANSACTION_BATCH}% | total: {100*successAll/((step+1)*TRANSACTION_BATCH)}% tokenId {tokenId}")
+            fee0 = float(self.testContract.functions.fee0().call())/10**self.decimals0
+            fee1 = float(self.testContract.functions.fee1().call())/10**self.decimals1
+            print(f"{step}-th batch: {100*successBatch/TRANSACTION_BATCH}% | total: {100*successAll/((step+1)*TRANSACTION_BATCH)}% tokenId {tokenId} fee0 {fee0} fee1 {fee1} width {POS_WIDTH}")
         
         self.writeData(step, tokenId, volume)
 
@@ -340,6 +345,8 @@ class HistoryTest:
         token1Pos = float(self.testContract.functions.totalValueInToken1Last().call())/10**self.decimals1
         fee0 = float(self.testContract.functions.fee0Cummulative().call())/10**self.decimals0
         fee1 = float(self.testContract.functions.fee1Cummulative().call())/10**self.decimals1
+        fee0 += float(self.testContract.functions.fee0().call())/10**self.decimals0
+        fee1 += float(self.testContract.functions.fee1().call())/10**self.decimals1
         self.csvWriter.writerow([step, tokenId, token0Pos, token1Pos, fee0, fee1, volume/10**self.decimals0])
         self.csvFile.flush()
 

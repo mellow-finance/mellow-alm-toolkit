@@ -6,52 +6,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-class MintTransaction:
-    def __init__(self, log):
-        self.typeTransaction = 2
-        self.txHash = log.transactionHash.hex()
-        self.block = log.blockNumber*1000 + log.transactionIndex
-        self.tickLower = int.from_bytes(log.topics[2], byteorder='big', signed=True)
-        self.tickUpper = int.from_bytes(log.topics[3], byteorder='big', signed=True)
-        self.__extractData(log.data)
+POOL_ADDRESS = "0x3241738149B24C9164dA14Fa2040159FFC6Dd237" # old USDC-WETH
+BLOCK_INIT = 117044401
 
-    def __extractData(self, data):
-        data_bytes = bytes(data)
-        liquidity = data_bytes[32:64]
-        amount0 = data_bytes[64:96]
-        amount1 = data_bytes[96:128]
-
-        self.liquidity = int.from_bytes(liquidity, byteorder='big', signed=False)
-        self.amount0 = int.from_bytes(amount0, byteorder='big', signed=True)
-        self.amount1 = int.from_bytes(amount1, byteorder='big', signed=True)
-
-    def toDict(self):
-        return {key: (value.hex() if isinstance(value, HexBytes) else value) 
-                for key, value in self.__dict__.items() if not key.startswith('_')}
-
-class BurnTransaction:
-    def __init__(self, log):
-        self.typeTransaction = 3
-        self.txHash = log.transactionHash.hex()
-        self.block = log.blockNumber*1000 + log.transactionIndex
-        #self.owner = log.topics[1][12:32].hex()
-        self.tickLower = int.from_bytes(log.topics[2], byteorder='big', signed=True)
-        self.tickUpper = int.from_bytes(log.topics[3], byteorder='big', signed=True)
-        self.__extractData(log.data)
-
-    def __extractData(self, data):
-        data_bytes = bytes(data)
-        liquidity = data_bytes[0:32]
-        amount0 = data_bytes[32:64]
-        amount1 = data_bytes[64:96]
-
-        self.liquidity = int.from_bytes(liquidity, byteorder='big', signed=False)
-        self.amount0 = int.from_bytes(amount0, byteorder='big', signed=True)
-        self.amount1 = int.from_bytes(amount1, byteorder='big', signed=True)
-
-    def toDict(self):
-        return {key: (value.hex() if isinstance(value, HexBytes) else value) 
-                for key, value in self.__dict__.items() if not key.startswith('_')}
+#POOL_ADDRESS = "0x478946BcD4a5a22b316470F5486fAfb928C0bA25" # new USDC-WETH
+#BLOCK_INIT = 121535851
+CHAIN_ID = '10'
 
 class SwapTransaction:
     def __init__(self, log):
@@ -60,15 +20,17 @@ class SwapTransaction:
         self.block = log.blockNumber*1000 + log.transactionIndex
         self.tickLower = 0
         self.tickUpper = 0
-        self.__extractData(log.data)
-
+        self.__extractData(log.data.hex())
+        
     def __extractData(self, data):
-        data_bytes = bytes(data)
-        amount0_bytes = data_bytes[:32]
-        amount1_bytes = data_bytes[32:64]
-        liquidity_bytes = data_bytes[96:128]
+        data = data[2:]
+        amount0_bytes = bytes.fromhex(data[:64])
+        amount1_bytes = bytes.fromhex(data[64:128])
+        sqrtPriceX96_bytes = bytes.fromhex(data[128:192])
+        liqudity_bytes = bytes.fromhex(data[192:256])
 
-        self.liquidity = int.from_bytes(liquidity_bytes, byteorder='big', signed=False)
+        self.liquidity = int.from_bytes(liqudity_bytes, byteorder='big', signed=False)
+        self.sqrtPriceX96 = int.from_bytes(sqrtPriceX96_bytes, byteorder='big', signed=False)
         self.amount0 = int.from_bytes(amount0_bytes, byteorder='big', signed=True)
         self.amount1 = int.from_bytes(amount1_bytes, byteorder='big', signed=True)
 
@@ -113,8 +75,6 @@ class SwapLogLoader:
         self.logBatch = self.settings['logBatch']
         self.abiErc20File = self.settings['abiErc20File']
         self.swapTopic = self.settings['dex'][dex]['swapTopic']
-        self.burnTopic = self.settings['dex'][dex]['burnTopic']
-        self.mintTopic = self.settings['dex'][dex]['mintTopic']
         self.abiFile = self.settings['dex'][dex]['abiFile']
         pass
 
@@ -150,18 +110,7 @@ class SwapLogLoader:
 
             for log in logs:
                 self.trans.append(SwapTransaction(log))
-
-            filter_params['topics'] = [self.mintTopic]
-            logs = self.rpc.eth.get_logs(filter_params)
-            for log in logs:
-                self.trans.append(MintTransaction(log))
-
-            filter_params['topics'] = [self.burnTopic]
-            logs = self.rpc.eth.get_logs(filter_params)
-            for log in logs:
-                tran = BurnTransaction(log)
-                if tran.liquidity > 0:
-                    self.trans.append(tran)
+                
             print(f"from [{fromBlock}, {toBlock}] blocks recieved: {len(self.trans) - lasLenLogs} logs")
 
             fromBlock += self.logBatch
@@ -175,7 +124,7 @@ class SwapLogLoader:
             json.dump(data, file, indent=4)
 
 #swapLogLoader = SwapLogLoader('10', "velodrome", "0x2d5814480EC2698B46B5b3f3287A89d181612228", 118000000, 121385392)
-swapLogLoader = SwapLogLoader('10', "velodrome", "0x3241738149B24C9164dA14Fa2040159FFC6Dd237", 117044401)
+swapLogLoader = SwapLogLoader(CHAIN_ID, "velodrome", POOL_ADDRESS, BLOCK_INIT)
 #swapLogLoader = SwapLogLoader('10', "velodrome", "0x1e60272caDcFb575247a666c11DBEA146299A2c4", 117069418)
 # weth-op 0x1e60272caDcFb575247a666c11DBEA146299A2c4
 swapLogLoader.loadSwaps()
