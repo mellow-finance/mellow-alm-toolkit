@@ -1,18 +1,11 @@
 // SPDX-License-Identifier: BSL-1.1
 pragma solidity ^0.8.0;
 
-import "forge-std/Test.sol";
 import "forge-std/Script.sol";
 
-import "src/Core.sol";
-import "src/bots/PulseVeloBot.sol";
-import "src/modules/velo/VeloAmmModule.sol";
-import "src/modules/velo/VeloDepositWithdrawModule.sol";
-import "src/modules/strategies/PulseStrategyModule.sol";
 import "src/oracles/VeloOracle.sol";
-import "src/utils/VeloDeployFactoryHelper.sol";
 import "src/utils/VeloDeployFactory.sol";
-import "src/interfaces/external/velo/external/IWETH9.sol";
+import "src/libraries/external/LiquidityAmounts.sol";
 
 contract CreateStrategyHelper {
     struct PoolParameter {
@@ -39,9 +32,17 @@ contract CreateStrategyHelper {
         deployFactory = deployFactory_;
         deployerAddress = deployerAddress_;
     }
-
-    function createStrategy(PoolParameter memory poolParameter) external {
-        uint256 tokenId = _mintInitialPosition(poolParameter);
+    
+    function createStrategy(
+        PoolParameter memory poolParameter
+    )
+        external
+        returns (
+            VeloDeployFactory.PoolAddresses memory poolAddresses,
+            uint256 tokenId
+        )
+    {
+        tokenId = _mintInitialPosition(poolParameter);
 
         NONFUNGIBLE_POSITION_MANAGER.approve(address(deployFactory), tokenId);
 
@@ -51,20 +52,23 @@ contract CreateStrategyHelper {
         if (tickSpacing == 100) maxAllowedDelta = 50;
         if (tickSpacing == 200) maxAllowedDelta = 100;
 
-        deployFactory.createStrategy(
-            IVeloDeployFactory.DeployParams({
-                tickNeighborhood: 0,
-                slippageD9: 5 * 1e5,
-                tokenId: tokenId,
-                securityParams: abi.encode(
-                    IVeloOracle.SecurityParams({
-                        lookback: 10,
-                        maxAllowedDelta: maxAllowedDelta,
-                        maxAge: 7 days
-                    })
-                ),
-                strategyType: IPulseStrategyModule.StrategyType.LazySyncing
-            })
+        return (
+            deployFactory.createStrategy(
+                IVeloDeployFactory.DeployParams({
+                    tickNeighborhood: 0,
+                    slippageD9: 5 * 1e5,
+                    tokenId: tokenId,
+                    securityParams: abi.encode(
+                        IVeloOracle.SecurityParams({
+                            lookback: 10,
+                            maxAllowedDelta: maxAllowedDelta,
+                            maxAge: 7 days
+                        })
+                    ),
+                    strategyType: IPulseStrategyModule.StrategyType.LazySyncing
+                })
+            ),
+            tokenId
         );
     }
 
@@ -92,33 +96,65 @@ contract CreateStrategyHelper {
             "wrong pool tickSpacing"
         );
 
-        (, , , uint16 observationCardinality, , ) = poolParameter.pool.slot0();
+        (
+            uint160 sqrtPriceX96,
+            int24 tick,
+            ,
+            uint16 observationCardinality,
+            ,
+
+        ) = poolParameter.pool.slot0();
         if (observationCardinality < 100) {
             poolParameter.pool.increaseObservationCardinalityNext(100);
         }
 
         _init(poolParameter);
 
-        (uint160 sqrtPriceX96, int24 tick, , , , ) = poolParameter.pool.slot0();
-
-        int24 tickLower = tick - (tick % poolParameter.tickSpacing);
-        int24 tickUpper = tickLower + poolParameter.tickSpacing;
-        if (poolParameter.width > 1) {
-            tickLower -= poolParameter.tickSpacing * (poolParameter.width / 2);
-            tickUpper += poolParameter.tickSpacing * (poolParameter.width / 2);
-            tickLower -= poolParameter.tickSpacing * (poolParameter.width % 2);
+        int24 tickLower = 0;
+        int24 tickUpper = 0;
+        {
+            tickLower = tick - poolParameter.width / 2;
+            int24 remainder = tickLower % poolParameter.tickSpacing;
+            if (remainder < 0) remainder += poolParameter.tickSpacing;
+            tickLower -= remainder;
+            tickUpper = tickLower + poolParameter.width;
+            if (
+                tickUpper < tick ||
+                _max(tick - tickLower, tickUpper - tick) >
+                _max(
+                    tick - (tickLower + poolParameter.tickSpacing),
+                    (tickUpper + poolParameter.tickSpacing) - tick
+                )
+            ) {
+                tickLower += poolParameter.tickSpacing;
+                tickUpper += poolParameter.tickSpacing;
+            }
         }
+        console2.log("tickCurr : ", tick);
+        console2.log("tickLower: ", tickLower);
+        console2.log("tickUpper: ", tickUpper);
+        
 
-        (uint256 amount0, uint256 amount1) = LiquidityAmounts
-            .getAmountsForLiquidity(
+        uint128 actualLiqudity = MIN_INITIAL_LIQUDITY / 2;
+        uint256 amount0;
+        uint256 amount1;
+
+        /// @dev looking for minimal acceptable liqudity
+        do {
+            actualLiqudity *= 2;
+            (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
                 sqrtPriceX96,
                 TickMath.getSqrtRatioAtTick(tickLower),
                 TickMath.getSqrtRatioAtTick(tickUpper),
-                MIN_INITIAL_LIQUDITY * 2
+                actualLiqudity
             );
+            console2.log(amount0, amount1);
+            require(actualLiqudity < type(uint128).max/10000, "too high liqudity");
+        } while (amount0 < 10 || amount1 < 10);
 
-        amount0 = amount0 > 0 ? amount0 : 1;
-        amount1 = amount1 > 0 ? amount1 : 1;
+        require(amount0 > 0, "too low liqudity for amount0");
+        require(amount1 > 0, "too low liqudity for amount1");
+        console2.log("Actual Liqudity: ", actualLiqudity);
 
         IERC20(poolParameter.token0).transferFrom(
             deployerAddress,
@@ -132,10 +168,9 @@ contract CreateStrategyHelper {
         );
 
         (
-            uint256 tokenId_,
-            uint128 liquidity_,
+            uint256 tokenId,
+            uint128 liquidity,
             ,
-
         ) = NONFUNGIBLE_POSITION_MANAGER.mint(
                 INonfungiblePositionManager.MintParams({
                     token0: poolParameter.token0,
@@ -152,12 +187,11 @@ contract CreateStrategyHelper {
                     sqrtPriceX96: 0
                 })
             );
-            
-        require(tokenId_ != 0, "null tokenId");
-        require(liquidity_ != 0, "zero liquidity");
 
-        tokenIdMinted = tokenId_;
-        return tokenIdMinted;
+        require(tokenId != 0, "null tokenId");
+        require(liquidity != 0, "zero liquidity");
+
+        return tokenId;
     }
 
     function _init(PoolParameter memory poolParameter) private {
@@ -173,5 +207,10 @@ contract CreateStrategyHelper {
             address(NONFUNGIBLE_POSITION_MANAGER),
             type(uint256).max
         );
+    }
+
+    function _max(int24 a, int24 b) private pure returns (int24) {
+        if (a < b) return b;
+        return a;
     }
 }
