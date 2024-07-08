@@ -1,0 +1,99 @@
+{
+    "CLFactory": "0xCc0bDDB707055e04e497aB22a59c2aF4391cd12F",
+    "NonfungiblePositionManager": "0x416b433906b1B72FA758e166e239c43d68dC6F29",
+    "MellowTraseary": "0x0da6d939Cb0555A0D2eB99E310eBAE68432F31F2",
+    "CoreOperator": "0x9DFb1fC83EB81F99ACb008c49384c4446F2313Ed",
+    "Deployer": "0xef5DCE7ED67eD50F38D4eed3244BEa62778D8e87",
+    "VeloOracle": "0x45cC5B0A18C48Db0d54D7fb2d30E7022c389D51f",
+    "PulseStrategyModule": "0x6Aa6215f353F17D97CaD8219B20204e771ec59e9",
+    "VeloDeployFactoryHelper": "0x812Cf784f522908bc97c31CeC945684D78e338c9",
+    "VeloAmmModule": "0xA1890D3991b00bD5Aa43dedD2CC58aAAF26E88a8",
+    "VeloDepositWithdrawModule": "0x37DA9a5859533E32E582A3989CF2da218220A3dC",
+    "PulseVeloBot": "0x02c1bD2Ac1d59FE8B81F151303340564cA2f957C",
+    "Core": "0xB4AbEf6f42bA5F89Dc060f4372642A1C700b22bC",
+    "VeloDeployFactory": "0xf8a5Adf0540353410a4432B6B6Cde42e548d4709",
+    "CreateStrategyHelper": "0x6ac1656218e6e939A77350228C88eCc3afc84e54",
+    "Pools": {
+        "0x478946BcD4a5a22b316470F5486fAfb928C0bA25": {
+            "tokenId": 19447,
+            "LpWrapper": "0x92114D4E7C130A4674B00652F502A0CB97ff7720",
+            "SynthetixFarm": "0x5F8Ae1eE3C74a52179C09B9b6c1C9E7FA746c6E8",
+            "width": 4000,
+            "TS": 100,
+            "token0": "WETH",
+            "token1": "USDC"
+        },
+        "0x4DC22588Ade05C40338a9D95A6da9dCeE68Bcd60": {
+            "tokenId": 19452,
+            "LpWrapper": "0x82C97539Aa689F6b88d4aA8e2487Ba91BDcEC6D8",
+            "SynthetixFarm": "0x7429a3AE82df0706F0046290f9aE53663871B650",
+            "width": 6000,
+            "TS": 200,
+            "token0": "WETH",
+            "token1": "OP"
+        },
+        "0xbF30Ff33CF9C6b0c48702Ff17891293b002DfeA4": {
+            "tokenId": 19457,
+            "LpWrapper": "0xF90D4dF89312113bF46d71328eecB1142ca6b216",
+            "SynthetixFarm": "0xb96D6181673Ef3B852ce10811352Ac5Bf41dFb1b",
+            "width": 1,
+            "TS": 1,
+            "token0": "wstETH",
+            "token1": "WETH"
+        },
+        "0x84Ce89B4f6F67E523A81A82f9f2F14D84B726F6B": {
+            "tokenId": 19461,
+            "LpWrapper": "0x386D735062f1D5587Eb04c54e8a06C6B70De2D52",
+            "SynthetixFarm": "0xf4E89171c8d714836d239399c81C32BB44C53Cd0",
+            "width": 1,
+            "TS": 1,
+            "token0": "USDC",
+            "token1": "USDT"
+        },
+        "0x3C01ec09D15D5450FC702DC4353b17Cd2978d8a5": {
+            "tokenId": 19471,
+            "LpWrapper": "0x87D82d31E0F4E8dBD1e11E699162Cf9d1ee180f0",
+            "SynthetixFarm": "0x0b56B04006B76Cd1cBbBa3623b606342783631E9",
+            "width": 1,
+            "TS": 1,
+            "token0": "USDC",
+            "token1": "sUSD"
+        },
+        "0xEE1baC98527a9fDd57fcCf967817215B083cE1F0": {
+            "tokenId": 19478,
+            "LpWrapper": "0x1f0775162f97e4caAC253b365B2713a09097255F",
+            "SynthetixFarm": "0x2eEe9127A9932407A37AC9bFAE37C21c72f0a894",
+            "width": 4000,
+            "TS": 100,
+            "token0": "USDC",
+            "token1": "wstETH"
+        },
+        "0x2FA71491F8070FA644d97b4782dB5734854c0f6F": {
+            "tokenId": 19483,
+            "LpWrapper": "0x490c0E0982C25006724FAb927480794609AF90d5",
+            "SynthetixFarm": "0x6A223Fc345656d748dF115951B642bCc75964ac2",
+            "width": 1,
+            "TS": 1,
+            "token0": "USDC",
+            "token1": "USDC.e"
+        },
+        "0x319C0DD36284ac24A6b2beE73929f699b9f48c38": {
+            "tokenId": 19486,
+            "LpWrapper": "0x7f9ce1F4f6EB8733a7c2920C1dD9592f83e57037",
+            "SynthetixFarm": "0xc5dA06461883Fb65D601e0d200056ACdCCC23f0e",
+            "width": 4000,
+            "TS": 100,
+            "token0": "WETH",
+            "token1": "WBTC"
+        },
+        "0xeBD5311beA1948e1441333976EadCFE5fBda777C": {
+            "tokenId": 19495,
+            "LpWrapper": "0x07db200811f065bcDB8d5C313087C9B9c79DaBbC",
+            "SynthetixFarm": "0x7f160bb9FF99ff53d260B207dE2d58da045c12e1",
+            "width": 6000,
+            "TS": 200,
+            "token0": "USDC",
+            "token1": "OP"
+        }
+    }
+}

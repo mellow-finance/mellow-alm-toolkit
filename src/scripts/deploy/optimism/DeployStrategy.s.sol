@@ -32,11 +32,12 @@ import "src/helpers/CreateStrategyHelper.sol";
     0x2FA71491F8070FA644d97b4782dB5734854c0f6F |    1 |   1 | usdc   | usdc.e |   +
     0x319C0DD36284ac24A6b2beE73929f699b9f48c38 | 4000 | 100 | weth   |   wbtc |   +
     0xeBD5311beA1948e1441333976EadCFE5fBda777C | 6000 | 200 | usdc   |     op |   +
+    0xBafB44286c5EcaFb1F26A6649E15C49Fc1c49882 |  100 | 100 | weth   |   lusd | test
     --------------------------------------------------------------------------|
 */
 /// @dev pool address and position width to add
-address constant POOL_ADDRESS = 0xeBD5311beA1948e1441333976EadCFE5fBda777C;
-int24 constant POOL_POSITION_WIDTH = 6000;
+address constant POOL_ADDRESS = 0xBafB44286c5EcaFb1F26A6649E15C49Fc1c49882;
+int24 constant POOL_POSITION_WIDTH = 100;
 
 /*
   Deployer address: 0xef5DCE7ED67eD50F38D4eed3244BEa62778D8e87

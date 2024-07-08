@@ -11,16 +11,17 @@ import "src/interfaces/external/velo/ICLPool.sol";
 /// @dev it should be used after deploy strategy for @param POOL_ADDRESS
 
 /*
-  Actual Liqudity:  262144000 TEST-TEST-TEST-TEST-TEST-TEST-TEST-TEST-TEST
-   =======     POOL  0x9dA9D8dCdAC3Cab214d2bd241C3835B90aA8fFdE     ========
-            tokenId: 19314
-          lpWrapper: 0x79A3bCadf27A57AEe5cB1FBCe48a0CFb6857F6D0
-      synthetixFarm: 0x2570A45425F338bB57176A7FD2BcCB2205ea70f3
+    ----test----test----test----test----test----test----test----test----test----test--
+    Actual Liqudity: 1024000
+               POOL: 0xBafB44286c5EcaFb1F26A6649E15C49Fc1c49882
+            tokenId: 24648
+          lpWrapper: 0x1C33aC297a7DBa18440E78bF7C161cE6687CD0FF
+      synthetixFarm: 0xD01314A62a9C204613A7834fBE3f9CF55cFE0e59
 */
 
-address constant POOL_ADDRESS = 0x9dA9D8dCdAC3Cab214d2bd241C3835B90aA8fFdE;
+address constant POOL_ADDRESS = 0xBafB44286c5EcaFb1F26A6649E15C49Fc1c49882;
 address payable constant LP_WRAPPER_ADDRESS = payable(
-    0x79A3bCadf27A57AEe5cB1FBCe48a0CFb6857F6D0
+    0x1C33aC297a7DBa18440E78bF7C161cE6687CD0FF
 );
 
 contract Deploy is Script, Test {
@@ -33,8 +34,8 @@ contract Deploy is Script, Test {
 
         vm.startBroadcast(userPrivateKey);
 
-        uint256 anount0Desired = IERC20(pool.token0()).balanceOf(userAddress)/10; // desired amount0
-        uint256 anount1Desired = IERC20(pool.token1()).balanceOf(userAddress)/10; // desired amount1
+        uint256 anount0Desired = IERC20(pool.token0()).balanceOf(userAddress)/1; // desired amount0
+        uint256 anount1Desired = IERC20(pool.token1()).balanceOf(userAddress)/1; // desired amount1
 
         /// @dev give approves for actual amounts
         IERC20(pool.token0()).approve(

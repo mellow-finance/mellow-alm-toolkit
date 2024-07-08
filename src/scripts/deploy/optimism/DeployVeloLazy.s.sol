@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "forge-std/Test.sol";
 import "forge-std/Script.sol";
 
-import "./CreateStrategyHelper.sol";
+import "src/helpers/CreateStrategyHelper.sol";
 import "src/Core.sol";
 import "src/bots/PulseVeloBot.sol";
 import "src/modules/velo/VeloAmmModule.sol";
