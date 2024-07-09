@@ -75,244 +75,94 @@ contract Deploy is Script, Test {
 
         vm.startBroadcast(deployerPrivateKey);
 
-        if (STAGE_DEPLOY == 0) {
-            VeloOracle oracle = new VeloOracle();
-            oracleAddress = address(oracle);
-            console2.log("oracleAddress", oracleAddress);
+        VeloOracle oracle = new VeloOracle();
+        oracleAddress = address(oracle);
+        console2.log("oracleAddress", oracleAddress);
 
-            PulseStrategyModule strategyModule = new PulseStrategyModule();
-            strategyModuleAddress = address(strategyModule);
-            console2.log("strategyModuleAddress", strategyModuleAddress);
+        PulseStrategyModule strategyModule = new PulseStrategyModule();
+        strategyModuleAddress = address(strategyModule);
+        console2.log("strategyModuleAddress", strategyModuleAddress);
 
-            VeloDeployFactoryHelper velotrDeployFactoryHelper = new VeloDeployFactoryHelper();
-            velotrDeployFactoryHelperAddress = address(
-                velotrDeployFactoryHelper
-            );
-            console2.log(
-                "velotrDeployFactoryHelperAddress",
-                velotrDeployFactoryHelperAddress
-            );
+        VeloDeployFactoryHelper velotrDeployFactoryHelper = new VeloDeployFactoryHelper();
+        velotrDeployFactoryHelperAddress = address(
+            velotrDeployFactoryHelper
+        );
+        console2.log(
+            "velotrDeployFactoryHelperAddress",
+            velotrDeployFactoryHelperAddress
+        );
 
-            VeloAmmModule ammModule = new VeloAmmModule(
+        VeloAmmModule ammModule = new VeloAmmModule(
+            NONFUNGIBLE_POSITION_MANAGER
+        );
+        ammModuleAddress = address(ammModule);
+        console2.log("ammModuleAddress", ammModuleAddress);
+
+        VeloDepositWithdrawModule veloDepositWithdrawModule = new VeloDepositWithdrawModule(
                 NONFUNGIBLE_POSITION_MANAGER
             );
-            ammModuleAddress = address(ammModule);
-            console2.log("ammModuleAddress", ammModuleAddress);
+        veloDepositWithdrawModuleAddress = address(
+            veloDepositWithdrawModule
+        );
+        console2.log(
+            "veloDepositWithdrawModuleAddress",
+            veloDepositWithdrawModuleAddress
+        );
 
-            VeloDepositWithdrawModule veloDepositWithdrawModule = new VeloDepositWithdrawModule(
-                    NONFUNGIBLE_POSITION_MANAGER
-                );
-            veloDepositWithdrawModuleAddress = address(
-                veloDepositWithdrawModule
-            );
-            console2.log(
-                "veloDepositWithdrawModuleAddress",
-                veloDepositWithdrawModuleAddress
-            );
+        PulseVeloBot pulseVeloBot = new PulseVeloBot(
+            QUOTER_V2,
+            SWAP_ROUTER,
+            NONFUNGIBLE_POSITION_MANAGER
+        );
+        pulseVeloBotAddress = address(pulseVeloBot);
+        console2.log("pulseVeloBotAddress", pulseVeloBotAddress);
 
-            PulseVeloBot pulseVeloBot = new PulseVeloBot(
-                QUOTER_V2,
-                SWAP_ROUTER,
-                NONFUNGIBLE_POSITION_MANAGER
-            );
-            pulseVeloBotAddress = address(pulseVeloBot);
-            console2.log("pulseVeloBotAddress", pulseVeloBotAddress);
+        core = new Core(ammModule, strategyModule, oracle, deployerAddress);
+        coreAddress = address(core);
+        console2.log("coreAddress", coreAddress);
 
-            core = new Core(ammModule, strategyModule, oracle, deployerAddress);
-            coreAddress = address(core);
-            console2.log("coreAddress", coreAddress);
-
-            core.setProtocolParams(
-                abi.encode(
-                    IVeloAmmModule.ProtocolParams({
-                        feeD9: PROTOCOL_FEE_D9,
-                        treasury: PROTOCOL_TREASURY
-                    })
-                )
-            );
-
-            core.setOperatorFlag(true);
-
-            deployFactory = new VeloDeployFactory(
-                deployerAddress,
-                core,
-                veloDepositWithdrawModule,
-                velotrDeployFactoryHelper
-            );
-            deployFactoryAddress = address(deployFactory);
-            console2.log("deployFactoryAddress", deployFactoryAddress);
-
-            deployFactory.updateMutableParams(
-                IVeloDeployFactory.MutableParams({
-                    lpWrapperAdmin: WRAPPER_ADMIN,
-                    lpWrapperManager: address(0),
-                    farmOwner: FARM_OWNER,
-                    farmOperator: FARM_OPERATOR,
-                    minInitialLiquidity: MIN_INITIAL_LIQUDITY
+        core.setProtocolParams(
+            abi.encode(
+                IVeloAmmModule.ProtocolParams({
+                    feeD9: PROTOCOL_FEE_D9,
+                    treasury: PROTOCOL_TREASURY
                 })
-            );
-            createStrategyHelper = new CreateStrategyHelper(
-                NONFUNGIBLE_POSITION_MANAGER,
-                deployFactory,
-                deployerAddress
-            );
-            deployFactory.grantRole(
-                deployFactory.ADMIN_DELEGATE_ROLE(),
-                address(createStrategyHelper)
-            );
-        }
-        /*
-                    VELO_FACTORY = 0xCc0bDDB707055e04e497aB22a59c2aF4391cd12F
+            )
+        );
 
-                                               address wdth  TS   t0       t1 maxAllowedDelta 
-            0x478946BcD4a5a22b316470F5486fAfb928C0bA25 4000 100 usdc     weth              50 +
-            0x4DC22588Ade05C40338a9D95A6da9dCeE68Bcd60 6000 200 weth       op              50 +
-            0xbF30Ff33CF9C6b0c48702Ff17891293b002DfeA4    1   1 wsteth   weth               1 + 
-            0x84Ce89B4f6F67E523A81A82f9f2F14D84B726F6B    1   1 usdc     usdt               1 + 
-            0x3C01ec09D15D5450FC702DC4353b17Cd2978d8a5    1   1 usdc     susd               1 + 
-            0xEE1baC98527a9fDd57fcCf967817215B083cE1F0 4000 100 usdc   wsteth              50 +
-            0x2FA71491F8070FA644d97b4782dB5734854c0f6F    1   1 usdc   usdc.e               1 +
-            0xeBD5311beA1948e1441333976EadCFE5fBda777C 6000 200 usdc       op              50 +
-            0x1737275d53A5Ca5dAc582a493AA32C85ba2cFaD3    1   1 usdc      dai               1 +
-            0xb71Ac980569540cE38195b38369204ff555C80BE    1   1 wsteth  ezeth               1 -
-        */
-        else if (STAGE_DEPLOY == 1) {
-            core = Core(0x21017CeCE935974a269D6b3E41331fB80c373413);
-            deployFactory = VeloDeployFactory(
-                0xB2E8811465832C1dD67487de149d7317DD84565F
-            );
-            CreateStrategyHelper.PoolParameter[10] memory poolParameter;
-            poolParameter[0] = CreateStrategyHelper.PoolParameter({
-                factory: ICLFactory(VELO_FACTORY),
-                pool: ICLPool(0x478946BcD4a5a22b316470F5486fAfb928C0bA25),
-                width: 40,
-                tickSpacing: 100,
-                token0: USDC,
-                token1: WETH
-            });
+        core.setOperatorFlag(true);
 
-            poolParameter[1] = CreateStrategyHelper.PoolParameter({
-                factory: ICLFactory(VELO_FACTORY),
-                pool: ICLPool(0x4DC22588Ade05C40338a9D95A6da9dCeE68Bcd60),
-                width: 30,
-                tickSpacing: 200,
-                token0: WETH,
-                token1: OP
-            });
+        deployFactory = new VeloDeployFactory(
+            deployerAddress,
+            core,
+            veloDepositWithdrawModule,
+            velotrDeployFactoryHelper
+        );
+        deployFactoryAddress = address(deployFactory);
+        console2.log("deployFactoryAddress", deployFactoryAddress);
 
-            poolParameter[2] = CreateStrategyHelper.PoolParameter({
-                factory: ICLFactory(VELO_FACTORY),
-                pool: ICLPool(0xbF30Ff33CF9C6b0c48702Ff17891293b002DfeA4),
-                width: 1,
-                tickSpacing: 1,
-                token0: WSTETH,
-                token1: WETH
-            });
+        deployFactory.updateMutableParams(
+            IVeloDeployFactory.MutableParams({
+                lpWrapperAdmin: WRAPPER_ADMIN,
+                lpWrapperManager: address(0),
+                farmOwner: FARM_OWNER,
+                farmOperator: FARM_OPERATOR,
+                minInitialLiquidity: MIN_INITIAL_LIQUDITY
+            })
+        );
+        createStrategyHelper = new CreateStrategyHelper(
+            NONFUNGIBLE_POSITION_MANAGER,
+            deployFactory,
+            deployerAddress
+        );
+        deployFactory.grantRole(
+            deployFactory.ADMIN_DELEGATE_ROLE(),
+            address(createStrategyHelper)
+        );
 
-            poolParameter[3] = CreateStrategyHelper.PoolParameter({
-                factory: ICLFactory(VELO_FACTORY),
-                pool: ICLPool(0x84Ce89B4f6F67E523A81A82f9f2F14D84B726F6B),
-                width: 1,
-                tickSpacing: 1,
-                token0: USDC,
-                token1: USDT
-            });
-
-            poolParameter[4] = CreateStrategyHelper.PoolParameter({
-                factory: ICLFactory(VELO_FACTORY),
-                pool: ICLPool(0x3C01ec09D15D5450FC702DC4353b17Cd2978d8a5),
-                width: 1,
-                tickSpacing: 1,
-                token0: USDC,
-                token1: SUSD
-            });
-
-            poolParameter[5] = CreateStrategyHelper.PoolParameter({
-                factory: ICLFactory(VELO_FACTORY),
-                pool: ICLPool(0xEE1baC98527a9fDd57fcCf967817215B083cE1F0),
-                width: 40,
-                tickSpacing: 100,
-                token0: USDC,
-                token1: WSTETH
-            });
-
-            poolParameter[6] = CreateStrategyHelper.PoolParameter({
-                factory: ICLFactory(VELO_FACTORY),
-                pool: ICLPool(0x2FA71491F8070FA644d97b4782dB5734854c0f6F),
-                width: 1,
-                tickSpacing: 1,
-                token0: USDC,
-                token1: USDCe
-            });
-
-            poolParameter[7] = CreateStrategyHelper.PoolParameter({
-                factory: ICLFactory(VELO_FACTORY),
-                pool: ICLPool(0xeBD5311beA1948e1441333976EadCFE5fBda777C),
-                width: 30,
-                tickSpacing: 200,
-                token0: USDC,
-                token1: OP
-            });
-
-            poolParameter[8] = CreateStrategyHelper.PoolParameter({
-                factory: ICLFactory(VELO_FACTORY),
-                pool: ICLPool(0x1737275d53A5Ca5dAc582a493AA32C85ba2cFaD3),
-                width: 1,
-                tickSpacing: 1,
-                token0: USDC,
-                token1: DAI
-            });
-
-            poolParameter[9] = CreateStrategyHelper.PoolParameter({
-                factory: ICLFactory(VELO_FACTORY),
-                pool: ICLPool(0xb71Ac980569540cE38195b38369204ff555C80BE),
-                width: 1,
-                tickSpacing: 1,
-                token0: WSTETH,
-                token1: EZETH
-            });
-
-            createStrategyHelper = CreateStrategyHelper(
-                0x76da00F690F4C02459A7633AC27397AbdbbDc344
-            );
-
-            for (uint i = 7; i < poolParameter.length - 1; i++) {
-                IERC20(poolParameter[i].token0).approve(
-                    address(createStrategyHelper),
-                    type(uint256).max
-                );
-                IERC20(poolParameter[i].token1).approve(
-                    address(createStrategyHelper),
-                    type(uint256).max
-                );
-                createStrategyHelper.createStrategy(poolParameter[i]);
-            }
-        } else if (STAGE_DEPLOY == 2) {
-            core = Core(0x21017CeCE935974a269D6b3E41331fB80c373413);
-            deployFactory = VeloDeployFactory(
-                0xB2E8811465832C1dD67487de149d7317DD84565F
-            );
-            _migrateRoles();
-        }
+        _migrateRoles();
 
         vm.stopBroadcast();
-    }
-
-    function _init(
-        CreateStrategyHelper.PoolParameter memory poolParameter
-    ) private {
-        IERC20 token0 = IERC20(poolParameter.token0);
-        IERC20 token1 = IERC20(poolParameter.token1);
-        token0.approve(address(poolParameter.pool), type(uint256).max);
-        token0.approve(
-            address(NONFUNGIBLE_POSITION_MANAGER),
-            type(uint256).max
-        );
-        token1.approve(address(poolParameter.pool), type(uint256).max);
-        token1.approve(
-            address(NONFUNGIBLE_POSITION_MANAGER),
-            type(uint256).max
-        );
     }
 
     function _migrateRoles() private {
