@@ -34,8 +34,10 @@ contract Deploy is Script, Test {
 
         vm.startBroadcast(userPrivateKey);
 
-        uint256 anount0Desired = IERC20(pool.token0()).balanceOf(userAddress)/1; // desired amount0
-        uint256 anount1Desired = IERC20(pool.token1()).balanceOf(userAddress)/1; // desired amount1
+        uint256 anount0Desired = IERC20(pool.token0()).balanceOf(userAddress) /
+            1; // desired amount0
+        uint256 anount1Desired = IERC20(pool.token1()).balanceOf(userAddress) /
+            1; // desired amount1
 
         /// @dev give approves for actual amounts
         IERC20(pool.token0()).approve(

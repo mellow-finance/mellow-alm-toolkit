@@ -84,9 +84,7 @@ contract Deploy is Script, Test {
         console2.log("strategyModuleAddress", strategyModuleAddress);
 
         VeloDeployFactoryHelper velotrDeployFactoryHelper = new VeloDeployFactoryHelper();
-        velotrDeployFactoryHelperAddress = address(
-            velotrDeployFactoryHelper
-        );
+        velotrDeployFactoryHelperAddress = address(velotrDeployFactoryHelper);
         console2.log(
             "velotrDeployFactoryHelperAddress",
             velotrDeployFactoryHelperAddress
@@ -101,9 +99,7 @@ contract Deploy is Script, Test {
         VeloDepositWithdrawModule veloDepositWithdrawModule = new VeloDepositWithdrawModule(
                 NONFUNGIBLE_POSITION_MANAGER
             );
-        veloDepositWithdrawModuleAddress = address(
-            veloDepositWithdrawModule
-        );
+        veloDepositWithdrawModuleAddress = address(veloDepositWithdrawModule);
         console2.log(
             "veloDepositWithdrawModuleAddress",
             veloDepositWithdrawModuleAddress

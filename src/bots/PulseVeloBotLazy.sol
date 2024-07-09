@@ -42,7 +42,7 @@ contract PulseVeloBotLazy is IPulseVeloBotLazy {
         for (uint256 i = 0; i < positionCount; i++) {
             ICore.ManagedPositionInfo memory managedPositionInfo = core
                 .managedPositionAt(i);
-            
+
             if (managedPositionInfo.ammPositionIds.length == 0) continue;
 
             (bool flag, ICore.TargetPositionInfo memory target) = core
@@ -54,8 +54,9 @@ contract PulseVeloBotLazy is IPulseVeloBotLazy {
                 );
             if (!flag) continue;
 
-            (uint160 sqrtPriceX96, , , , , ) = ICLPool(managedPositionInfo.pool).slot0();
-            
+            (uint160 sqrtPriceX96, , , , , ) = ICLPool(managedPositionInfo.pool)
+                .slot0();
+
             (
                 ,
                 ,
@@ -69,7 +70,9 @@ contract PulseVeloBotLazy is IPulseVeloBotLazy {
                 ,
                 ,
 
-            ) = positionManager.positions(managedPositionInfo.ammPositionIds[0]);
+            ) = positionManager.positions(
+                    managedPositionInfo.ammPositionIds[0]
+                );
 
             uint160 sqrtPriceX96TargetLower = TickMath.getSqrtRatioAtTick(
                 target.lowerTicks[0]
@@ -89,7 +92,9 @@ contract PulseVeloBotLazy is IPulseVeloBotLazy {
                     /// @dev we have only amount0 and must swap share0X96 into token1
                     sqrtPriceDelta = sqrtPriceX96 - sqrtPriceX96TargetLower;
                     zeroForOne[i] = true;
-                } else if (sqrtPriceX96 > TickMath.getSqrtRatioAtTick(tickUpper)) {
+                } else if (
+                    sqrtPriceX96 > TickMath.getSqrtRatioAtTick(tickUpper)
+                ) {
                     /// @dev we have only amount1 and must swap share1X96 into token0
                     sqrtPriceDelta = sqrtPriceX96TargetUpper - sqrtPriceX96;
                     zeroForOne[i] = false;
@@ -102,8 +107,8 @@ contract PulseVeloBotLazy is IPulseVeloBotLazy {
             }
         }
     }
-// [Return] [0, 0, 0, 26970768212937972007379803604 [2.697e28], 20300078980498621700011037303 [2.03e28], 0, 68561615716414635921866073687 [6.856e28], 0, 0, 0, 0], [false, false, false, true, true, false, true, false, false, false, false]
-// [Return] [0, 0, 0, 13208756734212272860608015614 [1.32e28], 19831275905403760373214081239 [1.983e28], 0, 0, 0, 0, 0, 0], [false, false, false, true, true, false, false, false, false, false, false]
+    // [Return] [0, 0, 0, 26970768212937972007379803604 [2.697e28], 20300078980498621700011037303 [2.03e28], 0, 68561615716414635921866073687 [6.856e28], 0, 0, 0, 0], [false, false, false, true, true, false, true, false, false, false, false]
+    // [Return] [0, 0, 0, 13208756734212272860608015614 [1.32e28], 19831275905403760373214081239 [1.983e28], 0, 0, 0, 0, 0, 0], [false, false, false, true, true, false, false, false, false, false, false]
     function call(
         bytes memory data,
         ICore.TargetPositionInfo[] memory targets

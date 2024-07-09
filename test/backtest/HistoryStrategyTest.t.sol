@@ -313,8 +313,7 @@ contract HistoryTest is Test {
                 sqrtPriceLimitX96,
                 abi.encode(address(this))
             )
-        {
-        } catch {
+        {} catch {
             result = false;
         }
         return result;

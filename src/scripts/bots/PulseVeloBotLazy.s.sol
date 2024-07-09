@@ -30,13 +30,13 @@ contract PulseVeloBot is Script {
     address immutable operatorAddress = vm.addr(operatorPrivateKey);
 
     function run() public {
-
         PulseVeloBotLazy bot = new PulseVeloBotLazy(positionManager, core);
         vm.startBroadcast(operatorPrivateKey);
 
         uint256 positionCount = core.positionCount();
 
-        (uint256[] memory shareX96, bool[] memory zeroForOne) = bot.necessarySwapSharesX96ForMint();
+        (uint256[] memory shareX96, bool[] memory zeroForOne) = bot
+            .necessarySwapSharesX96ForMint();
 
         return;
 

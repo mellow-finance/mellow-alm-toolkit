@@ -32,7 +32,7 @@ contract CreateStrategyHelper {
         deployFactory = deployFactory_;
         deployerAddress = deployerAddress_;
     }
-    
+
     function createStrategy(
         PoolParameter memory poolParameter
     )
@@ -133,7 +133,6 @@ contract CreateStrategyHelper {
         console2.log("tickCurr : ", tick);
         console2.log("tickLower: ", tickLower);
         console2.log("tickUpper: ", tickUpper);
-        
 
         uint128 actualLiqudity = MIN_INITIAL_LIQUDITY / 2;
         uint256 amount0;
@@ -149,7 +148,10 @@ contract CreateStrategyHelper {
                 actualLiqudity
             );
             console2.log(amount0, amount1);
-            require(actualLiqudity < type(uint128).max/10000, "too high liqudity");
+            require(
+                actualLiqudity < type(uint128).max / 10000,
+                "too high liqudity"
+            );
         } while (amount0 < 10 || amount1 < 10);
 
         require(amount0 > 0, "too low liqudity for amount0");
@@ -167,11 +169,8 @@ contract CreateStrategyHelper {
             amount1
         );
 
-        (
-            uint256 tokenId,
-            uint128 liquidity,
-            ,
-        ) = NONFUNGIBLE_POSITION_MANAGER.mint(
+        (uint256 tokenId, uint128 liquidity, , ) = NONFUNGIBLE_POSITION_MANAGER
+            .mint(
                 INonfungiblePositionManager.MintParams({
                     token0: poolParameter.token0,
                     token1: poolParameter.token1,
