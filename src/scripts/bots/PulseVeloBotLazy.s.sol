@@ -24,21 +24,25 @@ contract PulseVeloBot is Script {
         INonfungiblePositionManager(0x416b433906b1B72FA758e166e239c43d68dC6F29);
     ICore public immutable core =
         ICore(0xB4AbEf6f42bA5F89Dc060f4372642A1C700b22bC);
-    address immutable pulseVeloBotAddress =
-        0x02c1bD2Ac1d59FE8B81F151303340564cA2f957C;
+    address public pulseVeloBotAddress =
+        0xB275575250801CD19731E4D31d639454F65194E5;
     uint256 immutable operatorPrivateKey = vm.envUint("OPERATOR_PRIVATE_KEY");
     address immutable operatorAddress = vm.addr(operatorPrivateKey);
 
     function run() public {
-        PulseVeloBotLazy bot = new PulseVeloBotLazy(positionManager, core);
+        /* PulseVeloBotLazy bot = new PulseVeloBotLazy(
+            address(positionManager),
+            address(core)
+        );
+        pulseVeloBotAddress = address(
+            0x71431c910dE11b7412674728884E301D0e444242
+        ); */
         vm.startBroadcast(operatorPrivateKey);
 
         uint256 positionCount = core.positionCount();
+        IPulseVeloBotLazy.SwapParams[] memory swapParams = _readTransactions();
 
-        (uint256[] memory shareX96, bool[] memory zeroForOne) = bot
-            .necessarySwapSharesX96ForMint();
-
-        return;
+        require(positionCount == swapParams.length);
 
         for (
             uint managedPositionId = 0;
@@ -50,16 +54,32 @@ contract PulseVeloBot is Script {
 
             bool needRebalance = _needRebalance(managedPositionInfo);
             if (needRebalance) {
+                console2.log(
+                    swapParams[managedPositionId].router,
+                    swapParams[managedPositionId].tokenIn,
+                    swapParams[managedPositionId].tokenOut,
+                    swapParams[managedPositionId].amountIn
+                );
+
                 uint256[] memory ids = new uint256[](1);
                 ids[0] = managedPositionId;
+                IPulseVeloBotLazy.SwapParams[]
+                    memory swapParam = new IPulseVeloBotLazy.SwapParams[](0);
+                if (
+                    swapParams[managedPositionId].amountIn > 0 &&
+                    swapParams[managedPositionId].tokenIn != address(0) &&
+                    swapParams[managedPositionId].tokenOut != address(0) &&
+                    swapParams[managedPositionId].router != address(0)
+                ) {
+                    swapParam = new IPulseVeloBotLazy.SwapParams[](1);
+                    swapParam[0] = swapParams[managedPositionId];
+                }
                 try
                     core.rebalance(
                         ICore.RebalanceParams({
                             ids: ids,
                             callback: pulseVeloBotAddress,
-                            data: abi.encode(
-                                new uint256[](0) /// @dev swap data: just stubbed empty array
-                            )
+                            data: abi.encode(swapParam)
                         })
                     )
                 {} catch {}
@@ -109,6 +129,18 @@ contract PulseVeloBot is Script {
         }
 
         return false;
+    }
+
+    function _readTransactions()
+        private
+        view
+        returns (IPulseVeloBotLazy.SwapParams[] memory swapParams)
+    {
+        string
+            memory path = "src/scripts/deploy/optimism/pulseVeloBotLazySwapData.json";
+        string memory json = vm.readFile(path);
+        bytes memory data = vm.parseJson(json);
+        swapParams = abi.decode(data, (IPulseVeloBotLazy.SwapParams[]));
     }
 
     /*

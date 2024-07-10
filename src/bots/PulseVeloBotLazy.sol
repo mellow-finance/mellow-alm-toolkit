@@ -9,8 +9,6 @@ import "../interfaces/bots/IPulseVeloBotLazy.sol";
 import "../libraries/external/LiquidityAmounts.sol";
 import "../libraries/external/TickMath.sol";
 
-import "forge-std/Test.sol";
-
 contract PulseVeloBotLazy is IPulseVeloBotLazy {
     using SafeERC20 for IERC20;
 
@@ -22,22 +20,20 @@ contract PulseVeloBotLazy is IPulseVeloBotLazy {
 
     ICore core;
 
-    constructor(INonfungiblePositionManager positionManager_, ICore core_) {
-        positionManager = positionManager_;
-        core = core_;
+    constructor(address positionManager_, address core_) {
+        positionManager = INonfungiblePositionManager(positionManager_);
+        core = ICore(core_);
     }
 
-    /// @dev returns @param shareX96 shares necessery to swap for desired target position
-    /// @param shareX96 fixed point number
-    /// @param zeroForOne is true if swap 0->1, and vice versa
-    function necessarySwapSharesX96ForMint()
+    /// @dev returns quotes for swap
+    /// @param swapQuoteParams contains ecessery amountIn amd amountOut to swap for desired target position
+    function necessarySwapAmountForMint()
         external
         view
-        returns (uint256[] memory shareX96, bool[] memory zeroForOne)
+        returns (SwapQuoteParams[] memory swapQuoteParams)
     {
         uint256 positionCount = core.positionCount();
-        shareX96 = new uint256[](positionCount);
-        zeroForOne = new bool[](positionCount);
+        swapQuoteParams = new SwapQuoteParams[](positionCount);
 
         for (uint256 i = 0; i < positionCount; i++) {
             ICore.ManagedPositionInfo memory managedPositionInfo = core
@@ -54,70 +50,85 @@ contract PulseVeloBotLazy is IPulseVeloBotLazy {
                 );
             if (!flag) continue;
 
-            (uint160 sqrtPriceX96, , , , , ) = ICLPool(managedPositionInfo.pool)
-                .slot0();
-
-            (
-                ,
-                ,
-                ,
-                ,
-                ,
-                int24 tickLower,
-                int24 tickUpper,
-                ,
-                ,
-                ,
-                ,
-
-            ) = positionManager.positions(
-                    managedPositionInfo.ammPositionIds[0]
-                );
-
-            uint160 sqrtPriceX96TargetLower = TickMath.getSqrtRatioAtTick(
-                target.lowerTicks[0]
+            (swapQuoteParams[i]) = _necessarySwapAmountForMint(
+                target,
+                managedPositionInfo
             );
-            uint160 sqrtPriceX96TargetUpper = TickMath.getSqrtRatioAtTick(
-                target.upperTicks[0]
-            );
-
-            if (
-                sqrtPriceX96 > sqrtPriceX96TargetLower &&
-                sqrtPriceX96 < sqrtPriceX96TargetUpper
-            ) {
-                uint160 sqrtPriceWidthPostion = sqrtPriceX96TargetUpper -
-                    sqrtPriceX96TargetLower;
-                uint160 sqrtPriceDelta;
-                if (sqrtPriceX96 < TickMath.getSqrtRatioAtTick(tickLower)) {
-                    /// @dev we have only amount0 and must swap share0X96 into token1
-                    sqrtPriceDelta = sqrtPriceX96 - sqrtPriceX96TargetLower;
-                    zeroForOne[i] = true;
-                } else if (
-                    sqrtPriceX96 > TickMath.getSqrtRatioAtTick(tickUpper)
-                ) {
-                    /// @dev we have only amount1 and must swap share1X96 into token0
-                    sqrtPriceDelta = sqrtPriceX96TargetUpper - sqrtPriceX96;
-                    zeroForOne[i] = false;
-                }
-                shareX96[i] = FullMath.mulDiv(
-                    sqrtPriceDelta,
-                    Q96,
-                    sqrtPriceWidthPostion
-                );
-            }
         }
     }
-    // [Return] [0, 0, 0, 26970768212937972007379803604 [2.697e28], 20300078980498621700011037303 [2.03e28], 0, 68561615716414635921866073687 [6.856e28], 0, 0, 0, 0], [false, false, false, true, true, false, true, false, false, false, false]
-    // [Return] [0, 0, 0, 13208756734212272860608015614 [1.32e28], 19831275905403760373214081239 [1.983e28], 0, 0, 0, 0, 0, 0], [false, false, false, true, true, false, false, false, false, false, false]
+
+    function _necessarySwapAmountForMint(
+        ICore.TargetPositionInfo memory target,
+        ICore.ManagedPositionInfo memory managedPositionInfo
+    ) private view returns (SwapQuoteParams memory swapQuoteParams) {
+        ICLPool pool = ICLPool(managedPositionInfo.pool);
+        (uint160 sqrtPriceX96, , , , , ) = pool.slot0();
+
+        (
+            ,
+            ,
+            ,
+            ,
+            ,
+            int24 tickLower,
+            int24 tickUpper,
+            uint128 liquidity,
+            ,
+            ,
+            ,
+
+        ) = positionManager.positions(managedPositionInfo.ammPositionIds[0]);
+
+        uint160 sqrtPriceX96TargetLower = TickMath.getSqrtRatioAtTick(
+            target.lowerTicks[0]
+        );
+        uint160 sqrtPriceX96TargetUpper = TickMath.getSqrtRatioAtTick(
+            target.upperTicks[0]
+        );
+
+        (uint256 amount0, uint256 amount1) = LiquidityAmounts
+            .getAmountsForLiquidity(
+                sqrtPriceX96,
+                TickMath.getSqrtRatioAtTick(tickLower),
+                TickMath.getSqrtRatioAtTick(tickUpper),
+                uint128((liquidity * (D6 + 1)) / D6) + 1
+            );
+
+        if (
+            sqrtPriceX96 > sqrtPriceX96TargetLower &&
+            sqrtPriceX96 < sqrtPriceX96TargetUpper
+        ) {
+            uint160 sqrtPriceWidthPostion = sqrtPriceX96TargetUpper -
+                sqrtPriceX96TargetLower;
+            uint160 sqrtPriceDelta;
+            if (sqrtPriceX96 < TickMath.getSqrtRatioAtTick(tickLower)) {
+                /// @dev we have only amount0 and must swap share0X96 into token1
+                sqrtPriceDelta = sqrtPriceX96 - sqrtPriceX96TargetLower;
+                swapQuoteParams.tokenIn = pool.token0();
+                swapQuoteParams.tokenOut = pool.token1();
+                swapQuoteParams.amountIn = amount0;
+            } else if (sqrtPriceX96 > TickMath.getSqrtRatioAtTick(tickUpper)) {
+                /// @dev we have only amount1 and must swap share1X96 into token0
+                sqrtPriceDelta = sqrtPriceX96TargetUpper - sqrtPriceX96;
+                swapQuoteParams.tokenIn = pool.token1();
+                swapQuoteParams.tokenOut = pool.token0();
+                swapQuoteParams.amountIn = amount1;
+            }
+            swapQuoteParams.amountIn =
+                FullMath.mulDiv(
+                    swapQuoteParams.amountIn,
+                    sqrtPriceDelta,
+                    sqrtPriceWidthPostion
+                ) +
+                1;
+        }
+    }
+
     function call(
         bytes memory data,
         ICore.TargetPositionInfo[] memory targets
     ) external returns (uint256[][] memory newTokenIds) {
-        SwapArbitraryParams[] memory swapParams = abi.decode(
-            data,
-            (SwapArbitraryParams[])
-        );
-
+        SwapParams[] memory swapParams = abi.decode(data, (SwapParams[]));
         // getting liquidity from all position
         for (uint256 i = 0; i < targets.length; i++) {
             uint256 tokenId = targets[i].info.ammPositionIds[0];
@@ -143,7 +154,7 @@ contract PulseVeloBotLazy is IPulseVeloBotLazy {
             positionManager.burn(tokenId);
         }
 
-        // swapping to target ratio according result of function `necessaryAmountsForMint`
+        // swapping to target ratio according result of function `necessarySwapAmountForMint`
         for (uint256 i = 0; i < swapParams.length; i++) {
             address tokenIn = swapParams[i].tokenIn;
             uint256 balance = IERC20(swapParams[i].tokenIn).balanceOf(
@@ -164,28 +175,54 @@ contract PulseVeloBotLazy is IPulseVeloBotLazy {
                     type(uint256).max
                 );
             }
+            uint256 tokenOutBalanceBefore = IERC20(swapParams[i].tokenOut)
+                .balanceOf(address(this));
             (bool success, bytes memory returnData) = swapParams[i].router.call(
                 swapParams[i].callData
             );
             require(success, "Swap call failed");
-            require(
-                IERC20(swapParams[i].tokenOut).balanceOf(address(this)) >=
-                    swapParams[i].expectedAmountOut
-            );
+
+            uint256 amountOutDelta = IERC20(swapParams[i].tokenOut).balanceOf(
+                address(this)
+            ) - tokenOutBalanceBefore;
+
+            /// @dev 32 - just actual amount out
+            if (returnData.length == 32) {
+                require(
+                    abi.decode(returnData, (uint256)) == amountOutDelta,
+                    string(
+                        abi.encodePacked(
+                            "Wrong amount out after swap",
+                            abi.decode(returnData, (uint256)),
+                            amountOutDelta
+                        )
+                    )
+                );
+
+                require(
+                    amountOutDelta >= swapParams[i].expectedAmountOut,
+                    string(
+                        abi.encodePacked(
+                            "Min return: want ",
+                            Strings.toString(swapParams[i].expectedAmountOut),
+                            "; actual: ",
+                            Strings.toString(amountOutDelta)
+                        )
+                    )
+                );
+                /// @dev revert string Error(string)
+            } else {
+                assembly {
+                    let returndata_size := mload(returnData)
+                    revert(add(32, returnData), returndata_size)
+                }
+            }
         }
 
         // creating new positions with minimal liquidity
         newTokenIds = new uint256[][](targets.length);
         for (uint256 i = 0; i < targets.length; i++) {
             ICLPool pool = ICLPool(targets[i].info.pool);
-            (uint160 sqrtPriceX96, , , , , ) = pool.slot0();
-            (uint256 amount0, uint256 amount1) = LiquidityAmounts
-                .getAmountsForLiquidity(
-                    sqrtPriceX96,
-                    TickMath.getSqrtRatioAtTick(targets[i].lowerTicks[0]),
-                    TickMath.getSqrtRatioAtTick(targets[i].upperTicks[0]),
-                    uint128((targets[i].minLiquidities[0] * (D6 + 1)) / D6) + 1
-                );
 
             address token0 = pool.token0();
             if (
@@ -209,21 +246,6 @@ contract PulseVeloBotLazy is IPulseVeloBotLazy {
                 IERC20(token1).forceApprove(
                     address(positionManager),
                     type(uint256).max
-                );
-            }
-
-            {
-                console2.log(
-                    "token0:",
-                    IERC20(token0).balanceOf(address(this)),
-                    ">=",
-                    amount0
-                );
-                console2.log(
-                    "token1:",
-                    IERC20(token1).balanceOf(address(this)),
-                    ">=",
-                    amount1
                 );
             }
 

@@ -3,19 +3,22 @@ pragma solidity ^0.8.0;
 
 import "../utils/IRebalanceCallback.sol";
 import "../external/velo/ICLPool.sol";
-import "../external/velo/ICLFactory.sol";
-import "../external/velo/IQuoterV2.sol";
-import "../external/velo/ISwapRouter.sol";
 import "../external/velo/INonfungiblePositionManager.sol";
 
 interface IPulseVeloBotLazy is IRebalanceCallback {
-    struct SwapArbitraryParams {
+    struct SwapQuoteParams {
         address tokenIn;
         address tokenOut;
-        address router;
-        bytes callData;
         uint256 amountIn;
+    }
+
+    struct SwapParams {
+        uint256 amountIn;
+        bytes callData;
         uint256 expectedAmountOut;
+        address router;
+        address tokenIn;
+        address tokenOut;
     }
 
     function Q96() external view returns (uint256);
