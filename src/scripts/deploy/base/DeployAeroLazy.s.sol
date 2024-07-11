@@ -13,7 +13,6 @@ import "src/modules/strategies/PulseStrategyModule.sol";
 import "src/oracles/VeloOracle.sol";
 import "src/utils/VeloDeployFactoryHelper.sol";
 import "src/utils/VeloDeployFactory.sol";
-import "src/interfaces/external/velo/external/IWETH9.sol";
 
 struct PoolParameter {
     ICLPool pool;
@@ -105,7 +104,9 @@ contract Deploy is Script, Test {
         strategyModuleAddress = address(strategyModule);
         console2.log("strategyModuleAddress", strategyModuleAddress);
 
-        VeloDeployFactoryHelper velotrDeployFactoryHelper = new VeloDeployFactoryHelper();
+        VeloDeployFactoryHelper velotrDeployFactoryHelper = new VeloDeployFactoryHelper(
+                WETH
+            );
         velotrDeployFactoryHelperAddress = address(velotrDeployFactoryHelper);
         console2.log(
             "velotrDeployFactoryHelperAddress",

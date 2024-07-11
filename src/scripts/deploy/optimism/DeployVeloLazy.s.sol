@@ -13,7 +13,6 @@ import "src/modules/strategies/PulseStrategyModule.sol";
 import "src/oracles/VeloOracle.sol";
 import "src/utils/VeloDeployFactoryHelper.sol";
 import "src/utils/VeloDeployFactory.sol";
-import "src/interfaces/external/velo/external/IWETH9.sol";
 
 uint128 constant MIN_INITIAL_LIQUDITY = 1000;
 uint32 constant PROTOCOL_FEE_D9 = 1e8; // 10%
@@ -83,7 +82,9 @@ contract Deploy is Script, Test {
         strategyModuleAddress = address(strategyModule);
         console2.log("strategyModuleAddress", strategyModuleAddress);
 
-        VeloDeployFactoryHelper velotrDeployFactoryHelper = new VeloDeployFactoryHelper();
+        VeloDeployFactoryHelper velotrDeployFactoryHelper = new VeloDeployFactoryHelper(
+                WETH
+            );
         velotrDeployFactoryHelperAddress = address(velotrDeployFactoryHelper);
         console2.log(
             "velotrDeployFactoryHelperAddress",
