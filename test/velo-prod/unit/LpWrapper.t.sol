@@ -83,7 +83,8 @@ contract Unit is Fixture {
             depositWithdrawModule,
             "",
             "",
-            address(0)
+            address(0),
+            Constants.WETH
         );
 
         lpWrapper = new LpWrapper(
@@ -91,7 +92,8 @@ contract Unit is Fixture {
             depositWithdrawModule,
             "Name",
             "Symbol",
-            address(1)
+            address(1),
+            Constants.WETH
         );
 
         assertEq(lpWrapper.name(), "Name");
@@ -104,7 +106,8 @@ contract Unit is Fixture {
             depositWithdrawModule,
             "Wrapper LP Token",
             "WLP",
-            Constants.OWNER
+            Constants.OWNER,
+            Constants.WETH
         );
 
         uint256 tokenId = mint(
@@ -149,7 +152,8 @@ contract Unit is Fixture {
             depositWithdrawModule,
             "Wrapper LP Token",
             "WLP",
-            Constants.OWNER
+            Constants.OWNER,
+            Constants.WETH
         );
 
         uint256 tokenId = mint(
@@ -247,7 +251,8 @@ contract Unit is Fixture {
             depositWithdrawModule,
             "Wrapper LP Token",
             "WLP",
-            Constants.OWNER
+            Constants.OWNER,
+            Constants.WETH
         );
 
         uint256 tokenId = mint(
