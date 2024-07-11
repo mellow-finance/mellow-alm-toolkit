@@ -96,6 +96,7 @@ class PulseVeloBotLazySwapData:
     amountIn: int
     callData: str
     expectedAmountOut: int
+    positionId: int
     router: str
     tokenIn: str
     tokenOut: str

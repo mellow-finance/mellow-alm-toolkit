@@ -16,6 +16,7 @@ interface IPulseVeloBotLazy is IRebalanceCallback {
         uint256 amountIn;
         bytes callData;
         uint256 expectedAmountOut;
+        uint256 positionId;
         address router;
         address tokenIn;
         address tokenOut;

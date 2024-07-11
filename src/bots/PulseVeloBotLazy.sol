@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
 import "../interfaces/bots/IPulseVeloBotLazy.sol";
+import "src/interfaces/modules/strategies/IPulseStrategyModule.sol";
 
 import "../libraries/external/LiquidityAmounts.sol";
 import "../libraries/external/TickMath.sol";
@@ -27,34 +28,80 @@ contract PulseVeloBotLazy is IPulseVeloBotLazy {
 
     /// @dev returns quotes for swap
     /// @param swapQuoteParams contains ecessery amountIn amd amountOut to swap for desired target position
-    function necessarySwapAmountForMint()
-        external
-        view
-        returns (SwapQuoteParams[] memory swapQuoteParams)
-    {
+    function necessarySwapAmountForMint(
+        uint256 positionId
+    ) external view returns (SwapQuoteParams memory swapQuoteParams) {
+        if (!needRebalancePosition(positionId)) return swapQuoteParams;
+        ICore.ManagedPositionInfo memory managedPositionInfo = core
+            .managedPositionAt(positionId);
+
+        if (managedPositionInfo.ammPositionIds.length == 0)
+            return swapQuoteParams;
+
+        (bool flag, ICore.TargetPositionInfo memory target) = core
+            .strategyModule()
+            .getTargets(managedPositionInfo, core.ammModule(), core.oracle());
+        if (!flag) return swapQuoteParams;
+
+        swapQuoteParams = _necessarySwapAmountForMint(
+            target,
+            managedPositionInfo
+        );
+    }
+
+    /// @dev returns array of flags, true if rebalance is necessery
+    function needRebalance() public view returns (bool[] memory needs) {
         uint256 positionCount = core.positionCount();
-        swapQuoteParams = new SwapQuoteParams[](positionCount);
 
+        needs = new bool[](positionCount);
         for (uint256 i = 0; i < positionCount; i++) {
-            ICore.ManagedPositionInfo memory managedPositionInfo = core
-                .managedPositionAt(i);
-
-            if (managedPositionInfo.ammPositionIds.length == 0) continue;
-
-            (bool flag, ICore.TargetPositionInfo memory target) = core
-                .strategyModule()
-                .getTargets(
-                    managedPositionInfo,
-                    core.ammModule(),
-                    core.oracle()
-                );
-            if (!flag) continue;
-
-            (swapQuoteParams[i]) = _necessarySwapAmountForMint(
-                target,
-                managedPositionInfo
-            );
+            needs[i] = needRebalancePosition(i);
         }
+    }
+
+    function needRebalancePosition(
+        uint256 managedPositionId
+    ) public view returns (bool) {
+        ICore.ManagedPositionInfo memory managedPositionInfo = core
+            .managedPositionAt(managedPositionId);
+
+        ICLPool pool = ICLPool(managedPositionInfo.pool);
+        uint256 positionCount = managedPositionInfo.ammPositionIds.length;
+
+        for (uint ammId = 0; ammId < positionCount; ammId++) {
+            uint256 tokenId = managedPositionInfo.ammPositionIds[ammId];
+            (
+                ,
+                ,
+                ,
+                ,
+                ,
+                int24 tickLower,
+                int24 tickUpper,
+                ,
+                ,
+                ,
+                ,
+
+            ) = positionManager.positions(tokenId);
+            (, int24 tick, , , , ) = pool.slot0();
+
+            IPulseStrategyModule.StrategyParams memory params = abi.decode(
+                managedPositionInfo.strategyParams,
+                (IPulseStrategyModule.StrategyParams)
+            );
+            if (tick < tickLower) {
+                if (tickLower - tick > params.tickNeighborhood) {
+                    return true;
+                }
+            } else if (tick > tickUpper) {
+                if (tick - tickUpper > params.tickNeighborhood) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     function _necessarySwapAmountForMint(

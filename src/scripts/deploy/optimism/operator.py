@@ -8,7 +8,7 @@ from odos import Odos, PulseVeloBotLazySwapData
 load_dotenv()
 CHAIN_ID = 10
 ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
-VELO_BOT_ADDRESS = '0x71431c910dE11b7412674728884E301D0e444242'
+VELO_BOT_ADDRESS = '0xd5823002f1D34e68B47AAce5551d6A76E6379d5c'
 
 class Operator:
     def __init__(self):
@@ -30,70 +30,93 @@ class Operator:
         # init Odos quoter to obtain swap data
         self.odos = Odos(VELO_BOT_ADDRESS)
 
+    """ 
+        1. method asks bool array of posisions that should be rebalanced
+        2. asks amounts for swap
+        3. write to .json swap data array
+    """
     def rebalance(self):
         # obtain desired swap amount to have ability to mint positions
-        swapInfo = self.bot.functions.necessarySwapAmountForMint().call()
-        pulseVeloBotLazySwapData = []
-        for swap in swapInfo:
-            tokenIn = swap[0]
-            tokenOut = swap[1]
-            amountIn = swap[2]
-            if tokenIn != ZERO_ADDRESS and tokenOut != ZERO_ADDRESS and amountIn > 0:
-                try:
-                    # quote shallow swap data
-                    quote = self.odos.quote(10, tokenIn, tokenOut, amountIn)
-                    # swap specific swap data including 'to' and 'callData'
-                    swapData = self.odos.swap(quote.path_id)
-                    pulseVeloBotLazySwapData.append( 
+        needRebalances = self.bot.functions.needRebalance().call()
+
+        for i, needRebalance in enumerate(needRebalances):
+            pulseVeloBotLazySwapData = []
+            if needRebalance:
+                swapInfo = self.bot.functions.necessarySwapAmountForMint(i).call()
+   
+                tokenIn = swapInfo[0]
+                tokenOut = swapInfo[1]
+                amountIn = swapInfo[2]
+                if tokenIn != ZERO_ADDRESS and tokenOut != ZERO_ADDRESS and amountIn > 0:
+                    try:
+                        # quote shallow swap data
+                        quote = self.odos.quote(10, tokenIn, tokenOut, amountIn)
+                        # swap specific swap data including 'to' and 'callData'
+                        swapData = self.odos.swap(quote.path_id)
+                        pulseVeloBotLazySwapData.append( 
+                            PulseVeloBotLazySwapData(
+                                positionId=i,
+                                tokenIn=tokenIn, 
+                                tokenOut=tokenOut, 
+                                amountIn=amountIn, 
+                                expectedAmountOut=int(swapData[1].expectedAmount),
+                                router=swapData[1].to, 
+                                callData=swapData[1].data)
+                        )
+                        print(pulseVeloBotLazySwapData)
+                    except Exception as e:
+                        print("error during quoting", e)
+                else:
+                    pulseVeloBotLazySwapData.append(
                         PulseVeloBotLazySwapData(
-                            tokenIn=tokenIn, 
-                            tokenOut=tokenOut, 
-                            amountIn=amountIn, 
-                            expectedAmountOut=int(swapData[1].expectedAmount),
-                            router=swapData[1].to, 
-                            callData=swapData[1].data)
-                    )
-                    print(pulseVeloBotLazySwapData)
-                except Exception as e:
-                    print("error during quoting", e)
-            else:
-                pulseVeloBotLazySwapData.append(
-                    PulseVeloBotLazySwapData(
-                        tokenIn=ZERO_ADDRESS, 
-                        tokenOut=ZERO_ADDRESS, 
-                        amountIn=0,
-                        expectedAmountOut=0,
-                        router=ZERO_ADDRESS, 
-                        callData='0x')
-                    )
-        
+                            positionId=i,
+                            tokenIn=ZERO_ADDRESS, 
+                            tokenOut=ZERO_ADDRESS, 
+                            amountIn=0,
+                            expectedAmountOut=0,
+                            router=ZERO_ADDRESS, 
+                            callData='0x')
+                        )
+
+                # run solidity rebalance script that reads swap data and do rebalance on-chain
+                self.__runForgeScript(pulseVeloBotLazySwapData)
+
+    """
+        runs forge script to rebalance with swap data
+        logs are saved to dedug and check 
+    """
+    def __runForgeScript(self, pulseVeloBotLazySwapData):
+
         # write obtained swap data into json
         data = [instance.toDict() for instance in pulseVeloBotLazySwapData]
         with open("pulseVeloBotLazySwapData.json", 'w') as file:
             json.dump(data, file, indent=4)
 
-        # run solidity rebalance script that reads swap data and do rebalance on-chain
-        self.__runForgeScript()
-        
-    def __runForgeScript(self):
-        """ command = [
+        subfolder = "logs"
+        os.makedirs(subfolder, exist_ok=True)
+        log_path = os.path.join(subfolder, str(pulseVeloBotLazySwapData[0].positionId) + ".log")
+
+        # test run on fork
+        command = [
             'forge', 'script', '../../bots/PulseVeloBotLazy.s.sol',
             '--rpc-url', os.environ.get("OPTIMISM_RPC"),
-            '--fork-block-number', '122505158',
+            '--fork-block-number', '122545420',
             '-vvvvv'
-        ] """
-        command = [
+        ]
+
+        # on-chain run
+        """ command = [
             'forge', 'script', '../../bots/PulseVeloBotLazy.s.sol',
             '--rpc-url', os.environ.get("OPTIMISM_RPC"),
             '--broadcast',
             '--slow',
             '-vvvvv'
-        ]
+        ] """
 
-        # Run the command
-        result = subprocess.run(command, capture_output=True, text=True)
-        print(result.stdout)
-        print(result.stderr)
+        with open(log_path, 'w') as log_file:
+            result = subprocess.run(command, stdout=log_file, text=True)
+        
+        print(f"see the transaction logs at {subfolder} folder")
 
 bot = Operator()
 bot.rebalance()

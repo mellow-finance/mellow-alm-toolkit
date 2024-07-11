@@ -117,12 +117,14 @@
   {
     "type": "function",
     "name": "necessarySwapAmountForMint",
-    "inputs": [],
+    "inputs": [
+      { "name": "positionId", "type": "uint256", "internalType": "uint256" }
+    ],
     "outputs": [
       {
         "name": "swapQuoteParams",
-        "type": "tuple[]",
-        "internalType": "struct IPulseVeloBotLazy.SwapQuoteParams[]",
+        "type": "tuple",
+        "internalType": "struct IPulseVeloBotLazy.SwapQuoteParams",
         "components": [
           { "name": "tokenIn", "type": "address", "internalType": "address" },
           { "name": "tokenOut", "type": "address", "internalType": "address" },
@@ -130,6 +132,28 @@
         ]
       }
     ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "needRebalance",
+    "inputs": [],
+    "outputs": [
+      { "name": "needs", "type": "bool[]", "internalType": "bool[]" }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "needRebalancePosition",
+    "inputs": [
+      {
+        "name": "managedPositionId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [{ "name": "", "type": "bool", "internalType": "bool" }],
     "stateMutability": "view"
   },
   {
