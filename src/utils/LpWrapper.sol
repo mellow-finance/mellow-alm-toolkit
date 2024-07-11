@@ -8,6 +8,8 @@ import "../libraries/external/FullMath.sol";
 import "./DefaultAccessControl.sol";
 
 contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
+    using SafeERC20 for IERC20;
+
     /// @inheritdoc ILpWrapper
     address public immutable positionManager;
 
@@ -26,6 +28,8 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
     /// @inheritdoc ILpWrapper
     uint256 public positionId;
 
+    address private immutable _weth;
+
     /**
      * @dev Constructor function for the LpWrapper contract.
      * @param core_ The address of the ICore contract.
@@ -33,19 +37,22 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
      * @param name_ The name of the ERC20 token.
      * @param symbol_ The symbol of the ERC20 token.
      * @param admin The address of the admin.
+     * @param weth_ The address of the WETH contract.
      */
     constructor(
         ICore core_,
         IAmmDepositWithdrawModule ammDepositWithdrawModule_,
         string memory name_,
         string memory symbol_,
-        address admin
+        address admin,
+        address weth_
     ) ERC20(name_, symbol_) DefaultAccessControl(admin) {
         core = core_;
         ammModule = core.ammModule();
         positionManager = ammModule.positionManager();
         oracle = core.oracle();
         ammDepositWithdrawModule = ammDepositWithdrawModule_;
+        _weth = weth_;
     }
 
     /// @inheritdoc ILpWrapper
@@ -293,6 +300,8 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
     }
 
     receive() external payable {
-        payable(tx.origin).transfer(msg.value);
+        uint256 amount = msg.value;
+        IWETH9(_weth).deposit{value: amount}();
+        IERC20(_weth).safeTransfer(tx.origin, amount);
     }
 }

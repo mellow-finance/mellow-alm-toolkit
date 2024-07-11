@@ -86,7 +86,7 @@ contract Integration is Test {
         core.grantRole(core.OPERATOR(), CORE_OPERATOR);
         vm.stopPrank();
 
-        deployFactoryHelper = new VeloDeployFactoryHelper();
+        deployFactoryHelper = new VeloDeployFactoryHelper(Constants.WETH);
         deployFactory = new VeloDeployFactory(
             VELO_DEPLOY_FACTORY_ADMIN,
             core,

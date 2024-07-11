@@ -8,6 +8,12 @@ import "../interfaces/utils/IVeloDeployFactoryHelper.sol";
 import "./LpWrapper.sol";
 
 contract VeloDeployFactoryHelper is IVeloDeployFactoryHelper {
+    address private immutable _weth;
+
+    constructor(address weth_) {
+        _weth = weth_;
+    }
+
     /// @inheritdoc IVeloDeployFactoryHelper
     function createLpWrapper(
         ICore core,
@@ -22,7 +28,8 @@ contract VeloDeployFactoryHelper is IVeloDeployFactoryHelper {
             ammDepositWithdrawModule,
             name,
             symbol,
-            address(this)
+            address(this),
+            _weth
         );
         wrapper.grantRole(wrapper.ADMIN_ROLE(), admin);
         if (manager != address(0)) {

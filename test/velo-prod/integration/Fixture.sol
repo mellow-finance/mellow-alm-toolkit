@@ -353,7 +353,8 @@ contract Fixture is Test {
             dwModule,
             "lp wrapper",
             "LPWR",
-            Constants.OWNER
+            Constants.OWNER,
+            Constants.WETH
         );
         stakingRewards = new StakingRewards(
             Constants.OWNER,

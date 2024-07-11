@@ -440,7 +440,9 @@ contract DeployFactoryFixture is Test {
             Constants.OWNER,
             core,
             dwModule,
-            IVeloDeployFactoryHelper(address(new VeloDeployFactoryHelper()))
+            IVeloDeployFactoryHelper(
+                address(new VeloDeployFactoryHelper(Constants.WETH))
+            )
         );
 
         ICore.DepositParams memory depositParams;
