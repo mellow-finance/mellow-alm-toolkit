@@ -8,7 +8,8 @@ from odos import Odos, PulseVeloBotLazySwapData
 load_dotenv()
 CHAIN_ID = 10
 ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
-VELO_BOT_ADDRESS = '0xd5823002f1D34e68B47AAce5551d6A76E6379d5c'
+VELO_BOT_ADDRESS = '0xA58314Ab5F3cE743AFc77D0941D69cA72b8fFFe6'
+POSITION_UNDER_CONTROL = [0,1,2,3,4,5,6,7,8,9,10]
 
 class Operator:
     def __init__(self):
@@ -37,12 +38,13 @@ class Operator:
     """
     def rebalance(self):
         # obtain desired swap amount to have ability to mint positions
-        needRebalances = self.bot.functions.needRebalance().call()
+        needRebalances = self.bot.functions.needRebalance(POSITION_UNDER_CONTROL).call()
+        print("needRebalances", needRebalances)
 
         for i, needRebalance in enumerate(needRebalances):
-            pulseVeloBotLazySwapData = []
+            pulseVeloBotLazySwapData = None
             if needRebalance:
-                swapInfo = self.bot.functions.necessarySwapAmountForMint(i).call()
+                swapInfo = self.bot.functions.necessarySwapAmountForMint(POSITION_UNDER_CONTROL[i]).call()
    
                 tokenIn = swapInfo[0]
                 tokenOut = swapInfo[1]
@@ -53,8 +55,7 @@ class Operator:
                         quote = self.odos.quote(10, tokenIn, tokenOut, amountIn)
                         # swap specific swap data including 'to' and 'callData'
                         swapData = self.odos.swap(quote.path_id)
-                        pulseVeloBotLazySwapData.append( 
-                            PulseVeloBotLazySwapData(
+                        pulseVeloBotLazySwapData = PulseVeloBotLazySwapData(
                                 positionId=i,
                                 tokenIn=tokenIn, 
                                 tokenOut=tokenOut, 
@@ -62,13 +63,12 @@ class Operator:
                                 expectedAmountOut=int(swapData[1].expectedAmount),
                                 router=swapData[1].to, 
                                 callData=swapData[1].data)
-                        )
+
                         print(pulseVeloBotLazySwapData)
                     except Exception as e:
                         print("error during quoting", e)
                 else:
-                    pulseVeloBotLazySwapData.append(
-                        PulseVeloBotLazySwapData(
+                    pulseVeloBotLazySwapData = PulseVeloBotLazySwapData(
                             positionId=i,
                             tokenIn=ZERO_ADDRESS, 
                             tokenOut=ZERO_ADDRESS, 
@@ -76,7 +76,6 @@ class Operator:
                             expectedAmountOut=0,
                             router=ZERO_ADDRESS, 
                             callData='0x')
-                        )
 
                 # run solidity rebalance script that reads swap data and do rebalance on-chain
                 self.__runForgeScript(pulseVeloBotLazySwapData)
@@ -86,21 +85,19 @@ class Operator:
         logs are saved to dedug and check 
     """
     def __runForgeScript(self, pulseVeloBotLazySwapData):
-
-        # write obtained swap data into json
-        data = [instance.toDict() for instance in pulseVeloBotLazySwapData]
+ 
         with open("pulseVeloBotLazySwapData.json", 'w') as file:
-            json.dump(data, file, indent=4)
+            json.dump(pulseVeloBotLazySwapData.toDict(), file, indent=4)
 
         subfolder = "logs"
         os.makedirs(subfolder, exist_ok=True)
-        log_path = os.path.join(subfolder, str(pulseVeloBotLazySwapData[0].positionId) + ".log")
+        log_path = os.path.join(subfolder, str(pulseVeloBotLazySwapData.positionId) + ".log")
 
         # test run on fork
         command = [
             'forge', 'script', '../../bots/PulseVeloBotLazy.s.sol',
             '--rpc-url', os.environ.get("OPTIMISM_RPC"),
-            '--fork-block-number', '122545420',
+            '--fork-block-number', '122587987',
             '-vvvvv'
         ]
 

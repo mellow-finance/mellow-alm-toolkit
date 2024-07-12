@@ -19,7 +19,7 @@ contract PulseVeloBotLazy is IPulseVeloBotLazy {
 
     INonfungiblePositionManager public immutable positionManager;
 
-    ICore core;
+    ICore public immutable core;
 
     constructor(address positionManager_, address core_) {
         positionManager = INonfungiblePositionManager(positionManager_);
@@ -50,12 +50,12 @@ contract PulseVeloBotLazy is IPulseVeloBotLazy {
     }
 
     /// @dev returns array of flags, true if rebalance is necessery
-    function needRebalance() public view returns (bool[] memory needs) {
-        uint256 positionCount = core.positionCount();
-
-        needs = new bool[](positionCount);
-        for (uint256 i = 0; i < positionCount; i++) {
-            needs[i] = needRebalancePosition(i);
+    function needRebalance(
+        uint256[] memory postionIds
+    ) public view returns (bool[] memory needs) {
+        needs = new bool[](postionIds.length);
+        for (uint256 i = 0; i < postionIds.length; i++) {
+            needs[i] = needRebalancePosition(postionIds[i]);
         }
     }
 

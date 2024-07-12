@@ -21,7 +21,7 @@ contract PulseVeloBot is Script {
         ICore(0xB4AbEf6f42bA5F89Dc060f4372642A1C700b22bC);
 
     address public pulseVeloBotAddress =
-        0xd5823002f1D34e68B47AAce5551d6A76E6379d5c;
+        0xA58314Ab5F3cE743AFc77D0941D69cA72b8fFFe6;
     PulseVeloBotLazy public bot = PulseVeloBotLazy(pulseVeloBotAddress);
 
     uint256 immutable operatorPrivateKey = vm.envUint("OPERATOR_PRIVATE_KEY");
@@ -29,70 +29,63 @@ contract PulseVeloBot is Script {
 
     /// @dev script is able to rebalance bulk of positions, but it is recommended to rebalance one by one
     function run() public {
-        /* bot = new PulseVeloBotLazy(
-            0x416b433906b1B72FA758e166e239c43d68dC6F29, // NonfungiblePositionManager
-            address(core) // Core
-        );*/
         vm.startBroadcast(operatorPrivateKey);
 
-        IPulseVeloBotLazy.SwapParams[] memory swapParams = _readTransactions();
+        IPulseVeloBotLazy.SwapParams memory swapParam = _readTransaction();
+        uint256 managedPositionId = swapParam.positionId;
 
-        for (uint i = 0; i < swapParams.length; i++) {
-            uint256 managedPositionId = swapParams[i].positionId;
+        bool needRebalance = bot.needRebalancePosition(managedPositionId);
+        if (needRebalance) {
+            console2.log(
+                swapParam.router,
+                swapParam.tokenIn,
+                swapParam.tokenOut,
+                swapParam.amountIn
+            );
 
-            bool needRebalance = bot.needRebalancePosition(managedPositionId);
-            if (needRebalance) {
+            uint256[] memory ids = new uint256[](1);
+            ids[0] = managedPositionId;
+            IPulseVeloBotLazy.SwapParams[]
+                memory swapParams = new IPulseVeloBotLazy.SwapParams[](0);
+            if (
+                swapParam.amountIn > 0 &&
+                swapParam.tokenIn != address(0) &&
+                swapParam.tokenOut != address(0) &&
+                swapParam.router != address(0)
+            ) {
+                swapParams = new IPulseVeloBotLazy.SwapParams[](1);
+                swapParams[0] = swapParam;
+            }
+            try
+                core.rebalance(
+                    ICore.RebalanceParams({
+                        ids: ids,
+                        callback: pulseVeloBotAddress,
+                        data: abi.encode(swapParams)
+                    })
+                )
+            {
                 console2.log(
-                    swapParams[i].router,
-                    swapParams[i].tokenIn,
-                    swapParams[i].tokenOut,
-                    swapParams[i].amountIn
+                    "rebalance is successfull for ",
+                    managedPositionId
                 );
-
-                uint256[] memory ids = new uint256[](1);
-                ids[0] = managedPositionId;
-                IPulseVeloBotLazy.SwapParams[]
-                    memory swapParam = new IPulseVeloBotLazy.SwapParams[](0);
-                if (
-                    swapParams[i].amountIn > 0 &&
-                    swapParams[i].tokenIn != address(0) &&
-                    swapParams[i].tokenOut != address(0) &&
-                    swapParams[i].router != address(0)
-                ) {
-                    swapParam = new IPulseVeloBotLazy.SwapParams[](1);
-                    swapParam[0] = swapParams[i];
-                }
-                try
-                    core.rebalance(
-                        ICore.RebalanceParams({
-                            ids: ids,
-                            callback: pulseVeloBotAddress,
-                            data: abi.encode(swapParam)
-                        })
-                    )
-                {
-                    console2.log(
-                        "rebalance is successfull for ",
-                        managedPositionId
-                    );
-                } catch {
-                    console2.log("rebalance is failed for ", managedPositionId);
-                }
+            } catch {
+                console2.log("rebalance is failed for ", managedPositionId);
             }
         }
 
         vm.stopBroadcast();
     }
 
-    function _readTransactions()
+    function _readTransaction()
         private
         view
-        returns (IPulseVeloBotLazy.SwapParams[] memory swapParams)
+        returns (IPulseVeloBotLazy.SwapParams memory swapParams)
     {
         string
             memory path = "src/scripts/deploy/optimism/pulseVeloBotLazySwapData.json";
         string memory json = vm.readFile(path);
         bytes memory data = vm.parseJson(json);
-        swapParams = abi.decode(data, (IPulseVeloBotLazy.SwapParams[]));
+        swapParams = abi.decode(data, (IPulseVeloBotLazy.SwapParams));
     }
 }
