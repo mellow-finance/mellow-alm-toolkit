@@ -121,7 +121,7 @@ class Odos:
             outputTokens=[OutputToken(proportion=1, tokenAddress=token_out)],
             referralCode=0,
             slippageLimitPercent=0.2,
-            sourceBlacklist=[],
+            sourceBlacklist=["Velodrome Slipstream"],
             sourceWhitelist=[],
             userAddr=self.wallet,
         )

@@ -6,7 +6,7 @@ import "forge-std/Script.sol";
 
 import "src/helpers/CreateStrategyHelper.sol";
 import "src/Core.sol";
-import "src/bots/PulseVeloBot.sol";
+import "src/bots/PulseVeloBotLazy.sol";
 import "src/modules/velo/VeloAmmModule.sol";
 import "src/modules/velo/VeloDepositWithdrawModule.sol";
 import "src/modules/strategies/PulseStrategyModule.sol";
@@ -22,24 +22,10 @@ INonfungiblePositionManager constant NONFUNGIBLE_POSITION_MANAGER = INonfungible
 );
 
 address constant VELO_FACTORY = 0xCc0bDDB707055e04e497aB22a59c2aF4391cd12F;
-IQuoterV2 constant QUOTER_V2 = IQuoterV2(
-    0xA2DEcF05c16537C702779083Fe067e308463CE45
-);
-ISwapRouter constant SWAP_ROUTER = ISwapRouter(
-    0x5F9a4bb5d3b0c5e233Ee3cB35701077504a6F0eb
-);
-address constant USDC = 0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85;
 address constant WETH = 0x4200000000000000000000000000000000000006;
-address constant OP = 0x4200000000000000000000000000000000000042;
-address constant WSTETH = 0x1F32b1c2345538c0c6f582fCB022739c4A194Ebb;
-address constant USDT = 0x94b008aA00579c1307B0EF2c499aD98a8ce58e58;
-address constant SUSD = 0x8c6f28f2F1A3C87F0f938b96d27520d9751ec8d9;
-address constant USDCe = 0x7F5c764cBc14f9669B88837ca1490cCa17c31607;
-address constant EZETH = 0x2416092f143378750bb29b79eD961ab195CcEea5;
-address constant DAI = 0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1;
 
 contract Deploy is Script, Test {
-    uint256 STAGE_DEPLOY = 2;
+    uint256 STAGE_DEPLOY = 1;
 
     address coreAddress;
     address deployFactoryAddress;
@@ -74,95 +60,112 @@ contract Deploy is Script, Test {
 
         vm.startBroadcast(deployerPrivateKey);
 
-        VeloOracle oracle = new VeloOracle();
-        oracleAddress = address(oracle);
-        console2.log("oracleAddress", oracleAddress);
+        if (STAGE_DEPLOY == 1) {
+            VeloOracle oracle = new VeloOracle();
+            oracleAddress = address(oracle);
+            console2.log("oracleAddress", oracleAddress);
 
-        PulseStrategyModule strategyModule = new PulseStrategyModule();
-        strategyModuleAddress = address(strategyModule);
-        console2.log("strategyModuleAddress", strategyModuleAddress);
+            PulseStrategyModule strategyModule = new PulseStrategyModule();
+            strategyModuleAddress = address(strategyModule);
+            console2.log("strategyModuleAddress", strategyModuleAddress);
 
-        VeloDeployFactoryHelper velotrDeployFactoryHelper = new VeloDeployFactoryHelper(
-                WETH
+            VeloDeployFactoryHelper velotrDeployFactoryHelper = new VeloDeployFactoryHelper(
+                    WETH
+                );
+            velotrDeployFactoryHelperAddress = address(
+                velotrDeployFactoryHelper
             );
-        velotrDeployFactoryHelperAddress = address(velotrDeployFactoryHelper);
-        console2.log(
-            "velotrDeployFactoryHelperAddress",
-            velotrDeployFactoryHelperAddress
-        );
+            console2.log(
+                "velotrDeployFactoryHelperAddress",
+                velotrDeployFactoryHelperAddress
+            );
 
-        VeloAmmModule ammModule = new VeloAmmModule(
-            NONFUNGIBLE_POSITION_MANAGER
-        );
-        ammModuleAddress = address(ammModule);
-        console2.log("ammModuleAddress", ammModuleAddress);
-
-        VeloDepositWithdrawModule veloDepositWithdrawModule = new VeloDepositWithdrawModule(
+            VeloAmmModule ammModule = new VeloAmmModule(
                 NONFUNGIBLE_POSITION_MANAGER
             );
-        veloDepositWithdrawModuleAddress = address(veloDepositWithdrawModule);
-        console2.log(
-            "veloDepositWithdrawModuleAddress",
-            veloDepositWithdrawModuleAddress
-        );
+            ammModuleAddress = address(ammModule);
+            console2.log("ammModuleAddress", ammModuleAddress);
 
-        PulseVeloBot pulseVeloBot = new PulseVeloBot(
-            QUOTER_V2,
-            SWAP_ROUTER,
-            NONFUNGIBLE_POSITION_MANAGER
-        );
-        pulseVeloBotAddress = address(pulseVeloBot);
-        console2.log("pulseVeloBotAddress", pulseVeloBotAddress);
+            VeloDepositWithdrawModule veloDepositWithdrawModule = new VeloDepositWithdrawModule(
+                    NONFUNGIBLE_POSITION_MANAGER
+                );
+            veloDepositWithdrawModuleAddress = address(
+                veloDepositWithdrawModule
+            );
+            console2.log(
+                "veloDepositWithdrawModuleAddress",
+                veloDepositWithdrawModuleAddress
+            );
 
-        core = new Core(ammModule, strategyModule, oracle, deployerAddress);
-        coreAddress = address(core);
-        console2.log("coreAddress", coreAddress);
+            core = new Core(ammModule, strategyModule, oracle, deployerAddress);
+            coreAddress = address(core);
+            console2.log("coreAddress", coreAddress);
 
-        core.setProtocolParams(
-            abi.encode(
-                IVeloAmmModule.ProtocolParams({
-                    feeD9: PROTOCOL_FEE_D9,
-                    treasury: PROTOCOL_TREASURY
+            PulseVeloBotLazy pulseVeloBot = new PulseVeloBotLazy(
+                address(NONFUNGIBLE_POSITION_MANAGER),
+                coreAddress
+            );
+            pulseVeloBotAddress = address(pulseVeloBot);
+            console2.log("pulseVeloBotAddress", pulseVeloBotAddress);
+
+            core.setProtocolParams(
+                abi.encode(
+                    IVeloAmmModule.ProtocolParams({
+                        feeD9: PROTOCOL_FEE_D9,
+                        treasury: PROTOCOL_TREASURY
+                    })
+                )
+            );
+
+            core.setOperatorFlag(true);
+
+            deployFactory = new VeloDeployFactory(
+                deployerAddress,
+                core,
+                veloDepositWithdrawModule,
+                velotrDeployFactoryHelper
+            );
+            deployFactoryAddress = address(deployFactory);
+            console2.log("deployFactoryAddress", deployFactoryAddress);
+
+            deployFactory.updateMutableParams(
+                IVeloDeployFactory.MutableParams({
+                    lpWrapperAdmin: WRAPPER_ADMIN,
+                    lpWrapperManager: address(0),
+                    farmOwner: FARM_OWNER,
+                    farmOperator: FARM_OPERATOR,
+                    minInitialLiquidity: MIN_INITIAL_LIQUDITY
                 })
-            )
-        );
+            );
 
-        core.setOperatorFlag(true);
-
-        deployFactory = new VeloDeployFactory(
-            deployerAddress,
-            core,
-            veloDepositWithdrawModule,
-            velotrDeployFactoryHelper
-        );
-        deployFactoryAddress = address(deployFactory);
-        console2.log("deployFactoryAddress", deployFactoryAddress);
-
-        deployFactory.updateMutableParams(
-            IVeloDeployFactory.MutableParams({
-                lpWrapperAdmin: WRAPPER_ADMIN,
-                lpWrapperManager: address(0),
-                farmOwner: FARM_OWNER,
-                farmOperator: FARM_OPERATOR,
-                minInitialLiquidity: MIN_INITIAL_LIQUDITY
-            })
-        );
-        createStrategyHelper = new CreateStrategyHelper(
-            NONFUNGIBLE_POSITION_MANAGER,
-            deployFactory,
-            deployerAddress
-        );
-        deployFactory.grantRole(
-            deployFactory.ADMIN_DELEGATE_ROLE(),
-            address(createStrategyHelper)
-        );
-
-        _migrateRoles();
+            createStrategyHelper = new CreateStrategyHelper(
+                NONFUNGIBLE_POSITION_MANAGER,
+                deployFactory
+            );
+            console2.log(
+                "createStrategyHelperAddress",
+                address(createStrategyHelper)
+            );
+            deployFactory.grantRole(
+                deployFactory.ADMIN_DELEGATE_ROLE(),
+                address(createStrategyHelper)
+            );
+        } else {
+            _migrateRoles();
+        }
 
         vm.stopBroadcast();
     }
 
     function _migrateRoles() private {
+        core = Core(0xa9600cC9a1b360Ad71263B45f00bf74ec61f2100);
+        deployFactory = VeloDeployFactory(
+            0x769321b8167B04D18441E83b5a067e7e31763b64
+        );
+        createStrategyHelper = CreateStrategyHelper(
+            0x319862B7EC2E4FDF208a2e9Dd723a6D9d36592c5
+        );
+
         core.grantRole(core.ADMIN_DELEGATE_ROLE(), deployerAddress);
         core.grantRole(core.OPERATOR(), CORE_OPERATOR);
         core.grantRole(core.ADMIN_ROLE(), CORE_ADMIN);
