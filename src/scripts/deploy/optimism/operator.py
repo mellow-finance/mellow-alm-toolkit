@@ -9,7 +9,7 @@ load_dotenv()
 CHAIN_ID = 10
 ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 VELO_BOT_ADDRESS = '0xB3dDa916420774efaD6C5cf1a7b55CDCdC245f04'
-POSITION_UNDER_CONTROL = [0,1,2,3,4,5,6,7,8]
+POSITION_UNDER_CONTROL = [0,1,2,3,4,5,6,7,8,9,10]
 
 class Operator:
     def __init__(self):
@@ -69,7 +69,7 @@ class Operator:
                         print("error during quoting", e)
                 else:
                     pulseVeloBotLazySwapData = PulseVeloBotLazySwapData(
-                            positionId=i,
+                            positionId=POSITION_UNDER_CONTROL[i],
                             tokenIn=ZERO_ADDRESS, 
                             tokenOut=ZERO_ADDRESS, 
                             amountIn=0,
@@ -97,7 +97,7 @@ class Operator:
         command = [
             'forge', 'script', '../../bots/PulseVeloBotLazy.s.sol',
             '--rpc-url', os.environ.get("OPTIMISM_RPC"),
-            '--fork-block-number', '122710599',
+          #  '--fork-block-number', '122722163',
             '-vvvvv'
         ]
 

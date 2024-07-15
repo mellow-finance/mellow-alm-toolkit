@@ -18,13 +18,13 @@ contract PulseVeloBot is Script {
     using SafeERC20 for IERC20;
 
     ICore public immutable core =
-        ICore(0xB4AbEf6f42bA5F89Dc060f4372642A1C700b22bC);
+        ICore(0x8CBA3833ad114b4021734357D9383F4DBD69638F);
 
     address public pulseVeloBotAddress =
-        0xA58314Ab5F3cE743AFc77D0941D69cA72b8fFFe6;
+        0xB3dDa916420774efaD6C5cf1a7b55CDCdC245f04;
     PulseVeloBotLazy public bot = PulseVeloBotLazy(pulseVeloBotAddress);
 
-    uint256 immutable operatorPrivateKey = vm.envUint("OPERATOR_PRIVATE_KEY");
+    uint256 immutable operatorPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
     address immutable operatorAddress = vm.addr(operatorPrivateKey);
 
     /// @dev script is able to rebalance bulk of positions, but it is recommended to rebalance one by one
