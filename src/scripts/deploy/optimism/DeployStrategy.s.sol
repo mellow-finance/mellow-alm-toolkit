@@ -20,21 +20,21 @@ import "src/helpers/CreateStrategyHelper.sol";
 /*
     ----------------------------------------------------------------------------------
             VELO_FACTORY = 0xCc0bDDB707055e04e497aB22a59c2aF4391cd12F
-    ----------------------------------------------------------------------------------
-                                       address | width|  TS |   t0   |     t1 | status 
-    --------------------------------------------------------------------------|-------
-    0xeBD5311beA1948e1441333976EadCFE5fBda777C | 6000 | 200 | usdc   |     op |   + 3
-    0x4DC22588Ade05C40338a9D95A6da9dCeE68Bcd60 | 6000 | 200 | weth   |     op |   + 4
-    0x478946BcD4a5a22b316470F5486fAfb928C0bA25 | 4000 | 100 | usdc   |   weth |   + 0
-    0x319C0DD36284ac24A6b2beE73929f699b9f48c38 | 4000 | 100 | weth   |   wbtc |   + 1
-    0xEE1baC98527a9fDd57fcCf967817215B083cE1F0 | 4000 | 100 | usdc   | wsteth |   + 2
-    0xb71Ac980569540cE38195b38369204ff555C80BE |   10 |   1 | wsteth |  ezETH |   + 5
-    0xbF30Ff33CF9C6b0c48702Ff17891293b002DfeA4 |   10 |   1 | wsteth |   weth |   + 6
-    0x84Ce89B4f6F67E523A81A82f9f2F14D84B726F6B |    1 |   1 | usdc   |   usdt |   + 7
-    0x2FA71491F8070FA644d97b4782dB5734854c0f6F |    1 |   1 | usdc   | usdc.e |   + 8
-    0x3C01ec09D15D5450FC702DC4353b17Cd2978d8a5 |    1 |   1 | usdc   |   susd |   + 9
-    0x8Ac2f9daC7a2852D44F3C09634444d533E4C078e |    1 |   1 | usdc   |   lusd |   + 10 test 10
-    --------------------------------------------------------------------------|
+    ---------------------------------------------------------------------------------------------|
+                                       address | width|  TS |   t0   |     t1 | status|  ID | DW |
+    --------------------------------------------------------------------------|-------|-----|----|
+    0xeBD5311beA1948e1441333976EadCFE5fBda777C | 6000 | 200 | usdc   |     op |   +   |  3  | ++ |
+    0x4DC22588Ade05C40338a9D95A6da9dCeE68Bcd60 | 6000 | 200 | weth   |     op |   +   |  4  | ++ |
+    0x478946BcD4a5a22b316470F5486fAfb928C0bA25 | 4000 | 100 | usdc   |   weth |   +   |  0  | ++ |
+    0x319C0DD36284ac24A6b2beE73929f699b9f48c38 | 4000 | 100 | weth   |   wbtc |   +   |  1  | ++ |
+    0xEE1baC98527a9fDd57fcCf967817215B083cE1F0 | 4000 | 100 | usdc   | wsteth |   +   |  2  | ++ |
+    0xb71Ac980569540cE38195b38369204ff555C80BE |   10 |   1 | wsteth |  ezETH |   +   |  5  | ++ |
+    0xbF30Ff33CF9C6b0c48702Ff17891293b002DfeA4 |   10 |   1 | wsteth |   weth |   +   |  6  | ++ |
+    0x84Ce89B4f6F67E523A81A82f9f2F14D84B726F6B |    1 |   1 | usdc   |   usdt |   +   |  7  | ++ |
+    0x2FA71491F8070FA644d97b4782dB5734854c0f6F |    1 |   1 | usdc   | usdc.e |   +   |  8  | ++ |
+    0x3C01ec09D15D5450FC702DC4353b17Cd2978d8a5 |    1 |   1 | usdc   |   susd |   +   |  9  | ++ |
+    0x8Ac2f9daC7a2852D44F3C09634444d533E4C078e |    1 |   1 | usdc   |   lusd |   +   |  10 | ++ |
+    ---------------------------------------------------------------------------------------------|
 */
 
 /// @dev pool address and position width to add
