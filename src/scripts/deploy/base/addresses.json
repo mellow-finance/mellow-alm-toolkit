@@ -1,0 +1,99 @@
+{
+  "CLFactory": "0x5e7BB104d84c7CB9B682AaC2F3d509f5F406809A",
+  "NonfungiblePositionManager": "0x827922686190790b37229fd06084350E74485b72",
+  "MellowTraseary": "0x0da6d939Cb0555A0D2eB99E310eBAE68432F31F2",
+  "CoreOperator": "0x9DFb1fC83EB81F99ACb008c49384c4446F2313Ed",
+  "Deployer": "0xeccba048Fd1fcD5c26f3aAfb7aBf3737e163d0FD",
+  "VeloOracle": "0x417650Ad4964f299FcDAE70CC811D674298D68FF",
+  "PulseStrategyModule": "0xa7BEE5A802764fd8D3947526b966233Cba47CE60",
+  "VeloDeployFactoryHelper": "0xf6FeFc5FA66A7a7A7BCfDC1C5c12A3d6972c203F",
+  "VeloAmmModule": "0xF06c23Ca2A9C5A60F82AA308A7b1BF27924e3DA9",
+  "VeloDepositWithdrawModule": "0x6f8caDf6c4EC925794f1C9dcb746Ff41f7659F40",
+  "PulseVeloBot": "0x7Ea74DF74814B8AE573DE369983420B78C39d9D8",
+  "Core": "0x02972Ed3fED22ed56c0984Dd3f0eba5a24dC25c8",
+  "VeloDeployFactory": "0x7710c92d235fb4d187C188F12a3310F2d354F822",
+  "CreateStrategyHelper": "0x769321b8167B04D18441E83b5a067e7e31763b64",
+  "Pools": {
+    "0x827922686190790b37229fd06084350E74485b72": {
+      "tokenId": 215150,
+      "LpWrapper": "0xD93E5191CeAd46858004FA75b33e3eEbb815ADBC",
+      "SynthetixFarm": "0xD117A749851867d7428526fB02a5b726ab4369eF",
+      "width": 6000,
+      "TS": 200,
+      "token0": "weth",
+      "token1": "brett"
+    },
+    "0xaFB62448929664Bfccb0aAe22f232520e765bA88": {
+      "tokenId": 215155,
+      "LpWrapper": "0x6600829a9e586B08617651496E98eCe46bCb7293",
+      "SynthetixFarm": "0x755051383B2d280c89C418f88d427Ab19e696fd1",
+      "width": 6000,
+      "TS": 200,
+      "token0": "weth",
+      "token1": "degen"
+    },
+    "0x82321f3BEB69f503380D6B233857d5C43562e2D0": {
+      "tokenId": 215166,
+      "LpWrapper": "0x3661bce146acbeBE318E1df6f592bb21c21b689B",
+      "SynthetixFarm": "0xC9a63f8792933Cc18750F013A413A960f4aA74C4",
+      "width": 6000,
+      "TS": 200,
+      "token0": "weth",
+      "token1": "aero"
+    },
+    "0xb2cc224c1c9feE385f8ad6a55b4d94E92359DC59": {
+      "tokenId": 215176,
+      "LpWrapper": "0x28A5c6abdccC7c4B51ebaD7561954532cd86b81f",
+      "SynthetixFarm": "0x842E7B6642CFf8113e0fc3c262EE1D097185Be5f",
+      "width": 4000,
+      "TS": 100,
+      "token0": "weth",
+      "token1": "usdc"
+    },
+    "0x4D69971CCd4A636c403a3C1B00c85e99bB9B5606": {
+      "tokenId": 215185,
+      "LpWrapper": "0x153C61d586f55Cb4D2Bd7C9611795c792fbF27e8",
+      "SynthetixFarm": "0x018E946a27C08A876A9565118eFFA72a03959d99",
+      "width": 4000,
+      "TS": 100,
+      "token0": "weth",
+      "token1": "usd+"
+    },
+    "0x861A2922bE165a5Bd41b1E482B49216b465e1B5F": {
+      "tokenId": 215204,
+      "LpWrapper": "0xfA8Cf25327eAf4c49630fB3722c47D5E421213Cf",
+      "SynthetixFarm": "0x97a870dF5F943F154dBC91083734DeC7F90E492D",
+      "width": 10,
+      "TS": 1,
+      "token0": "weth",
+      "token1": "wsteth"
+    },
+    "0x2ae9DF02539887d4EbcE0230168a302d34784c82": {
+      "tokenId": 215222,
+      "LpWrapper": "0x17fE69Ac932e5B7E46d2c5324D7c3F71C9CbC95c",
+      "SynthetixFarm": "0x503f22f9B7F1e232361fa017Af2fa7e68a608b25",
+      "width": 10,
+      "TS": 1,
+      "token0": "weth",
+      "token1": "bsdeth"
+    },
+    "0x0c1A09d5D0445047DA3Ab4994262b22404288A3B": {
+      "tokenId": 215238,
+      "LpWrapper": "0xE4569403324599c893C305f873E81ba074b1Fd9e",
+      "SynthetixFarm": "0x56702EDe4C3e0D9A64C4Db5905d67e14243053a4",
+      "width": 1,
+      "TS": 1,
+      "token0": "usdc",
+      "token1": "usd+"
+    },
+    "0x20086910E220D5f4c9695B784d304A72a0de403B": {
+      "tokenId": 215252,
+      "LpWrapper": "0xD5934e60DC3DC39B86AB353e87Eb0903Be0A34A5",
+      "SynthetixFarm": "0xd4f9D04a26D7cF50513822c40150780e6049Bb3F",
+      "width": 1,
+      "TS": 1,
+      "token0": "usd+",
+      "token1": "usdbc"
+    }
+  }
+}

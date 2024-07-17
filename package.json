@@ -30,6 +30,9 @@
     "deploy:optimism:velo:test": "forge script src/scripts/deploy/optimism/DeployVeloLazy.s.sol --fork-url $(grep OPTIMISM_RPC .env | cut -d '=' -f2,3,4,5) --fork-block-number 122249039",
     "deploy:optimism:velo:bottest": "forge script src/scripts/bots/PulseVeloBotLazy.s.sol --fork-url $(grep OPTIMISM_RPC .env | cut -d '=' -f2,3,4,5) --fork-block-number 122545420",
     "deploy:optimism:velo:bot": "forge script src/scripts/deploy/optimism/DeployPulseVeloBotLazy.s.sol --fork-url $(grep OPTIMISM_RPC .env | cut -d '=' -f2,3,4,5) --etherscan-api-key $(grep API_KEY_OP .env | cut -d '=' -f2,3,4,5) --broadcast --slow",
-    "deploy:optimism:velo:strat": "forge script src/scripts/deploy/optimism/DeployStrategy.s.sol --rpc-url $(grep OPTIMISM_RPC .env | cut -d '=' -f2,3,4,5) --etherscan-api-key $(grep API_KEY_OP .env | cut -d '=' -f2,3,4,5) --broadcast --slow --verify"
+    "deploy:optimism:velo:strat": "forge script src/scripts/deploy/optimism/DeployStrategy.s.sol --rpc-url $(grep OPTIMISM_RPC .env | cut -d '=' -f2,3,4,5) --etherscan-api-key $(grep API_KEY_OP .env | cut -d '=' -f2,3,4,5) --broadcast --slow --verify",
+    "deploy:base:aero:prod": "forge script src/scripts/deploy/base/DeployAeroLazy.s.sol --rpc-url $(grep BASE_RPC .env | cut -d '=' -f2,3,4,5) --etherscan-api-key $(grep API_KEY_BASE .env | cut -d '=' -f2,3,4,5) --broadcast --verify",
+    "deploy:base:aero:test": "forge script src/scripts/deploy/base/DeployAeroLazy.s.sol --fork-url $(grep BASE_RPC .env | cut -d '=' -f2,3,4,5) --fork-block-number 17165440",
+    "deploy:base:aero:strat": "forge script src/scripts/deploy/base/DeployStrategy.s.sol --rpc-url $(grep BASE_RPC .env | cut -d '=' -f2,3,4,5) --etherscan-api-key $(grep API_KEY_BASE .env | cut -d '=' -f2,3,4,5) --broadcast --slow --verify"
   }
 }
