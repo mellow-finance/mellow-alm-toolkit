@@ -6,18 +6,18 @@ from web3 import Web3
 from odos import Odos, PulseVeloBotLazySwapData
 
 load_dotenv()
-CHAIN_ID = 10
+CHAIN_ID = 8453
 ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
-VELO_BOT_ADDRESS = '0xB3dDa916420774efaD6C5cf1a7b55CDCdC245f04'
-POSITION_UNDER_CONTROL = [0,1,2,3,4,5,6,7,8,9,10]
+VELO_BOT_ADDRESS = '0xE23653290b0C5065484B14171c6e11Da238F7321'
+POSITION_UNDER_CONTROL = [0,1,2,3,4,5,6,7,8]
 
 class Operator:
     def __init__(self):
-        infura_url = os.environ.get("OPTIMISM_RPC")
+        infura_url = os.environ.get("BASE_RPC")
         self.rpc = Web3(Web3.HTTPProvider(infura_url))
 
         if self.rpc.is_connected():
-            print("Connected to Optimism node")
+            print("Connected to Base node")
         else:
             print("Connection failed")
 
@@ -96,15 +96,14 @@ class Operator:
         # test run on fork
         command = [
             'forge', 'script', '../../bots/PulseVeloBotLazy.s.sol',
-            '--rpc-url', os.environ.get("OPTIMISM_RPC"),
-          #  '--fork-block-number', '122722163',
+            '--rpc-url', os.environ.get("BASE_RPC"),
             '-vvvvv'
         ]
 
         # on-chain run
         """ command = [
             'forge', 'script', '../../bots/PulseVeloBotLazy.s.sol',
-            '--rpc-url', os.environ.get("OPTIMISM_RPC"),
+            '--rpc-url', os.environ.get("BASE_RPC"),
             '--broadcast',
             '--slow',
             '-vvvvv'
