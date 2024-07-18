@@ -28,14 +28,14 @@ import "src/helpers/CreateStrategyHelper.sol";
     | 0x82321f3BEB69f503380D6B233857d5C43562e2D0 | 6000 | 200 |  weth  |  aero  |   +   |  2  | ++ | 40 sec
     | 0xb2cc224c1c9feE385f8ad6a55b4d94E92359DC59 | 4000 | 100 |  weth  |  usdc  |   +   |  3  | ++ | 6 sec
     | 0x4D69971CCd4A636c403a3C1B00c85e99bB9B5606 | 4000 | 100 |  weth  |  usd+  |   +   |  4  | ++ | 3 sec
-    | 0x861A2922bE165a5Bd41b1E482B49216b465e1B5F |      |   1 |  weth  |  wsteth|   +   |  5  | ++ | 60 sec
-    | 0x2ae9DF02539887d4EbcE0230168a302d34784c82 |      |   1 |  weth  |  bsdeth|   +   |  6  | ++ | 360 sec
-    | 0x0c1A09d5D0445047DA3Ab4994262b22404288A3B |      |   1 |  usdc  |  usd+  |   +   |  7  | ++ | 30 sec
-    | 0x20086910E220D5f4c9695B784d304A72a0de403B |      |   1 |  usd+  |  usdbc |   +   |  8  | ++ | 60 sec
-    | 0xdE5Ff829fEF54d1BdEc957D9538A306f0EAD1368 |      |   1 |  usdz  |  usdc  |revert |     |    | 180 sec
-    | 0x988702fe529a3461ec7Fd09Eea3f962856709FD9 |      |   1 |  usdc  |  eusd  |   -   |     |    | 500 sec
-    | 0x47cA96Ea59C13F72745928887f84C9F52C3D7348 |      |   1 |  cbeth |  weth  |   -   |     |    | 900 sec
-    | 0xDC7EAd706795eDa3FEDa08Ad519d9452BAdF2C0d |      |   1 |  ezeth |  weth  |   -   |     |    | 1000 sec
+    | 0x861A2922bE165a5Bd41b1E482B49216b465e1B5F |    1 |   1 |  weth  |  wsteth|   +   |  5  | ++ | 60 sec
+    | 0x2ae9DF02539887d4EbcE0230168a302d34784c82 |    1 |   1 |  weth  |  bsdeth|   +   |  6  | ++ | 360 sec
+    | 0x0c1A09d5D0445047DA3Ab4994262b22404288A3B |    1 |   1 |  usdc  |  usd+  |   +   |  7  | ++ | 30 sec
+    | 0x20086910E220D5f4c9695B784d304A72a0de403B |    1 |   1 |  usd+  |  usdbc |   +   |  8  | ++ | 60 sec
+    | 0xdE5Ff829fEF54d1BdEc957D9538A306f0EAD1368 |    1 |   1 |  usdz  |  usdc  |revert |     |    | 180 sec
+    | 0x988702fe529a3461ec7Fd09Eea3f962856709FD9 |    1 |   1 |  usdc  |  eusd  |   -   |     |    | 500 sec
+    | 0x47cA96Ea59C13F72745928887f84C9F52C3D7348 |    1 |   1 |  cbeth |  weth  |   -   |     |    | 900 sec
+    | 0xDC7EAd706795eDa3FEDa08Ad519d9452BAdF2C0d |    1 |   1 |  ezeth |  weth  |   -   |     |    | 1000 sec
     |----------------------------------------------------------------------------------------------|
 */
 
