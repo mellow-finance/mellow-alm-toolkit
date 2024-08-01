@@ -28,6 +28,7 @@
     "backtest": "forge build && cd test/backtest && env $(cat ../../.env | xargs) python3 HistoryTest.py",
     "deploy:base:aero:prod": "forge script src/scripts/deploy/base/DeployAeroLazy.s.sol --rpc-url $(grep BASE_RPC .env | cut -d '=' -f2,3,4,5) --etherscan-api-key $(grep API_KEY_BASE .env | cut -d '=' -f2,3,4,5) --broadcast --verify",
     "deploy:base:aero:test": "forge script src/scripts/deploy/base/DeployAeroLazy.s.sol --fork-url $(grep BASE_RPC .env | cut -d '=' -f2,3,4,5) --fork-block-number 17165440",
-    "deploy:base:aero:strat": "forge script src/scripts/deploy/base/DeployStrategy.s.sol --rpc-url $(grep BASE_RPC .env | cut -d '=' -f2,3,4,5) --etherscan-api-key $(grep API_KEY_BASE .env | cut -d '=' -f2,3,4,5) --broadcast --slow --verify"
+    "deploy:base:aero:strat": "forge script src/scripts/deploy/base/DeployStrategy.s.sol --rpc-url $(grep BASE_RPC .env | cut -d '=' -f2,3,4,5) --etherscan-api-key $(grep API_KEY_BASE .env | cut -d '=' -f2,3,4,5) --broadcast --slow --verify",
+    "deploy:base:aero:sugar": "forge script src/scripts/deploy/base/DeployVeloSugarHelper.s.sol --rpc-url $(grep BASE_RPC .env | cut -d '=' -f2,3,4,5) --etherscan-api-key $(grep API_KEY_BASE .env | cut -d '=' -f2,3,4,5) --broadcast --slow --verify"
   }
 }

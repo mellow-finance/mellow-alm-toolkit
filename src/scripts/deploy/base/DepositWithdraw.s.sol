@@ -10,7 +10,7 @@ import "src/interfaces/external/velo/ICLPool.sol";
 /// @dev address of @param LP_WRAPPER_ADDRESS is known after deploy the second STAGE
 /// @dev it should be used after deploy strategy for @param POOL_ADDRESS
 
-address constant POOL_ADDRESS = 0x20086910E220D5f4c9695B784d304A72a0de403B;
+address constant POOL_ADDRESS = 0x82321f3BEB69f503380D6B233857d5C43562e2D0;
 
 IVeloDeployFactory constant veloDeployFactory = IVeloDeployFactory(0x3F9E6301E76d83A7c6e19461a08d27f844E316D3);
 
@@ -18,27 +18,39 @@ IVeloDeployFactory constant veloDeployFactory = IVeloDeployFactory(0x3F9E6301E76
 contract DepositWithdraw is Script {
     uint256 immutable userPrivateKey = vm.envUint("USER_PRIVATE_KEY");
     address immutable userAddress = vm.addr(userPrivateKey);
-    ILpWrapper public lpWrapper;
+    LpWrapper public lpWrapper;
 
     function run() public {
-
-        vm.startBroadcast(userPrivateKey);
+        ICore core = ICore(0x403875f04283cd5403dCA5BF96fbbd071659478E);
+        //vm.startBroadcast(userPrivateKey);
+        vm.startPrank(userAddress);
         IVeloDeployFactory.PoolAddresses memory addr = veloDeployFactory.poolToAddresses(POOL_ADDRESS);
+        uint256 posId = core.getUserIds(addr.lpWrapper)[0];
+        ICore.ManagedPositionInfo memory position = core.managedPositionAt(posId);
+
         console2.log(" LpWrapper: ", addr.lpWrapper);
-        lpWrapper = ILpWrapper(addr.lpWrapper);
+        lpWrapper = LpWrapper(payable(addr.lpWrapper));
 
-        //deposit();
-        withdraw();
+        console2.log("NFT id of LpWrapper: ", position.ammPositionIds[0]);
+        console2.log("pool address of pos: ", position.pool);
+        console2.log("  balance Lp before: ", lpWrapper.balanceOf(userAddress));
+        console2.log("  share % Lp before: ", 100 * lpWrapper.balanceOf(userAddress)/lpWrapper.totalSupply());
 
-        vm.stopBroadcast();
+        deposit();
+        //withdraw();
+
+        console2.log("   balance Lp after: ", lpWrapper.balanceOf(userAddress));
+        console2.log("   share % Lp after: ", 100 * lpWrapper.balanceOf(userAddress)/lpWrapper.totalSupply());
+
+        //vm.stopBroadcast();
     }
 
     function deposit() private {
 
         ICLPool pool = ICLPool(POOL_ADDRESS);
 
-        uint256 anount0Desired = IERC20(pool.token0()).balanceOf(userAddress); // desired amount0
-        uint256 anount1Desired = IERC20(pool.token1()).balanceOf(userAddress); // desired amount1
+        uint256 anount0Desired = IERC20(pool.token0()).balanceOf(userAddress) / 2; // desired amount0
+        uint256 anount1Desired = IERC20(pool.token1()).balanceOf(userAddress) / 2; // desired amount1
 
         /// @dev give approves for actual amounts
         IERC20(pool.token0()).approve(
