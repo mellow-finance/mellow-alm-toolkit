@@ -14,14 +14,14 @@ import "src/interfaces/modules/strategies/IPulseStrategyModule.sol";
 
 import "src/bots/PulseVeloBotLazy.sol";
 
-contract PulseVeloBot is Script {
+contract PulseAeroBotLazy is Script {
     using SafeERC20 for IERC20;
 
     ICore public immutable core =
-        ICore(0x8CBA3833ad114b4021734357D9383F4DBD69638F);
+        ICore(0x403875f04283cd5403dCA5BF96fbbd071659478E);
 
     address public pulseVeloBotAddress =
-        0xB3dDa916420774efaD6C5cf1a7b55CDCdC245f04;
+        0xE23653290b0C5065484B14171c6e11Da238F7321;
     PulseVeloBotLazy public bot = PulseVeloBotLazy(pulseVeloBotAddress);
 
     uint256 immutable operatorPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
@@ -82,8 +82,7 @@ contract PulseVeloBot is Script {
         view
         returns (IPulseVeloBotLazy.SwapParams memory swapParams)
     {
-        string
-            memory path = "src/scripts/deploy/optimism/pulseVeloBotLazySwapData.json";
+        string memory path = "src/scripts/bots/pulseAeroBotLazySwapData.json";
         string memory json = vm.readFile(path);
         bytes memory data = vm.parseJson(json);
         swapParams = abi.decode(data, (IPulseVeloBotLazy.SwapParams));
