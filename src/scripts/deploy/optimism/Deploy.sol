@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 import "forge-std/Script.sol";
 import "forge-std/Vm.sol";
 
-import "@synthetix/contracts/StakingRewards.sol";
+import "../../../utils/StakingRewards.sol";
 
 import "../../../interfaces/external/velo/ISwapRouter.sol";
 
