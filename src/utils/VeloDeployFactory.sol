@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BSL-1.1
 pragma solidity ^0.8.0;
 
+import "@synthetix/contracts/StakingRewards.sol";
+
 import "../interfaces/utils/IVeloDeployFactory.sol";
 
 import "./Counter.sol";
@@ -150,7 +152,8 @@ contract VeloDeployFactory is
                 )
             ),
             mutableParams.lpWrapperAdmin,
-            mutableParams.lpWrapperManager
+            mutableParams.lpWrapperManager,
+            address(pool)
         );
 
         ICore.DepositParams memory depositParams;
@@ -163,14 +166,14 @@ contract VeloDeployFactory is
             poolAddresses.lpWrapper = address(lpWrapper);
             address gauge = pool.gauge();
             address rewardToken = ICLGauge(gauge).rewardToken();
-            poolAddresses.synthetixFarm = immutableParams
-                .helper
-                .createStakingRewards(
+            poolAddresses.synthetixFarm = address(
+                new StakingRewards(
                     mutableParams.farmOwner,
                     mutableParams.farmOperator,
                     rewardToken,
                     address(lpWrapper)
-                );
+                )
+            );
             depositParams.callbackParams = abi.encode(
                 IVeloAmmModule.CallbackParams({
                     farm: poolAddresses.synthetixFarm,

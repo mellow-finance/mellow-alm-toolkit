@@ -84,7 +84,9 @@ contract Unit is Fixture {
             "",
             "",
             address(0),
-            Constants.WETH
+            Constants.WETH,
+            address(0),
+            address(0)
         );
 
         lpWrapper = new LpWrapper(
@@ -93,7 +95,9 @@ contract Unit is Fixture {
             "Name",
             "Symbol",
             address(1),
-            Constants.WETH
+            Constants.WETH,
+            address(0),
+            address(0)
         );
 
         assertEq(lpWrapper.name(), "Name");
@@ -107,7 +111,9 @@ contract Unit is Fixture {
             "Wrapper LP Token",
             "WLP",
             Constants.OWNER,
-            Constants.WETH
+            Constants.WETH,
+            address(0),
+            address(0)
         );
 
         uint256 tokenId = mint(
@@ -153,7 +159,9 @@ contract Unit is Fixture {
             "Wrapper LP Token",
             "WLP",
             Constants.OWNER,
-            Constants.WETH
+            Constants.WETH,
+            address(0),
+            address(0)
         );
 
         uint256 tokenId = mint(
@@ -252,7 +260,9 @@ contract Unit is Fixture {
             "Wrapper LP Token",
             "WLP",
             Constants.OWNER,
-            Constants.WETH
+            Constants.WETH,
+            address(0),
+            address(0)
         );
 
         uint256 tokenId = mint(

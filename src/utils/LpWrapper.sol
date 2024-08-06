@@ -1,11 +1,15 @@
 // SPDX-License-Identifier: BSL-1.1
 pragma solidity ^0.8.0;
 
+import "@synthetix/contracts/StakingRewards.sol";
+
 import "../interfaces/utils/ILpWrapper.sol";
 
 import "../libraries/external/FullMath.sol";
 
 import "./DefaultAccessControl.sol";
+
+import "./VeloDeployFactory.sol";
 
 contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
     using SafeERC20 for IERC20;
@@ -30,6 +34,9 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
 
     address private immutable _weth;
 
+    VeloDeployFactory private immutable _factory;
+    address private immutable _pool;
+
     /**
      * @dev Constructor function for the LpWrapper contract.
      * @param core_ The address of the ICore contract.
@@ -45,7 +52,9 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         string memory name_,
         string memory symbol_,
         address admin,
-        address weth_
+        address weth_,
+        address factory_,
+        address pool_
     ) ERC20(name_, symbol_) DefaultAccessControl(admin) {
         core = core_;
         ammModule = core.ammModule();
@@ -53,6 +62,8 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         oracle = core.oracle();
         ammDepositWithdrawModule = ammDepositWithdrawModule_;
         _weth = weth_;
+        _factory = VeloDeployFactory(factory_);
+        _pool = pool_;
     }
 
     /// @inheritdoc ILpWrapper
@@ -77,6 +88,53 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         uint256 deadline
     )
         external
+        returns (uint256 actualAmount0, uint256 actualAmount1, uint256 lpAmount)
+    {
+        (actualAmount0, actualAmount1, lpAmount) = _deposit(
+            amount0,
+            amount1,
+            minLpAmount,
+            deadline
+        );
+        _mint(to, lpAmount);
+    }
+
+    function getFarm() public view returns (address) {
+        IVeloDeployFactory.PoolAddresses memory addresses = _factory
+            .poolToAddresses(_pool);
+        require(address(addresses.lpWrapper) == address(this));
+        return addresses.lpWrapper;
+    }
+
+    function depositAndStake(
+        uint256 amount0,
+        uint256 amount1,
+        uint256 minLpAmount,
+        address to,
+        uint256 deadline
+    )
+        external
+        returns (uint256 actualAmount0, uint256 actualAmount1, uint256 lpAmount)
+    {
+        (actualAmount0, actualAmount1, lpAmount) = _deposit(
+            amount0,
+            amount1,
+            minLpAmount,
+            deadline
+        );
+        _mint(address(this), lpAmount);
+        address farm = getFarm();
+        _approve(address(this), farm, lpAmount);
+        StakingRewards(farm).stakeOnBehalf(lpAmount, to);
+    }
+
+    function _deposit(
+        uint256 amount0,
+        uint256 amount1,
+        uint256 minLpAmount,
+        uint256 deadline
+    )
+        private
         returns (uint256 actualAmount0, uint256 actualAmount1, uint256 lpAmount)
     {
         if (block.timestamp > deadline) revert Deadline();
@@ -187,8 +245,6 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         }
 
         if (lpAmount < minLpAmount) revert InsufficientLpAmount();
-        _mint(to, lpAmount);
-
         positionId = core.deposit(
             ICore.DepositParams({
                 ammPositionIds: info.ammPositionIds,
@@ -210,6 +266,34 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         uint256 deadline
     )
         external
+        returns (uint256 amount0, uint256 amount1, uint256 actualLpAmount)
+    {
+        return _withdraw(lpAmount, minAmount0, minAmount1, to, deadline);
+    }
+
+    function unstakeAndWithdraw(
+        uint256 lpAmount,
+        uint256 minAmount0,
+        uint256 minAmount1,
+        address to,
+        uint256 deadline
+    )
+        external
+        returns (uint256 amount0, uint256 amount1, uint256 actualLpAmount)
+    {
+        address farm = getFarm();
+        StakingRewards(farm).withdrawOnBehalf(lpAmount, msg.sender);
+        return _withdraw(lpAmount, minAmount0, minAmount1, to, deadline);
+    }
+
+    function _withdraw(
+        uint256 lpAmount,
+        uint256 minAmount0,
+        uint256 minAmount1,
+        address to,
+        uint256 deadline
+    )
+        private
         returns (uint256 amount0, uint256 amount1, uint256 actualLpAmount)
     {
         if (block.timestamp > deadline) revert Deadline();
@@ -275,6 +359,25 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
                 securityParams: info.securityParams
             })
         );
+    }
+
+    function getReward() external {
+        address farm = getFarm();
+        StakingRewards(farm).getRewardOnBehalf(msg.sender);
+    }
+
+    function earned(address user) external view returns (uint256 amount) {
+        address farm = getFarm();
+        return StakingRewards(farm).earned(user);
+    }
+
+    function protocolParams()
+        external
+        view
+        returns (IVeloAmmModule.ProtocolParams memory params)
+    {
+        return
+            abi.decode(core.protocolParams(), (IVeloAmmModule.ProtocolParams));
     }
 
     /// @inheritdoc ILpWrapper
