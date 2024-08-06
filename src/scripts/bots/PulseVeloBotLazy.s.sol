@@ -82,8 +82,7 @@ contract PulseVeloBot is Script {
         view
         returns (IPulseVeloBotLazy.SwapParams memory swapParams)
     {
-        string
-            memory path = "src/scripts/bots/pulseVeloBotLazySwapData.json";
+        string memory path = "src/scripts/bots/pulseVeloBotLazySwapData.json";
         string memory json = vm.readFile(path);
         bytes memory data = vm.parseJson(json);
         swapParams = abi.decode(data, (IPulseVeloBotLazy.SwapParams));

@@ -16,8 +16,10 @@ contract DeployVeloSugarHelper is Script, Test {
         console.log("Deployer address:", deployerAddress);
 
         vm.startBroadcast(deployerPrivateKey);
-        
-        VeloSugarHelper veloSugarHelper = new VeloSugarHelper(DEPLOY_FACTORY_ADDRESS);
+
+        VeloSugarHelper veloSugarHelper = new VeloSugarHelper(
+            DEPLOY_FACTORY_ADDRESS
+        );
 
         vm.stopBroadcast();
 
