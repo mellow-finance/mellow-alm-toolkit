@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: BSL-1.1
 pragma solidity ^0.8.0;
 
-import "./StakingRewards.sol";
-
+import "../interfaces/external/velo/INonfungiblePositionManager.sol";
 import "../interfaces/utils/ILpWrapper.sol";
 
 import "../libraries/external/FullMath.sol";
 
 import "./DefaultAccessControl.sol";
-
+import "./StakingRewards.sol";
 import "./VeloDeployFactory.sol";
 
 contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
@@ -33,9 +32,8 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
     uint256 public positionId;
 
     address private immutable _weth;
-
-    VeloDeployFactory private immutable _factory;
     address private immutable _pool;
+    VeloDeployFactory private immutable _factory;
 
     /**
      * @dev Constructor function for the LpWrapper contract.
@@ -101,6 +99,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         _mint(to, lpAmount);
     }
 
+    /// @inheritdoc ILpWrapper
     function getFarm() public view returns (address) {
         IVeloDeployFactory.PoolAddresses memory addresses = _factory
             .poolToAddresses(_pool);
@@ -108,6 +107,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         return addresses.synthetixFarm;
     }
 
+    /// @inheritdoc ILpWrapper
     function depositAndStake(
         uint256 amount0,
         uint256 amount1,
@@ -273,6 +273,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         return _withdraw(lpAmount, minAmount0, minAmount1, to, deadline);
     }
 
+    /// @inheritdoc ILpWrapper
     function unstakeAndWithdraw(
         uint256 lpAmount,
         uint256 minAmount0,
@@ -363,16 +364,19 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         );
     }
 
+    /// @inheritdoc ILpWrapper
     function getReward() external {
         address farm = getFarm();
         StakingRewards(farm).getRewardOnBehalf(msg.sender);
     }
 
+    /// @inheritdoc ILpWrapper
     function earned(address user) external view returns (uint256 amount) {
         address farm = getFarm();
         return StakingRewards(farm).earned(user);
     }
 
+    /// @inheritdoc ILpWrapper
     function protocolParams()
         external
         view
@@ -382,27 +386,45 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
             abi.decode(core.protocolParams(), (IVeloAmmModule.ProtocolParams));
     }
 
-    function tvl()
+    /// @inheritdoc ILpWrapper
+    function getInfo()
         external
         view
-        returns (uint256 totalAmount0, uint256 totalAmount1)
+        returns (uint256 tokenId, PositionData memory data)
     {
-        ICore.ManagedPositionInfo memory info = core.managedPositionAt(
-            positionId
-        );
-        (uint160 sqrtPriceX96, ) = oracle.getOraclePrice(info.pool);
-        bytes memory protocolParams_ = core.protocolParams();
-        for (uint256 i = 0; i < info.ammPositionIds.length; i++) {
-            uint256 tokenId = info.ammPositionIds[i];
-            (uint256 amount0, uint256 amount1) = ammModule.tvl(
-                tokenId,
-                sqrtPriceX96,
-                info.callbackParams,
-                protocolParams_
+        {
+            ICore.ManagedPositionInfo memory info = core.managedPositionAt(
+                positionId
             );
-            totalAmount0 += amount0;
-            totalAmount1 += amount1;
+            if (info.ammPositionIds.length != 1) revert InvalidPositionsCount();
+            tokenId = info.ammPositionIds[0];
         }
+        (
+            uint96 nonce,
+            address operator,
+            address token0,
+            address token1,
+            int24 tickSpacing,
+            int24 tickLower,
+            int24 tickUpper,
+            uint128 liquidity,
+            uint256 feeGrowthInside0LastX128,
+            uint256 feeGrowthInside1LastX128,
+            uint128 tokensOwed0,
+            uint128 tokensOwed1
+        ) = INonfungiblePositionManager(positionManager).positions(tokenId);
+        data.nonce = nonce;
+        data.operator = operator;
+        data.token0 = token0;
+        data.token1 = token1;
+        data.tickSpacing = tickSpacing;
+        data.tickLower = tickLower;
+        data.tickUpper = tickUpper;
+        data.liquidity = liquidity;
+        data.feeGrowthInside0LastX128 = feeGrowthInside0LastX128;
+        data.feeGrowthInside1LastX128 = feeGrowthInside1LastX128;
+        data.tokensOwed0 = tokensOwed0;
+        data.tokensOwed1 = tokensOwed1;
     }
 
     /// @inheritdoc ILpWrapper

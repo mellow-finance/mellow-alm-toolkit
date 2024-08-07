@@ -632,7 +632,7 @@ contract Unit is Fixture {
 
         address gauge = pool.gauge();
         address rewardToken = ICLGauge(gauge).rewardToken();
-        
+
         for (uint i = 0; i < 10; i++) {
             skip(7 days);
             vm.startPrank(Constants.FARM_OWNER);
@@ -647,7 +647,9 @@ contract Unit is Fixture {
         uint256 eranedAmount = lpWrapper.earned(Constants.DEPOSITOR);
 
         lpWrapper.getReward();
-        uint256 rewardedAmount = IERC20(rewardToken).balanceOf(Constants.DEPOSITOR);
+        uint256 rewardedAmount = IERC20(rewardToken).balanceOf(
+            Constants.DEPOSITOR
+        );
 
         console2.log("  earned:", eranedAmount);
         console2.log("rewarded:", rewardedAmount);
