@@ -214,7 +214,11 @@ contract StakingRewards is
         require(amount > 0, "Cannot stake 0");
         _totalSupply = _totalSupply.add(amount);
         _balances[to] = _balances[to].add(amount);
-        IERC20(stakingToken).safeTransferFrom(to, address(this), amount);
+        IERC20(stakingToken).safeTransferFrom(
+            stakingToken,
+            address(this),
+            amount
+        );
         emit Staked(to, amount);
     }
 

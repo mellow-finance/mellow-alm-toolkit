@@ -103,7 +103,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         IVeloDeployFactory.PoolAddresses memory addresses = _factory
             .poolToAddresses(_pool);
         require(address(addresses.lpWrapper) == address(this));
-        return addresses.lpWrapper;
+        return addresses.synthetixFarm;
     }
 
     function depositAndStake(
