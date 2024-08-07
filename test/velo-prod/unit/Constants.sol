@@ -38,9 +38,9 @@ library Constants {
     address public constant VELO = 0x9560e827aF36c94D2Ac33a39bCE1Fe78631088Db;
 
     address public constant NONFUNGIBLE_POSITION_MANAGER =
-        0x416b433906b1B72FA758e166e239c43d68dC6F29;
+        0xbB5DFE1380333CEE4c2EeBd7202c80dE2256AdF4;
     address public constant VELO_FACTORY =
-        0xCc0bDDB707055e04e497aB22a59c2aF4391cd12F;
+        0x548118C7E0B865C2CfA94D15EC86B666468ac758;
 
     address public constant SWAP_ROUTER =
         0xF132bdb9573867cD72f2585C338B923F973EB817;

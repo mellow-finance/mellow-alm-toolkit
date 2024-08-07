@@ -83,8 +83,8 @@ contract Unit is Fixture {
         depositParams.securityParams = abi.encode(
             IVeloOracle.SecurityParams({
                 lookback: 1,
-                maxAllowedDelta: 100000,
-                maxAge: 7 days
+                maxAllowedDelta: MAX_ALLOWED_DELTA,
+                maxAge: MAX_AGE
             })
         );
 
@@ -123,7 +123,7 @@ contract Unit is Fixture {
                 tokenId: tokenId,
                 securityParams: abi.encode(
                     IVeloOracle.SecurityParams({
-                        lookback: 10,
+                        lookback: 1,
                         maxAllowedDelta: MAX_ALLOWED_DELTA,
                         maxAge: MAX_AGE
                     })
@@ -405,7 +405,7 @@ contract Unit is Fixture {
     }
 
     function testDepositAndStake() external {
-        pool.increaseObservationCardinalityNext(2);
+        pool.increaseObservationCardinalityNext(100);
 
         uint256 tokenId = mint(
             pool.token0(),
