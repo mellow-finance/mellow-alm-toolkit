@@ -14,6 +14,7 @@ contract CreateStrategyHelper {
         int24 tickSpacing;
         int24 width;
         IVeloOracle.SecurityParams securityParams;
+        uint256 minAmount;
     }
 
     uint128 constant MIN_INITIAL_LIQUDITY = 1000;
