@@ -45,6 +45,8 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
      * @param symbol_ The symbol of the ERC20 token.
      * @param admin The address of the admin.
      * @param weth_ The address of the WETH contract.
+     * @param factory_ The address of the ALM deploy factory.
+     * @param pool_ The address of the Pool.
      */
     constructor(
         ICore core_,
