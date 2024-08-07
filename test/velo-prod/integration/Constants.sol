@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
-import "@synthetix/contracts/StakingRewards.sol";
+import "../../../src/utils/StakingRewards.sol";
 
 import "../../../src/Core.sol";
 import "../../../src/bots/PulseVeloBot.sol";
