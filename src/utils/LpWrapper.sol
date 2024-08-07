@@ -380,6 +380,29 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
             abi.decode(core.protocolParams(), (IVeloAmmModule.ProtocolParams));
     }
 
+    function tvl()
+        external
+        view
+        returns (uint256 totalAmount0, uint256 totalAmount1)
+    {
+        ICore.ManagedPositionInfo memory info = core.managedPositionAt(
+            positionId
+        );
+        (uint160 sqrtPriceX96, ) = oracle.getOraclePrice(info.pool);
+        bytes memory protocolParams_ = core.protocolParams();
+        for (uint256 i = 0; i < info.ammPositionIds.length; i++) {
+            uint256 tokenId = info.ammPositionIds[i];
+            (uint256 amount0, uint256 amount1) = ammModule.tvl(
+                tokenId,
+                sqrtPriceX96,
+                info.callbackParams,
+                protocolParams_
+            );
+            totalAmount0 += amount0;
+            totalAmount1 += amount1;
+        }
+    }
+
     /// @inheritdoc ILpWrapper
     function setPositionParams(
         uint32 slippageD9,
