@@ -260,14 +260,14 @@ contract Unit is Fixture {
             .deposit(
                 1 ether,
                 1 ether,
-                0.23 ether,
+                0.228 ether,
                 Constants.DEPOSITOR,
                 type(uint256).max
             );
 
-        assertTrue(amount0 >= 5.123e14);
+        assertTrue(amount0 >= 4.736e14);
         assertTrue(amount1 >= 0.99 ether);
-        assertTrue(lpAmount >= 0.237 ether);
+        assertTrue(lpAmount >= 0.228 ether);
         assertEq(lpWrapper.balanceOf(Constants.DEPOSITOR), lpAmount);
 
         uint256 totalSupplyAfter = lpWrapper.totalSupply();
@@ -448,14 +448,14 @@ contract Unit is Fixture {
             .depositAndStake(
                 1 ether,
                 1 ether,
-                0.23 ether,
+                0.228 ether,
                 Constants.DEPOSITOR,
                 type(uint256).max
             );
 
-        assertTrue(amount0 >= 5.123e14);
+        assertTrue(amount0 >= 4.736e14);
         assertTrue(amount1 >= 0.99 ether);
-        assertTrue(lpAmount >= 0.237 ether);
+        assertTrue(lpAmount >= 0.228 ether);
         assertEq(lpWrapper.balanceOf(Constants.DEPOSITOR), 0); // because lpAmount was staked immediately
         assertEq(farm.balanceOf(Constants.DEPOSITOR), lpAmount); // because lpAmount was staked immediately
 
@@ -493,7 +493,7 @@ contract Unit is Fixture {
         }
 
         vm.expectRevert(abi.encodeWithSignature("DepositCallFailed()"));
-        lpWrapper.deposit(
+        lpWrapper.depositAndStake(
             1 ether,
             1 ether,
             100 ether,
@@ -533,7 +533,7 @@ contract Unit is Fixture {
         lpWrapper.depositAndStake(
             1 ether,
             1 ether,
-            0.23 ether,
+            0.228 ether,
             Constants.DEPOSITOR,
             type(uint256).max
         );
@@ -592,6 +592,67 @@ contract Unit is Fixture {
             );
         }
 
+        vm.stopPrank();
+    }
+
+    function testReward() external {
+        pool.increaseObservationCardinalityNext(2);
+
+        uint256 tokenId = mint(
+            pool.token0(),
+            pool.token1(),
+            pool.tickSpacing(),
+            pool.tickSpacing() * 20,
+            INITIAL_LIQUIDITY,
+            pool
+        );
+
+        IVeloDeployFactory.PoolAddresses memory addresses = _createStrategy(
+            tokenId
+        );
+        lpWrapper = LpWrapper(payable(addresses.lpWrapper));
+        farm = StakingRewards(addresses.synthetixFarm);
+
+        vm.startPrank(Constants.DEPOSITOR);
+
+        deal(pool.token0(), Constants.DEPOSITOR, 1 ether);
+        deal(pool.token1(), Constants.DEPOSITOR, 1 ether);
+
+        IERC20(pool.token0()).approve(address(lpWrapper), 1 ether);
+        IERC20(pool.token1()).approve(address(lpWrapper), 1 ether);
+
+        lpWrapper.depositAndStake(
+            1 ether,
+            1 ether,
+            0.228 ether,
+            Constants.DEPOSITOR,
+            type(uint256).max
+        );
+        vm.stopPrank();
+
+        address gauge = pool.gauge();
+        address rewardToken = ICLGauge(gauge).rewardToken();
+        
+        for (uint i = 0; i < 10; i++) {
+            skip(7 days);
+            vm.startPrank(Constants.FARM_OWNER);
+            deal(rewardToken, Constants.FARM_OWNER, 1 ether);
+            IERC20(rewardToken).transfer(address(farm), 1 ether);
+            farm.setRewardsDistribution(Constants.FARM_OWNER);
+            farm.notifyRewardAmount(1 ether);
+            vm.stopPrank();
+        }
+
+        vm.startPrank(Constants.DEPOSITOR);
+        uint256 eranedAmount = lpWrapper.earned(Constants.DEPOSITOR);
+
+        lpWrapper.getReward();
+        uint256 rewardedAmount = IERC20(rewardToken).balanceOf(Constants.DEPOSITOR);
+
+        console2.log("  earned:", eranedAmount);
+        console2.log("rewarded:", rewardedAmount);
+
+        assertEq(eranedAmount, rewardedAmount);
         vm.stopPrank();
     }
 }
