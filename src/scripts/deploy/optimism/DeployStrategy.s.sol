@@ -29,12 +29,12 @@ uint32 constant MAX_AGE = 1 hours;
   coreAddress 0x8CBA3833ad114b4021734357D9383F4DBD69638F
   pulseVeloBotAddress 0xB3dDa916420774efaD6C5cf1a7b55CDCdC245f04
   deployFactoryAddress 0x2B4005CEA7acfa1285034d4887E761fD1a4c7C7D
-  createStrategyHelperAddress 0x130984643b99aC8d76f89d9502b378c9a4C0142F
+  createStrategyHelperAddress 0xEeB7730756Eaeb32Ccaf0a63c7d68c1D67311F8f
 */
 
 /// @dev deployed addresses
 address constant DEPLOY_FACTORY_ADDRESS = 0x2B4005CEA7acfa1285034d4887E761fD1a4c7C7D;
-address constant CREATE_STRATEGY_HELPER_ADDRESS = 0x130984643b99aC8d76f89d9502b378c9a4C0142F;
+address constant CREATE_STRATEGY_HELPER_ADDRESS = 0xEeB7730756Eaeb32Ccaf0a63c7d68c1D67311F8f;
 
 /// @dev immutable addresses at the deployment
 address constant VELO_FACTORY_ADDRESS = 0xCc0bDDB707055e04e497aB22a59c2aF4391cd12F;
@@ -51,7 +51,7 @@ contract Deploy is Script, Test {
             --------------------------------------------------------------------------------------------------|
                                               address | width|  TS |         t0   |     t1 | status|  ID | DW |
             -------------------------------------------------------------------------------|-------|-----|----|
-            [0]  0xeBD5311beA1948e1441333976EadCFE5fBda777C | 6000 | 200 | usdc   |     op |   +   |     |    |
+            [0]  0xeBD5311beA1948e1441333976EadCFE5fBda777C | 6000 | 200 | usdc   |     op |       |     |    |
             [1]  0x4DC22588Ade05C40338a9D95A6da9dCeE68Bcd60 | 6000 | 200 | weth   |     op |       |     |    |
             [2]  0x478946BcD4a5a22b316470F5486fAfb928C0bA25 | 4000 | 100 | usdc   |   weth |       |     |    |
             [3]  0x319C0DD36284ac24A6b2beE73929f699b9f48c38 | 4000 | 100 | weth   |   wbtc |       |     |    |
@@ -90,15 +90,38 @@ contract Deploy is Script, Test {
         console2.log("createStrategyHelper", address(createStrategyHelper));
     }
 
+    function withdraw(address lpWrapper, address to) private {
+        /// @dev withdraw whole assets
+        (uint256 amount0, uint256 amount1, uint256 actualLpAmount) = ILpWrapper(lpWrapper)
+            .withdraw(
+                type(uint256).max, // it will be truncated to the actual owned lpTokens
+                0,
+                0,
+                to,
+                type(uint256).max
+            );
+
+        console2.log(" ================== withdraw info ==================== ");
+        console2.log("withdrawer: ", to);
+        console2.log("   amount0: ", amount0);
+        console2.log("   amount1: ", amount1);
+        console2.log("  lpAmount: ", actualLpAmount);
+    }
+
     function run() public {
         CreateStrategyHelper createStrategyHelper = CreateStrategyHelper(
             CREATE_STRATEGY_HELPER_ADDRESS
         );
         vm.startBroadcast(operatorPrivateKey);
-
+        address operatoAddress = vm.addr(operatorPrivateKey);
         CreateStrategyHelper.PoolParameter[] memory parameters = setPoolParameters();
 
-        uint256 POOL_NUMBER = 0;
+        uint256 POOL_NUMBER = 4;
+
+        address lpWrapper = veloDeployFactory.poolToAddresses(address(parameters[POOL_NUMBER].pool)).lpWrapper;
+        if (lpWrapper != address(0)) {
+            withdraw(lpWrapper, operatoAddress);
+        }
 
         veloDeployFactory.removeAddressesForPool(address(parameters[POOL_NUMBER].pool));
         require(
