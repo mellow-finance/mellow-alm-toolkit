@@ -285,8 +285,12 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         returns (uint256 amount0, uint256 amount1, uint256 actualLpAmount)
     {
         address farm = getFarm();
-        StakingRewards(farm).withdrawOnBehalf(lpAmount, msg.sender);
-        return _withdraw(lpAmount, minAmount0, minAmount1, to, deadline);
+        actualLpAmount = StakingRewards(farm).balanceOf(msg.sender);
+        if (actualLpAmount > lpAmount) {
+            actualLpAmount = lpAmount;
+        }
+        StakingRewards(farm).withdrawOnBehalf(actualLpAmount, msg.sender);
+        return _withdraw(actualLpAmount, minAmount0, minAmount1, to, deadline);
     }
 
     function _withdraw(
