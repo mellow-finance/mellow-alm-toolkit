@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
-import "@synthetix/contracts/StakingRewards.sol";
+import "../../../src/utils/StakingRewards.sol";
 
 import "../../../src/Core.sol";
 import "../../../src/bots/PulseVeloBot.sol";
@@ -56,8 +56,14 @@ library Constants {
         address(bytes20(keccak256("depositor-3")));
     address public constant DEPOSITOR_4 =
         address(bytes20(keccak256("depositor-4")));
-    address public constant OWNER = address(bytes20(keccak256("owner")));
     address public constant ADMIN = address(bytes20(keccak256("admin")));
+    address public constant OWNER = address(bytes20(keccak256("owner")));
+    address public constant FARM_OWNER =
+        address(bytes20(keccak256("farm owner")));
+    address public constant FARM_OPERATOR =
+        address(bytes20(keccak256("farm operator")));
+    address public constant WRAPPER_ADMIN =
+        address(bytes20(keccak256("wrapper admin")));
     address public constant PROTOCOL_TREASURY =
         address(bytes20(keccak256("protocol-treasury")));
     uint32 public constant PROTOCOL_FEE_D9 = 1e8; // 10%

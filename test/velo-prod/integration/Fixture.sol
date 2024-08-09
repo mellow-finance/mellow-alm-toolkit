@@ -354,7 +354,9 @@ contract Fixture is Test {
             "lp wrapper",
             "LPWR",
             Constants.OWNER,
-            Constants.WETH
+            Constants.WETH,
+            address(0),
+            address(0)
         );
         stakingRewards = new StakingRewards(
             Constants.OWNER,
