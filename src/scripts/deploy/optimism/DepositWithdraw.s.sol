@@ -13,10 +13,10 @@ import "src/interfaces/external/velo/ICLPool.sol";
 /// @dev address of @param LP_WRAPPER_ADDRESS is known after deploy the second STAGE
 /// @dev it should be used after deploy strategy for @param POOL_ADDRESS
 
-address constant POOL_ADDRESS = 0xbF30Ff33CF9C6b0c48702Ff17891293b002DfeA4;
+address constant POOL_ADDRESS = 0x478946BcD4a5a22b316470F5486fAfb928C0bA25;
 ICLPool constant pool = ICLPool(POOL_ADDRESS);
 IVeloDeployFactory constant veloDeployFactory = IVeloDeployFactory(
-    0x2B4005CEA7acfa1285034d4887E761fD1a4c7C7D
+    0x95204dcE0a888e51ca424022efC273C4EcdAc21c
 );
 INonfungiblePositionManager constant nft = INonfungiblePositionManager(
     0x416b433906b1B72FA758e166e239c43d68dC6F29
@@ -75,8 +75,8 @@ contract DepositWithdraw is Script {
             (100 * lpWrapper.balanceOf(userAddress)) / lpWrapper.totalSupply()
         );
 
-        deposit();
-        //withdraw();
+        //deposit();
+        withdraw();
 
         console2.log("   balance Lp after: ", lpWrapper.balanceOf(userAddress));
         console2.log(

@@ -23,18 +23,18 @@ uint32 constant MAX_AGE = 1 hours;
   Deployer address: 0xeccba048Fd1fcD5c26f3aAfb7aBf3737e163d0FD
   oracleAddress 0x82004063fdf73A63Fd66a757c9243a98978eCF0a
   strategyModuleAddress 0xacf34411cCEA6Fb196c5E8C79B6349f8C3CD1Ae4
-  velotrDeployFactoryHelperAddress 0x511B4EE54601eF30Dbd3708eeD47aa1497516079
+  velotrDeployFactoryHelperAddress 0xBcc30f436806F52ad4dDEd10054D2976F656bD35
   ammModuleAddress 0x326cA8bCf117bDc00ad641D237a35365DEFDE308
   veloDepositWithdrawModuleAddress 0xEdfd0dd4Ada2B6CddfF2BC0f03D8adc93b658271
   coreAddress 0x8CBA3833ad114b4021734357D9383F4DBD69638F
   pulseVeloBotAddress 0xB3dDa916420774efaD6C5cf1a7b55CDCdC245f04
-  deployFactoryAddress 0x2B4005CEA7acfa1285034d4887E761fD1a4c7C7D
-  createStrategyHelperAddress 0xEeB7730756Eaeb32Ccaf0a63c7d68c1D67311F8f
+  deployFactoryAddress 0x95204dcE0a888e51ca424022efC273C4EcdAc21c
+  createStrategyHelperAddress 0xf446c60f7eC179da98F12b6e2db89851b266d042
 */
 
 /// @dev deployed addresses
-address constant DEPLOY_FACTORY_ADDRESS = 0x2B4005CEA7acfa1285034d4887E761fD1a4c7C7D;
-address constant CREATE_STRATEGY_HELPER_ADDRESS = 0xEeB7730756Eaeb32Ccaf0a63c7d68c1D67311F8f;
+address constant DEPLOY_FACTORY_ADDRESS = 0x95204dcE0a888e51ca424022efC273C4EcdAc21c;
+address constant CREATE_STRATEGY_HELPER_ADDRESS = 0xf446c60f7eC179da98F12b6e2db89851b266d042;
 
 /// @dev immutable addresses at the deployment
 address constant VELO_FACTORY_ADDRESS = 0xCc0bDDB707055e04e497aB22a59c2aF4391cd12F;
@@ -42,6 +42,9 @@ address constant VELO_FACTORY_ADDRESS = 0xCc0bDDB707055e04e497aB22a59c2aF4391cd1
 contract Deploy is Script, Test {
     uint256 immutable operatorPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
     VeloDeployFactory immutable veloDeployFactory = VeloDeployFactory(DEPLOY_FACTORY_ADDRESS);
+
+    /// @dev number from below list of pool to deploy strategy
+    uint256 immutable POOL_NUMBER = 2;
 
     function setPoolParameters() pure internal returns (CreateStrategyHelper.PoolParameter[] memory parameters) {
         parameters = new CreateStrategyHelper.PoolParameter[](11);
@@ -62,7 +65,7 @@ contract Deploy is Script, Test {
             [8]  0x2FA71491F8070FA644d97b4782dB5734854c0f6F |    1 |   1 | usdc   | usdc.e |       |     |    |
             [9]  0x3C01ec09D15D5450FC702DC4353b17Cd2978d8a5 |    1 |   1 | usdc   |   susd |       |     |    |
             [10] 0x8Ac2f9daC7a2852D44F3C09634444d533E4C078e |    1 |   1 | usdc   |   lusd |       |     |    |
-            ---------------------------------------------------------------------------------------------|
+            --------------------------------------------------------------------------------------------------|
         */
         parameters[0].pool  = ICLPool(0xeBD5311beA1948e1441333976EadCFE5fBda777C); parameters[0].width  = 6000 ; parameters[0].minAmount = 1000000;
         parameters[1].pool  = ICLPool(0x4DC22588Ade05C40338a9D95A6da9dCeE68Bcd60); parameters[1].width  = 6000 ; parameters[1].minAmount = uint256(10**18) / 3000;
@@ -115,8 +118,6 @@ contract Deploy is Script, Test {
         vm.startBroadcast(operatorPrivateKey);
         address operatoAddress = vm.addr(operatorPrivateKey);
         CreateStrategyHelper.PoolParameter[] memory parameters = setPoolParameters();
-
-        uint256 POOL_NUMBER = 4;
 
         address lpWrapper = veloDeployFactory.poolToAddresses(address(parameters[POOL_NUMBER].pool)).lpWrapper;
         if (lpWrapper != address(0)) {
