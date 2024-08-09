@@ -120,7 +120,7 @@ interface ILpWrapper {
     function protocolParams()
         external
         view
-        returns (IVeloAmmModule.ProtocolParams memory params);
+        returns (IVeloAmmModule.ProtocolParams memory params, uint256 d9);
 
     /**
      * @dev Returns the address of the position manager.

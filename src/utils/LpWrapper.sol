@@ -35,6 +35,8 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
     address private immutable _pool;
     VeloDeployFactory private immutable _factory;
 
+    uint56 immutable D9 = 10**9;
+
     /**
      * @dev Constructor function for the LpWrapper contract.
      * @param core_ The address of the ICore contract.
@@ -384,10 +386,10 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
     function protocolParams()
         external
         view
-        returns (IVeloAmmModule.ProtocolParams memory params)
+        returns (IVeloAmmModule.ProtocolParams memory params, uint256 d9)
     {
         return
-            abi.decode(core.protocolParams(), (IVeloAmmModule.ProtocolParams));
+            (abi.decode(core.protocolParams(), (IVeloAmmModule.ProtocolParams)), D9);
     }
 
     /// @inheritdoc ILpWrapper
