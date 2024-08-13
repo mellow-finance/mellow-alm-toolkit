@@ -554,7 +554,7 @@ contract Unit is Fixture {
             Constants.DEPOSITOR,
             type(uint256).max
         );
-
+        
         lpWrapper.unstakeAndWithdraw(
             balance / 2,
             0,
@@ -568,7 +568,14 @@ contract Unit is Fixture {
             farm.balanceOf(Constants.DEPOSITOR),
             0 wei
         );
-
+        
+        lpWrapper.unstakeAndWithdraw(
+            type(uint256).max,
+            0,
+            0,
+            Constants.DEPOSITOR,
+            type(uint256).max
+        );
         uint256 totalSupplyAfter = lpWrapper.totalSupply();
         IAmmModule.AmmPosition memory positionAfter = ammModule.getAmmPosition(
             tokenId
