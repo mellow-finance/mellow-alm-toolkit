@@ -16,7 +16,7 @@ import "src/interfaces/external/velo/ICLPool.sol";
 address constant POOL_ADDRESS = 0x478946BcD4a5a22b316470F5486fAfb928C0bA25;
 ICLPool constant pool = ICLPool(POOL_ADDRESS);
 IVeloDeployFactory constant veloDeployFactory = IVeloDeployFactory(
-    0x95204dcE0a888e51ca424022efC273C4EcdAc21c
+    0xfAd92599d48D281b3A63F10454F029d77751c643
 );
 INonfungiblePositionManager constant nft = INonfungiblePositionManager(
     0x416b433906b1B72FA758e166e239c43d68dC6F29
