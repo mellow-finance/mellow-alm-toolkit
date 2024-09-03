@@ -6,33 +6,28 @@ import "src/utils/VeloDeployFactory.sol";
 import "src/libraries/external/LiquidityAmounts.sol";
 
 contract CreateStrategyHelper {
+
+    using SafeERC20 for IERC20;
+
     struct PoolParameter {
         ICLPool pool;
-        ICLFactory factory;
-        address token0;
-        address token1;
-        int24 tickSpacing;
         int24 width;
+        uint256 maxAmount0;
+        uint256 maxAmount1;
         IVeloOracle.SecurityParams securityParams;
-        uint256 minAmount;
     }
 
     uint128 constant MIN_INITIAL_LIQUDITY = 1000;
+    int24 immutable tickNeighborhood = 0;
 
-    INonfungiblePositionManager NONFUNGIBLE_POSITION_MANAGER;
-    VeloDeployFactory deployFactory;
+    ICLFactory immutable CL_FACTORY = ICLFactory(0xCc0bDDB707055e04e497aB22a59c2aF4391cd12F);
+    INonfungiblePositionManager immutable NONFUNGIBLE_POSITION_MANAGER = INonfungiblePositionManager(0x416b433906b1B72FA758e166e239c43d68dC6F29);
+    VeloDeployFactory immutable deployFactory;
 
-    constructor(
-        INonfungiblePositionManager nft_,
-        VeloDeployFactory deployFactory_
-    ) {
-        NONFUNGIBLE_POSITION_MANAGER = nft_;
-        deployFactory = deployFactory_;
-    }
+    constructor() {}
 
     function createStrategy(
-        PoolParameter memory poolParameter,
-        uint256 minAmount
+        PoolParameter memory poolParameter
     )
         external
         returns (
@@ -40,14 +35,14 @@ contract CreateStrategyHelper {
             uint256 tokenId
         )
     {
-        tokenId = _mintInitialPosition(poolParameter, minAmount);
+        tokenId = _mintInitialPosition(poolParameter);
 
         NONFUNGIBLE_POSITION_MANAGER.approve(address(deployFactory), tokenId);
 
         return (
             deployFactory.createStrategy(
                 IVeloDeployFactory.DeployParams({
-                    tickNeighborhood: 0,
+                    tickNeighborhood: tickNeighborhood,
                     slippageD9: 5 * 1e5,
                     tokenId: tokenId,
                     securityParams: abi.encode(poolParameter.securityParams),
@@ -59,73 +54,74 @@ contract CreateStrategyHelper {
     }
 
     function _mintInitialPosition(
-        PoolParameter memory poolParameter,
-        uint256 minAmount
+        PoolParameter memory poolParameter
     ) private returns (uint256 tokenIdMinted) {
-        require(
-            poolParameter.factory.getPool(
-                poolParameter.token0,
-                poolParameter.token1,
-                poolParameter.pool.tickSpacing()
-            ) == address(poolParameter.pool),
-            "pool does not belong to the factory"
-        );
-        require(
-            poolParameter.pool.token0() == poolParameter.token0,
-            "wrong token0"
-        );
-        require(
-            poolParameter.pool.token1() == poolParameter.token1,
-            "wrong token1"
-        );
-        require(
-            poolParameter.pool.tickSpacing() == poolParameter.tickSpacing,
-            "wrong pool tickSpacing"
-        );
+
+        ICLPool pool = poolParameter.pool;
+
+        require(CL_FACTORY.isPair(address(pool)), "pool does not belong to factoy");
+
+        IERC20 token0 = IERC20(ICLPool(pool).token0());
+        IERC20 token1 = IERC20(ICLPool(pool).token1());
+        int24 tickSpacing = pool.tickSpacing();
 
         (
             uint160 sqrtPriceX96,
-            ,
+            int24 tick,
             ,
             uint16 observationCardinality,
             ,
+        ) = pool.slot0();
 
-        ) = poolParameter.pool.slot0();
         if (observationCardinality < 100) {
-            poolParameter.pool.increaseObservationCardinalityNext(100);
+            pool.increaseObservationCardinalityNext(100);
         }
 
-        _init(poolParameter);
+        IPulseStrategyModule.StrategyParams
+            memory strategyParams = IPulseStrategyModule.StrategyParams({
+                tickNeighborhood: tickNeighborhood,
+                tickSpacing: tickSpacing,
+                strategyType: IPulseStrategyModule.StrategyType.LazySyncing,
+                width: poolParameter.width
+            });
 
-        uint128 actualLiqudity = MIN_INITIAL_LIQUDITY / 2;
-        uint256 amount0;
-        uint256 amount1;
-        (int24 tickLower, int24 tickUpper) = _getTickRange(poolParameter);
+        IVeloDeployFactory.ImmutableParams memory params = deployFactory.getImmutableParams();
+        IPulseStrategyModule strategyModule = IPulseStrategyModule(params.strategyModule);
+        (,ICore.TargetPositionInfo memory target) = strategyModule.calculateTarget(tick, 0, 0, strategyParams);
 
-        /// @dev looking for minimal acceptable liqudity
-        do {
-            actualLiqudity *= 2;
-            (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
-                sqrtPriceX96,
-                TickMath.getSqrtRatioAtTick(tickLower),
-                TickMath.getSqrtRatioAtTick(tickUpper),
-                actualLiqudity
-            );
-            require(
-                actualLiqudity < type(uint128).max / 10000,
-                "too high liqudity"
-            );
-        } while (amount0 < minAmount || amount1 < minAmount);
+        (int24 tickLower, int24 tickUpper) = (target.lowerTicks[0], target.upperTicks[0]);
 
+        uint128 actualLiqudity = LiquidityAmounts.getMaxLiquidityForAmounts(
+            sqrtPriceX96,
+            TickMath.getSqrtRatioAtTick(tickLower),
+            TickMath.getSqrtRatioAtTick(tickUpper),
+            poolParameter.maxAmount0,
+            poolParameter.maxAmount1
+        );
+
+        (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(
+            sqrtPriceX96,
+            TickMath.getSqrtRatioAtTick(tickLower),
+            TickMath.getSqrtRatioAtTick(tickUpper), 
+            actualLiqudity);
+
+        require(amount0 < poolParameter.maxAmount0, "too high liqudity for amount0");
+        require(amount1 < poolParameter.maxAmount1, "too high liqudity for amount1");
         require(amount0 > 0, "too low liqudity for amount0");
         require(amount1 > 0, "too low liqudity for amount1");
 
-        IERC20(poolParameter.token0).transferFrom(
+        token0.safeApprove(address(pool), amount0);
+        token1.safeApprove(address(pool), amount1);
+
+        token0.safeApprove(address(NONFUNGIBLE_POSITION_MANAGER), amount0);
+        token1.safeApprove(address(NONFUNGIBLE_POSITION_MANAGER), amount1);
+
+        token0.safeTransferFrom(
             msg.sender,
             address(this),
             amount0
         );
-        IERC20(poolParameter.token1).transferFrom(
+        token1.safeTransferFrom(
             msg.sender,
             address(this),
             amount1
@@ -134,11 +130,11 @@ contract CreateStrategyHelper {
         (uint256 tokenId, uint128 liquidity, , ) = NONFUNGIBLE_POSITION_MANAGER
             .mint(
                 INonfungiblePositionManager.MintParams({
-                    token0: poolParameter.token0,
-                    token1: poolParameter.token1,
+                    token0: address(token0),
+                    token1: address(token1),
                     tickLower: tickLower,
                     tickUpper: tickUpper,
-                    tickSpacing: poolParameter.tickSpacing,
+                    tickSpacing: tickSpacing,
                     amount0Desired: amount0,
                     amount1Desired: amount1,
                     amount0Min: 0,
@@ -155,45 +151,4 @@ contract CreateStrategyHelper {
         return tokenId;
     }
 
-    function _init(PoolParameter memory poolParameter) private {
-        IERC20 token0 = IERC20(poolParameter.token0);
-        IERC20 token1 = IERC20(poolParameter.token1);
-        token0.approve(address(poolParameter.pool), type(uint256).max);
-        token0.approve(
-            address(NONFUNGIBLE_POSITION_MANAGER),
-            type(uint256).max
-        );
-        token1.approve(address(poolParameter.pool), type(uint256).max);
-        token1.approve(
-            address(NONFUNGIBLE_POSITION_MANAGER),
-            type(uint256).max
-        );
-    }
-
-    function _getTickRange(
-        PoolParameter memory poolParameter
-    ) private view returns (int24 tickLower, int24 tickUpper) {
-        (, int24 tick, , , , ) = poolParameter.pool.slot0();
-        tickLower = tick - poolParameter.width / 2;
-        int24 remainder = tickLower % poolParameter.tickSpacing;
-        if (remainder < 0) remainder += poolParameter.tickSpacing;
-        tickLower -= remainder;
-        tickUpper = tickLower + poolParameter.width;
-        if (
-            tickUpper < tick ||
-            _max(tick - tickLower, tickUpper - tick) >
-            _max(
-                tick - (tickLower + poolParameter.tickSpacing),
-                (tickUpper + poolParameter.tickSpacing) - tick
-            )
-        ) {
-            tickLower += poolParameter.tickSpacing;
-            tickUpper += poolParameter.tickSpacing;
-        }
-    }
-
-    function _max(int24 a, int24 b) private pure returns (int24) {
-        if (a < b) return b;
-        return a;
-    }
 }
