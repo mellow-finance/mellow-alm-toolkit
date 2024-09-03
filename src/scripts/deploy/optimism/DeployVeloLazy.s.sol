@@ -13,6 +13,8 @@ import "src/modules/strategies/PulseStrategyModule.sol";
 import "src/oracles/VeloOracle.sol";
 import "src/utils/VeloDeployFactoryHelper.sol";
 import "src/utils/VeloDeployFactory.sol";
+import "src/utils/VeloSugarHelper.sol";
+import "src/utils/Compounder.sol";
 
 uint128 constant MIN_INITIAL_LIQUDITY = 1000;
 uint32 constant PROTOCOL_FEE_D9 = 1e8; // 10%
@@ -27,15 +29,6 @@ address constant WETH = 0x4200000000000000000000000000000000000006;
 contract Deploy is Script, Test {
     uint256 STAGE_DEPLOY = 1;
 
-    address coreAddress;
-    address deployFactoryAddress;
-    address oracleAddress;
-    address strategyModuleAddress;
-    address velotrDeployFactoryHelperAddress;
-    address ammModuleAddress;
-    address veloDepositWithdrawModuleAddress;
-    address pulseVeloBotAddress;
-
     uint256 nonceDeployer;
     uint256 immutable deployerPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
     address immutable deployerAddress = vm.addr(deployerPrivateKey);
@@ -48,7 +41,6 @@ contract Deploy is Script, Test {
     address immutable VELO_DEPLOY_FACTORY_ADMIN = CORE_ADMIN;
     address immutable WRAPPER_ADMIN = CORE_ADMIN;
     address immutable FARM_OWNER = CORE_ADMIN;
-    address immutable FARM_OPERATOR = CORE_OPERATOR;
     address immutable VELO_DEPLOY_FACTORY_OPERATOR = deployerAddress;
 
     CreateStrategyHelper createStrategyHelper;
@@ -56,57 +48,46 @@ contract Deploy is Script, Test {
     Core core;
 
     function run() public {
-        console.log("Deployer address:", deployerAddress);
+        console.log("Deployer", deployerAddress);
 
         vm.startBroadcast(deployerPrivateKey);
 
         if (STAGE_DEPLOY == 1) {
+            //-------------------------------------------------------------------------------
             VeloOracle oracle = new VeloOracle();
-            oracleAddress = address(oracle);
-            console2.log("oracleAddress", oracleAddress);
+            console2.log("VeloOracle", address(oracle));
 
+            //-------------------------------------------------------------------------------
             PulseStrategyModule strategyModule = new PulseStrategyModule();
-            strategyModuleAddress = address(strategyModule);
-            console2.log("strategyModuleAddress", strategyModuleAddress);
+            console2.log("PulseStrategyModule", address(strategyModule));
 
+            //-------------------------------------------------------------------------------
             VeloDeployFactoryHelper velotrDeployFactoryHelper = new VeloDeployFactoryHelper(
                     WETH
                 );
-            velotrDeployFactoryHelperAddress = address(
-                velotrDeployFactoryHelper
-            );
             console2.log(
-                "velotrDeployFactoryHelperAddress",
-                velotrDeployFactoryHelperAddress
+                "VeloDeployFactoryHelper",
+                address(velotrDeployFactoryHelper)
             );
-            
+
+            //-------------------------------------------------------------------------------
             VeloAmmModule ammModule = new VeloAmmModule(
                 NONFUNGIBLE_POSITION_MANAGER
             );
-            ammModuleAddress = address(ammModule);
-            console2.log("ammModuleAddress", ammModuleAddress);
+            console2.log("VeloAmmModule", address(ammModule));
 
+            //-------------------------------------------------------------------------------
             VeloDepositWithdrawModule veloDepositWithdrawModule = new VeloDepositWithdrawModule(
                     NONFUNGIBLE_POSITION_MANAGER
                 );
-            veloDepositWithdrawModuleAddress = address(
-                veloDepositWithdrawModule
-            );
             console2.log(
-                "veloDepositWithdrawModuleAddress",
-                veloDepositWithdrawModuleAddress
+                "VeloDepositWithdrawModule",
+                address(veloDepositWithdrawModule)
             );
 
+            //-------------------------------------------------------------------------------
             core = new Core(ammModule, strategyModule, oracle, deployerAddress);
-            coreAddress = address(core);
-            console2.log("coreAddress", coreAddress);
-
-            PulseVeloBotLazy pulseVeloBot = new PulseVeloBotLazy(
-                address(NONFUNGIBLE_POSITION_MANAGER),
-                coreAddress
-            );
-            pulseVeloBotAddress = address(pulseVeloBot);
-            console2.log("pulseVeloBotAddress", pulseVeloBotAddress);
+            console2.log("Core", address(core));
 
             core.setProtocolParams(
                 abi.encode(
@@ -119,52 +100,70 @@ contract Deploy is Script, Test {
 
             core.setOperatorFlag(true);
 
+            //-------------------------------------------------------------------------------
+            PulseVeloBotLazy pulseVeloBot = new PulseVeloBotLazy(
+                address(NONFUNGIBLE_POSITION_MANAGER),
+                address(core)
+            );
+            console2.log("PulseVeloBotLazy", address(pulseVeloBot));
+
+            //-------------------------------------------------------------------------------
+            Compounder compounder = new Compounder(deployerAddress);
+            console2.log("Compounder", address(compounder));
+
+            //-------------------------------------------------------------------------------
             deployFactory = new VeloDeployFactory(
                 deployerAddress,
                 core,
                 veloDepositWithdrawModule,
                 velotrDeployFactoryHelper
             );
-            deployFactoryAddress = address(deployFactory);
-            console2.log("deployFactoryAddress", deployFactoryAddress);
+            console2.log("VeloDeployFactory", address(deployFactory));
 
             deployFactory.updateMutableParams(
                 IVeloDeployFactory.MutableParams({
                     lpWrapperAdmin: WRAPPER_ADMIN,
                     lpWrapperManager: address(0),
                     farmOwner: FARM_OWNER,
-                    farmOperator: FARM_OPERATOR,
+                    farmOperator: address(compounder),
                     minInitialLiquidity: MIN_INITIAL_LIQUDITY
                 })
             );
 
+            //-------------------------------------------------------------------------------
             createStrategyHelper = new CreateStrategyHelper(
                 NONFUNGIBLE_POSITION_MANAGER,
                 deployFactory
             );
-            console2.log(
-                "createStrategyHelperAddress",
-                address(createStrategyHelper)
-            );
+            console2.log("CreateStrategyHelper", address(createStrategyHelper));
             deployFactory.grantRole(
                 deployFactory.ADMIN_DELEGATE_ROLE(),
                 address(createStrategyHelper)
             );
+
+            //-------------------------------------------------------------------------------
+            VeloSugarHelper veloSugarHelper = new VeloSugarHelper(
+                address(deployFactory)
+            );
+
+        //    vm.stopBroadcast();
+
+            console2.log("VeloSugarHelper", address(veloSugarHelper));
         } else {
             _migrateRoles();
         }
 
-        vm.stopBroadcast();
+        // vm.stopBroadcast();
     }
 
     function _migrateRoles() private {
-        core = Core(0xa9600cC9a1b360Ad71263B45f00bf74ec61f2100);
-        deployFactory = VeloDeployFactory(
-            0x769321b8167B04D18441E83b5a067e7e31763b64
-        );
-        createStrategyHelper = CreateStrategyHelper(
-            0x319862B7EC2E4FDF208a2e9Dd723a6D9d36592c5
-        );
+        // use addresses form deployment STAGE_DEPLOY == 1
+        address coreAddress = address(0);
+        address deployFactoryAddress = address(0);
+        address createStrategyHelperAddress = address(0);
+
+        core = Core(coreAddress);
+        deployFactory = VeloDeployFactory(deployFactoryAddress);
 
         core.grantRole(core.ADMIN_DELEGATE_ROLE(), deployerAddress);
         core.grantRole(core.OPERATOR(), CORE_OPERATOR);
@@ -189,13 +188,16 @@ contract Deploy is Script, Test {
             deployFactory.ADMIN_DELEGATE_ROLE(),
             deployerAddress
         );
-        deployFactory.revokeRole(
-            deployFactory.ADMIN_DELEGATE_ROLE(),
-            address(createStrategyHelper)
-        );
+
+        // left rights to deploy new strategies for pools
+        //deployFactory.revokeRole(
+        //    deployFactory.ADMIN_DELEGATE_ROLE(),
+        //    address(createStrategyHelper)
+        //);
+
         deployFactory.revokeRole(deployFactory.ADMIN_ROLE(), deployerAddress);
         require(!deployFactory.isAdmin(deployerAddress));
-        require(!deployFactory.isAdmin(address(createStrategyHelper)));
+        //require(!deployFactory.isAdmin(address(createStrategyHelper)));
         require(deployFactory.isAdmin(CORE_ADMIN));
 
         core.revokeRole(core.ADMIN_DELEGATE_ROLE(), deployerAddress);
