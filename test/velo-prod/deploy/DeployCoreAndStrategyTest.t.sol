@@ -10,6 +10,7 @@ import "src/scripts/deploy/optimism/DeployVeloLazy.s.sol";
 contract DeployCoreAndStrategyTest is Test, DeployStrategy, DeployVeloLazy {
 
     address immutable deployer = 0xeccba048Fd1fcD5c26f3aAfb7aBf3737e163d0FD;
+    address immutable operator = 0x9DFb1fC83EB81F99ACb008c49384c4446F2313Ed;
 
     function run() public override (DeployStrategy, DeployVeloLazy) {}
 
@@ -27,12 +28,18 @@ contract DeployCoreAndStrategyTest is Test, DeployStrategy, DeployVeloLazy {
 
         deployStrategy(veloDeployFactoryAddress, createStrategyHelperAddress, 0);
 
+        vm.stopPrank();
+
         address[] memory poolAddresses = new address[](1);
 
         poolAddresses[0] = address(parameters[0].pool);
 
-        vm.warp(block.timestamp + 7 days + 1);
+        skip(7 days + 1);
+
+        vm.startPrank(operator);
 
         farmOperator.compound(IVeloDeployFactory(veloDeployFactoryAddress), poolAddresses);
+        
+        vm.stopPrank();
     }
 }

@@ -44,6 +44,7 @@ contract DeployVeloLazy is Script, Test {
 
     CreateStrategyHelper createStrategyHelper;
     VeloDeployFactory deployFactory;
+    Compounder compounder;
     Core core;
 
     function run() virtual public {
@@ -111,7 +112,7 @@ contract DeployVeloLazy is Script, Test {
             console2.log("PulseVeloBotLazy", address(pulseVeloBot));
 
             //-------------------------------------------------------------------------------
-            Compounder compounder = new Compounder(deployerAddress);
+            compounder = new Compounder(deployerAddress);
             console2.log("Compounder", address(compounder));
 
             //-------------------------------------------------------------------------------
@@ -141,10 +142,6 @@ contract DeployVeloLazy is Script, Test {
             );
             console2.log("CreateStrategyHelper", address(createStrategyHelper));
             createStrategyHelperAddress = address(createStrategyHelper);
-            deployFactory.grantRole(
-                deployFactory.ADMIN_DELEGATE_ROLE(),
-                address(createStrategyHelper)
-            );
 
             //-------------------------------------------------------------------------------
             VeloSugarHelper veloSugarHelper = new VeloSugarHelper(
@@ -153,21 +150,19 @@ contract DeployVeloLazy is Script, Test {
 
             console2.log("VeloSugarHelper", address(veloSugarHelper));
 
-        } else {
-            _migrateRoles();
+            _setRoles();
         }
 
         // vm.stopBroadcast();
     }
 
-    function _migrateRoles() private {
-        // use addresses form deployment STAGE_DEPLOY == 1
-        address coreAddress = address(0);
-        address deployFactoryAddress = address(0);
-        address createStrategyHelperAddress = address(0);
-
-        core = Core(coreAddress);
-        deployFactory = VeloDeployFactory(deployFactoryAddress);
+    function _setRoles() private {
+        compounder.grantRole(compounder.ADMIN_DELEGATE_ROLE(), deployerAddress);
+        compounder.grantRole(compounder.OPERATOR(), CORE_OPERATOR);
+        compounder.grantRole(compounder.ADMIN_ROLE(), CORE_ADMIN);
+        compounder.renounceRole(compounder.OPERATOR(), deployerAddress);
+        compounder.renounceRole(compounder.ADMIN_DELEGATE_ROLE(), deployerAddress);
+        compounder.renounceRole(compounder.ADMIN_ROLE(), deployerAddress);
 
         core.grantRole(core.ADMIN_DELEGATE_ROLE(), deployerAddress);
         core.grantRole(core.OPERATOR(), CORE_OPERATOR);
@@ -188,25 +183,33 @@ contract DeployVeloLazy is Script, Test {
             VELO_DEPLOY_FACTORY_ADMIN
         );
 
+        // grant rights to deploy strategies for new pools
+        deployFactory.grantRole(deployFactory.OPERATOR(), address(createStrategyHelper));
+
         deployFactory.revokeRole(
             deployFactory.ADMIN_DELEGATE_ROLE(),
             deployerAddress
         );
 
-        // left rights to deploy new strategies for pools
-        //deployFactory.revokeRole(
-        //    deployFactory.ADMIN_DELEGATE_ROLE(),
-        //    address(createStrategyHelper)
-        //);
-
-        deployFactory.revokeRole(deployFactory.ADMIN_ROLE(), deployerAddress);
-        require(!deployFactory.isAdmin(deployerAddress));
-        //require(!deployFactory.isAdmin(address(createStrategyHelper)));
-        require(deployFactory.isAdmin(CORE_ADMIN));
+        deployFactory.revokeRole(
+            deployFactory.ADMIN_DELEGATE_ROLE(),
+            address(createStrategyHelper)
+        );
 
         core.revokeRole(core.ADMIN_DELEGATE_ROLE(), deployerAddress);
         core.revokeRole(core.ADMIN_ROLE(), deployerAddress);
+        
+        deployFactory.revokeRole(deployFactory.ADMIN_ROLE(), deployerAddress);
+
+        require(!deployFactory.isAdmin(deployerAddress));
+        require(!deployFactory.isAdmin(address(createStrategyHelper)));
+        require(!deployFactory.isOperator(deployerAddress));
         require(!core.isAdmin(deployerAddress));
+
+        require(deployFactory.isAdmin(CORE_ADMIN));
+        require(deployFactory.isOperator(address(createStrategyHelper)));
+        require(deployFactory.isOperator(VELO_DEPLOY_FACTORY_OPERATOR));
+        require(core.isOperator(address(CORE_OPERATOR)));
         require(core.isAdmin(CORE_ADMIN));
     }
 }

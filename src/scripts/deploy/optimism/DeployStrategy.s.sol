@@ -187,13 +187,19 @@ contract DeployStrategy is Script, Test {
         address lpWrapper = veloDeployFactory
             .poolToAddresses(address(parameters[poolId].pool))
             .lpWrapper;
+        address synthetixFarm = veloDeployFactory
+            .poolToAddresses(address(parameters[poolId].pool))
+            .synthetixFarm;
         if (lpWrapper != address(0)) {
             withdraw(lpWrapper, operatoAddress);
         }
 
-        veloDeployFactory.removeAddressesForPool(
-            address(parameters[poolId].pool)
-        );
+        if (lpWrapper != address(0) || synthetixFarm != address(0)) {
+            veloDeployFactory.removeAddressesForPool(
+                address(parameters[poolId].pool)
+            );
+        }
+
         require(
             parameters[poolId].width %
                 parameters[poolId].pool.tickSpacing() ==
