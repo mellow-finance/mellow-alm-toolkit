@@ -26,10 +26,9 @@ INonfungiblePositionManager constant NONFUNGIBLE_POSITION_MANAGER = INonfungible
 address constant VELO_FACTORY = 0xCc0bDDB707055e04e497aB22a59c2aF4391cd12F;
 address constant WETH = 0x4200000000000000000000000000000000000006;
 
-contract Deploy is Script, Test {
+contract DeployVeloLazy is Script, Test {
     uint256 STAGE_DEPLOY = 1;
 
-    uint256 nonceDeployer;
     uint256 immutable deployerPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
     address immutable deployerAddress = vm.addr(deployerPrivateKey);
     address immutable CORE_ADMIN = 0x379Ea012582A33AB78Feb34474Df7aD6Dc39F178; // msig
@@ -47,10 +46,14 @@ contract Deploy is Script, Test {
     VeloDeployFactory deployFactory;
     Core core;
 
-    function run() public {
+    function run() virtual public {
+        deployCore();
+    }
+
+    function deployCore() internal returns (address veloDeployFactoryAddress, address createStrategyHelperAddress) {
         console.log("Deployer", deployerAddress);
 
-        vm.startBroadcast(deployerPrivateKey);
+        //vm.startBroadcast(deployerPrivateKey);
 
         if (STAGE_DEPLOY == 1) {
             //-------------------------------------------------------------------------------
@@ -119,6 +122,7 @@ contract Deploy is Script, Test {
                 velotrDeployFactoryHelper
             );
             console2.log("VeloDeployFactory", address(deployFactory));
+            veloDeployFactoryAddress = address(deployFactory);
 
             deployFactory.updateMutableParams(
                 IVeloDeployFactory.MutableParams({
@@ -136,6 +140,7 @@ contract Deploy is Script, Test {
                 deployFactory
             );
             console2.log("CreateStrategyHelper", address(createStrategyHelper));
+            createStrategyHelperAddress = address(createStrategyHelper);
             deployFactory.grantRole(
                 deployFactory.ADMIN_DELEGATE_ROLE(),
                 address(createStrategyHelper)
@@ -146,9 +151,8 @@ contract Deploy is Script, Test {
                 address(deployFactory)
             );
 
-        //    vm.stopBroadcast();
-
             console2.log("VeloSugarHelper", address(veloSugarHelper));
+
         } else {
             _migrateRoles();
         }

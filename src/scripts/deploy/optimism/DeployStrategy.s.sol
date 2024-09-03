@@ -39,14 +39,15 @@ address constant CREATE_STRATEGY_HELPER_ADDRESS = address(0);
 /// @dev immutable addresses at the deployment
 address constant VELO_FACTORY_ADDRESS = 0xCc0bDDB707055e04e497aB22a59c2aF4391cd12F;
 
-contract Deploy is Script, Test {
+contract DeployStrategy is Script, Test {
     uint256 immutable operatorPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
-    VeloDeployFactory immutable veloDeployFactory =
-        VeloDeployFactory(DEPLOY_FACTORY_ADDRESS);
 
     /// @dev number from below list of pool to deploy strategy
-    uint256 immutable POOL_NUMBER = 1;
+    uint256 immutable POOL_ID = 1;
 
+    function run() virtual public {
+        deployStrategy(DEPLOY_FACTORY_ADDRESS, CREATE_STRATEGY_HELPER_ADDRESS, POOL_ID);
+    }
 
     function setPoolParameters()
         internal
@@ -80,7 +81,7 @@ contract Deploy is Script, Test {
             0xeBD5311beA1948e1441333976EadCFE5fBda777C
         );
         parameters[0].width = 6000;
-        parameters[0].minAmount = MIN_USDC_AMOUNT;
+        parameters[0].minAmount = MIN_USDC_AMOUNT/10;
         parameters[1].pool = ICLPool(
             0x4DC22588Ade05C40338a9D95A6da9dCeE68Bcd60
         );
@@ -133,7 +134,10 @@ contract Deploy is Script, Test {
         parameters[10].minAmount = MIN_USDC_AMOUNT;
     }
 
-    function deployCreateStrategyHelper() internal {
+    function deployCreateStrategyHelper(address veloDeployFactoryAddress) internal {
+        VeloDeployFactory veloDeployFactory =
+            VeloDeployFactory(veloDeployFactoryAddress);
+
         vm.startBroadcast(operatorPrivateKey);
         CreateStrategyHelper createStrategyHelper = new CreateStrategyHelper(
             INonfungiblePositionManager(
@@ -167,41 +171,45 @@ contract Deploy is Script, Test {
         console2.log("  lpAmount: ", actualLpAmount);
     }
 
-    function run() public {
+    function deployStrategy(address veloDeployFactoryAddress, address createStrategyHelperAddress, uint256 poolId) internal {
+        VeloDeployFactory veloDeployFactory =
+            VeloDeployFactory(veloDeployFactoryAddress);
         CreateStrategyHelper createStrategyHelper = CreateStrategyHelper(
-            CREATE_STRATEGY_HELPER_ADDRESS
+            createStrategyHelperAddress
         );
-        vm.startBroadcast(operatorPrivateKey);
+
+        //vm.startBroadcast(operatorPrivateKey);
+
         address operatoAddress = vm.addr(operatorPrivateKey);
         CreateStrategyHelper.PoolParameter[]
             memory parameters = setPoolParameters();
 
         address lpWrapper = veloDeployFactory
-            .poolToAddresses(address(parameters[POOL_NUMBER].pool))
+            .poolToAddresses(address(parameters[poolId].pool))
             .lpWrapper;
         if (lpWrapper != address(0)) {
             withdraw(lpWrapper, operatoAddress);
         }
 
         veloDeployFactory.removeAddressesForPool(
-            address(parameters[POOL_NUMBER].pool)
+            address(parameters[poolId].pool)
         );
         require(
-            parameters[POOL_NUMBER].width %
-                parameters[POOL_NUMBER].pool.tickSpacing() ==
+            parameters[poolId].width %
+                parameters[poolId].pool.tickSpacing() ==
                 0,
             "POOL_POSITION_WIDTH is not valid"
         );
-        parameters[POOL_NUMBER].factory = ICLFactory(VELO_FACTORY_ADDRESS);
-        parameters[POOL_NUMBER].tickSpacing = parameters[POOL_NUMBER]
+        parameters[poolId].factory = ICLFactory(VELO_FACTORY_ADDRESS);
+        parameters[poolId].tickSpacing = parameters[poolId]
             .pool
             .tickSpacing();
-        parameters[POOL_NUMBER].token0 = parameters[POOL_NUMBER].pool.token0();
-        parameters[POOL_NUMBER].token1 = parameters[POOL_NUMBER].pool.token1();
+        parameters[poolId].token0 = parameters[poolId].pool.token0();
+        parameters[poolId].token1 = parameters[poolId].pool.token1();
 
-        int24 maxAllowedDelta = parameters[POOL_NUMBER].tickSpacing / 10; // 10% of tickSpacing
+        int24 maxAllowedDelta = parameters[poolId].tickSpacing / 10; // 10% of tickSpacing
         console2.log("  maxAllowedDelta:", maxAllowedDelta);
-        parameters[POOL_NUMBER].securityParams = IVeloOracle.SecurityParams({
+        parameters[poolId].securityParams = IVeloOracle.SecurityParams({
             lookback: 10,
             maxAllowedDelta: maxAllowedDelta < int24(1)
                 ? int24(1)
@@ -209,11 +217,11 @@ contract Deploy is Script, Test {
             maxAge: MAX_AGE
         });
 
-        IERC20(parameters[POOL_NUMBER].token0).approve(
+        IERC20(parameters[poolId].token0).approve(
             address(createStrategyHelper),
             type(uint256).max
         );
-        IERC20(parameters[POOL_NUMBER].token1).approve(
+        IERC20(parameters[poolId].token1).approve(
             address(createStrategyHelper),
             type(uint256).max
         );
@@ -222,13 +230,13 @@ contract Deploy is Script, Test {
             VeloDeployFactory.PoolAddresses memory poolAddresses,
             uint256 tokenId
         ) = createStrategyHelper.createStrategy(
-                parameters[POOL_NUMBER],
-                parameters[POOL_NUMBER].minAmount
+                parameters[poolId],
+                parameters[poolId].minAmount
             );
 
         console2.log(
             " =======     POOL ",
-            address(parameters[POOL_NUMBER].pool),
+            address(parameters[poolId].pool),
             "    ========"
         );
         console2.log("          tokenId:", tokenId);
