@@ -8,13 +8,11 @@ import "src/scripts/deploy/optimism/DeployStrategy.s.sol";
 import "src/scripts/deploy/optimism/DeployVeloLazy.s.sol";
 
 contract DeployCoreAndStrategyTest is Test, DeployStrategy, DeployVeloLazy {
-    address immutable deployer = 0xeccba048Fd1fcD5c26f3aAfb7aBf3737e163d0FD;
-    address immutable operator = 0x9DFb1fC83EB81F99ACb008c49384c4446F2313Ed;
 
     function run() public override(DeployStrategy, DeployVeloLazy) {}
 
     function testDeploy() public {
-        vm.startPrank(deployer);
+        vm.startPrank(DEPLOYER);
 
         CreateStrategyHelper.PoolParameter[]
             memory parameters = setPoolParameters();
@@ -44,7 +42,7 @@ contract DeployCoreAndStrategyTest is Test, DeployStrategy, DeployVeloLazy {
 
         skip(7 days + 1);
 
-        vm.startPrank(operator);
+        vm.startPrank(CORE_OPERATOR);
 
         farmOperator.compound(
             IVeloDeployFactory(veloDeployFactoryAddress),

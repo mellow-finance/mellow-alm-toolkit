@@ -38,7 +38,8 @@ address constant CREATE_STRATEGY_HELPER_ADDRESS = address(0);
 address constant VELO_FACTORY_ADDRESS = 0xCc0bDDB707055e04e497aB22a59c2aF4391cd12F;
 
 contract DeployStrategy is Script, Test {
-    uint256 immutable operatorPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
+    uint256 immutable operatorPrivateKey = vm.envUint("OPERATOR_PRIVATE_KEY");
+    //uint256 immutable deployerPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
 
     /// @dev number from below list of pool to deploy strategy
     uint256 immutable POOL_ID = 1;
@@ -140,7 +141,7 @@ contract DeployStrategy is Script, Test {
         parameters[0].maxAmount0 = MAX_USDC_AMOUNT;
         */
     }
-
+/* 
     function deployCreateStrategyHelper(
         address veloDeployFactoryAddress
     ) internal {
@@ -148,7 +149,7 @@ contract DeployStrategy is Script, Test {
             veloDeployFactoryAddress
         );
 
-        vm.startBroadcast(operatorPrivateKey);
+        vm.startBroadcast(deployerPrivateKey);
         CreateStrategyHelper createStrategyHelper = new CreateStrategyHelper(
             address(veloDeployFactory)
         );
@@ -157,7 +158,7 @@ contract DeployStrategy is Script, Test {
             address(createStrategyHelper)
         );
         console2.log("createStrategyHelper", address(createStrategyHelper));
-    }
+    } */
 
     function withdraw(address lpWrapper, address to) private {
         /// @dev withdraw whole assets
