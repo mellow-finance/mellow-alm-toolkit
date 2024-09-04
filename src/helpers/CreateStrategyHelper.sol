@@ -89,9 +89,6 @@ contract CreateStrategyHelper {
             int24 tickUpper
         ) = _getPositionParam(poolParameter);
 
-        token0.safeApprove(address(pool), amount0);
-        token1.safeApprove(address(pool), amount1);
-
         token0.safeApprove(address(NONFUNGIBLE_POSITION_MANAGER), amount0);
         token1.safeApprove(address(NONFUNGIBLE_POSITION_MANAGER), amount1);
 
