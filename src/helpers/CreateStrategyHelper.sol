@@ -17,20 +17,24 @@ contract CreateStrategyHelper {
 
     uint32 immutable SLIPPAGE_D9 = 5 * 1e5;
     uint32 immutable MAX_AGE = 1 hours;
+    uint16 immutable MAX_LOOKBACK = 10;
+    uint256 immutable MIN_AMOUNT_WEI = 1000;
     uint128 immutable MIN_INITIAL_LIQUDITY = 1000;
-    int24 immutable TICK_NEIGHBEORHOOD = 0;
-    IPulseStrategyModule.StrategyType immutable STRATEGY_TYPE = IPulseStrategyModule.StrategyType.LazySyncing;
-
-    ICLFactory immutable CL_FACTORY =
-        ICLFactory(0xCc0bDDB707055e04e497aB22a59c2aF4391cd12F);
-
-    INonfungiblePositionManager immutable NONFUNGIBLE_POSITION_MANAGER =
-        INonfungiblePositionManager(0x416b433906b1B72FA758e166e239c43d68dC6F29);
+    uint16 immutable MIN_OBSERVATION_CARDINALITY = 100;
+    int24 immutable TICK_NEIGHBORHOOD = 0;
+    IPulseStrategyModule.StrategyType immutable STRATEGY_TYPE =
+        IPulseStrategyModule.StrategyType.LazySyncing;
 
     IVeloDeployFactory immutable deployFactory;
+    ICLFactory immutable poolFactory;
+    INonfungiblePositionManager immutable positionManager;
 
     constructor(address deployFactoryAddress) {
         deployFactory = IVeloDeployFactory(deployFactoryAddress);
+        positionManager = INonfungiblePositionManager(
+            deployFactory.getImmutableParams().veloModule.positionManager()
+        );
+        poolFactory = ICLFactory(positionManager.factory());
     }
 
     function createStrategy(
@@ -43,18 +47,18 @@ contract CreateStrategyHelper {
         )
     {
         require(
-            CL_FACTORY.isPair(address(poolParameter.pool)),
+            poolFactory.isPair(address(poolParameter.pool)),
             "pool does not belong to the factory"
         );
 
         tokenId = _mintInitialPosition(poolParameter);
 
-        NONFUNGIBLE_POSITION_MANAGER.approve(address(deployFactory), tokenId);
+        positionManager.approve(address(deployFactory), tokenId);
 
         return (
             deployFactory.createStrategy(
                 IVeloDeployFactory.DeployParams({
-                    tickNeighborhood: TICK_NEIGHBEORHOOD,
+                    tickNeighborhood: TICK_NEIGHBORHOOD,
                     slippageD9: SLIPPAGE_D9,
                     tokenId: tokenId,
                     securityParams: abi.encode(
@@ -76,10 +80,12 @@ contract CreateStrategyHelper {
         IERC20 token1 = IERC20(ICLPool(pool).token1());
         int24 tickSpacing = pool.tickSpacing();
 
-        (, , , uint16 observationCardinality, , ) = pool.slot0();
+        (, , , , uint16 observationCardinalityNext, ) = pool.slot0();
 
-        if (observationCardinality < 100) {
-            pool.increaseObservationCardinalityNext(100);
+        if (observationCardinalityNext < MIN_OBSERVATION_CARDINALITY) {
+            pool.increaseObservationCardinalityNext(
+                MIN_OBSERVATION_CARDINALITY
+            );
         }
 
         (
@@ -89,29 +95,28 @@ contract CreateStrategyHelper {
             int24 tickUpper
         ) = _getPositionParam(poolParameter);
 
-        token0.safeApprove(address(NONFUNGIBLE_POSITION_MANAGER), amount0);
-        token1.safeApprove(address(NONFUNGIBLE_POSITION_MANAGER), amount1);
-
         token0.safeTransferFrom(msg.sender, address(this), amount0);
         token1.safeTransferFrom(msg.sender, address(this), amount1);
 
-        (uint256 tokenId, uint128 liquidity, , ) = NONFUNGIBLE_POSITION_MANAGER
-            .mint(
-                INonfungiblePositionManager.MintParams({
-                    token0: address(token0),
-                    token1: address(token1),
-                    tickLower: tickLower,
-                    tickUpper: tickUpper,
-                    tickSpacing: tickSpacing,
-                    amount0Desired: amount0,
-                    amount1Desired: amount1,
-                    amount0Min: 0,
-                    amount1Min: 0,
-                    recipient: address(this),
-                    deadline: block.timestamp + 3000,
-                    sqrtPriceX96: 0
-                })
-            );
+        token0.safeIncreaseAllowance(address(positionManager), amount0);
+        token1.safeIncreaseAllowance(address(positionManager), amount1);
+
+        (uint256 tokenId, uint128 liquidity, , ) = positionManager.mint(
+            INonfungiblePositionManager.MintParams({
+                token0: address(token0),
+                token1: address(token1),
+                tickLower: tickLower,
+                tickUpper: tickUpper,
+                tickSpacing: tickSpacing,
+                amount0Desired: amount0,
+                amount1Desired: amount1,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: address(this),
+                deadline: block.timestamp + 1,
+                sqrtPriceX96: 0
+            })
+        );
 
         require(tokenId != 0, "null tokenId");
         require(liquidity != 0, "zero liquidity");
@@ -124,7 +129,7 @@ contract CreateStrategyHelper {
     ) private pure returns (IVeloOracle.SecurityParams memory securityParam) {
         int24 maxAllowedDelta = tickSpacing / 10; // 10% of tickSpacing
         securityParam = IVeloOracle.SecurityParams({
-            lookback: 10,
+            lookback: MAX_LOOKBACK,
             maxAllowedDelta: maxAllowedDelta < int24(1)
                 ? int24(1)
                 : maxAllowedDelta,
@@ -148,7 +153,7 @@ contract CreateStrategyHelper {
 
         IPulseStrategyModule.StrategyParams
             memory strategyParams = IPulseStrategyModule.StrategyParams({
-                tickNeighborhood: TICK_NEIGHBEORHOOD,
+                tickNeighborhood: TICK_NEIGHBORHOOD,
                 tickSpacing: poolParameter.pool.tickSpacing(),
                 strategyType: STRATEGY_TYPE,
                 width: poolParameter.width
@@ -179,24 +184,29 @@ contract CreateStrategyHelper {
         int24 tickLower,
         int24 tickUpper
     ) private pure returns (uint256 amount0, uint256 amount1) {
+        uint160 sqrtPriceLowerX96 = TickMath.getSqrtRatioAtTick(tickLower);
+        uint160 sqrtPriceUpperX96 = TickMath.getSqrtRatioAtTick(tickUpper);
+
         uint128 actualLiqudity = LiquidityAmounts.getLiquidityForAmounts(
             sqrtPriceX96,
-            TickMath.getSqrtRatioAtTick(tickLower),
-            TickMath.getSqrtRatioAtTick(tickUpper),
+            sqrtPriceLowerX96,
+            sqrtPriceUpperX96,
             maxAmount0,
             maxAmount1
         );
 
+        require(actualLiqudity > MIN_INITIAL_LIQUDITY, "too low liqudity");
+
         (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
             sqrtPriceX96,
-            TickMath.getSqrtRatioAtTick(tickLower),
-            TickMath.getSqrtRatioAtTick(tickUpper),
+            sqrtPriceLowerX96,
+            sqrtPriceUpperX96,
             actualLiqudity
         );
-        
+
         require(amount0 < maxAmount0, "too high liqudity for amount0");
         require(amount1 < maxAmount1, "too high liqudity for amount1");
-        require(amount0 > 0, "too low liqudity for amount0");
-        require(amount1 > 0, "too low liqudity for amount1");
+        require(amount0 > MIN_AMOUNT_WEI, "too low liqudity for amount0");
+        require(amount1 > MIN_AMOUNT_WEI, "too low liqudity for amount1");
     }
 }
