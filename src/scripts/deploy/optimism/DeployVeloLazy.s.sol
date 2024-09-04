@@ -31,11 +31,11 @@ contract DeployVeloLazy is Script, Test {
 
     uint256 immutable deployerPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
     address immutable DEPLOYER = vm.addr(deployerPrivateKey);
-    address immutable CORE_ADMIN = 0x379Ea012582A33AB78Feb34474Df7aD6Dc39F178; // msig
+    address immutable CORE_ADMIN = 0x893df22649247AD4e57E4926731F9Cf0dA344829; // protocol msig
     address immutable PROTOCOL_TREASURY =
-        0x0da6d939Cb0555A0D2eB99E310eBAE68432F31F2; // msig
+        0xf0E36e9186Dbe927505d2588a6E6D56083Dd4a56; // treasury msig
     address immutable CORE_OPERATOR =
-        0x9DFb1fC83EB81F99ACb008c49384c4446F2313Ed; // bot eoa
+        0x0A16Bc694EeA56cbFc808a271178556d3f8c23aD; // bot eoa
 
     address immutable VELO_DEPLOY_FACTORY_ADMIN = CORE_ADMIN;
     address immutable WRAPPER_ADMIN = CORE_ADMIN;
@@ -143,7 +143,8 @@ contract DeployVeloLazy is Script, Test {
 
             //-------------------------------------------------------------------------------
             createStrategyHelper = new CreateStrategyHelper(
-                address(deployFactory)
+                address(deployFactory),
+                VELO_DEPLOY_FACTORY_OPERATOR
             );
             console2.log("CreateStrategyHelper", address(createStrategyHelper));
             createStrategyHelperAddress = address(createStrategyHelper);

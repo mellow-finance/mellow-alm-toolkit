@@ -15,21 +15,23 @@ contract CreateStrategyHelper {
         uint256 maxAmount1;
     }
 
-    uint32 immutable SLIPPAGE_D9 = 5 * 1e5;
-    uint32 immutable MAX_AGE = 1 hours;
-    uint16 immutable MAX_LOOKBACK = 10;
-    uint256 immutable MIN_AMOUNT_WEI = 1000;
-    uint128 immutable MIN_INITIAL_LIQUDITY = 1000;
-    uint16 immutable MIN_OBSERVATION_CARDINALITY = 100;
-    int24 immutable TICK_NEIGHBORHOOD = 0;
-    IPulseStrategyModule.StrategyType immutable STRATEGY_TYPE =
+    uint32 constant SLIPPAGE_D9 = 5 * 1e5;
+    uint32 constant MAX_AGE = 1 hours;
+    uint16 constant MAX_LOOKBACK = 10;
+    uint256 constant MIN_AMOUNT_WEI = 1000;
+    uint128 constant MIN_INITIAL_LIQUDITY = 1000;
+    uint16 constant MIN_OBSERVATION_CARDINALITY = 100;
+    int24 constant TICK_NEIGHBORHOOD = 0;
+    IPulseStrategyModule.StrategyType constant STRATEGY_TYPE =
         IPulseStrategyModule.StrategyType.LazySyncing;
 
-    IVeloDeployFactory immutable deployFactory;
-    ICLFactory immutable poolFactory;
-    INonfungiblePositionManager immutable positionManager;
+    address public immutable deployer;
+    IVeloDeployFactory public immutable deployFactory;
+    ICLFactory public immutable poolFactory;
+    INonfungiblePositionManager public immutable positionManager;
 
-    constructor(address deployFactoryAddress) {
+    constructor(address deployFactoryAddress, address deployer_) {
+        deployer = deployer_;
         deployFactory = IVeloDeployFactory(deployFactoryAddress);
         positionManager = INonfungiblePositionManager(
             deployFactory.getImmutableParams().veloModule.positionManager()
@@ -46,6 +48,7 @@ contract CreateStrategyHelper {
             uint256 tokenId
         )
     {
+        require(msg.sender == deployer, "forbidden");
         require(
             poolFactory.isPair(address(poolParameter.pool)),
             "pool does not belong to the factory"
