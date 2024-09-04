@@ -59,6 +59,10 @@ contract DeployVeloLazy is Script, Test {
         )
     {
         console.log("Deployer", DEPLOYER);
+        console.log("Core/deloy factory/wrapper admin and farm owner", CORE_ADMIN);
+        console.log("Protocol treasuty", PROTOCOL_TREASURY);
+        console.log("Core operator", CORE_OPERATOR);
+        console.log("Deploy factory operator", DEPLOYER);
 
         //vm.startBroadcast(deployerPrivateKey);
 
@@ -203,25 +207,20 @@ contract DeployVeloLazy is Script, Test {
             DEPLOYER
         );
 
-        deployFactory.revokeRole(
-            deployFactory.ADMIN_DELEGATE_ROLE(),
-            address(createStrategyHelper)
-        );
-
         core.revokeRole(core.ADMIN_DELEGATE_ROLE(), DEPLOYER);
         core.revokeRole(core.ADMIN_ROLE(), DEPLOYER);
 
         deployFactory.revokeRole(deployFactory.ADMIN_ROLE(), DEPLOYER);
 
-        require(!deployFactory.isAdmin(DEPLOYER));
         require(!core.isAdmin(DEPLOYER));
+        require(core.isAdmin(CORE_ADMIN));
+        require(core.isOperator(CORE_OPERATOR));
 
+        require(!deployFactory.isAdmin(DEPLOYER));
         require(!deployFactory.isAdmin(address(createStrategyHelper)));
         require(deployFactory.isOperator(address(createStrategyHelper)));
 
         require(deployFactory.isAdmin(CORE_ADMIN));
         require(deployFactory.isOperator(VELO_DEPLOY_FACTORY_OPERATOR));
-        require(core.isOperator(address(CORE_OPERATOR)));
-        require(core.isAdmin(CORE_ADMIN));
     }
 }
