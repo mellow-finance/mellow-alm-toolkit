@@ -6,6 +6,7 @@ import "forge-std/Script.sol";
 
 import "src/Core.sol";
 import "src/bots/PulseVeloBot.sol";
+import "src/utils/VeloDeployFactory.sol";
 import "src/helpers/CreateStrategyHelper.sol";
 
 /// @dev =================== STAGE TWO =====================
@@ -15,9 +16,6 @@ import "src/helpers/CreateStrategyHelper.sol";
 /// @param CREATE_STRATEGY_HELPER_ADDRESS - address of deployed SC at the first STAGE
 /// @param WIDTH - width position in ticks
 /// @dev all logged address should be saved for the next
-
-/// @dev pool address and position width to add
-uint32 constant MAX_AGE = 1 hours;
 
 /*
   Deployer 
@@ -45,8 +43,12 @@ contract DeployStrategy is Script, Test {
     /// @dev number from below list of pool to deploy strategy
     uint256 immutable POOL_ID = 1;
 
-    function run() virtual public {
-        deployStrategy(DEPLOY_FACTORY_ADDRESS, CREATE_STRATEGY_HELPER_ADDRESS, POOL_ID);
+    function run() public virtual {
+        deployStrategy(
+            DEPLOY_FACTORY_ADDRESS,
+            CREATE_STRATEGY_HELPER_ADDRESS,
+            POOL_ID
+        );
     }
 
     function setPoolParameters()
@@ -54,9 +56,11 @@ contract DeployStrategy is Script, Test {
         pure
         returns (CreateStrategyHelper.PoolParameter[] memory parameters)
     {
-        uint256 MIN_USDC_AMOUNT = 10 ** 6; // 1 USDC
-        uint256 MIN_WETH_AMOUNT = uint256(10 ** 18) / 2500; // 1 ETH/2500 ~ 1 USD
-        uint256 MIN_WBTC_AMOUNT = uint256(10 ** 8) / 50000; // 1 BTC/50000 ~ 1 USD
+        uint256 MAX_USDC_AMOUNT = 10 ** 6; // 1 USDC
+        uint256 MAX_OP_AMOUNT = uint256(10 ** 18); // 1 OP ~ 1.3 USD
+        uint256 MAX_ETH_AMOUNT = uint256(10 ** 18) / 2500; // 1 ETH/2500 ~ 1 USD
+        uint256 MAX_BTC_AMOUNT = uint256(10 ** 8) / 50000; // 1 BTC/50000 ~ 1 USD
+
         parameters = new CreateStrategyHelper.PoolParameter[](11);
         /*
             --------------------------------------------------------------------------------------------------|
@@ -81,69 +85,72 @@ contract DeployStrategy is Script, Test {
             0xeBD5311beA1948e1441333976EadCFE5fBda777C
         );
         parameters[0].width = 6000;
-        parameters[0].minAmount = MIN_USDC_AMOUNT/10;
+        parameters[0].maxAmount0 = MAX_USDC_AMOUNT;
+        parameters[0].maxAmount1 = MAX_OP_AMOUNT;
         parameters[1].pool = ICLPool(
             0x4DC22588Ade05C40338a9D95A6da9dCeE68Bcd60
         );
+        /*
         parameters[1].width = 6000;
-        parameters[1].minAmount = MIN_WETH_AMOUNT;
+        parameters[1].minAmount = MAX_ETH_AMOUNT;
         parameters[2].pool = ICLPool(
             0x478946BcD4a5a22b316470F5486fAfb928C0bA25
         );
         parameters[2].width = 4000;
-        parameters[2].minAmount = MIN_USDC_AMOUNT;
+        parameters[0].maxAmount0 = MAX_USDC_AMOUNT;
         parameters[3].pool = ICLPool(
             0x319C0DD36284ac24A6b2beE73929f699b9f48c38
         );
         parameters[3].width = 4000;
-        parameters[3].minAmount = MIN_WBTC_AMOUNT;
+        parameters[0].maxAmount0 = MAX_USDC_AMOUNT;
         parameters[4].pool = ICLPool(
             0xEE1baC98527a9fDd57fcCf967817215B083cE1F0
         );
         parameters[4].width = 4000;
-        parameters[4].minAmount = MIN_USDC_AMOUNT;
+        parameters[0].maxAmount0 = MAX_USDC_AMOUNT;
         parameters[5].pool = ICLPool(
             0xb71Ac980569540cE38195b38369204ff555C80BE
         );
         parameters[5].width = 10;
-        parameters[5].minAmount = MIN_WETH_AMOUNT;
+        parameters[5].minAmount = MAX_ETH_AMOUNT;
         parameters[6].pool = ICLPool(
             0xbF30Ff33CF9C6b0c48702Ff17891293b002DfeA4
         );
         parameters[6].width = 10;
-        parameters[6].minAmount = MIN_WETH_AMOUNT;
+        parameters[6].maxAmount0 = MAX_ETH_AMOUNT;
         parameters[7].pool = ICLPool(
             0x84Ce89B4f6F67E523A81A82f9f2F14D84B726F6B
         );
         parameters[7].width = 1;
-        parameters[7].minAmount = MIN_USDC_AMOUNT;
+        parameters[0].maxAmount0 = MAX_USDC_AMOUNT;
         parameters[8].pool = ICLPool(
             0x2FA71491F8070FA644d97b4782dB5734854c0f6F
         );
         parameters[8].width = 1;
-        parameters[8].minAmount = MIN_USDC_AMOUNT;
+        parameters[0].maxAmount0 = MAX_USDC_AMOUNT;
         parameters[9].pool = ICLPool(
             0x3C01ec09D15D5450FC702DC4353b17Cd2978d8a5
         );
         parameters[9].width = 1;
-        parameters[9].minAmount = MIN_USDC_AMOUNT;
+        parameters[0].maxAmount0 = MAX_USDC_AMOUNT;
         parameters[10].pool = ICLPool(
             0x8Ac2f9daC7a2852D44F3C09634444d533E4C078e
         );
         parameters[10].width = 1;
-        parameters[10].minAmount = MIN_USDC_AMOUNT;
+        parameters[0].maxAmount0 = MAX_USDC_AMOUNT;
+        */
     }
 
-    function deployCreateStrategyHelper(address veloDeployFactoryAddress) internal {
-        VeloDeployFactory veloDeployFactory =
-            VeloDeployFactory(veloDeployFactoryAddress);
+    function deployCreateStrategyHelper(
+        address veloDeployFactoryAddress
+    ) internal {
+        VeloDeployFactory veloDeployFactory = VeloDeployFactory(
+            veloDeployFactoryAddress
+        );
 
         vm.startBroadcast(operatorPrivateKey);
         CreateStrategyHelper createStrategyHelper = new CreateStrategyHelper(
-            INonfungiblePositionManager(
-                0x416b433906b1B72FA758e166e239c43d68dC6F29
-            ),
-            veloDeployFactory
+            address(veloDeployFactory)
         );
         veloDeployFactory.grantRole(
             veloDeployFactory.ADMIN_DELEGATE_ROLE(),
@@ -171,9 +178,14 @@ contract DeployStrategy is Script, Test {
         console2.log("  lpAmount: ", actualLpAmount);
     }
 
-    function deployStrategy(address veloDeployFactoryAddress, address createStrategyHelperAddress, uint256 poolId) internal {
-        VeloDeployFactory veloDeployFactory =
-            VeloDeployFactory(veloDeployFactoryAddress);
+    function deployStrategy(
+        address veloDeployFactoryAddress,
+        address createStrategyHelperAddress,
+        uint256 poolId
+    ) internal {
+        IVeloDeployFactory veloDeployFactory = IVeloDeployFactory(
+            veloDeployFactoryAddress
+        );
         CreateStrategyHelper createStrategyHelper = CreateStrategyHelper(
             createStrategyHelperAddress
         );
@@ -201,44 +213,24 @@ contract DeployStrategy is Script, Test {
         }
 
         require(
-            parameters[poolId].width %
-                parameters[poolId].pool.tickSpacing() ==
+            parameters[poolId].width % parameters[poolId].pool.tickSpacing() ==
                 0,
             "POOL_POSITION_WIDTH is not valid"
         );
-        parameters[poolId].factory = ICLFactory(VELO_FACTORY_ADDRESS);
-        parameters[poolId].tickSpacing = parameters[poolId]
-            .pool
-            .tickSpacing();
-        parameters[poolId].token0 = parameters[poolId].pool.token0();
-        parameters[poolId].token1 = parameters[poolId].pool.token1();
 
-        int24 maxAllowedDelta = parameters[poolId].tickSpacing / 10; // 10% of tickSpacing
-        console2.log("  maxAllowedDelta:", maxAllowedDelta);
-        parameters[poolId].securityParams = IVeloOracle.SecurityParams({
-            lookback: 10,
-            maxAllowedDelta: maxAllowedDelta < int24(1)
-                ? int24(1)
-                : maxAllowedDelta,
-            maxAge: MAX_AGE
-        });
-
-        IERC20(parameters[poolId].token0).approve(
+        IERC20(parameters[poolId].pool.token0()).approve(
             address(createStrategyHelper),
             type(uint256).max
         );
-        IERC20(parameters[poolId].token1).approve(
+        IERC20(parameters[poolId].pool.token1()).approve(
             address(createStrategyHelper),
             type(uint256).max
         );
 
         (
-            VeloDeployFactory.PoolAddresses memory poolAddresses,
+            IVeloDeployFactory.PoolAddresses memory poolAddresses,
             uint256 tokenId
-        ) = createStrategyHelper.createStrategy(
-                parameters[poolId],
-                parameters[poolId].minAmount
-            );
+        ) = createStrategyHelper.createStrategy(parameters[poolId]);
 
         console2.log(
             " =======     POOL ",
