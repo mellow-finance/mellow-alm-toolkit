@@ -120,7 +120,7 @@ class Odos:
             inputTokens=[InputToken(amount=str(amount_in), tokenAddress=token_in)],
             outputTokens=[OutputToken(proportion=1, tokenAddress=token_out)],
             referralCode=0,
-            slippageLimitPercent=0.2,
+            slippageLimitPercent=0.1,
             sourceBlacklist=["Velodrome Slipstream"],
             sourceWhitelist=[],
             userAddr=self.wallet,

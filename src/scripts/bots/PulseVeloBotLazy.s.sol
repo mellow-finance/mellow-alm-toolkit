@@ -18,10 +18,10 @@ contract PulseVeloBot is Script {
     using SafeERC20 for IERC20;
 
     ICore public immutable core =
-        ICore(0x8CBA3833ad114b4021734357D9383F4DBD69638F);
+        ICore(0x30ce7bB58dd3ea6FbE32645f644462479170e090);
 
     address public pulseVeloBotAddress =
-        0xB3dDa916420774efaD6C5cf1a7b55CDCdC245f04;
+        0x9D7C0BdbfEbB9a6a0120F1116D53387156D126ba;
     PulseVeloBotLazy public bot = PulseVeloBotLazy(pulseVeloBotAddress);
 
     uint256 immutable operatorPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
