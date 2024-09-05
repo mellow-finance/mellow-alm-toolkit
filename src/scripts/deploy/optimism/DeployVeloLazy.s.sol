@@ -59,7 +59,10 @@ contract DeployVeloLazy is Script, Test {
         )
     {
         console.log("Deployer", DEPLOYER);
-        console.log("Core/deloy factory/wrapper admin and farm owner", CORE_ADMIN);
+        console.log(
+            "Core/deloy factory/wrapper admin and farm owner",
+            CORE_ADMIN
+        );
         console.log("Protocol treasuty", PROTOCOL_TREASURY);
         console.log("Core operator", CORE_OPERATOR);
         console.log("Deploy factory operator", DEPLOYER);
@@ -171,20 +174,14 @@ contract DeployVeloLazy is Script, Test {
         compounder.grantRole(compounder.OPERATOR(), CORE_OPERATOR);
         compounder.grantRole(compounder.ADMIN_ROLE(), CORE_ADMIN);
         compounder.renounceRole(compounder.OPERATOR(), DEPLOYER);
-        compounder.renounceRole(
-            compounder.ADMIN_DELEGATE_ROLE(),
-            DEPLOYER
-        );
+        compounder.renounceRole(compounder.ADMIN_DELEGATE_ROLE(), DEPLOYER);
         compounder.renounceRole(compounder.ADMIN_ROLE(), DEPLOYER);
 
         core.grantRole(core.ADMIN_DELEGATE_ROLE(), DEPLOYER);
         core.grantRole(core.OPERATOR(), CORE_OPERATOR);
         core.grantRole(core.ADMIN_ROLE(), CORE_ADMIN);
 
-        deployFactory.grantRole(
-            deployFactory.ADMIN_DELEGATE_ROLE(),
-            DEPLOYER
-        );
+        deployFactory.grantRole(deployFactory.ADMIN_DELEGATE_ROLE(), DEPLOYER);
 
         deployFactory.grantRole(
             deployFactory.OPERATOR(),
@@ -202,10 +199,7 @@ contract DeployVeloLazy is Script, Test {
             address(createStrategyHelper)
         );
 
-        deployFactory.revokeRole(
-            deployFactory.ADMIN_DELEGATE_ROLE(),
-            DEPLOYER
-        );
+        deployFactory.revokeRole(deployFactory.ADMIN_DELEGATE_ROLE(), DEPLOYER);
 
         core.revokeRole(core.ADMIN_DELEGATE_ROLE(), DEPLOYER);
         core.revokeRole(core.ADMIN_ROLE(), DEPLOYER);

@@ -18,21 +18,27 @@ import "src/helpers/CreateStrategyHelper.sol";
 /// @dev all logged address should be saved for the next
 
 /*
-  Deployer 
-  oracleAddress 
-  strategyModuleAddress 
-  velotrDeployFactoryHelperAddress 
-  ammModuleAddress 
-  veloDepositWithdrawModuleAddress 
-  coreAddress 
-  pulseVeloBotAddress 
-  deployFactoryAddress 
-  createStrategyHelperAddress 
+  Deployer 0xBe440AeE8c8D54aC7bb7D93506460492Df5812ea
+  Core/deloy factory/wrapper admin and farm owner 0x893df22649247AD4e57E4926731F9Cf0dA344829
+  Protocol treasuty 0xf0E36e9186Dbe927505d2588a6E6D56083Dd4a56
+  Core operator 0x0A16Bc694EeA56cbFc808a271178556d3f8c23aD
+  Deploy factory operator 0xBe440AeE8c8D54aC7bb7D93506460492Df5812ea
+  VeloOracle 0x0E53A7E266c5970D510581961F5a917bC19C9426
+  PulseStrategyModule 0xfB7dbDab4d827F0b9C151D62f03411e0D9878532
+  VeloDeployFactoryHelper 0x65Ab2E4c52F424336dBe42f153A91458b70DeFff
+  VeloAmmModule 0x507150B361880Ac7E25F54a2a1F4cF7C1BeEbF1f
+  VeloDepositWithdrawModule 0xB0dc3B44e56ec25e0e7135364De6D0E2b0ae8181
+  Core 0x30ce7bB58dd3ea6FbE32645f644462479170e090
+  PulseVeloBotLazy 0x9D7C0BdbfEbB9a6a0120F1116D53387156D126ba
+  VeloDeployFactory 0xdca5BC88366A58883f2711708Ade7b1E866ecC83
+  Compounder 0x8fbf7667dBE606cdF6f7feC069be664032CC93d7
+  CreateStrategyHelper 0xAEC6Ca109408598D43513237295e712202B6E788
+  VeloSugarHelper 0x1D5fE76F2E8d4D8625f14C0013990837ed4C6daE
 */
 
 /// @dev deployed addresses
-address constant DEPLOY_FACTORY_ADDRESS = address(0);
-address constant CREATE_STRATEGY_HELPER_ADDRESS = address(0);
+address constant DEPLOY_FACTORY_ADDRESS = 0xdca5BC88366A58883f2711708Ade7b1E866ecC83;
+address constant CREATE_STRATEGY_HELPER_ADDRESS = 0xAEC6Ca109408598D43513237295e712202B6E788;
 
 /// @dev immutable addresses at the deployment
 address constant VELO_FACTORY_ADDRESS = 0xCc0bDDB707055e04e497aB22a59c2aF4391cd12F;
@@ -41,7 +47,7 @@ contract DeployStrategy is Script, Test {
     uint256 immutable operatorPrivateKey = vm.envUint("OPERATOR_PRIVATE_KEY");
 
     /// @dev number from below list of pool to deploy strategy
-    uint256 immutable POOL_ID = 1;
+    uint256 immutable POOL_ID = 4;
 
     function run() public virtual {
         deployStrategy(
@@ -70,17 +76,17 @@ contract DeployStrategy is Script, Test {
             --------------------------------------------------------------------------------------------------|
                                               address | width|  TS |         t0   |     t1 | status|  ID | DW |
             -------------------------------------------------------------------------------|-------|-----|----|
-            [0]  0xeBD5311beA1948e1441333976EadCFE5fBda777C | 6000 | 200 | usdc   |     op |       |     |    |
-            [1]  0x4DC22588Ade05C40338a9D95A6da9dCeE68Bcd60 | 6000 | 200 | weth   |     op |       |     |    |
-            [2]  0x478946BcD4a5a22b316470F5486fAfb928C0bA25 | 4000 | 100 | usdc   |   weth |       |     |    |
-            [3]  0x319C0DD36284ac24A6b2beE73929f699b9f48c38 | 4000 | 100 | weth   |   wbtc |       |     |    |
-            [4]  0xEE1baC98527a9fDd57fcCf967817215B083cE1F0 | 4000 | 100 | usdc   | wsteth |       |     |    |
-            [5]  0xb71Ac980569540cE38195b38369204ff555C80BE |   10 |   1 | wsteth |  ezETH |       |     |    |
-            [6]  0xbF30Ff33CF9C6b0c48702Ff17891293b002DfeA4 |   10 |   1 | wsteth |   weth |       |     |    |
-            [7]  0x84Ce89B4f6F67E523A81A82f9f2F14D84B726F6B |    1 |   1 | usdc   |   usdt |       |     |    |
-            [8]  0x2FA71491F8070FA644d97b4782dB5734854c0f6F |    1 |   1 | usdc   | usdc.e |       |     |    |
-            [9]  0x3C01ec09D15D5450FC702DC4353b17Cd2978d8a5 |    1 |   1 | usdc   |   susd |       |     |    |
-            [10] 0x8Ac2f9daC7a2852D44F3C09634444d533E4C078e |    1 |   1 | usdc   |   lusd |       |     |    |
+            [0]  0xeBD5311beA1948e1441333976EadCFE5fBda777C | 6000 | 200 | usdc   |     op |   +   |     |    |
+            [1]  0x4DC22588Ade05C40338a9D95A6da9dCeE68Bcd60 | 6000 | 200 | weth   |     op |   +   |     |    |
+            [2]  0x478946BcD4a5a22b316470F5486fAfb928C0bA25 | 4000 | 100 | usdc   |   weth |   +   |     |    |
+            [3]  0x319C0DD36284ac24A6b2beE73929f699b9f48c38 | 4000 | 100 | weth   |   wbtc |   +   |     |    |
+            [4]  0xEE1baC98527a9fDd57fcCf967817215B083cE1F0 | 4000 | 100 | usdc   | wsteth |   +   |     |    |
+            [5]  0xb71Ac980569540cE38195b38369204ff555C80BE |   10 |   1 | wsteth |  ezETH |   +   |     |    |
+            [6]  0xbF30Ff33CF9C6b0c48702Ff17891293b002DfeA4 |   10 |   1 | wsteth |   weth |   +   |     |    |
+            [7]  0x84Ce89B4f6F67E523A81A82f9f2F14D84B726F6B |    1 |   1 | usdc   |   usdt |   +   |     |    |
+            [8]  0x2FA71491F8070FA644d97b4782dB5734854c0f6F |    1 |   1 | usdc   | usdc.e |   +   |     |    |
+            [9]  0x3C01ec09D15D5450FC702DC4353b17Cd2978d8a5 |    1 |   1 | usdc   |   susd |   +   |     |    |
+            [10] 0x8Ac2f9daC7a2852D44F3C09634444d533E4C078e |    1 |   1 | usdc   |   lusd |   +   |     |    |
             --------------------------------------------------------------------------------------------------|
         */
         parameters[0].pool = ICLPool(
@@ -160,7 +166,7 @@ contract DeployStrategy is Script, Test {
         parameters[10].maxAmount0 = MAX_USD_AMOUNT;
         parameters[10].maxAmount1 = MAX_LUSD_AMOUNT;
     }
- 
+
     function deployCreateStrategyHelper(
         address veloDeployFactoryAddress
     ) internal {
@@ -213,7 +219,9 @@ contract DeployStrategy is Script, Test {
             createStrategyHelperAddress
         );
 
-        //vm.startBroadcast(operatorPrivateKey);
+        uint256 deployerPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
+
+        vm.startBroadcast(deployerPrivateKey);
 
         address operatoAddress = vm.addr(operatorPrivateKey);
         CreateStrategyHelper.PoolParameter[]
