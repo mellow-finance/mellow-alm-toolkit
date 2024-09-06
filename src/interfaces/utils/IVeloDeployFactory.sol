@@ -21,12 +21,16 @@ interface IVeloDeployFactory {
     error InvalidParams();
     error LpWrapperAlreadyCreated();
 
-    event StrategyCreated(
-        address pool,
-        address lpWrapper,
-        address synthetixFarm,
-        address caller
-    );
+    struct StrategyCreatedParams {
+        address pool;
+        IVeloAmmModule.AmmPosition ammPosition;
+        IPulseStrategyModule.StrategyParams strategyParams;
+        address lpWrapper;
+        address synthetixFarm;
+        address caller;
+    }
+
+    event StrategyCreated(StrategyCreatedParams params);
 
     /**
      * @dev Represents the immutable parameters for the VeloDeployFactory contract.

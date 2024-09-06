@@ -11,6 +11,8 @@ import "../external/IWETH9.sol";
 import "../ICore.sol";
 
 import "../modules/velo/IVeloAmmModule.sol";
+import "../modules/strategies/IPulseStrategyModule.sol";
+import "../oracles/IVeloOracle.sol";
 
 /**
  * @title ILpWrapper Interface
@@ -28,15 +30,25 @@ interface ILpWrapper {
 
     event Deposit(
         address indexed recipient,
+        address indexed pool,
         uint256 lpAmount,
         uint256 amount0,
         uint256 amount1
     );
+
     event Withdraw(
         address indexed recipient,
+        address indexed pool,
         uint256 lpAmount,
         uint256 amount0,
         uint256 amount1
+    );
+
+    event PositionParamsSet(
+        uint56 slippageD9,
+        IVeloAmmModule.CallbackParams callbackParams,
+        IPulseStrategyModule.StrategyParams strategyParams,
+        IVeloOracle.SecurityParams securityParams
     );
 
     // Position data structure

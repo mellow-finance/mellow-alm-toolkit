@@ -199,10 +199,14 @@ contract VeloDeployFactory is
         lpWrapper.initialize(core.deposit(depositParams), position.liquidity);
 
         emit StrategyCreated(
-            address(pool),
-            poolAddresses.lpWrapper,
-            poolAddresses.synthetixFarm,
-            msg.sender
+            StrategyCreatedParams({
+                pool: address(pool),
+                ammPosition: core.ammModule().getAmmPosition(params.tokenId),
+                strategyParams: strategyParams,
+                lpWrapper: poolAddresses.lpWrapper,
+                synthetixFarm: poolAddresses.synthetixFarm,
+                caller: msg.sender
+            })
         );
     }
 

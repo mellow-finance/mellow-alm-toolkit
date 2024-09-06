@@ -256,7 +256,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
                     protocolParams_
                 );
 
-                emit Rebalance(
+                _emitRebalanceEvent(
                     target.info.pool,
                     targets[i].info.ammPositionIds[j],
                     tokenId
@@ -264,6 +264,35 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
             }
             _positions[target.id].ammPositionIds = ammPositionIds;
         }
+    }
+
+    function _emitRebalanceEvent(
+        address pool,
+        uint256 tokenIdBefore,
+        uint256 tokenIdAfter
+    ) private {
+        IAmmModule.AmmPosition memory info = ammModule.getAmmPosition(
+            tokenIdAfter
+        );
+        (uint160 sqrtPriceX96, ) = oracle.getOraclePrice(pool);
+        (uint256 amount0, uint256 amount1) = ammModule.getAmountsForLiquidity(
+            info.liquidity,
+            sqrtPriceX96,
+            info.tickLower,
+            info.tickUpper
+        );
+
+        emit Rebalance(
+            RebalanceEventParams({
+                pool: pool,
+                ammPositionInfo: info,
+                sqrtPriceX96: sqrtPriceX96,
+                amount0: amount0,
+                amount1: amount1,
+                ammPositionIdBefore: tokenIdBefore,
+                ammPositionIdAfter: tokenIdAfter
+            })
+        );
     }
 
     /// @inheritdoc ICore
