@@ -1,9 +1,11 @@
 from dotenv import load_dotenv
 import json
 import os
+import sys
 import subprocess
 from web3 import Web3
 from odos import Odos, PulseVeloBotLazySwapData
+from eth_account import Account
 
 load_dotenv()
 
@@ -14,6 +16,9 @@ ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 VELO_BOT_ADDRESS = '0x9D7C0BdbfEbB9a6a0120F1116D53387156D126ba'
 VELO_CORE_ADDRESS = '0x30ce7bB58dd3ea6FbE32645f644462479170e090'
 VELO_DEPLOY_FACTORY_ADDRESS = '0xdca5BC88366A58883f2711708Ade7b1E866ecC83'
+
+REBALANCE_ACTION_STRING = 'r'
+DISTRIBUTION_REWARD_ACTION_STRING = 'd'
 
 PIPS_DENOMINATOR = 10000
 SLIPPAGE_PIPS = 10 # 10/10000 = 0.1%
@@ -58,6 +63,10 @@ class Operator:
         with open("./abi/LpWrapper.json") as f:
             self.lpWrapper_abi = json.load(f)
 
+        # load compounder ABI
+        with open("./abi/Compounder.json") as f:
+            self.compounder_abi = json.load(f)
+
         # init bot contract
         self.bot = self.rpc.eth.contract(address=VELO_BOT_ADDRESS, abi=self.bot_abi)
 
@@ -73,7 +82,7 @@ class Operator:
     """ 
         takes position ids for pool list
     """
-    def get_managed_positions(self):
+    def __get_managed_positions(self):
         managed_position_ids = []
         for pool in POOLS:
             poolToAddresses = self.factory.functions.poolToAddresses(pool).call()
@@ -93,8 +102,11 @@ class Operator:
         3. write to .json swap data array
     """
     def rebalance(self):
+
+        print("Start rebalance action")
+
         # retrive ids of actually managed positions
-        managed_position_ids = self.get_managed_positions()
+        managed_position_ids = self.__get_managed_positions()
         print(managed_position_ids)
 
         # obtain desired swap amount to have ability to mint positions
@@ -147,8 +159,64 @@ class Operator:
                 self.__runForgeScript(pulseVeloBotLazySwapData)
 
     """
+        Make distribution of rewards
+    """
+    def distribute_rewards(self):
+
+        print("Start distribution rewards action")
+
+        subfolder = "logs"
+        os.makedirs(subfolder, exist_ok=True)
+        log_path = os.path.join(subfolder, "distribute_rewards.log")
+
+        try:
+            # get compounder address
+            mutableParams = self.factory.functions.getMutableParams().call()
+            farmOperator = mutableParams[3]
+            print("Farm Operator", farmOperator)
+
+            # init factory contract
+            self.compounder = self.rpc.eth.contract(address=farmOperator, abi=self.compounder_abi)
+
+            private_key = os.environ.get("OPERATOR_PRIVATE_KEY")
+
+            account = Account.from_key(private_key)
+            operator_address = account.address
+
+            print("EOA Operator address", operator_address)
+
+        except Exception as e:
+            with open(log_path, 'w') as log_file:
+                log_file.write(f"{e}")
+            print("error during transaction preparing", e)
+            return
+
+        try:
+            transaction = self.compounder.functions.compound(VELO_DEPLOY_FACTORY_ADDRESS, POOLS).build_transaction({
+                'from': operator_address,
+                'nonce': self.rpc.eth.get_transaction_count(operator_address),
+                'gasPrice': self.rpc.eth.gas_price,
+                'chainId': CHAIN_ID
+            })
+
+            signed_tx = self.rpc.eth.account.sign_transaction(transaction, private_key=private_key)
+
+            tx_hash = self.rpc.eth.send_raw_transaction(signed_tx.rawTransaction)
+
+            receipt = self.rpc.eth.wait_for_transaction_receipt(tx_hash)
+        except Exception as e:
+            with open(log_path, 'w') as log_file:
+                log_file.write(f"{e}")
+            print("transaction fails", e)
+            return
+        finally:
+            print("Rewards were distributed successfully!")
+            with open(log_path, 'w') as log_file:
+                log_file.write(f"tx_hash:  {tx_hash.hex()}\n {receipt}")
+
+    """
         runs forge script to rebalance with swap data
-        logs are saved to dedug and check 
+        logs are saved to debug and check 
     """
     def __runForgeScript(self, pulseVeloBotLazySwapData):
  
@@ -176,5 +244,21 @@ class Operator:
         
         print(f"see the transaction logs at {subfolder} folder")
 
+    def action(self):
+        
+        if len(sys.argv) < 2:
+            print(f"Usage: python operator.py [action]\n\
+            `{REBALANCE_ACTION_STRING}`: checks and does rebalance for all strategies\n\
+            `{DISTRIBUTION_REWARD_ACTION_STRING}`: distributes rewards")
+            sys.exit(1)
+        
+        action_string = sys.argv[1]
+        if action_string == REBALANCE_ACTION_STRING:
+            self.rebalance()
+        elif action_string == DISTRIBUTION_REWARD_ACTION_STRING:
+            self.distribute_rewards()
+        else:
+            print("Error: undefined action")
+
 bot = Operator()
-bot.rebalance()
+bot.action()
