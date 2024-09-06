@@ -99,6 +99,8 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
             deadline
         );
         _mint(to, lpAmount);
+
+        emit Deposit(to, lpAmount, actualAmount0, actualAmount1);
     }
 
     /// @inheritdoc ILpWrapper
@@ -130,6 +132,8 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         address farm = getFarm();
         _approve(address(this), farm, lpAmount);
         StakingRewards(farm).stakeOnBehalf(lpAmount, to);
+
+        emit Deposit(to, lpAmount, actualAmount0, actualAmount1);
     }
 
     function _deposit(
@@ -272,7 +276,15 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         external
         returns (uint256 amount0, uint256 amount1, uint256 actualLpAmount)
     {
-        return _withdraw(lpAmount, minAmount0, minAmount1, to, deadline);
+        (amount0, amount1, actualLpAmount) = _withdraw(
+            lpAmount,
+            minAmount0,
+            minAmount1,
+            to,
+            deadline
+        );
+
+        emit Withdraw(to, lpAmount, amount0, amount1);
     }
 
     /// @inheritdoc ILpWrapper
@@ -292,7 +304,16 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
             actualLpAmount = lpAmount;
         }
         StakingRewards(farm).withdrawOnBehalf(actualLpAmount, msg.sender);
-        return _withdraw(actualLpAmount, minAmount0, minAmount1, to, deadline);
+
+        (amount0, amount1, actualLpAmount) = _withdraw(
+            actualLpAmount,
+            minAmount0,
+            minAmount1,
+            to,
+            deadline
+        );
+
+        emit Withdraw(to, lpAmount, amount0, amount1);
     }
 
     function _withdraw(

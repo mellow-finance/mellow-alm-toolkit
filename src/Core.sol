@@ -255,6 +255,12 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
                     target.info.callbackParams,
                     protocolParams_
                 );
+
+                emit Rebalance(
+                    target.info.pool,
+                    targets[i].info.ammPositionIds[j],
+                    tokenId
+                );
             }
             _positions[target.id].ammPositionIds = ammPositionIds;
         }

@@ -26,6 +26,19 @@ interface ILpWrapper {
     error Deadline(); // Thrown when the deadline for a function call has passed
     error InvalidPositionsCount(); // Thrown when the number of positions is invalid
 
+    event Deposit(
+        address indexed recipient,
+        uint256 lpAmount,
+        uint256 amount0,
+        uint256 amount1
+    );
+    event Withdraw(
+        address indexed recipient,
+        uint256 lpAmount,
+        uint256 amount0,
+        uint256 amount1
+    );
+
     // Position data structure
     struct PositionData {
         uint96 nonce;

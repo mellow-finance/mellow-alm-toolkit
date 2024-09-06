@@ -197,6 +197,13 @@ contract VeloDeployFactory is
         positionManager.approve(address(core), params.tokenId);
 
         lpWrapper.initialize(core.deposit(depositParams), position.liquidity);
+
+        emit StrategyCreated(
+            address(pool),
+            poolAddresses.lpWrapper,
+            poolAddresses.synthetixFarm,
+            msg.sender
+        );
     }
 
     /// @inheritdoc IERC721Receiver

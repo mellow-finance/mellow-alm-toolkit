@@ -21,6 +21,13 @@ interface IVeloDeployFactory {
     error InvalidParams();
     error LpWrapperAlreadyCreated();
 
+    event StrategyCreated(
+        address pool,
+        address lpWrapper,
+        address synthetixFarm,
+        address caller
+    );
+
     /**
      * @dev Represents the immutable parameters for the VeloDeployFactory contract.
      */
