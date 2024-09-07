@@ -29,6 +29,7 @@ interface ILpWrapper {
     error InvalidPositionsCount(); // Thrown when the number of positions is invalid
 
     event Deposit(
+        address indexed sender,
         address indexed recipient,
         address indexed pool,
         uint256 lpAmount,
@@ -37,6 +38,7 @@ interface ILpWrapper {
     );
 
     event Withdraw(
+        address indexed sender,
         address indexed recipient,
         address indexed pool,
         uint256 lpAmount,

@@ -258,7 +258,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
 
                 _emitRebalanceEvent(
                     target.info.pool,
-                    targets[i].info.ammPositionIds[j],
+                    target.info.ammPositionIds[j],
                     tokenId
                 );
             }

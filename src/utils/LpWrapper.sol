@@ -259,7 +259,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
 
         _mint(lpRecipient, lpAmount);
 
-        emit Deposit(to, _pool, lpAmount, actualAmount0, actualAmount1);
+        emit Deposit(msg.sender, to, _pool, lpAmount, actualAmount0, actualAmount1);
     }
 
     /// @inheritdoc ILpWrapper
@@ -377,7 +377,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
             })
         );
 
-        emit Withdraw(to, _pool, lpAmount, amount0, amount1);
+        emit Withdraw(msg.sender, to, _pool, lpAmount, amount0, amount1);
     }
 
     /// @inheritdoc ILpWrapper
