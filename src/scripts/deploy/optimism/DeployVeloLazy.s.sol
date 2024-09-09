@@ -67,7 +67,7 @@ contract DeployVeloLazy is Script, Test {
         console.log("Core operator", CORE_OPERATOR);
         console.log("Deploy factory operator", DEPLOYER);
 
-        //vm.startBroadcast(deployerPrivateKey);
+        vm.startBroadcast(deployerPrivateKey);
 
         if (STAGE_DEPLOY == 1) {
             //-------------------------------------------------------------------------------
@@ -166,7 +166,7 @@ contract DeployVeloLazy is Script, Test {
             _setRoles();
         }
 
-        // vm.stopBroadcast();
+        vm.stopBroadcast();
     }
 
     function _setRoles() private {
