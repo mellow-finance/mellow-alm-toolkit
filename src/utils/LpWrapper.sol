@@ -92,13 +92,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         external
         returns (uint256 actualAmount0, uint256 actualAmount1, uint256 lpAmount)
     {
-        (actualAmount0, actualAmount1, lpAmount) = _deposit(
-            amount0,
-            amount1,
-            minLpAmount,
-            deadline
-        );
-        _mint(to, lpAmount);
+        return _deposit(amount0, amount1, minLpAmount, to, to, deadline);
     }
 
     /// @inheritdoc ILpWrapper
@@ -124,9 +118,10 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
             amount0,
             amount1,
             minLpAmount,
+            address(this),
+            to,
             deadline
         );
-        _mint(address(this), lpAmount);
         address farm = getFarm();
         _approve(address(this), farm, lpAmount);
         StakingRewards(farm).stakeOnBehalf(lpAmount, to);
@@ -136,6 +131,8 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         uint256 amount0,
         uint256 amount1,
         uint256 minLpAmount,
+        address lpRecipient,
+        address to,
         uint256 deadline
     )
         private
@@ -259,6 +256,10 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
                 securityParams: info.securityParams
             })
         );
+
+        _mint(lpRecipient, lpAmount);
+
+        emit Deposit(msg.sender, to, _pool, lpAmount, actualAmount0, actualAmount1);
     }
 
     /// @inheritdoc ILpWrapper
@@ -292,7 +293,14 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
             actualLpAmount = lpAmount;
         }
         StakingRewards(farm).withdrawOnBehalf(actualLpAmount, msg.sender);
-        return _withdraw(actualLpAmount, minAmount0, minAmount1, to, deadline);
+
+        (amount0, amount1, actualLpAmount) = _withdraw(
+            actualLpAmount,
+            minAmount0,
+            minAmount1,
+            to,
+            deadline
+        );
     }
 
     function _withdraw(
@@ -368,6 +376,8 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
                 securityParams: info.securityParams
             })
         );
+
+        emit Withdraw(msg.sender, to, _pool, lpAmount, amount0, amount1);
     }
 
     /// @inheritdoc ILpWrapper
@@ -388,8 +398,10 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         view
         returns (IVeloAmmModule.ProtocolParams memory params, uint256 d9)
     {
-        return
-            (abi.decode(core.protocolParams(), (IVeloAmmModule.ProtocolParams)), D9);
+        return (
+            abi.decode(core.protocolParams(), (IVeloAmmModule.ProtocolParams)),
+            D9
+        );
     }
 
     /// @inheritdoc ILpWrapper
@@ -447,6 +459,13 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
             callbackParams,
             strategyParams,
             securityParams
+        );
+
+        emit PositionParamsSet(
+            slippageD9,
+            abi.decode(callbackParams, (IVeloAmmModule.CallbackParams)),
+            abi.decode(strategyParams, (IPulseStrategyModule.StrategyParams)),
+            abi.decode(securityParams, (IVeloOracle.SecurityParams))
         );
     }
 

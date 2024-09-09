@@ -11,6 +11,8 @@ import "../external/IWETH9.sol";
 import "../ICore.sol";
 
 import "../modules/velo/IVeloAmmModule.sol";
+import "../modules/strategies/IPulseStrategyModule.sol";
+import "../oracles/IVeloOracle.sol";
 
 /**
  * @title ILpWrapper Interface
@@ -25,6 +27,31 @@ interface ILpWrapper {
     error WithdrawCallFailed(); // Thrown when a withdrawal operation fails due to deletage call to the AmmDepositWithdrawModule
     error Deadline(); // Thrown when the deadline for a function call has passed
     error InvalidPositionsCount(); // Thrown when the number of positions is invalid
+
+    event Deposit(
+        address indexed sender,
+        address indexed recipient,
+        address indexed pool,
+        uint256 lpAmount,
+        uint256 amount0,
+        uint256 amount1
+    );
+
+    event Withdraw(
+        address indexed sender,
+        address indexed recipient,
+        address indexed pool,
+        uint256 lpAmount,
+        uint256 amount0,
+        uint256 amount1
+    );
+
+    event PositionParamsSet(
+        uint56 slippageD9,
+        IVeloAmmModule.CallbackParams callbackParams,
+        IPulseStrategyModule.StrategyParams strategyParams,
+        IVeloOracle.SecurityParams securityParams
+    );
 
     // Position data structure
     struct PositionData {
