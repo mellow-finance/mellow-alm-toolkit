@@ -20,10 +20,10 @@ uint128 constant MIN_INITIAL_LIQUDITY = 1000;
 uint32 constant PROTOCOL_FEE_D9 = 1e8; // 10%
 
 INonfungiblePositionManager constant NONFUNGIBLE_POSITION_MANAGER = INonfungiblePositionManager(
-    0x416b433906b1B72FA758e166e239c43d68dC6F29
+    0x827922686190790b37229fd06084350E74485b72
 );
 
-address constant VELO_FACTORY = 0xCc0bDDB707055e04e497aB22a59c2aF4391cd12F;
+address constant VELO_FACTORY = 0x5e7BB104d84c7CB9B682AaC2F3d509f5F406809A;
 address constant WETH = 0x4200000000000000000000000000000000000006;
 
 contract DeployVeloLazy is Script, Test {
@@ -31,9 +31,9 @@ contract DeployVeloLazy is Script, Test {
 
     uint256 immutable deployerPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
     address immutable DEPLOYER = vm.addr(deployerPrivateKey);
-    address immutable CORE_ADMIN = 0x893df22649247AD4e57E4926731F9Cf0dA344829; // protocol msig
+    address immutable CORE_ADMIN = address(0); // protocol msig
     address immutable PROTOCOL_TREASURY =
-        0xf0E36e9186Dbe927505d2588a6E6D56083Dd4a56; // treasury msig
+        address(0); // treasury msig
     address immutable CORE_OPERATOR =
         0x0A16Bc694EeA56cbFc808a271178556d3f8c23aD; // bot eoa
 

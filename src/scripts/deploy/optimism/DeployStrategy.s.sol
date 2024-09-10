@@ -19,29 +19,15 @@ import "src/helpers/CreateStrategyHelper.sol";
 
 /*
   Deployer 0xBe440AeE8c8D54aC7bb7D93506460492Df5812ea
-  Core/deloy factory/wrapper admin and farm owner 0x893df22649247AD4e57E4926731F9Cf0dA344829
-  Protocol treasuty 0xf0E36e9186Dbe927505d2588a6E6D56083Dd4a56
-  Core operator 0x0A16Bc694EeA56cbFc808a271178556d3f8c23aD
-  Deploy factory operator 0xBe440AeE8c8D54aC7bb7D93506460492Df5812ea
-  VeloOracle 0x89bf652e92C073Ac49F33F6bB7B662b446b94681
-  PulseStrategyModule 0xb3eBe27274304446E089f7c678e4ED68Ee387Fe2
-  VeloDeployFactoryHelper 0x96e7ca11cd96b705ce8fEbccAdb466FD1245Cfea
-  VeloAmmModule 0x734effcB7981B00046A9fcb00D6aBd477bbF9684
-  VeloDepositWithdrawModule 0x6b0E1a42030cB62C505C60e808Ab945B1396F8e4
-  Core 0x71D022eBA6F2607Ab8EC32Cb894075D94e10CEb8
-  PulseVeloBotLazy 0x4B7C2Cd551052E2d4516987936D738339dbEFfef
-  Compounder 0xb54AaCb3b203499543c6EC2B13acfaD74BBa8bE9
-  VeloDeployFactory 0xeD8b81E3fF6c54951621715F5992CA52007D88bA
-  CreateStrategyHelper 0x5B1b1aaC71bDca9Ed1dCb2AA357f678584db4029
-  VeloSugarHelper 0xa0116415f30d9F783D4E8F1f3FcE5dBB9dD59fD7
+
 */
 
 /// @dev deployed addresses
-address constant DEPLOY_FACTORY_ADDRESS = 0xeD8b81E3fF6c54951621715F5992CA52007D88bA;
-address constant CREATE_STRATEGY_HELPER_ADDRESS = 0x5B1b1aaC71bDca9Ed1dCb2AA357f678584db4029;
+address constant DEPLOY_FACTORY_ADDRESS = address(0);
+address constant CREATE_STRATEGY_HELPER_ADDRESS = address(0);
 
 /// @dev immutable addresses at the deployment
-address constant VELO_FACTORY_ADDRESS = 0xCc0bDDB707055e04e497aB22a59c2aF4391cd12F;
+address constant VELO_FACTORY_ADDRESS = 0x5e7BB104d84c7CB9B682AaC2F3d509f5F406809A;
 
 contract DeployStrategy is Script, Test {
     uint256 immutable operatorPrivateKey = vm.envUint("OPERATOR_PRIVATE_KEY");
@@ -64,109 +50,127 @@ contract DeployStrategy is Script, Test {
         pure
         returns (CreateStrategyHelper.PoolParameter[] memory parameters)
     {
-        uint256 MAX_USD_AMOUNT = 10 ** 6; // 1 USD
-        uint256 MAX_SUSD_AMOUNT = 10 ** 18; // 1 USD
-        uint256 MAX_LUSD_AMOUNT = 10 ** 18; // 1 USD
-        uint256 MAX_OP_AMOUNT = uint256(10 ** 18); // 1 OP ~ 1.3 USD
         uint256 MAX_ETH_AMOUNT = uint256(10 ** 18) / 2500; // 1 ETH/2500 ~ 1 USD
-        uint256 MAX_BTC_AMOUNT = uint256(10 ** 8) / 50000; // 1 BTC/50000 ~ 1 USD
+        uint256 MAX_BRETT_AMOUNT = uint256(10 ** 18) * 14; // 18 BRETT ~ 1 USD
+        uint256 MAX_DEGEN_AMOUNT = uint256(10 ** 18) * 300; // 300 DEGEN ~ 1 USD
+        uint256 MAX_AERO_AMOUNT = uint256(10 ** 18) * 300; // 2 AERO ~ 1.1 USD
+        uint256 MAX_USD6_AMOUNT = 10 ** 6; // 1 USD
+        uint256 MAX_USD18_AMOUNT = 10 ** 18; // 1 USD
 
         parameters = new CreateStrategyHelper.PoolParameter[](11);
+
         /*
-            --------------------------------------------------------------------------------------------------|
-                               VELO_FACTORY = 0xCc0bDDB707055e04e497aB22a59c2aF4391cd12F
-            --------------------------------------------------------------------------------------------------|
-                                                    address | width|  TS |   t0   |     t1 | status|  ID | DW |
-            -------------------------------------------------------------------------------|-------|-----|----|
-            [0]  0xeBD5311beA1948e1441333976EadCFE5fBda777C | 6000 | 200 | usdc   |     op |       |     |    |
-            [1]  0x4DC22588Ade05C40338a9D95A6da9dCeE68Bcd60 | 6000 | 200 | weth   |     op |       |     |    |
-            [2]  0x478946BcD4a5a22b316470F5486fAfb928C0bA25 | 4000 | 100 | usdc   |   weth |       |     |    |
-            [3]  0x319C0DD36284ac24A6b2beE73929f699b9f48c38 | 4000 | 100 | weth   |   wbtc |       |     |    |
-            [4]  0xEE1baC98527a9fDd57fcCf967817215B083cE1F0 | 4000 | 100 | usdc   | wsteth |       |     |    |
-            [5]  0xb71Ac980569540cE38195b38369204ff555C80BE |   10 |   1 | wsteth |  ezETH |       |     |    |
-            [6]  0xbF30Ff33CF9C6b0c48702Ff17891293b002DfeA4 |   10 |   1 | wsteth |   weth |       |     |    |
-            [7]  0x84Ce89B4f6F67E523A81A82f9f2F14D84B726F6B |    1 |   1 | usdc   |   usdt |       |     |    |
-            [8]  0x2FA71491F8070FA644d97b4782dB5734854c0f6F |    1 |   1 | usdc   | usdc.e |       |     |    |
-            [9]  0x3C01ec09D15D5450FC702DC4353b17Cd2978d8a5 |    1 |   1 | usdc   |   susd |       |     |    |
-            [10] 0x8Ac2f9daC7a2852D44F3C09634444d533E4C078e |    1 |   1 | usdc   |   lusd |       |     |    |
-            --------------------------------------------------------------------------------------------------|
+            |----------------------------------------------------------------------------------------------|
+            |                      AERO_FACTORY = 0x5e7BB104d84c7CB9B682AaC2F3d509f5F406809A               |
+            |----------------------------------------------------------------------------------------------|
+            |                                    address | width|  TS |   t0   |     t1 | status|  ID | DW |
+            |---------------------------------------------------------------------------|-------|-----|----|
+            | 0x4e829F8A5213c42535AB84AA40BD4aDCCE9cBa02 | 6000 | 200 |  weth  |  brett |   -   |     |    |
+            | 0xaFB62448929664Bfccb0aAe22f232520e765bA88 | 6000 | 200 |  weth  |  degen |   -   |     |    |
+            | 0x82321f3BEB69f503380D6B233857d5C43562e2D0 | 6000 | 200 |  weth  |  aero  |   -   |     |    |
+            | 0xb2cc224c1c9feE385f8ad6a55b4d94E92359DC59 | 4000 | 100 |  weth  |  usdc  |   -   |     |    |
+            | 0x4D69971CCd4A636c403a3C1B00c85e99bB9B5606 | 4000 | 100 |  weth  |  usd+  |   -   |     |    |
+            | 0x9785eF59E2b499fB741674ecf6fAF912Df7b3C1b | 4000 | 100 |  weth  |  usdt  |   -   |     |    |
+            | 0xE846373C1a92B167b4E9cd5d8E4d6B1Db9E90EC7 | 1000 |  50 |  eurc  |  usdc  |   -   |     |    |
+            | 0x861A2922bE165a5Bd41b1E482B49216b465e1B5F |    1 |   1 |  weth  |  wsteth|   -   |     |    |
+            | 0x2ae9DF02539887d4EbcE0230168a302d34784c82 |    1 |   1 |  weth  |  bsdeth|   -   |     |    |
+            | 0xdE5Ff829fEF54d1BdEc957D9538A306f0EAD1368 |    1 |   1 |  usdz  |  usdc  |   -   |     |    |
+            | 0x988702fe529a3461ec7Fd09Eea3f962856709FD9 |    1 |   1 |  usdc  |  eusd  |   -   |     |    |
+            | 0x47cA96Ea59C13F72745928887f84C9F52C3D7348 |    1 |   1 |  cbeth |  weth  |   -   |     |    |
+            | 0xDC7EAd706795eDa3FEDa08Ad519d9452BAdF2C0d |    1 |   1 |  ezeth |  weth  |   -   |     |    |
+            |----------------------------------------------------------------------------------------------|
         */
+
         parameters[0].pool = ICLPool(
-            0xeBD5311beA1948e1441333976EadCFE5fBda777C
+            0x4e829F8A5213c42535AB84AA40BD4aDCCE9cBa02
         );
         parameters[0].width = 6000;
-        parameters[0].maxAmount0 = MAX_USD_AMOUNT;
-        parameters[0].maxAmount1 = MAX_OP_AMOUNT;
+        parameters[0].maxAmount0 = MAX_ETH_AMOUNT;
+        parameters[0].maxAmount1 = MAX_BRETT_AMOUNT;
 
         parameters[1].pool = ICLPool(
-            0x4DC22588Ade05C40338a9D95A6da9dCeE68Bcd60
+            0xaFB62448929664Bfccb0aAe22f232520e765bA88
         );
         parameters[1].width = 6000;
         parameters[1].maxAmount0 = MAX_ETH_AMOUNT;
-        parameters[1].maxAmount1 = MAX_OP_AMOUNT;
+        parameters[1].maxAmount1 = MAX_DEGEN_AMOUNT;
 
         parameters[2].pool = ICLPool(
-            0x478946BcD4a5a22b316470F5486fAfb928C0bA25
+            0x82321f3BEB69f503380D6B233857d5C43562e2D0
         );
-        parameters[2].width = 4000;
-        parameters[2].maxAmount0 = MAX_USD_AMOUNT;
-        parameters[2].maxAmount1 = MAX_ETH_AMOUNT;
+        parameters[2].width = 6000;
+        parameters[2].maxAmount0 = MAX_ETH_AMOUNT;
+        parameters[2].maxAmount1 = MAX_AERO_AMOUNT;
 
         parameters[3].pool = ICLPool(
-            0x319C0DD36284ac24A6b2beE73929f699b9f48c38
+            0xb2cc224c1c9feE385f8ad6a55b4d94E92359DC59
         );
         parameters[3].width = 4000;
         parameters[3].maxAmount0 = MAX_ETH_AMOUNT;
-        parameters[3].maxAmount1 = MAX_BTC_AMOUNT;
+        parameters[3].maxAmount1 = MAX_USD6_AMOUNT;
 
         parameters[4].pool = ICLPool(
-            0xEE1baC98527a9fDd57fcCf967817215B083cE1F0
+            0x4D69971CCd4A636c403a3C1B00c85e99bB9B5606
         );
         parameters[4].width = 4000;
-        parameters[4].maxAmount0 = MAX_USD_AMOUNT;
-        parameters[4].maxAmount1 = MAX_ETH_AMOUNT;
+        parameters[4].maxAmount0 = MAX_ETH_AMOUNT;
+        parameters[4].maxAmount1 = MAX_USD6_AMOUNT;
 
         parameters[5].pool = ICLPool(
-            0xb71Ac980569540cE38195b38369204ff555C80BE
+            0x9785eF59E2b499fB741674ecf6fAF912Df7b3C1b
         );
-        parameters[5].width = 10;
+        parameters[5].width = 4000;
         parameters[5].maxAmount0 = MAX_ETH_AMOUNT;
-        parameters[5].maxAmount1 = MAX_ETH_AMOUNT;
+        parameters[5].maxAmount1 = MAX_USD6_AMOUNT;
 
         parameters[6].pool = ICLPool(
-            0xbF30Ff33CF9C6b0c48702Ff17891293b002DfeA4
+            0xE846373C1a92B167b4E9cd5d8E4d6B1Db9E90EC7
         );
-        parameters[6].width = 10;
-        parameters[6].maxAmount0 = MAX_ETH_AMOUNT;
-        parameters[6].maxAmount1 = MAX_ETH_AMOUNT;
+        parameters[6].width = 1000;
+        parameters[6].maxAmount0 = MAX_USD6_AMOUNT;
+        parameters[6].maxAmount1 = MAX_USD6_AMOUNT;
 
         parameters[7].pool = ICLPool(
-            0x84Ce89B4f6F67E523A81A82f9f2F14D84B726F6B
+            0x861A2922bE165a5Bd41b1E482B49216b465e1B5F
         );
         parameters[7].width = 1;
-        parameters[7].maxAmount0 = MAX_USD_AMOUNT;
-        parameters[7].maxAmount1 = MAX_USD_AMOUNT;
+        parameters[7].maxAmount0 = MAX_ETH_AMOUNT;
+        parameters[7].maxAmount1 = MAX_ETH_AMOUNT;
 
         parameters[8].pool = ICLPool(
-            0x2FA71491F8070FA644d97b4782dB5734854c0f6F
+            0x2ae9DF02539887d4EbcE0230168a302d34784c82
         );
         parameters[8].width = 1;
-        parameters[8].maxAmount0 = MAX_USD_AMOUNT;
-        parameters[8].maxAmount1 = MAX_USD_AMOUNT;
+        parameters[8].maxAmount0 = MAX_ETH_AMOUNT;
+        parameters[8].maxAmount1 = MAX_ETH_AMOUNT;
 
         parameters[9].pool = ICLPool(
-            0x3C01ec09D15D5450FC702DC4353b17Cd2978d8a5
+            0xdE5Ff829fEF54d1BdEc957D9538A306f0EAD1368
         );
         parameters[9].width = 1;
-        parameters[9].maxAmount0 = MAX_USD_AMOUNT;
-        parameters[9].maxAmount1 = MAX_SUSD_AMOUNT;
+        parameters[9].maxAmount0 = MAX_USD18_AMOUNT;
+        parameters[9].maxAmount1 = MAX_USD6_AMOUNT;
 
         parameters[10].pool = ICLPool(
-            0x8Ac2f9daC7a2852D44F3C09634444d533E4C078e
+            0x988702fe529a3461ec7Fd09Eea3f962856709FD9
         );
         parameters[10].width = 1;
-        parameters[10].maxAmount0 = MAX_USD_AMOUNT;
-        parameters[10].maxAmount1 = MAX_LUSD_AMOUNT;
+        parameters[10].maxAmount0 = MAX_USD6_AMOUNT;
+        parameters[10].maxAmount1 = MAX_USD18_AMOUNT;
+
+        parameters[11].pool = ICLPool(
+            0x47cA96Ea59C13F72745928887f84C9F52C3D7348
+        );
+        parameters[11].width = 1;
+        parameters[11].maxAmount0 = MAX_ETH_AMOUNT;
+        parameters[11].maxAmount1 = MAX_ETH_AMOUNT;
+
+        parameters[12].pool = ICLPool(
+            0xDC7EAd706795eDa3FEDa08Ad519d9452BAdF2C0d
+        );
+        parameters[12].width = 1;
+        parameters[12].maxAmount0 = MAX_ETH_AMOUNT;
+        parameters[12].maxAmount1 = MAX_ETH_AMOUNT;
     }
 
     function deployCreateStrategyHelper(
