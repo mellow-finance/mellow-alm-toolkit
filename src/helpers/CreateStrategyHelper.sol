@@ -50,7 +50,7 @@ contract CreateStrategyHelper {
     {
         require(msg.sender == deployer, "forbidden");
         require(
-            poolFactory.isPair(address(poolParameter.pool)),
+            poolFactory.isPool(address(poolParameter.pool)),
             "pool does not belong to the factory"
         );
 

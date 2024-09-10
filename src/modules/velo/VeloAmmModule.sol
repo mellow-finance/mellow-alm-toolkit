@@ -47,7 +47,7 @@ contract VeloAmmModule is IVeloAmmModule {
         if (params_.gauge == address(0)) revert AddressZero();
         if (params_.counter == address(0)) revert AddressZero();
         ICLPool pool = ICLGauge(params_.gauge).pool();
-        if (!factory.isPair(address(pool))) revert InvalidGauge();
+        if (!factory.isPool(address(pool))) revert InvalidGauge();
         if (pool.gauge() != params_.gauge) revert InvalidGauge();
     }
 
