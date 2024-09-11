@@ -2,6 +2,7 @@ from dotenv import load_dotenv
 import json
 import os
 import sys
+import time
 import subprocess
 from web3 import Web3
 from odos import Odos, PulseVeloBotLazySwapData
@@ -13,9 +14,9 @@ ON_CHAIN = True
 
 CHAIN_ID = 10
 ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
-VELO_BOT_ADDRESS = '0x9D7C0BdbfEbB9a6a0120F1116D53387156D126ba'
-VELO_CORE_ADDRESS = '0x30ce7bB58dd3ea6FbE32645f644462479170e090'
-VELO_DEPLOY_FACTORY_ADDRESS = '0xdca5BC88366A58883f2711708Ade7b1E866ecC83'
+VELO_BOT_ADDRESS = '0x4B7C2Cd551052E2d4516987936D738339dbEFfef'
+VELO_CORE_ADDRESS = '0x71D022eBA6F2607Ab8EC32Cb894075D94e10CEb8'
+VELO_DEPLOY_FACTORY_ADDRESS = '0xeD8b81E3fF6c54951621715F5992CA52007D88bA'
 
 REBALANCE_ACTION_STRING = 'r'
 DISTRIBUTION_REWARD_ACTION_STRING = 'd'
@@ -261,4 +262,13 @@ class Operator:
             print("Error: undefined action")
 
 bot = Operator()
-bot.action()
+while True:
+    try:
+        bot.action()
+        print("sleep for 1 hour...")
+        time.sleep(3600 * 1)
+    except Exception as e:
+        print("error", e)
+        continue
+    finally:
+        continue
