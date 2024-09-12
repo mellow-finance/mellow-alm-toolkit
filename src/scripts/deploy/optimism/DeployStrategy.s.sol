@@ -57,7 +57,7 @@ contract DeployStrategy is Script, Test {
         uint256 MAX_USD6_AMOUNT = 10 ** 6; // 1 USD
         uint256 MAX_USD18_AMOUNT = 10 ** 18; // 1 USD
 
-        parameters = new CreateStrategyHelper.PoolParameter[](11);
+        parameters = new CreateStrategyHelper.PoolParameter[](13);
 
         /*
             |----------------------------------------------------------------------------------------------|
