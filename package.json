@@ -27,7 +27,7 @@
     "load": "cd test/backtest && env $(cat ../../.env | xargs) python3 loader.py",
     "backtest": "forge build && cd test/backtest && env $(cat ../../.env | xargs) python3 HistoryTest.py",
     "deploy:base:velo:prod": "forge script src/scripts/deploy/optimism/DeployVeloLazy.s.sol --rpc-url $(grep BASE_RPC .env | cut -d '=' -f2,3,4,5) --etherscan-api-key $(grep API_KEY_OP .env | cut -d '=' -f2,3,4,5) --broadcast --verify --slow --private-key $(grep DEPLOYER_PRIVATE_KEY .env | cut -d '=' -f2,3,4,5) --evm-version shanghai",
-    "deploy:base:velo:test": "forge test -vvvvv --rpc-url $(grep BASE_RPC .env | cut -d '=' -f2,3,4,5) --match-path ./test/velo-prod/deploy\\* --fork-block-number 19631550 --evm-version shanghai",
+    "deploy:base:velo:test": "forge test -vvvvv --rpc-url $(grep BASE_RPC .env | cut -d '=' -f2,3,4,5) --match-path ./test/velo-prod/deploy\\* --fork-block-number 19709210 --evm-version shanghai",
     "deploy:base:velo:bottest": "forge script src/scripts/bots/PulseVeloBotLazy.s.sol --fork-url $(grep BASE_RPC .env | cut -d '=' -f2,3,4,5) --fork-block-number 122545420",
     "deploy:base:velo:bot": "forge script src/scripts/deploy/optimism/DeployPulseVeloBotLazy.s.sol --fork-url $(grep BASE_RPC .env | cut -d '=' -f2,3,4,5) --etherscan-api-key $(grep API_KEY_OP .env | cut -d '=' -f2,3,4,5) --broadcast --slow",
     "deploy:base:velo:strat": "forge script src/scripts/deploy/optimism/DeployStrategy.s.sol --rpc-url $(grep BASE_RPC .env | cut -d '=' -f2,3,4,5) --etherscan-api-key $(grep API_KEY_OP .env | cut -d '=' -f2,3,4,5) --broadcast --slow --verify --private-key $(grep DEPLOYER_PRIVATE_KEY .env | cut -d '=' -f2,3,4,5) --evm-version shanghai",

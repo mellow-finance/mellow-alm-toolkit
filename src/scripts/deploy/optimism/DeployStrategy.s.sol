@@ -51,13 +51,14 @@ contract DeployStrategy is Script, Test {
         returns (CreateStrategyHelper.PoolParameter[] memory parameters)
     {
         uint256 MAX_ETH_AMOUNT = uint256(10 ** 18) / 2500; // 1 ETH/2500 ~ 1 USD
+        uint256 MAX_BTC_AMOUNT = uint256(10 ** 18) / 60000; // 1 BTC/60000 ~ 1 USD
         uint256 MAX_BRETT_AMOUNT = uint256(10 ** 18) * 14; // 18 BRETT ~ 1 USD
         uint256 MAX_DEGEN_AMOUNT = uint256(10 ** 18) * 300; // 300 DEGEN ~ 1 USD
         uint256 MAX_AERO_AMOUNT = uint256(10 ** 18) * 300; // 2 AERO ~ 1.1 USD
         uint256 MAX_USD6_AMOUNT = 10 ** 6; // 1 USD
         uint256 MAX_USD18_AMOUNT = 10 ** 18; // 1 USD
 
-        parameters = new CreateStrategyHelper.PoolParameter[](13);
+        parameters = new CreateStrategyHelper.PoolParameter[](15);
 
         /*
             |----------------------------------------------------------------------------------------------|
@@ -78,6 +79,8 @@ contract DeployStrategy is Script, Test {
             | 0x988702fe529a3461ec7Fd09Eea3f962856709FD9 |    1 |   1 |  usdc  |  eusd  |   -   |     |    |
             | 0x47cA96Ea59C13F72745928887f84C9F52C3D7348 |    1 |   1 |  cbeth |  weth  |   -   |     |    |
             | 0xDC7EAd706795eDa3FEDa08Ad519d9452BAdF2C0d |    1 |   1 |  ezeth |  weth  |   -   |     |    |
+            | 0x70aCDF2Ad0bf2402C957154f944c19Ef4e1cbAE1 | 4000 | 100 |  weth  | cbbtc  |   -   |     |    |
+            | 0x4e962BB3889Bf030368F56810A9c96B83CB3E778 | 4000 | 100 |  usdc  | cbbtc  |   -   |     |    |
             |----------------------------------------------------------------------------------------------|
         */
 
@@ -171,6 +174,20 @@ contract DeployStrategy is Script, Test {
         parameters[12].width = 1;
         parameters[12].maxAmount0 = MAX_ETH_AMOUNT;
         parameters[12].maxAmount1 = MAX_ETH_AMOUNT;
+
+        parameters[13].pool = ICLPool(
+            0x70aCDF2Ad0bf2402C957154f944c19Ef4e1cbAE1
+        );
+        parameters[13].width = 4000;
+        parameters[13].maxAmount0 = MAX_ETH_AMOUNT;
+        parameters[13].maxAmount1 = MAX_BTC_AMOUNT;
+
+        parameters[14].pool = ICLPool(
+            0x4e962BB3889Bf030368F56810A9c96B83CB3E778
+        );
+        parameters[14].width = 4000;
+        parameters[14].maxAmount0 = MAX_USD6_AMOUNT;
+        parameters[14].maxAmount1 = MAX_BTC_AMOUNT;
     }
 
     function deployCreateStrategyHelper(
