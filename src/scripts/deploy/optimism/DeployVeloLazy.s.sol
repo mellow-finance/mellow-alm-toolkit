@@ -31,9 +31,9 @@ contract DeployVeloLazy is Script, Test {
 
     uint256 immutable deployerPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
     address immutable DEPLOYER = vm.addr(deployerPrivateKey);
-    address immutable CORE_ADMIN = address(0); // protocol msig
+    address immutable CORE_ADMIN = 0x893df22649247AD4e57E4926731F9Cf0dA344829; // protocol msig
     address immutable PROTOCOL_TREASURY =
-        address(0); // treasury msig
+        0xf0E36e9186Dbe927505d2588a6E6D56083Dd4a56; // treasury msig
     address immutable CORE_OPERATOR =
         0x0A16Bc694EeA56cbFc808a271178556d3f8c23aD; // bot eoa
 
@@ -67,7 +67,7 @@ contract DeployVeloLazy is Script, Test {
         console.log("Core operator", CORE_OPERATOR);
         console.log("Deploy factory operator", DEPLOYER);
 
-        vm.startBroadcast(deployerPrivateKey);
+        //   vm.startBroadcast(deployerPrivateKey);
 
         if (STAGE_DEPLOY == 1) {
             //-------------------------------------------------------------------------------
@@ -166,7 +166,7 @@ contract DeployVeloLazy is Script, Test {
             _setRoles();
         }
 
-        vm.stopBroadcast();
+        //  vm.stopBroadcast();
     }
 
     function _setRoles() private {

@@ -23,8 +23,8 @@ import "src/helpers/CreateStrategyHelper.sol";
 */
 
 /// @dev deployed addresses
-address constant DEPLOY_FACTORY_ADDRESS = address(0);
-address constant CREATE_STRATEGY_HELPER_ADDRESS = address(0);
+address constant DEPLOY_FACTORY_ADDRESS = 0x5D875939AA55565AE51360Fa1A71243bED06520A;
+address constant CREATE_STRATEGY_HELPER_ADDRESS = 0x6Ca32b64F98f3292C53593a3aA3Aa913f23f56a9;
 
 /// @dev immutable addresses at the deployment
 address constant VELO_FACTORY_ADDRESS = 0x5e7BB104d84c7CB9B682AaC2F3d509f5F406809A;
@@ -41,7 +41,7 @@ contract DeployStrategy is Script, Test {
         vm.startBroadcast(deployerPrivateKey);
 
         deployAllStrategies();
-        
+
         vm.stopBroadcast();
     }
 
@@ -231,12 +231,17 @@ contract DeployStrategy is Script, Test {
     }
 
     function deployAllStrategies() internal {
-        CreateStrategyHelper.PoolParameter[] memory parameters = setPoolParameters();
+        CreateStrategyHelper.PoolParameter[]
+            memory parameters = setPoolParameters();
 
-        for (uint i = 0; i < parameters.length; i++) {
-            if (i == 0) continue;
-            deployStrategy(DEPLOY_FACTORY_ADDRESS, CREATE_STRATEGY_HELPER_ADDRESS, i);
-        }
+        deployStrategy(
+            DEPLOY_FACTORY_ADDRESS,
+            CREATE_STRATEGY_HELPER_ADDRESS,
+            0
+        );
+        //for (uint i = 0; i < parameters.length; i++) {
+        //    deployStrategy(DEPLOY_FACTORY_ADDRESS, CREATE_STRATEGY_HELPER_ADDRESS, i);
+        //}
     }
 
     function deployStrategy(
@@ -291,13 +296,41 @@ contract DeployStrategy is Script, Test {
             uint256 tokenId
         ) = createStrategyHelper.createStrategy(parameters[poolId]);
 
+        print(poolAddresses, address(parameters[poolId].pool));
+    }
+
+
+    function print(IVeloDeployFactory.PoolAddresses memory poolAddresses, address pool) internal{
+
         console2.log(
             " =======     POOL ",
-            address(parameters[poolId].pool),
+            address(pool),
             "    ========"
         );
-        console2.log("          tokenId:", tokenId);
+
         console2.log("        lpWrapper:", poolAddresses.lpWrapper);
+        console2.log(
+            "   lpWrapper name:",
+            ERC20(poolAddresses.lpWrapper).name()
+        );
+        {
+            bytes memory createCalldata = abi.encode(
+                0x8fbf7667dBE606cdF6f7feC069be664032CC93d7, // ICore core_,
+                0x9D7C0BdbfEbB9a6a0120F1116D53387156D126ba, // IAmmDepositWithdrawModule ammDepositWithdrawModule_,
+                ERC20(poolAddresses.lpWrapper).name(),
+                ERC20(poolAddresses.lpWrapper).symbol(),
+                0x032018f582d3bF61D674A896b3CD98dD4F9D820f, // address admin,
+                0x4200000000000000000000000000000000000006, // address weth_,
+                0x5D875939AA55565AE51360Fa1A71243bED06520A, // address factory_,
+                address(pool)
+            ); //  address pool_
+            console2.log(
+                " lpWrapper symbol:",
+                ERC20(poolAddresses.lpWrapper).symbol()
+            );
+            console2.logBytes(createCalldata);
+        }
         console2.log("    synthetixFarm:", poolAddresses.synthetixFarm);
+
     }
 }
