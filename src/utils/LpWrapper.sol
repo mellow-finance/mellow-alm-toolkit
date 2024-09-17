@@ -377,11 +377,17 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
             })
         );
 
+        _getReward();
+
         emit Withdraw(msg.sender, to, _pool, lpAmount, amount0, amount1);
     }
 
     /// @inheritdoc ILpWrapper
     function getReward() external {
+        _getReward();
+    }
+
+    function _getReward() internal {
         address farm = getFarm();
         StakingRewards(farm).getRewardOnBehalf(msg.sender);
     }
