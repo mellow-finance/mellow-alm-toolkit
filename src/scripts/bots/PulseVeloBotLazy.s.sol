@@ -21,7 +21,7 @@ contract PulseVeloBot is Script {
         ICore(0xd17613D91150a2345eCe9598D055C7197A1f5A71);
 
     address public pulseVeloBotAddress =
-        0xe455A694973b4417a2f16bC1c2E857F693F8F2fd;
+        0xba5f68d520c8bdf32726e70c7E19f96B69958047;
     PulseVeloBotLazy public bot = PulseVeloBotLazy(pulseVeloBotAddress);
 
     uint256 immutable operatorPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");

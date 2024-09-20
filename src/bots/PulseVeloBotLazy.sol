@@ -13,6 +13,7 @@ import "../libraries/external/TickMath.sol";
 
 contract PulseVeloBotLazy is IPulseVeloBotLazy {
     using SafeERC20 for IERC20;
+    using Math for uint256;
 
     uint256 public constant Q128 = 2 ** 128;
     uint256 public constant Q96 = 2 ** 96;
@@ -22,11 +23,13 @@ contract PulseVeloBotLazy is IPulseVeloBotLazy {
 
     ICore public immutable core;
     IVeloDeployFactory public immutable fatory;
+    IPulseStrategyModule public immutable strategyModule;
 
     constructor(address positionManager_, address core_, address fatory_) {
         positionManager = INonfungiblePositionManager(positionManager_);
         core = ICore(core_);
         fatory = IVeloDeployFactory(fatory_);
+        strategyModule = IPulseStrategyModule(address(core.strategyModule()));
     }
 
     /// @dev returns quotes for swap
@@ -37,37 +40,36 @@ contract PulseVeloBotLazy is IPulseVeloBotLazy {
         address pool,
         uint256 priceTargetX96
     ) external view returns (SwapQuoteParams memory swapQuoteParams) {
-        uint256 positionId = poolPositionId(pool);
-        if (!_needRebalancePosition(positionId)) return swapQuoteParams;
+        if (!needRebalancePosition(pool)) return swapQuoteParams;
+
         ICore.ManagedPositionInfo memory managedPositionInfo = core
-            .managedPositionAt(positionId);
+            .managedPositionAt(poolPositionId(pool));
 
         if (managedPositionInfo.ammPositionIds.length == 0)
             return swapQuoteParams;
 
-        (bool flag, ICore.TargetPositionInfo memory target) = core
-            .strategyModule()
-            .getTargets(managedPositionInfo, core.ammModule(), core.oracle());
-        if (!flag) return swapQuoteParams;
+        (
+            bool isRebalanceRequired,
+            ICore.TargetPositionInfo memory target
+        ) = strategyModule.getTargets(
+                managedPositionInfo,
+                core.ammModule(),
+                core.oracle()
+            );
 
-        swapQuoteParams = _necessarySwapAmountForMint(
+        if (!isRebalanceRequired) return swapQuoteParams;
+        require(target.lowerTicks.length == 1, "lowerTicks lenght");
+        require(target.upperTicks.length == 1, "upperTicks lenght");
+
+        swapQuoteParams = _fitAmountInForTargetSwapPrice(
+            ICLPool(pool),
             priceTargetX96,
-            target,
-            managedPositionInfo
+            managedPositionInfo,
+            target
         );
     }
 
-    /// @dev returns array of flags, true if rebalance is necessery
-    function needRebalance(
-        address[] memory poolAddress
-    ) public view returns (bool[] memory needs) {
-        needs = new bool[](poolAddress.length);
-        for (uint256 i = 0; i < poolAddress.length; i++) {
-            uint256 positionId = poolPositionId(poolAddress[i]);
-            needs[i] = _needRebalancePosition(positionId);
-        }
-    }
-
+    /// @dev return current positionId for @param pool
     function poolPositionId(
         address pool
     ) public view returns (uint256 positionId) {
@@ -77,91 +79,88 @@ contract PulseVeloBotLazy is IPulseVeloBotLazy {
         positionId = lpWrapper.positionId();
     }
 
-    function needRebalancePosition(address pool) public view returns (bool) {
+    /// @dev returns flags, true if rebalance is necessery
+    function needRebalancePosition(
+        address pool
+    ) public view returns (bool isRebalanceRequired) {
         uint256 positionId = poolPositionId(pool);
-        return _needRebalancePosition(positionId);
-    }
-
-    function _needRebalancePosition(
-        uint256 managedPositionId
-    ) internal view returns (bool) {
         ICore.ManagedPositionInfo memory managedPositionInfo = core
-            .managedPositionAt(managedPositionId);
+            .managedPositionAt(positionId);
 
-        ICLPool pool = ICLPool(managedPositionInfo.pool);
-        uint256 positionCount = managedPositionInfo.ammPositionIds.length;
+        uint256 tokenId = managedPositionInfo.ammPositionIds[0];
+        (, , , , , int24 tickLower, int24 tickUpper, , , , , ) = positionManager
+            .positions(tokenId);
+        (, int24 tick, , , , ) = ICLPool(pool).slot0();
 
-        for (uint ammId = 0; ammId < positionCount; ammId++) {
-            uint256 tokenId = managedPositionInfo.ammPositionIds[ammId];
-            (
-                ,
-                ,
-                ,
-                ,
-                ,
-                int24 tickLower,
-                int24 tickUpper,
-                ,
-                ,
-                ,
-                ,
+        IPulseStrategyModule.StrategyParams memory params = abi.decode(
+            managedPositionInfo.strategyParams,
+            (IPulseStrategyModule.StrategyParams)
+        );
 
-            ) = positionManager.positions(tokenId);
-            (, int24 tick, , , , ) = pool.slot0();
-
-            IPulseStrategyModule.StrategyParams memory params = abi.decode(
-                managedPositionInfo.strategyParams,
-                (IPulseStrategyModule.StrategyParams)
-            );
-            if (tick < tickLower) {
-                if (tickLower - tick > params.tickNeighborhood) {
-                    return true;
-                }
-            } else if (tick > tickUpper) {
-                if (tick - tickUpper > params.tickNeighborhood) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
+        (isRebalanceRequired, ) = strategyModule.calculateTarget(
+            tick,
+            tickLower,
+            tickUpper,
+            params
+        );
     }
 
-    function _necessarySwapAmountForMint(
+    /// @param priceTargetX96 relation 2^96 * amountInDelta/amountOutDelta
+    function _fitAmountInForTargetSwapPrice(
+        ICLPool pool,
         uint256 priceTargetX96,
-        ICore.TargetPositionInfo memory target,
-        ICore.ManagedPositionInfo memory managedPositionInfo
-    ) private view returns (SwapQuoteParams memory swapQuoteParams) {
-        ICLPool pool = ICLPool(managedPositionInfo.pool);
-        (uint160 sqrtPriceX96, , , , , ) = pool.slot0();
+        ICore.ManagedPositionInfo memory managedPositionInfo,
+        ICore.TargetPositionInfo memory target
+    ) internal view returns (SwapQuoteParams memory swapQuoteParams) {
+        address[2] memory tokens;
+        uint256[2] memory amounts;
+        uint256[2] memory amountsTarget;
 
-        uint160 sqrtPriceX96TargetLower = TickMath.getSqrtRatioAtTick(
-            target.lowerTicks[0]
-        );
-        uint160 sqrtPriceX96TargetUpper = TickMath.getSqrtRatioAtTick(
-            target.upperTicks[0]
+        tokens[0] = pool.token0();
+        tokens[1] = pool.token1();
+        (
+            amounts[0],
+            amounts[1],
+            amountsTarget[0],
+            amountsTarget[1]
+        ) = _getTargetAmounts(pool, managedPositionInfo, target);
+
+        uint256 tokenIdIn = (amountsTarget[0] > amounts[0]) ? 1 : 0;
+        uint256 tokenIdOut = tokenIdIn == 0 ? 1 : 0;
+
+        if (amountsTarget[tokenIdIn] == 0) return swapQuoteParams;
+
+        /// @dev relation between amountTargetOut/amountTargetIn
+        uint256 relationTargetX96 = amountsTarget[tokenIdOut].mulDiv(
+            Q96,
+            amountsTarget[tokenIdIn]
         );
 
-        if (
-            sqrtPriceX96 > sqrtPriceX96TargetLower &&
-            sqrtPriceX96 < sqrtPriceX96TargetUpper
-        ) {
-            return
-                _fitAmountInForTargetSwapPrice(
-                    pool,
-                    priceTargetX96,
-                    sqrtPriceX96TargetLower,
-                    sqrtPriceX96TargetUpper,
-                    managedPositionInfo
-                );
+        /// @dev take price from pool, if given swap price is zero
+        if (priceTargetX96 == 0) {
+            (uint160 sqrtPriceX96, , , , , ) = pool.slot0();
+            priceTargetX96 = uint256(sqrtPriceX96).mulDiv(sqrtPriceX96, Q96);
         }
+
+        /// @dev amountIn = (relationTarget * anountInTotal - anountOutTotal)/(priceTarget + relationTarget)
+        uint256 priceDenominatorX96 = priceTargetX96 + relationTargetX96;
+        swapQuoteParams.amountIn = amounts[tokenIdIn].mulDiv(
+            relationTargetX96,
+            priceDenominatorX96
+        );
+        swapQuoteParams.amountIn -= amounts[tokenIdOut].mulDiv(
+            Q96,
+            priceDenominatorX96
+        );
+
+        swapQuoteParams.tokenIn = tokens[tokenIdIn];
+        swapQuoteParams.tokenOut = tokens[tokenIdOut];
     }
 
     function _getTargetAmounts(
         ICLPool pool,
-        uint160 sqrtPriceX96TargetLower,
-        uint160 sqrtPriceX96TargetUpper,
-        ICore.ManagedPositionInfo memory managedPositionInfo
+        ICore.ManagedPositionInfo memory managedPositionInfo,
+        ICore.TargetPositionInfo memory target
     )
         internal
         view
@@ -172,163 +171,48 @@ contract PulseVeloBotLazy is IPulseVeloBotLazy {
             uint256 amount1Target
         )
     {
-        uint160 sqrtPriceX96Lower;
-        uint160 sqrtPriceX96Upper;
         (uint160 sqrtPriceX96, , , , , ) = pool.slot0();
-        uint128 liquidityTarget;
-        {
-            (
-                ,
-                ,
-                ,
-                ,
-                ,
-                int24 tickLower,
-                int24 tickUpper,
-                uint128 liquidityCurrent,
-                ,
-                ,
-                ,
+        int24 tickLower;
+        int24 tickUpper;
+        uint128 liquidity;
 
-            ) = positionManager.positions(
-                    managedPositionInfo.ammPositionIds[0]
-                );
+        (, , , , , tickLower, tickUpper, liquidity, , , , ) = positionManager
+            .positions(managedPositionInfo.ammPositionIds[0]);
 
-            sqrtPriceX96Lower = TickMath.getSqrtRatioAtTick(tickLower);
-            sqrtPriceX96Upper = TickMath.getSqrtRatioAtTick(tickUpper);
+        uint160 sqrtPricex96Lower = TickMath.getSqrtRatioAtTick(tickLower);
+        uint160 sqrtPricex96Upper = TickMath.getSqrtRatioAtTick(tickUpper);
 
-            uint160 sqrtPricex96WidthTargetPostion = sqrtPriceX96TargetUpper -
-                sqrtPriceX96TargetLower;
-            uint160 sqrtPricex96WidthCurrentPostion = sqrtPriceX96Upper -
-                sqrtPriceX96Lower;
+        /// @dev current amounts for current position
+        (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
+            sqrtPriceX96,
+            sqrtPricex96Lower,
+            sqrtPricex96Upper,
+            liquidity
+        );
 
-            liquidityCurrent = uint128((liquidityCurrent * (D6 + 1)) / D6) + 1;
+        uint160 sqrtPricex96LowerTarget = TickMath.getSqrtRatioAtTick(
+            target.lowerTicks[0]
+        );
+        uint160 sqrtPricex96UpperTarget = TickMath.getSqrtRatioAtTick(
+            target.upperTicks[0]
+        );
 
-            /// @dev fit liquidity due to change of sqrtPrice range
-            liquidityTarget = uint128(
-                FullMath.mulDiv(
-                    uint256(liquidityCurrent),
-                    sqrtPricex96WidthTargetPostion,
-                    sqrtPricex96WidthCurrentPostion
-                )
-            );
-            /// @dev current amounts at position
-            (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
-                sqrtPriceX96,
-                sqrtPriceX96Lower,
-                sqrtPriceX96Upper,
-                liquidityCurrent
-            );
-        }
+        /// @dev fit liquidity due to change of sqrtPrice diff
+        uint128 liquidityTarget = uint128(
+            uint256(liquidity).mulDiv(
+                sqrtPricex96UpperTarget - sqrtPricex96LowerTarget,
+                sqrtPricex96Upper - sqrtPricex96Lower
+            )
+        );
 
-        /// @dev target amounts at position
+        /// @dev current amounts for target position
         (amount0Target, amount1Target) = LiquidityAmounts
             .getAmountsForLiquidity(
                 sqrtPriceX96,
-                sqrtPriceX96TargetLower,
-                sqrtPriceX96TargetUpper,
+                sqrtPricex96LowerTarget,
+                sqrtPricex96UpperTarget,
                 liquidityTarget
             );
-    }
-
-    /// @param priceTargetX96 relation 2^96 * amountInDelta/amountOutDelta
-    function _fitAmountInForTargetSwapPrice(
-        ICLPool pool,
-        uint256 priceTargetX96,
-        uint160 sqrtPriceX96TargetLower,
-        uint160 sqrtPriceX96TargetUpper,
-        ICore.ManagedPositionInfo memory managedPositionInfo
-    ) internal view returns (SwapQuoteParams memory swapQuoteParams) {
-        {
-            address token0 = pool.token0();
-            address token1 = pool.token1();
-            (
-                uint256 amount0,
-                uint256 amount1,
-                uint256 amount0Target,
-                uint256 amount1Target
-            ) = _getTargetAmounts(
-                    pool,
-                    sqrtPriceX96TargetLower,
-                    sqrtPriceX96TargetUpper,
-                    managedPositionInfo
-                );
-
-            /// @dev by default token in is token1, so amount0Target/amount1Target
-            uint256 relationTargetX96 = FullMath.mulDiv(
-                amount0Target,
-                Q96,
-                amount1Target
-            );
-
-
-            if (amount0Target > amount0) {
-                /// @dev swap token1 -> token0, tokenIn is token1
-                swapQuoteParams.tokenIn = token1;
-                swapQuoteParams.tokenOut = token0;
-            } else if (amount1Target > amount1) {
-                /// @dev swap token0 -> token1, tokenIn is token0
-                swapQuoteParams.tokenIn = token0;
-                swapQuoteParams.tokenOut = token1;
-                /// @dev relationTargetX96 invert relation -> amount1Target/amount0Target
-                relationTargetX96 = FullMath.mulDiv(
-                    Q96,
-                    Q96,
-                    relationTargetX96
-                );
-            }
-
-            uint256 anountInTotal;
-
-            if (swapQuoteParams.tokenIn == token1) {
-                anountInTotal = amount1;
-                swapQuoteParams.amountIn = amount1 - amount1Target;
-                swapQuoteParams.amountOut = amount0;
-            }
-            if (swapQuoteParams.tokenIn == token0) {
-                anountInTotal = amount0;
-                swapQuoteParams.amountIn = amount0 - amount0Target;
-                swapQuoteParams.amountOut = amount1;
-            }
-
-            /// @dev if priceTarget is equal to 0 (not defined)
-            if (priceTargetX96 == 0) return swapQuoteParams;
-
-            /// @dev just to save stack space, calculate (priceTarget + relationTarget)
-            priceTargetX96 += relationTargetX96;
-
-            /// @dev amountIn = (relationTarget * anountInTotal - anountOutTotal)/(priceTarget + relationTarget)
-            swapQuoteParams.amountIn = FullMath.mulDiv(
-                anountInTotal,
-                relationTargetX96,
-                priceTargetX96
-            );
-            //swapQuoteParams.errorX96 = relationTargetX96;
-        }
-        swapQuoteParams.amountIn -= FullMath.mulDiv(
-            swapQuoteParams.amountOut,
-            Q96,
-            priceTargetX96
-        );
-
-        /// @dev recalc actual amountOut
-        /* swapQuoteParams.amountOut = FullMath.mulDiv(
-            swapQuoteParams.amountIn,
-            priceTargetX96,
-            Q96
-        );
-        uint256 relationActualX96 = FullMath.mulDiv(
-            swapQuoteParams.amountOut,
-            Q96,
-            swapQuoteParams.amountIn
-        );
-
-        /// @dev calc related errorX96
-        if (relationActualX96 > swapQuoteParams.errorX96){
-            swapQuoteParams.errorX96 = relationActualX96 - swapQuoteParams.errorX96;
-        } else {
-            swapQuoteParams.errorX96 = swapQuoteParams.errorX96 - relationActualX96;
-        } */
     }
 
     function call(
