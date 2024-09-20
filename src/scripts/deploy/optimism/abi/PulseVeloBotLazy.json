@@ -7,7 +7,8 @@
         "type": "address",
         "internalType": "address"
       },
-      { "name": "core_", "type": "address", "internalType": "address" }
+      { "name": "core_", "type": "address", "internalType": "address" },
+      { "name": "fatory_", "type": "address", "internalType": "address" }
     ],
     "stateMutability": "nonpayable"
   },
@@ -125,9 +126,23 @@
   },
   {
     "type": "function",
+    "name": "fatory",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract IVeloDeployFactory"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "necessarySwapAmountForMint",
     "inputs": [
-      { "name": "positionId", "type": "uint256", "internalType": "uint256" }
+      { "name": "pool", "type": "address", "internalType": "address" },
+      { "name": "priceTargetX96", "type": "uint256", "internalType": "uint256" }
     ],
     "outputs": [
       {
@@ -137,7 +152,8 @@
         "components": [
           { "name": "tokenIn", "type": "address", "internalType": "address" },
           { "name": "tokenOut", "type": "address", "internalType": "address" },
-          { "name": "amountIn", "type": "uint256", "internalType": "uint256" }
+          { "name": "amountIn", "type": "uint256", "internalType": "uint256" },
+          { "name": "amountOut", "type": "uint256", "internalType": "uint256" }
         ]
       }
     ],
@@ -147,7 +163,11 @@
     "type": "function",
     "name": "needRebalance",
     "inputs": [
-      { "name": "postionIds", "type": "uint256[]", "internalType": "uint256[]" }
+      {
+        "name": "poolAddress",
+        "type": "address[]",
+        "internalType": "address[]"
+      }
     ],
     "outputs": [
       { "name": "needs", "type": "bool[]", "internalType": "bool[]" }
@@ -158,13 +178,20 @@
     "type": "function",
     "name": "needRebalancePosition",
     "inputs": [
-      {
-        "name": "managedPositionId",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+      { "name": "pool", "type": "address", "internalType": "address" }
     ],
     "outputs": [{ "name": "", "type": "bool", "internalType": "bool" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "poolPositionId",
+    "inputs": [
+      { "name": "pool", "type": "address", "internalType": "address" }
+    ],
+    "outputs": [
+      { "name": "positionId", "type": "uint256", "internalType": "uint256" }
+    ],
     "stateMutability": "view"
   },
   {

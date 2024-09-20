@@ -2,50 +2,68 @@ from dotenv import load_dotenv
 import json
 import os
 import sys
+import time
 import subprocess
 from web3 import Web3
 from odos import Odos, PulseVeloBotLazySwapData
 from eth_account import Account
+from decimal import Decimal, getcontext
 
 load_dotenv()
+getcontext().prec = 50
 
-ON_CHAIN = True
+ON_CHAIN = False
 
-CHAIN_ID = 10
+Q96 = Decimal('79228162514264337593543950336')
+
+MAX_RETRY_REBALANCE = 5
+
+CHAIN_ID = os.environ.get("CHAIN_ID")
 ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
-VELO_BOT_ADDRESS = '0x9D7C0BdbfEbB9a6a0120F1116D53387156D126ba'
-VELO_CORE_ADDRESS = '0x30ce7bB58dd3ea6FbE32645f644462479170e090'
-VELO_DEPLOY_FACTORY_ADDRESS = '0xdca5BC88366A58883f2711708Ade7b1E866ecC83'
+BOT_ADDRESS = '0xe455A694973b4417a2f16bC1c2E857F693F8F2fd' #os.environ.get("BOT_ADDRESS")
+CORE_ADDRESS = '0xd17613D91150a2345eCe9598D055C7197A1f5A71' #os.environ.get("CORE_ADDRESS")
+DEPLOY_FACTORY_ADDRESS = '0x5B1b1aaC71bDca9Ed1dCb2AA357f678584db4029' #os.environ.get("DEPLOY_FACTORY_ADDRESS")
 
 REBALANCE_ACTION_STRING = 'r'
 DISTRIBUTION_REWARD_ACTION_STRING = 'd'
 
 PIPS_DENOMINATOR = 10000
 SLIPPAGE_PIPS = 10 # 10/10000 = 0.1%
+DIFF_STEP = 0.01/100
 
 POOLS = [
-    '0xeBD5311beA1948e1441333976EadCFE5fBda777C',
-    '0x4DC22588Ade05C40338a9D95A6da9dCeE68Bcd60', 
-    '0x478946BcD4a5a22b316470F5486fAfb928C0bA25', 
-    '0x319C0DD36284ac24A6b2beE73929f699b9f48c38', 
-    '0xEE1baC98527a9fDd57fcCf967817215B083cE1F0', 
-    '0xb71Ac980569540cE38195b38369204ff555C80BE', 
-    '0xbF30Ff33CF9C6b0c48702Ff17891293b002DfeA4', 
-    '0x84Ce89B4f6F67E523A81A82f9f2F14D84B726F6B', 
-    '0x2FA71491F8070FA644d97b4782dB5734854c0f6F', 
-    '0x3C01ec09D15D5450FC702DC4353b17Cd2978d8a5', 
-    '0x8Ac2f9daC7a2852D44F3C09634444d533E4C078e', 
+    '0x4e829F8A5213c42535AB84AA40BD4aDCCE9cBa02',
+    '0xaFB62448929664Bfccb0aAe22f232520e765bA88',
+    '0x82321f3BEB69f503380D6B233857d5C43562e2D0',
+    '0xb2cc224c1c9feE385f8ad6a55b4d94E92359DC59',
+    '0x4D69971CCd4A636c403a3C1B00c85e99bB9B5606',
+    '0x9785eF59E2b499fB741674ecf6fAF912Df7b3C1b',
+    '0xE846373C1a92B167b4E9cd5d8E4d6B1Db9E90EC7',
+    '0x861A2922bE165a5Bd41b1E482B49216b465e1B5F',
+    '0x2ae9DF02539887d4EbcE0230168a302d34784c82',
+    '0xdE5Ff829fEF54d1BdEc957D9538A306f0EAD1368',
+    '0x988702fe529a3461ec7Fd09Eea3f962856709FD9',
+    '0x47cA96Ea59C13F72745928887f84C9F52C3D7348',
+    '0xDC7EAd706795eDa3FEDa08Ad519d9452BAdF2C0d',
+    '0x70aCDF2Ad0bf2402C957154f944c19Ef4e1cbAE1',
+    '0x4e962BB3889Bf030368F56810A9c96B83CB3E778',
 ]
 
+
+def contains_substring(file_path, substring):
+    with open(file_path, 'r') as file:
+        file_content = file.read()
+        return substring in file_content
+    
 class Operator:
     def __init__(self):
-        infura_url = os.environ.get("OPTIMISM_RPC")
+        infura_url = os.environ.get("BASE_DRPC")
         self.rpc = Web3(Web3.HTTPProvider(infura_url))
 
         if self.rpc.is_connected():
-            print("Connected to Optimism node")
+            print("Connected to Base node")
         else:
-            print("Connection failed")
+            print(f"Connection failed {infura_url}")
 
         # load core ABI
         with open("./abi/Core.json") as f:
@@ -68,33 +86,26 @@ class Operator:
             self.compounder_abi = json.load(f)
 
         # init bot contract
-        self.bot = self.rpc.eth.contract(address=VELO_BOT_ADDRESS, abi=self.bot_abi)
+        self.bot = self.rpc.eth.contract(address=BOT_ADDRESS, abi=self.bot_abi)
 
         # init core contract
-        self.core = self.rpc.eth.contract(address=VELO_CORE_ADDRESS, abi=self.core_abi)
+        self.core = self.rpc.eth.contract(address=CORE_ADDRESS, abi=self.core_abi)
 
         # init factory contract
-        self.factory = self.rpc.eth.contract(address=VELO_DEPLOY_FACTORY_ADDRESS, abi=self.factory_abi)
+        self.factory = self.rpc.eth.contract(address=DEPLOY_FACTORY_ADDRESS, abi=self.factory_abi)
 
         # init Odos quoter to obtain swap data
-        self.odos = Odos(VELO_BOT_ADDRESS)
+        self.odos = Odos(BOT_ADDRESS)
 
-    """ 
-        takes position ids for pool list
-    """
-    def __get_managed_positions(self):
-        managed_position_ids = []
-        for pool in POOLS:
-            poolToAddresses = self.factory.functions.poolToAddresses(pool).call()
-            print(pool, "lpWrapperAddres", poolToAddresses[1], "farmAddress", poolToAddresses[0])
-            lpWrapperAddress = poolToAddresses[1]
-            if lpWrapperAddress != ZERO_ADDRESS:
-                lpWrapper = self.rpc.eth.contract(address=lpWrapperAddress, abi=self.lpWrapper_abi)
-                position_id = lpWrapper.functions.positionId().call()
-                print("lpWrapperAddres", lpWrapperAddress, "position_id", position_id)
-                managed_position_ids.append(position_id)
-
-        return managed_position_ids
+    def __get_swap_data(self, swapInfo) -> PulseVeloBotLazySwapData:
+        tokenIn = swapInfo[0]
+        tokenOut = swapInfo[1]
+        amountIn = swapInfo[2]
+        quote = self.odos.quote(CHAIN_ID, tokenIn, tokenOut, amountIn)
+        if quote.path_id == '':
+            print(f"odos qoute {quote} error at input {swapInfo}")
+        # swap specific swap data including 'to' and 'callData'
+        return self.odos.swap(quote.path_id)
 
     """ 
         1. method asks bool array of positions that should be rebalanced
@@ -105,58 +116,62 @@ class Operator:
 
         print("Start rebalance action")
 
-        # retrive ids of actually managed positions
-        managed_position_ids = self.__get_managed_positions()
-        print(managed_position_ids)
+        for pool in POOLS:
+            needRebalance = self.bot.functions.needRebalancePosition(pool).call()
 
-        # obtain desired swap amount to have ability to mint positions
-        needRebalances = self.bot.functions.needRebalance(managed_position_ids).call()
-        print("needRebalances", needRebalances)
-
-        for i, needRebalance in enumerate(needRebalances):
             pulseVeloBotLazySwapData = None
+            result = False
+            tries = 0
+
+            print(f"pool {pool} needs rebalance: {needRebalance}")
             if needRebalance:
-                swapInfo = self.bot.functions.necessarySwapAmountForMint(managed_position_ids[i]).call()
+                swapInfo = self.bot.functions.necessarySwapAmountForMint(pool, 0).call()
                 tokenIn = swapInfo[0]
                 tokenOut = swapInfo[1]
                 amountIn = swapInfo[2]
-                print(managed_position_ids[i], "swapInfo", swapInfo)
-                if tokenIn != ZERO_ADDRESS and tokenOut != ZERO_ADDRESS and amountIn > 0:
-                    try:
-                        # quote shallow swap data
-                        quote = self.odos.quote(CHAIN_ID, tokenIn, tokenOut, amountIn)
-                        if quote.path_id == '':
-                            raise(BaseException(f"odos qoute {quote} error at input {swapInfo}"))
-                        # swap specific swap data including 'to' and 'callData'
-                        swapData = self.odos.swap(quote.path_id)
-                        expectedAmountWithSlippage = int(swapData[1].expectedAmount)
-                        
-                        expectedAmountWithSlippage = int((PIPS_DENOMINATOR - SLIPPAGE_PIPS)*expectedAmountWithSlippage/PIPS_DENOMINATOR)
+                print(pool, "swapInfo", swapInfo)
+
+                while not result and tries <= MAX_RETRY_REBALANCE:
+                    if tokenIn != ZERO_ADDRESS and tokenOut != ZERO_ADDRESS and amountIn > 0:
+                        try:
+                            swapData = self.__get_swap_data(swapInfo)
+                            expectedAmountOut = int(swapData[1].expectedAmount)
+
+                            priceX96 = (Q96 * Decimal(expectedAmountOut))/Decimal(amountIn)
+
+                            swapInfo = self.bot.functions.necessarySwapAmountForMint(pool, int(priceX96)).call()
+                            print(pool, "swapInfo", swapInfo)
+
+                            swapData = self.__get_swap_data(swapInfo)
+                            amountIn = swapInfo[2]
+
+                            pulseVeloBotLazySwapData = PulseVeloBotLazySwapData(
+                                    pool=pool,
+                                    tokenIn=tokenIn, 
+                                    tokenOut=tokenOut, 
+                                    amountIn=amountIn, 
+                                    expectedAmountOut=expectedAmountOut,
+                                    router=swapData[1].to, 
+                                    callData=swapData[1].data)
+
+                            print(pulseVeloBotLazySwapData)
+                        except Exception as e:
+                            print("error during quoting", e)
+                            continue
+                        # run solidity rebalance script that reads swap data and do rebalance on-chain
+                        result = self.__runForgeScript(pulseVeloBotLazySwapData)
+
+                    else:
                         pulseVeloBotLazySwapData = PulseVeloBotLazySwapData(
-                                positionId=managed_position_ids[i],
-                                tokenIn=tokenIn, 
-                                tokenOut=tokenOut, 
-                                amountIn=amountIn, 
-                                expectedAmountOut=expectedAmountWithSlippage,
-                                router=swapData[1].to, 
-                                callData=swapData[1].data)
-
-                        print(pulseVeloBotLazySwapData)
-                    except Exception as e:
-                        print("error during quoting", e)
-                        continue
-                else:
-                    pulseVeloBotLazySwapData = PulseVeloBotLazySwapData(
-                            positionId=managed_position_ids[i],
-                            tokenIn=ZERO_ADDRESS, 
-                            tokenOut=ZERO_ADDRESS, 
-                            amountIn=0,
-                            expectedAmountOut=0,
-                            router=ZERO_ADDRESS, 
-                            callData='0x')
-
-                # run solidity rebalance script that reads swap data and do rebalance on-chain
-                self.__runForgeScript(pulseVeloBotLazySwapData)
+                                pool=pool,
+                                tokenIn=ZERO_ADDRESS, 
+                                tokenOut=ZERO_ADDRESS, 
+                                amountIn=0,
+                                expectedAmountOut=0,
+                                router=ZERO_ADDRESS, 
+                                callData='0x')
+                        
+                    tries += 1
 
     """
         Make distribution of rewards
@@ -192,7 +207,7 @@ class Operator:
             return
 
         try:
-            transaction = self.compounder.functions.compound(VELO_DEPLOY_FACTORY_ADDRESS, POOLS).build_transaction({
+            transaction = self.compounder.functions.compound(DEPLOY_FACTORY_ADDRESS, POOLS).build_transaction({
                 'from': operator_address,
                 'nonce': self.rpc.eth.get_transaction_count(operator_address),
                 'gasPrice': self.rpc.eth.gas_price,
@@ -219,30 +234,35 @@ class Operator:
         logs are saved to debug and check 
     """
     def __runForgeScript(self, pulseVeloBotLazySwapData):
- 
-        with open("../../bots/pulseVeloBotLazySwapData.json", 'w') as file:
-            json.dump(pulseVeloBotLazySwapData.toDict(), file, indent=4)
+        try:
+            with open("../../bots/pulseVeloBotLazySwapData.json", 'w') as file:
+                json.dump(pulseVeloBotLazySwapData.toDict(), file, indent=4)
 
-        subfolder = "logs"
-        os.makedirs(subfolder, exist_ok=True)
-        log_path = os.path.join(subfolder, str(pulseVeloBotLazySwapData.positionId) + ".log")
+            subfolder = "logs"
+            os.makedirs(subfolder, exist_ok=True)
+            log_path = os.path.join(subfolder, str(pulseVeloBotLazySwapData.pool) + ".log")
 
-        # test run on fork
-        command = [
-            'forge', 'script', '../../bots/PulseVeloBotLazy.s.sol',
-            '--rpc-url', os.environ.get("OPTIMISM_RPC"),
-            '-vvvvv'
-        ]
+            # test run on fork
+            command = [
+                'forge', 'script', '../../bots/PulseVeloBotLazy.s.sol',
+                '--rpc-url', os.environ.get("BASE_DRPC"),
+                '-vvvvv'
+            ]
 
-        # on-chain run
-        if ON_CHAIN:
-            command.append('--broadcast')
-            command.append('--slow')
+            # on-chain run
+            if ON_CHAIN:
+                command.append('--broadcast')
+                command.append('--slow')
 
-        with open(log_path, 'w') as log_file:
-            result = subprocess.run(command, stdout=log_file, text=True)
-        
-        print(f"see the transaction logs at {subfolder} folder")
+            with open(log_path, 'w') as log_file:
+                result = subprocess.run(command, stdout=log_file, text=True)          
+
+            print(f"see the transaction logs at {subfolder} folder")
+
+            return contains_substring(log_path, "rebalance is successfull for")
+        except Exception as e:
+            print("error during running forge", e)
+            return False
 
     def action(self):
         
@@ -260,5 +280,8 @@ class Operator:
         else:
             print("Error: undefined action")
 
-bot = Operator()
-bot.action()
+while True:
+    bot = Operator()
+    bot.action()
+    print("Sleep for an hour")
+    time.sleep(3600)

@@ -96,7 +96,7 @@ class PulseVeloBotLazySwapData:
     amountIn: int
     callData: str
     expectedAmountOut: int
-    positionId: int
+    pool: str
     router: str
     tokenIn: str
     tokenOut: str
@@ -121,7 +121,7 @@ class Odos:
             outputTokens=[OutputToken(proportion=1, tokenAddress=token_out)],
             referralCode=0,
             slippageLimitPercent=0.1,
-            sourceBlacklist=["Velodrome Slipstream"],
+            sourceBlacklist=[],#["Velodrome Slipstream"],
             sourceWhitelist=[],
             userAddr=self.wallet,
         )
@@ -135,6 +135,7 @@ class Odos:
             amount_out = int(response_obj.outAmounts[0])
             return QuoteResult(router="OdosRouter", path_id=response_obj.pathId, amount_out=amount_out, error=None)
         except Exception as e:
+            print(quote_data)
             return QuoteResult(router="", path_id="", amount_out=0, error=e)
 
     def swap(self, path_id: str):

@@ -23,8 +23,8 @@ import "src/helpers/CreateStrategyHelper.sol";
 */
 
 /// @dev deployed addresses
-address constant DEPLOY_FACTORY_ADDRESS = 0x5D875939AA55565AE51360Fa1A71243bED06520A;
-address constant CREATE_STRATEGY_HELPER_ADDRESS = 0x6Ca32b64F98f3292C53593a3aA3Aa913f23f56a9;
+address constant DEPLOY_FACTORY_ADDRESS = 0x5B1b1aaC71bDca9Ed1dCb2AA357f678584db4029;
+address constant CREATE_STRATEGY_HELPER_ADDRESS = 0xfEcdcCA747Ad30b2f848b4af9BdC60a364F48410;
 
 /// @dev immutable addresses at the deployment
 address constant VELO_FACTORY_ADDRESS = 0x5e7BB104d84c7CB9B682AaC2F3d509f5F406809A;
@@ -234,14 +234,13 @@ contract DeployStrategy is Script, Test {
         CreateStrategyHelper.PoolParameter[]
             memory parameters = setPoolParameters();
 
-        deployStrategy(
-            DEPLOY_FACTORY_ADDRESS,
-            CREATE_STRATEGY_HELPER_ADDRESS,
-            0
-        );
-        //for (uint i = 0; i < parameters.length; i++) {
-        //    deployStrategy(DEPLOY_FACTORY_ADDRESS, CREATE_STRATEGY_HELPER_ADDRESS, i);
-        //}
+        for (uint i = 0; i < parameters.length; i++) {
+            deployStrategy(
+                DEPLOY_FACTORY_ADDRESS,
+                CREATE_STRATEGY_HELPER_ADDRESS,
+                i
+            );
+        }
     }
 
     function deployStrategy(
@@ -293,20 +292,16 @@ contract DeployStrategy is Script, Test {
 
         (
             IVeloDeployFactory.PoolAddresses memory poolAddresses,
-            uint256 tokenId
         ) = createStrategyHelper.createStrategy(parameters[poolId]);
 
         print(poolAddresses, address(parameters[poolId].pool));
     }
 
-
-    function print(IVeloDeployFactory.PoolAddresses memory poolAddresses, address pool) internal{
-
-        console2.log(
-            " =======     POOL ",
-            address(pool),
-            "    ========"
-        );
+    function print(
+        IVeloDeployFactory.PoolAddresses memory poolAddresses,
+        address pool
+    ) internal view {
+        console2.log(" =======     POOL ", address(pool), "    ========");
 
         console2.log("        lpWrapper:", poolAddresses.lpWrapper);
         console2.log(
@@ -331,6 +326,5 @@ contract DeployStrategy is Script, Test {
             console2.logBytes(createCalldata);
         }
         console2.log("    synthetixFarm:", poolAddresses.synthetixFarm);
-
     }
 }

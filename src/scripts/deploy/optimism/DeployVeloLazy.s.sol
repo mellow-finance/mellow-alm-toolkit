@@ -67,7 +67,7 @@ contract DeployVeloLazy is Script, Test {
         console.log("Core operator", CORE_OPERATOR);
         console.log("Deploy factory operator", DEPLOYER);
 
-        //   vm.startBroadcast(deployerPrivateKey);
+        vm.startBroadcast(deployerPrivateKey);
 
         if (STAGE_DEPLOY == 1) {
             //-------------------------------------------------------------------------------
@@ -118,13 +118,6 @@ contract DeployVeloLazy is Script, Test {
             core.setOperatorFlag(true);
 
             //-------------------------------------------------------------------------------
-            PulseVeloBotLazy pulseVeloBot = new PulseVeloBotLazy(
-                address(NONFUNGIBLE_POSITION_MANAGER),
-                address(core)
-            );
-            console2.log("PulseVeloBotLazy", address(pulseVeloBot));
-
-            //-------------------------------------------------------------------------------
             compounder = new Compounder(DEPLOYER);
             console2.log("Compounder", address(compounder));
 
@@ -149,6 +142,14 @@ contract DeployVeloLazy is Script, Test {
             );
 
             //-------------------------------------------------------------------------------
+            PulseVeloBotLazy pulseVeloBot = new PulseVeloBotLazy(
+                address(NONFUNGIBLE_POSITION_MANAGER),
+                address(core),
+                address(deployFactory)
+            );
+            console2.log("PulseVeloBotLazy", address(pulseVeloBot));
+
+            //-------------------------------------------------------------------------------
             createStrategyHelper = new CreateStrategyHelper(
                 address(deployFactory),
                 VELO_DEPLOY_FACTORY_OPERATOR
@@ -166,7 +167,7 @@ contract DeployVeloLazy is Script, Test {
             _setRoles();
         }
 
-        //  vm.stopBroadcast();
+        vm.stopBroadcast();
     }
 
     function _setRoles() private {

@@ -10,13 +10,15 @@ interface IPulseVeloBotLazy is IRebalanceCallback {
         address tokenIn;
         address tokenOut;
         uint256 amountIn;
+        uint256 amountOut;
+        uint256 errorX96;
     }
 
     struct SwapParams {
         uint256 amountIn;
         bytes callData;
         uint256 expectedAmountOut;
-        uint256 positionId;
+        address pool;
         address router;
         address tokenIn;
         address tokenOut;

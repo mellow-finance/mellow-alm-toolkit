@@ -18,10 +18,10 @@ contract PulseVeloBot is Script {
     using SafeERC20 for IERC20;
 
     ICore public immutable core =
-        ICore(0x30ce7bB58dd3ea6FbE32645f644462479170e090);
+        ICore(0xd17613D91150a2345eCe9598D055C7197A1f5A71);
 
     address public pulseVeloBotAddress =
-        0x9D7C0BdbfEbB9a6a0120F1116D53387156D126ba;
+        0xe455A694973b4417a2f16bC1c2E857F693F8F2fd;
     PulseVeloBotLazy public bot = PulseVeloBotLazy(pulseVeloBotAddress);
 
     uint256 immutable operatorPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
@@ -32,9 +32,9 @@ contract PulseVeloBot is Script {
         vm.startBroadcast(operatorPrivateKey);
 
         IPulseVeloBotLazy.SwapParams memory swapParam = _readTransaction();
-        uint256 managedPositionId = swapParam.positionId;
+        address pool = swapParam.pool;
 
-        bool needRebalance = bot.needRebalancePosition(managedPositionId);
+        bool needRebalance = bot.needRebalancePosition(pool);
         if (needRebalance) {
             console2.log(
                 swapParam.router,
@@ -44,7 +44,7 @@ contract PulseVeloBot is Script {
             );
 
             uint256[] memory ids = new uint256[](1);
-            ids[0] = managedPositionId;
+            ids[0] = bot.poolPositionId(pool);
             IPulseVeloBotLazy.SwapParams[]
                 memory swapParams = new IPulseVeloBotLazy.SwapParams[](0);
             if (
@@ -65,12 +65,9 @@ contract PulseVeloBot is Script {
                     })
                 )
             {
-                console2.log(
-                    "rebalance is successfull for ",
-                    managedPositionId
-                );
+                console2.log("rebalance is successfull for ", pool);
             } catch {
-                console2.log("rebalance is failed for ", managedPositionId);
+                console2.log("rebalance is failed for ", pool);
             }
         }
 
