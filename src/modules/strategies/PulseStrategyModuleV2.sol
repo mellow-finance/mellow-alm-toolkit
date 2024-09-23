@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: BSL-1.1
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts/utils/math/Math.sol";
+
 import "../../interfaces/modules/strategies/IPulseStrategyModuleV2.sol";
-import "src/libraries/external/TickMath.sol";
+import "../../libraries/external/TickMath.sol";
 
 contract PulseStrategyModule is IPulseStrategyModuleV2 {
     /// @inheritdoc IPulseStrategyModuleV2
@@ -59,7 +61,42 @@ contract PulseStrategyModule is IPulseStrategyModuleV2 {
             );
     }
 
+    function _calculatePenalty(
+        uint160 sqrtPriceX96,
+        uint160 sqrtPriceX96Lower,
+        uint160 sqrtPriceX96Upper
+    ) private pure returns (uint256) {
+        if (
+            sqrtPriceX96 < sqrtPriceX96Lower || sqrtPriceX96 > sqrtPriceX96Upper
+        ) return type(uint256).max; // inf
+
+        return
+            Math.max(
+                Math.mulDiv(sqrtPriceX96, Q96, sqrtPriceX96Lower),
+                Math.mulDiv(sqrtPriceX96Upper, Q96, sqrtPriceX96)
+            );
+    }
+
+    /*
+        width = 2
+        tickSpacing = 1
+        spotTick = 1.9999 
+        tick = 1
+        sqrtPrice = getSqrtRatioAtTick(1.9999)
+
+        prev result:
+        [0, 2]
+
+        new result:
+        [1, 3]
+
+        // Max(spotTick - tickLower, tickUpper - spotTick)
+        //  |
+        //  V
+        // Max(sqrtPrice / sqrtPriceLower, sqrtPriceUpper / sqrtPrice)
+    */
     function _centeredPosition(
+        uint160 sqrtPriceX96,
         int24 tick,
         int24 positionWidth,
         int24 tickSpacing
@@ -69,14 +106,30 @@ contract PulseStrategyModule is IPulseStrategyModuleV2 {
         if (remainder < 0) remainder += tickSpacing;
         targetTickLower -= remainder;
         targetTickUpper = targetTickLower + positionWidth;
-        if (
-            targetTickUpper < tick ||
-            _max(tick - targetTickLower, targetTickUpper - tick) >
-            _max(
-                tick - (targetTickLower + tickSpacing),
-                (targetTickUpper + tickSpacing) - tick
-            )
-        ) {
+
+        uint256 penalty = _calculatePenalty(
+            sqrtPriceX96,
+            TickMath.getSqrtRatioAtTick(targetTickLower),
+            TickMath.getSqrtRatioAtTick(targetTickUpper)
+        );
+        uint256 leftPenalty = _calculatePenalty(
+            sqrtPriceX96,
+            TickMath.getSqrtRatioAtTick(targetTickLower - tickSpacing),
+            TickMath.getSqrtRatioAtTick(targetTickUpper - tickSpacing)
+        );
+        uint256 rightPenalty = _calculatePenalty(
+            sqrtPriceX96,
+            TickMath.getSqrtRatioAtTick(targetTickLower + tickSpacing),
+            TickMath.getSqrtRatioAtTick(targetTickUpper + tickSpacing)
+        );
+
+        if (penalty <= leftPenalty && penalty <= rightPenalty)
+            return (targetTickLower, targetTickUpper);
+
+        if (leftPenalty <= rightPenalty) {
+            targetTickLower -= tickSpacing;
+            targetTickUpper -= tickSpacing;
+        } else {
             targetTickLower += tickSpacing;
             targetTickUpper += tickSpacing;
         }
@@ -90,7 +143,13 @@ contract PulseStrategyModule is IPulseStrategyModuleV2 {
         StrategyParams memory params
     ) private pure returns (int24 targetTickLower, int24 targetTickUpper) {
         if (params.width != tickUpper - tickLower)
-            return _centeredPosition(tick, params.width, params.tickSpacing);
+            return
+                _centeredPosition(
+                    sqrtPriceX96,
+                    tick,
+                    params.width,
+                    params.tickSpacing
+                );
 
         if (
             sqrtPriceX96 >=
@@ -100,32 +159,40 @@ contract PulseStrategyModule is IPulseStrategyModuleV2 {
         ) return (tickLower, tickUpper);
 
         if (params.strategyType == StrategyType.Original)
-            return _centeredPosition(tick, params.width, params.tickSpacing);
+            return
+                _centeredPosition(
+                    sqrtPriceX96,
+                    tick,
+                    params.width,
+                    params.tickSpacing
+                );
+
+        uint160 sqrtPriceX96Lower = TickMath.getSqrtRatioAtTick(tickLower);
+        uint160 sqrtPriceX96Upper = TickMath.getSqrtRatioAtTick(tickUpper);
 
         if (
             params.strategyType == StrategyType.LazyDescending &&
-            tick >= tickLower
+            sqrtPriceX96 >= sqrtPriceX96Lower
         ) return (tickLower, tickUpper);
 
         if (
             params.strategyType == StrategyType.LazyAscending &&
-            tick <= tickUpper
+            sqrtPriceX96 <= sqrtPriceX96Upper
         ) return (tickLower, tickUpper);
 
-        /*  
-            [== sqrtPriceX96 in tick N ==][== sqrtPriceX96 in tick N+1 ==]
-            ^                             ^
-            tick N                        tick N+1
-        */
-        uint160 sqrtPriceX96Lower = TickMath.getSqrtRatioAtTick(tickLower);
-        uint160 sqrtPriceX96Upper = TickMath.getSqrtRatioAtTick(tickUpper);
-
         /// @dev round floor, it is a lower tick of active range multiple of tickSpacing
-        targetTickLower = (tick / params.tickSpacing) * params.tickSpacing;
+        int24 remainder = tick % params.tickSpacing;
+        if (remainder < 0) {
+            remainder = tickSpacing - remainder;
+        }
+        targetTickLower = tick - remainder;
+
         if (sqrtPriceX96 > sqrtPriceX96Upper) {
             targetTickLower -= params.width;
         } else if (sqrtPriceX96 < sqrtPriceX96Lower) {
-            targetTickLower += params.tickSpacing;
+            if (TickMath.getSqrtRatioAtTick(tick) != sqrtPriceX96) {
+                targetTickLower += params.tickSpacing;
+            }
         }
         targetTickUpper = targetTickLower + params.width;
     }
