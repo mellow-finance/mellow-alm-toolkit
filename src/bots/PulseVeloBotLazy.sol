@@ -34,7 +34,7 @@ contract PulseVeloBotLazy is IPulseVeloBotLazy {
 
     /// @dev returns quotes for swap
     /// @param pool address of Pool
-    /// @param priceTargetX96 actual price of exchange token0<->token1: 2^96 * amount0/amount1
+    /// @param priceTargetX96 actual price of exchange token0<->token1: 2^96 * amountOut/amountIn
     /// @return swapQuoteParams contains ecessery amountIn amd amountOut to swap for desired target position
     function necessarySwapAmountForMint(
         address pool,
@@ -42,8 +42,10 @@ contract PulseVeloBotLazy is IPulseVeloBotLazy {
     ) external view returns (SwapQuoteParams memory swapQuoteParams) {
         if (!needRebalancePosition(pool)) return swapQuoteParams;
 
-        ICore.ManagedPositionInfo memory managedPositionInfo = core
-            .managedPositionAt(poolPositionId(pool));
+        (
+            ,
+            ICore.ManagedPositionInfo memory managedPositionInfo
+        ) = poolManagedPositionInfo(pool);
 
         if (managedPositionInfo.ammPositionIds.length == 0)
             return swapQuoteParams;
@@ -62,7 +64,6 @@ contract PulseVeloBotLazy is IPulseVeloBotLazy {
         require(target.upperTicks.length == 1, "upperTicks lenght");
 
         swapQuoteParams = _fitAmountInForTargetSwapPrice(
-            ICLPool(pool),
             priceTargetX96,
             managedPositionInfo,
             target
@@ -70,22 +71,32 @@ contract PulseVeloBotLazy is IPulseVeloBotLazy {
     }
 
     /// @dev return current positionId for @param pool
-    function poolPositionId(
+    function poolManagedPositionInfo(
         address pool
-    ) public view returns (uint256 positionId) {
+    )
+        public
+        view
+        returns (
+            uint256 positionId,
+            ICore.ManagedPositionInfo memory managedPositionInfo
+        )
+    {
         IVeloDeployFactory.PoolAddresses memory poolAddresses = fatory
             .poolToAddresses(pool);
         ILpWrapper lpWrapper = ILpWrapper(payable(poolAddresses.lpWrapper));
+
         positionId = lpWrapper.positionId();
+        managedPositionInfo = core.managedPositionAt(positionId);
     }
 
-    /// @dev returns flags, true if rebalance is necessery
+    /// @dev returns flags, true if rebalance is necessery for @param pool
     function needRebalancePosition(
         address pool
     ) public view returns (bool isRebalanceRequired) {
-        uint256 positionId = poolPositionId(pool);
-        ICore.ManagedPositionInfo memory managedPositionInfo = core
-            .managedPositionAt(positionId);
+        (
+            ,
+            ICore.ManagedPositionInfo memory managedPositionInfo
+        ) = poolManagedPositionInfo(pool);
 
         uint256 tokenId = managedPositionInfo.ammPositionIds[0];
         (, , , , , int24 tickLower, int24 tickUpper, , , , , ) = positionManager
@@ -105,40 +116,39 @@ contract PulseVeloBotLazy is IPulseVeloBotLazy {
         );
     }
 
-    /// @param priceTargetX96 relation 2^96 * amountInDelta/amountOutDelta
+    /**
+     * @param priceTargetX96 relation 2^96 * amountOut/amountIn
+     * @param managedPositionInfo struct with current managed position info
+     * @param target struct with tagret position info
+     */
     function _fitAmountInForTargetSwapPrice(
-        ICLPool pool,
         uint256 priceTargetX96,
         ICore.ManagedPositionInfo memory managedPositionInfo,
         ICore.TargetPositionInfo memory target
     ) internal view returns (SwapQuoteParams memory swapQuoteParams) {
         address[2] memory tokens;
         uint256[2] memory amounts;
-        uint256[2] memory amountsTarget;
+        uint256 tokenIdIn;
+        uint256 relationTargetX96;
 
+        ICLPool pool = ICLPool(managedPositionInfo.pool);
         tokens[0] = pool.token0();
         tokens[1] = pool.token1();
+        (uint160 sqrtPriceX96, , , , , ) = pool.slot0();
+
         (
             amounts[0],
             amounts[1],
-            amountsTarget[0],
-            amountsTarget[1]
-        ) = _getTargetAmounts(pool, managedPositionInfo, target);
+            tokenIdIn,
+            relationTargetX96
+        ) = _getTargetAmounts(sqrtPriceX96, managedPositionInfo, target);
 
-        uint256 tokenIdIn = (amountsTarget[0] > amounts[0]) ? 1 : 0;
+        if (relationTargetX96 == 0) return swapQuoteParams;
+
         uint256 tokenIdOut = tokenIdIn == 0 ? 1 : 0;
-
-        if (amountsTarget[tokenIdIn] == 0) return swapQuoteParams;
-
-        /// @dev relation between amountTargetOut/amountTargetIn
-        uint256 relationTargetX96 = amountsTarget[tokenIdOut].mulDiv(
-            Q96,
-            amountsTarget[tokenIdIn]
-        );
 
         /// @dev take price from pool, if given swap price is zero
         if (priceTargetX96 == 0) {
-            (uint160 sqrtPriceX96, , , , , ) = pool.slot0();
             priceTargetX96 = uint256(sqrtPriceX96).mulDiv(sqrtPriceX96, Q96);
         }
 
@@ -156,9 +166,18 @@ contract PulseVeloBotLazy is IPulseVeloBotLazy {
         swapQuoteParams.tokenIn = tokens[tokenIdIn];
         swapQuoteParams.tokenOut = tokens[tokenIdOut];
     }
-
+    /**
+     *
+     * @param sqrtPriceX96 current sqrtPriceX96 at pool
+     * @param managedPositionInfo struct with current managed position info
+     * @param target struct with tagret position info
+     * @return amount0 amount of token0 in current managed position
+     * @return amount1 amount of token1 in current managed position
+     * @return tokenIdIn index of input for swap token
+     * @return relationTargetX96 relation between amount in target position: amountTargetOut/amountTargetIn
+     */
     function _getTargetAmounts(
-        ICLPool pool,
+        uint160 sqrtPriceX96,
         ICore.ManagedPositionInfo memory managedPositionInfo,
         ICore.TargetPositionInfo memory target
     )
@@ -167,11 +186,10 @@ contract PulseVeloBotLazy is IPulseVeloBotLazy {
         returns (
             uint256 amount0,
             uint256 amount1,
-            uint256 amount0Target,
-            uint256 amount1Target
+            uint256 tokenIdIn,
+            uint256 relationTargetX96
         )
     {
-        (uint160 sqrtPriceX96, , , , , ) = pool.slot0();
         int24 tickLower;
         int24 tickUpper;
         uint128 liquidity;
@@ -179,40 +197,45 @@ contract PulseVeloBotLazy is IPulseVeloBotLazy {
         (, , , , , tickLower, tickUpper, liquidity, , , , ) = positionManager
             .positions(managedPositionInfo.ammPositionIds[0]);
 
-        uint160 sqrtPricex96Lower = TickMath.getSqrtRatioAtTick(tickLower);
-        uint160 sqrtPricex96Upper = TickMath.getSqrtRatioAtTick(tickUpper);
+        {
+            uint160 sqrtPricex96Lower = TickMath.getSqrtRatioAtTick(tickLower);
+            uint160 sqrtPricex96Upper = TickMath.getSqrtRatioAtTick(tickUpper);
 
-        /// @dev current amounts for current position
-        (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
-            sqrtPriceX96,
-            sqrtPricex96Lower,
-            sqrtPricex96Upper,
-            liquidity
-        );
+            /// @dev current amounts for current position
+            (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
+                sqrtPriceX96,
+                sqrtPricex96Lower,
+                sqrtPricex96Upper,
+                liquidity
+            );
 
-        uint160 sqrtPricex96LowerTarget = TickMath.getSqrtRatioAtTick(
-            target.lowerTicks[0]
-        );
-        uint160 sqrtPricex96UpperTarget = TickMath.getSqrtRatioAtTick(
-            target.upperTicks[0]
-        );
+            /// @dev check if position is active
+            if (
+                sqrtPriceX96 <= sqrtPricex96Upper &&
+                sqrtPriceX96 >= sqrtPricex96Lower
+            ) {
+                return (amount0, amount1, 0, 0);
+            }
 
-        /// @dev fit liquidity due to change of sqrtPrice diff
-        uint128 liquidityTarget = uint128(
-            uint256(liquidity).mulDiv(
-                sqrtPricex96UpperTarget - sqrtPricex96LowerTarget,
-                sqrtPricex96Upper - sqrtPricex96Lower
-            )
-        );
+            /// @dev index of input token for swap
+            tokenIdIn = sqrtPriceX96 > sqrtPricex96Upper ? 1 : 0;
+        }
 
         /// @dev current amounts for target position
-        (amount0Target, amount1Target) = LiquidityAmounts
+        (uint256 amount0Target, uint256 amount1Target) = LiquidityAmounts
             .getAmountsForLiquidity(
                 sqrtPriceX96,
-                sqrtPricex96LowerTarget,
-                sqrtPricex96UpperTarget,
-                liquidityTarget
+                TickMath.getSqrtRatioAtTick(target.lowerTicks[0]),
+                TickMath.getSqrtRatioAtTick(target.upperTicks[0]),
+                uint128(Q96)
             );
+
+        /// @dev relation between amountTargetOut/amountTargetIn
+        if (tokenIdIn == 0) {
+            relationTargetX96 = amount1Target.mulDiv(Q96, amount0Target);
+        } else {
+            relationTargetX96 = amount0Target.mulDiv(Q96, amount1Target);
+        }
     }
 
     function call(

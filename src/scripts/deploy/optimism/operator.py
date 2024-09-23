@@ -20,7 +20,7 @@ MAX_RETRY_REBALANCE = 5
 
 CHAIN_ID = os.environ.get("CHAIN_ID")
 ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
-BOT_ADDRESS = '0xba5f68d520c8bdf32726e70c7E19f96B69958047' #os.environ.get("BOT_ADDRESS")
+BOT_ADDRESS = '0xa809DA0D3fa492A75BA1c8b11601A382a43457cC' #os.environ.get("BOT_ADDRESS")
 CORE_ADDRESS = '0xd17613D91150a2345eCe9598D055C7197A1f5A71' #os.environ.get("CORE_ADDRESS")
 DEPLOY_FACTORY_ADDRESS = '0x5B1b1aaC71bDca9Ed1dCb2AA357f678584db4029' #os.environ.get("DEPLOY_FACTORY_ADDRESS")
 
@@ -65,21 +65,13 @@ class Operator:
         else:
             print(f"Connection failed {infura_url}")
 
-        # load core ABI
-        with open("./abi/Core.json") as f:
-            self.core_abi = json.load(f)
-
         # load bot ABI
         with open("./abi/PulseVeloBotLazy.json") as f:
             self.bot_abi = json.load(f)
 
-        # load bot ABI
+        # load factory ABI
         with open("./abi/VeloDeployFactory.json") as f:
             self.factory_abi = json.load(f)
-
-        # load bot ABI
-        with open("./abi/LpWrapper.json") as f:
-            self.lpWrapper_abi = json.load(f)
 
         # load compounder ABI
         with open("./abi/Compounder.json") as f:
@@ -87,9 +79,6 @@ class Operator:
 
         # init bot contract
         self.bot = self.rpc.eth.contract(address=BOT_ADDRESS, abi=self.bot_abi)
-
-        # init core contract
-        self.core = self.rpc.eth.contract(address=CORE_ADDRESS, abi=self.core_abi)
 
         # init factory contract
         self.factory = self.rpc.eth.contract(address=DEPLOY_FACTORY_ADDRESS, abi=self.factory_abi)
@@ -158,8 +147,6 @@ class Operator:
                         except Exception as e:
                             print("error during quoting", e)
                             continue
-                        # run solidity rebalance script that reads swap data and do rebalance on-chain
-                        result = self.__runForgeScript(pulseVeloBotLazySwapData)
 
                     else:
                         pulseVeloBotLazySwapData = PulseVeloBotLazySwapData(
@@ -171,6 +158,9 @@ class Operator:
                                 router=ZERO_ADDRESS, 
                                 callData='0x')
                         
+                    # run solidity rebalance script that reads swap data and do rebalance on-chain
+                    result = self.__runForgeScript(pulseVeloBotLazySwapData)
+
                     tries += 1
 
     """

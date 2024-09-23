@@ -21,7 +21,7 @@ contract PulseVeloBot is Script {
         ICore(0xd17613D91150a2345eCe9598D055C7197A1f5A71);
 
     address public pulseVeloBotAddress =
-        0xba5f68d520c8bdf32726e70c7E19f96B69958047;
+        0xa809DA0D3fa492A75BA1c8b11601A382a43457cC;
     PulseVeloBotLazy public bot = PulseVeloBotLazy(pulseVeloBotAddress);
 
     uint256 immutable operatorPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
@@ -44,7 +44,7 @@ contract PulseVeloBot is Script {
             );
 
             uint256[] memory ids = new uint256[](1);
-            ids[0] = bot.poolPositionId(pool);
+            (ids[0], ) = bot.poolManagedPositionInfo(pool);
             IPulseVeloBotLazy.SwapParams[]
                 memory swapParams = new IPulseVeloBotLazy.SwapParams[](0);
             if (
