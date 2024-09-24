@@ -179,11 +179,15 @@ contract PulseStrategyModule is IPulseStrategyModuleV2 {
             params.strategyType == StrategyType.LazyAscending &&
             sqrtPriceX96 <= sqrtPriceX96Upper
         ) return (tickLower, tickUpper);
-
+        /*  
+            [== sqrtPriceX96 in tick N ==][== sqrtPriceX96 in tick N+1 ==]
+            ^                             ^
+            tick N                        tick N+1
+        */
         /// @dev round floor, it is a lower tick of active range multiple of tickSpacing
         int24 remainder = tick % params.tickSpacing;
         if (remainder < 0) {
-            remainder = tickSpacing - remainder;
+            remainder = params.tickSpacing - remainder;
         }
         targetTickLower = tick - remainder;
 
