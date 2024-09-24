@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: BSL-1.1
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.25;
 
 import "@openzeppelin/contracts/utils/math/Math.sol";
 
 import "../../interfaces/modules/strategies/IPulseStrategyModuleV2.sol";
 import "../../libraries/external/TickMath.sol";
 
-contract PulseStrategyModule is IPulseStrategyModuleV2 {
+contract PulseStrategyModuleV2 is IPulseStrategyModuleV2 {
     /// @inheritdoc IPulseStrategyModuleV2
     uint256 public constant Q96 = 2 ** 96;
 
@@ -187,7 +187,7 @@ contract PulseStrategyModule is IPulseStrategyModuleV2 {
         /// @dev round floor, it is a lower tick of active range multiple of tickSpacing
         int24 remainder = tick % params.tickSpacing;
         if (remainder < 0) {
-            remainder = params.tickSpacing - remainder;
+            remainder = params.tickSpacing + remainder;
         }
         targetTickLower = tick - remainder;
 
