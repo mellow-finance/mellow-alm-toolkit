@@ -21,10 +21,12 @@ contract PulseStrategyModuleV2Test is Fixture {
     PulseStrategyModuleV2 public pulseStrategyModule =
         new PulseStrategyModuleV2();
 
-    uint160 sqrtPriceX96Frac_0_0001 = 79228162910385345434860427129;
-    uint160 sqrtPriceX96Frac_0_4999 = 79230142747924215822526283666;
-    uint160 sqrtPriceX96Frac_0_5001 = 79230143540186034832312214731;
-    uint160 sqrtPriceX96Frac_0_9999 = 79232123427218987702309994166;
+    uint160 sqrtPriceX96Frac_near_0 = 79228162514264733714550801400; // 1.0001^(1e-10/2) * Q96
+    uint160 sqrtPriceX96Frac_0_0001 = 79228162910385345434860427129; // 1.0001^(0.0001/2) * Q96
+    uint160 sqrtPriceX96Frac_0_4999 = 79230142747924215822526283666; // 1.0001^(0.4999/2) * Q96
+    uint160 sqrtPriceX96Frac_0_5001 = 79230143540186034832312214731; // 1.0001^(0.5001/2) * Q96
+    uint160 sqrtPriceX96Frac_0_9999 = 79232123427218987702309994166; // 1.0001^(0.9999/2) * Q96
+    uint160 sqrtPriceX96Frac_near_1 = 79232123823359402977474593289; // 1.0001^((1 - 1e-10)/2) * Q96
 
     function _test(TestCase memory tc) private {
         int24 width = tc.tickUpper - tc.tickLower;
@@ -75,6 +77,7 @@ contract PulseStrategyModuleV2Test is Fixture {
             new result:
             [1, 3]
         */
+
     function testCalculateTargetOriginalTS_1() external {
         IPulseStrategyModuleV2.StrategyType t = IPulseStrategyModuleV2
             .StrategyType
@@ -84,13 +87,13 @@ contract PulseStrategyModuleV2Test is Fixture {
         for (int24 i = 2; i <= 10; i++) {
             int24 width = i * tickSpacing;
             int24 shift = 0;
-            if (width > tickSpacing && (width/tickSpacing)%2==0) {
+            if (width > tickSpacing && (width / tickSpacing) % 2 == 0) {
                 shift = tickSpacing;
             }
             TestCase memory tc = TestCase({
                 sqrtPriceX96: 0,
                 tickLower: 200,
-                tickUpper: 200+width,
+                tickUpper: 200 + width,
                 strategyType: t,
                 tickSpacing: tickSpacing,
                 tickNeighborhood: 0,
@@ -98,8 +101,7 @@ contract PulseStrategyModuleV2Test is Fixture {
                 tickUpperExpected: 0
             });
             for (int24 spot = -100; spot <= 100; spot++) {
-
-                int24 tickLowerExpected = spot - width/2;
+                int24 tickLowerExpected = spot - width / 2;
                 int24 remainder = tickLowerExpected % tickSpacing;
                 if (remainder < 0) remainder += tickSpacing;
                 tickLowerExpected -= remainder;
@@ -108,16 +110,23 @@ contract PulseStrategyModuleV2Test is Fixture {
                     tickLowerExpected += tickSpacing;
                     tickUpperExpected += tickSpacing;
                 }
-                
+
                 uint256 sqrtPriceX96_i = TickMath.getSqrtRatioAtTick(spot);
+
+                uint256 sqrtPriceX96_i_near_1 = sqrtPriceX96_i.mulDiv(
+                    sqrtPriceX96Frac_near_1,
+                    Q96
+                );
+                tc.sqrtPriceX96 = uint160(sqrtPriceX96_i_near_1);
+                tc.tickLowerExpected = tickLowerExpected + shift;
+                tc.tickUpperExpected = tickUpperExpected + shift;
+                _test(tc);
 
                 uint256 sqrtPriceX96_i_9999 = sqrtPriceX96_i.mulDiv(
                     sqrtPriceX96Frac_0_9999,
                     Q96
                 );
                 tc.sqrtPriceX96 = uint160(sqrtPriceX96_i_9999);
-                tc.tickLowerExpected = tickLowerExpected + shift;
-                tc.tickUpperExpected = tickUpperExpected + shift;
                 _test(tc);
 
                 uint256 sqrtPriceX96_i_5001 = sqrtPriceX96_i.mulDiv(
@@ -142,6 +151,13 @@ contract PulseStrategyModuleV2Test is Fixture {
                 );
                 tc.sqrtPriceX96 = uint160(sqrtPriceX96_i_0001);
                 _test(tc);
+
+                uint256 sqrtPriceX96_i_near_0 = sqrtPriceX96_i.mulDiv(
+                    sqrtPriceX96Frac_near_0,
+                    Q96
+                );
+                tc.sqrtPriceX96 = uint160(sqrtPriceX96_i_near_0);
+                _test(tc);
             }
         }
     }
@@ -165,33 +181,50 @@ contract PulseStrategyModuleV2Test is Fixture {
                 TestCase memory tc = TestCase({
                     sqrtPriceX96: 0,
                     tickLower: 200000,
-                    tickUpper: 200000+width,
+                    tickUpper: 200000 + width,
                     strategyType: t,
                     tickSpacing: tickSpacing,
                     tickNeighborhood: 0,
                     tickLowerExpected: 0,
                     tickUpperExpected: 0
                 });
-                for (int24 spot = -2*tickSpacing; spot <= 2*tickSpacing; spot++) {
+                for (
+                    int24 spot = -2 * tickSpacing;
+                    spot <= 2 * tickSpacing;
+                    spot++
+                ) {
                     uint256 sqrtPriceX96_i = TickMath.getSqrtRatioAtTick(spot);
 
-                    int24 tickLowerExpected = (spot/tickSpacing) * tickSpacing;
-                    if (spot % tickSpacing != 0) tickLowerExpected -= (spot < 0 ? tickSpacing : int24(0));
-                    tickLowerExpected -= ((width/tickSpacing)/2) * tickSpacing;
-                    if ((width/tickSpacing)%2 == 0) {
+                    int24 tickLowerExpected = (spot / tickSpacing) *
+                        tickSpacing;
+                    if (spot % tickSpacing != 0)
+                        tickLowerExpected -= (
+                            spot < 0 ? tickSpacing : int24(0)
+                        );
+                    tickLowerExpected -=
+                        ((width / tickSpacing) / 2) *
+                        tickSpacing;
+                    if ((width / tickSpacing) % 2 == 0) {
                         spot = spot < 0 ? -spot : spot;
-                        if (spot%tickSpacing >= tickSpacing/2) tickLowerExpected += tickSpacing;
+                        if (spot % tickSpacing >= tickSpacing / 2)
+                            tickLowerExpected += tickSpacing;
                     }
                     int24 tickUpperExpected = tickLowerExpected + width;
 
+                    uint256 sqrtPriceX96_i_near_1 = sqrtPriceX96_i.mulDiv(
+                        sqrtPriceX96Frac_near_1,
+                        Q96
+                    );
+                    tc.sqrtPriceX96 = uint160(sqrtPriceX96_i_near_1);
+                    tc.tickLowerExpected = tickLowerExpected;
+                    tc.tickUpperExpected = tickUpperExpected;
+                    _test(tc);
 
                     uint256 sqrtPriceX96_i_9999 = sqrtPriceX96_i.mulDiv(
                         sqrtPriceX96Frac_0_9999,
                         Q96
                     );
                     tc.sqrtPriceX96 = uint160(sqrtPriceX96_i_9999);
-                    tc.tickLowerExpected = tickLowerExpected;
-                    tc.tickUpperExpected = tickUpperExpected;
                     _test(tc);
 
                     uint256 sqrtPriceX96_i_5001 = sqrtPriceX96_i.mulDiv(
@@ -215,6 +248,13 @@ contract PulseStrategyModuleV2Test is Fixture {
                         Q96
                     );
                     tc.sqrtPriceX96 = uint160(sqrtPriceX96_i_0001);
+                    _test(tc);
+
+                    uint256 sqrtPriceX96_i_near_0 = sqrtPriceX96_i.mulDiv(
+                        sqrtPriceX96Frac_near_0,
+                        Q96
+                    );
+                    tc.sqrtPriceX96 = uint160(sqrtPriceX96_i_near_0);
                     _test(tc);
                 }
             }
@@ -243,6 +283,13 @@ contract PulseStrategyModuleV2Test is Fixture {
         if (width24 == 0) width24 = tickSpacing24;
 
         _testCalculateTargetLazyDescending(
+            sqrtPriceX96Frac_near_0,
+            spot,
+            tickLower,
+            width24,
+            tickSpacing24
+        );
+        _testCalculateTargetLazyDescending(
             sqrtPriceX96Frac_0_0001,
             spot,
             tickLower,
@@ -265,6 +312,13 @@ contract PulseStrategyModuleV2Test is Fixture {
         );
         _testCalculateTargetLazyDescending(
             sqrtPriceX96Frac_0_9999,
+            spot,
+            tickLower,
+            width24,
+            tickSpacing24
+        );
+        _testCalculateTargetLazyDescending(
+            sqrtPriceX96Frac_near_1,
             spot,
             tickLower,
             width24,
@@ -294,6 +348,13 @@ contract PulseStrategyModuleV2Test is Fixture {
         if (width24 == 0) width24 = tickSpacing24;
 
         _testCalculateTargetLazyAscending(
+            sqrtPriceX96Frac_near_0,
+            spot,
+            tickLower,
+            width24,
+            tickSpacing24
+        );
+        _testCalculateTargetLazyAscending(
             sqrtPriceX96Frac_0_0001,
             spot,
             tickLower,
@@ -316,6 +377,13 @@ contract PulseStrategyModuleV2Test is Fixture {
         );
         _testCalculateTargetLazyAscending(
             sqrtPriceX96Frac_0_9999,
+            spot,
+            tickLower,
+            width24,
+            tickSpacing24
+        );
+        _testCalculateTargetLazyAscending(
+            sqrtPriceX96Frac_near_1,
             spot,
             tickLower,
             width24,
@@ -345,6 +413,13 @@ contract PulseStrategyModuleV2Test is Fixture {
         if (width24 == 0) width24 = tickSpacing24;
 
         _testCalculateTargetLazySyncing(
+            sqrtPriceX96Frac_near_0,
+            spot,
+            tickLower,
+            width24,
+            tickSpacing24
+        );
+        _testCalculateTargetLazySyncing(
             sqrtPriceX96Frac_0_0001,
             spot,
             tickLower,
@@ -367,6 +442,13 @@ contract PulseStrategyModuleV2Test is Fixture {
         );
         _testCalculateTargetLazySyncing(
             sqrtPriceX96Frac_0_9999,
+            spot,
+            tickLower,
+            width24,
+            tickSpacing24
+        );
+        _testCalculateTargetLazySyncing(
+            sqrtPriceX96Frac_near_1,
             spot,
             tickLower,
             width24,
@@ -407,9 +489,16 @@ contract PulseStrategyModuleV2Test is Fixture {
             tc.tickLowerExpected = 0;
         }
         if (sqrtPriceX96 > sqrtPriceX96Upper) {
-            tc.tickUpperExpected = (spot / tickSpacing) * tickSpacing;
-            if (spot < 0 && spot % tickSpacing != 0)
-                tc.tickUpperExpected -= tickSpacing;
+            if (
+                TickMath.getSqrtRatioAtTick(spot) == sqrtPriceX96 &&
+                spot % tickSpacing == 0
+            ) {
+                tc.tickUpperExpected = spot;
+            } else {
+                tc.tickUpperExpected = (spot / tickSpacing) * tickSpacing;
+                if (spot < 0 && spot % tickSpacing != 0)
+                    tc.tickUpperExpected -= tickSpacing;
+            }
             tc.tickLowerExpected = tc.tickUpperExpected - width;
             if (tc.tickLowerExpected == tickLower) {
                 tc.tickUpperExpected = 0;
@@ -452,9 +541,16 @@ contract PulseStrategyModuleV2Test is Fixture {
             tc.tickLowerExpected = 0;
         }
         if (sqrtPriceX96 < sqrtPriceX96Lower) {
-            tc.tickLowerExpected = (spot / tickSpacing + 1) * tickSpacing;
-            if (spot < 0 && spot % tickSpacing != 0)
-                tc.tickLowerExpected -= tickSpacing;
+            if (
+                TickMath.getSqrtRatioAtTick(spot) == sqrtPriceX96 &&
+                spot % tickSpacing == 0
+            ) {
+                tc.tickLowerExpected = spot;
+            } else {
+                tc.tickLowerExpected = (spot / tickSpacing + 1) * tickSpacing;
+                if (spot < 0 && spot % tickSpacing != 0)
+                    tc.tickLowerExpected -= tickSpacing;
+            }
             tc.tickUpperExpected = tc.tickLowerExpected + width;
             if (tc.tickUpperExpected == tickUpper) {
                 tc.tickUpperExpected = 0;
@@ -463,7 +559,6 @@ contract PulseStrategyModuleV2Test is Fixture {
         }
         _test(tc);
     }
-
 
     function _testCalculateTargetLazySyncing(
         uint160 sqrtPriceX96Frac,
@@ -494,25 +589,42 @@ contract PulseStrategyModuleV2Test is Fixture {
         uint160 sqrtPriceX96Lower = TickMath.getSqrtRatioAtTick(tickLower);
         uint160 sqrtPriceX96Upper = TickMath.getSqrtRatioAtTick(tickUpper);
 
-        if (sqrtPriceX96 >= sqrtPriceX96Lower && sqrtPriceX96 <= sqrtPriceX96Upper) {
+        if (
+            sqrtPriceX96 >= sqrtPriceX96Lower &&
+            sqrtPriceX96 <= sqrtPriceX96Upper
+        ) {
             tc.tickUpperExpected = 0;
             tc.tickLowerExpected = 0;
         }
 
         if (sqrtPriceX96 < sqrtPriceX96Lower) {
-            tc.tickLowerExpected = (spot / tickSpacing + 1) * tickSpacing;
-            if (spot < 0 && spot % tickSpacing != 0)
-                tc.tickLowerExpected -= tickSpacing;
+            if (
+                TickMath.getSqrtRatioAtTick(spot) == sqrtPriceX96 &&
+                spot % tickSpacing == 0
+            ) {
+                tc.tickLowerExpected = spot;
+            } else {
+                tc.tickLowerExpected = (spot / tickSpacing + 1) * tickSpacing;
+                if (spot < 0 && spot % tickSpacing != 0)
+                    tc.tickLowerExpected -= tickSpacing;
+            }
             tc.tickUpperExpected = tc.tickLowerExpected + width;
             if (tc.tickUpperExpected == tickUpper) {
                 tc.tickUpperExpected = 0;
                 tc.tickLowerExpected = 0;
             }
-        } 
+        }
         if (sqrtPriceX96 > sqrtPriceX96Upper) {
-            tc.tickUpperExpected = (spot / tickSpacing) * tickSpacing;
-            if (spot < 0 && spot % tickSpacing != 0)
-                tc.tickUpperExpected -= tickSpacing;
+            if (
+                TickMath.getSqrtRatioAtTick(spot) == sqrtPriceX96 &&
+                spot % tickSpacing == 0
+            ) {
+                tc.tickUpperExpected = spot;
+            } else {
+                tc.tickUpperExpected = (spot / tickSpacing) * tickSpacing;
+                if (spot < 0 && spot % tickSpacing != 0)
+                    tc.tickUpperExpected -= tickSpacing;
+            }
             tc.tickLowerExpected = tc.tickUpperExpected - width;
             if (tc.tickLowerExpected == tickLower) {
                 tc.tickUpperExpected = 0;

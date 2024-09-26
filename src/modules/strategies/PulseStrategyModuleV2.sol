@@ -194,7 +194,10 @@ contract PulseStrategyModuleV2 is IPulseStrategyModuleV2 {
         if (sqrtPriceX96 > sqrtPriceX96Upper) {
             targetTickLower -= params.width;
         } else if (sqrtPriceX96 < sqrtPriceX96Lower) {
-            if (TickMath.getSqrtRatioAtTick(tick) != sqrtPriceX96) {
+            if (
+                TickMath.getSqrtRatioAtTick(tick) != sqrtPriceX96 ||
+                remainder != 0
+            ) {
                 targetTickLower += params.tickSpacing;
             }
         }
