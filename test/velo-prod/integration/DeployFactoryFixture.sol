@@ -422,7 +422,19 @@ contract DeployFactoryFixture is Test {
         );
         strategyModule = new PulseStrategyModule();
         oracle = new VeloOracle();
-        core = new Core(ammModule, strategyModule, oracle, Constants.OWNER);
+
+        dwModule = new VeloDepositWithdrawModule(
+            INonfungiblePositionManager(positionManager)
+        );
+
+        core = new Core(
+            ammModule,
+            dwModule,
+            strategyModule,
+            oracle,
+            Constants.OWNER,
+            Constants.WETH
+        );
         core.setProtocolParams(
             abi.encode(
                 IVeloAmmModule.ProtocolParams({
@@ -430,10 +442,6 @@ contract DeployFactoryFixture is Test {
                     treasury: Constants.PROTOCOL_TREASURY
                 })
             )
-        );
-
-        dwModule = new VeloDepositWithdrawModule(
-            INonfungiblePositionManager(positionManager)
         );
 
         deployFactory = new VeloDeployFactory(

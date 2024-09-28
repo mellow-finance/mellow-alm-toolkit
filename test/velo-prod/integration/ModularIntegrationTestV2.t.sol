@@ -80,7 +80,14 @@ contract Integration is Test {
         depositWithdrawModule = new VeloDepositWithdrawModule(positionManager);
         strategyModule = new PulseStrategyModule();
         oracle = new VeloOracle();
-        core = new Core(ammModule, strategyModule, oracle, CORE_ADMIN);
+        core = new Core(
+            ammModule,
+            depositWithdrawModule,
+            strategyModule,
+            oracle,
+            CORE_ADMIN,
+            Constants.WETH
+        );
         vm.startPrank(CORE_ADMIN);
         core.grantRole(core.ADMIN_DELEGATE_ROLE(), CORE_ADMIN);
         core.grantRole(core.OPERATOR(), CORE_OPERATOR);
