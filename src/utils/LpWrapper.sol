@@ -66,6 +66,17 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         if (initialTotalSupply == 0) revert InsufficientLpAmount();
         positionId = positionId_;
         _mint(address(this), initialTotalSupply);
+
+        ICore.ManagedPositionInfo memory info = core.managedPositionAt(
+            positionId
+        );
+
+        IAmmModule.AmmPosition memory position = ammModule.getAmmPosition(
+            info.ammPositionIds[0]
+        );
+
+        IERC20(position.token0).forceApprove(address(core), type(uint256).max);
+        IERC20(position.token1).forceApprove(address(core), type(uint256).max);
     }
 
     /// @inheritdoc ILpWrapper
@@ -131,57 +142,14 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
             actualAmount1 = 0;
         }
         if (amount0 > 0 || amount1 > 0) {
-            if (amount0 > 0) {
-                IERC20(positionsBefore[0].token0).safeTransferFrom(
-                    msg.sender,
-                    address(this),
-                    amount0
-                );
-                IERC20(positionsBefore[0].token0).safeIncreaseAllowance(
-                    address(core),
-                    amount0
-                );
-            }
-            if (amount1 > 0) {
-                IERC20(positionsBefore[0].token1).safeTransferFrom(
-                    msg.sender,
-                    address(this),
-                    amount1
-                );
-                IERC20(positionsBefore[0].token1).safeIncreaseAllowance(
-                    address(core),
-                    amount1
-                );
-            }
-
-            for (uint256 i = 0; i < n; i++) {
-                if (positionsBefore[i].liquidity == 0) continue;
-                (uint256 amount0_, uint256 amount1_) = core.directDeposit(
-                    positionId,
-                    info.ammPositionIds[i],
-                    amounts0[i],
-                    amounts1[i],
-                    true
-                );
-                actualAmount0 += amount0_;
-                actualAmount1 += amount1_;
-            }
-
-            if (actualAmount0 != amount0) {
-                IERC20(positionsBefore[0].token0).safeTransfer(
-                    msg.sender,
-                    amount0 - actualAmount0
-                );
-                IERC20(positionsBefore[0].token0).safeApprove(address(core), 0);
-            }
-
-            if (actualAmount1 != amount1) {
-                IERC20(positionsBefore[0].token1).safeTransfer(
-                    msg.sender,
-                    amount1 - actualAmount1
-                );
-                IERC20(positionsBefore[0].token1).safeApprove(address(core), 0);
-            }
+            (actualAmount0, actualAmount1) = _directDeposit(
+                amount0,
+                amount1,
+                amounts0,
+                amounts1,
+                positionsBefore,
+                info
+            );
         }
 
         IAmmModule.AmmPosition[]
@@ -209,6 +177,46 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
 
         if (lpAmount < minLpAmount) revert InsufficientLpAmount();
         _mint(to, lpAmount);
+    }
+
+    function _directDeposit(
+        uint256 amount0,
+        uint256 amount1,
+        uint256[] memory amounts0,
+        uint256[] memory amounts1,
+        IAmmModule.AmmPosition[] memory positionsBefore,
+        ICore.ManagedPositionInfo memory info
+    ) private returns (uint256 actualAmount0, uint256 actualAmount1) {
+        address token0 = positionsBefore[0].token0;
+        address token1 = positionsBefore[0].token1;
+        address sender = msg.sender;
+        if (amount0 > 0) {
+            IERC20(token0).safeTransferFrom(sender, address(this), amount0);
+        }
+        if (amount1 > 0) {
+            IERC20(token1).safeTransferFrom(sender, address(this), amount1);
+        }
+
+        for (uint256 i = 0; i < positionsBefore.length; i++) {
+            if (positionsBefore[i].liquidity == 0) continue;
+            (uint256 amount0_, uint256 amount1_) = core.directDeposit(
+                positionId,
+                info.ammPositionIds[i],
+                amounts0[i],
+                amounts1[i],
+                true
+            );
+            actualAmount0 += amount0_;
+            actualAmount1 += amount1_;
+        }
+
+        if (actualAmount0 != amount0) {
+            IERC20(token0).safeTransfer(sender, amount0 - actualAmount0);
+        }
+
+        if (actualAmount1 != amount1) {
+            IERC20(token1).safeTransfer(sender, amount1 - actualAmount1);
+        }
     }
 
     /// @inheritdoc ILpWrapper
