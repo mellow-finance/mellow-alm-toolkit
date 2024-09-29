@@ -259,7 +259,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
                         positionId,
                         info.ammPositionIds[i],
                         liquidity,
-                        msg.sender,
+                        to,
                         true
                     );
 
