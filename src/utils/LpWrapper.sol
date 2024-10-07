@@ -66,6 +66,17 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         if (initialTotalSupply == 0) revert InsufficientLpAmount();
         positionId = positionId_;
         _mint(address(this), initialTotalSupply);
+
+        ICore.ManagedPositionInfo memory info = core.managedPositionAt(
+            positionId
+        );
+
+        IAmmModule.AmmPosition memory position = ammModule.getAmmPosition(
+            info.ammPositionIds[0]
+        );
+
+        IERC20(position.token0).forceApprove(address(core), type(uint256).max);
+        IERC20(position.token1).forceApprove(address(core), type(uint256).max);
     }
 
     /// @inheritdoc ILpWrapper
@@ -83,8 +94,6 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         ICore.ManagedPositionInfo memory info = core.managedPositionAt(
             positionId
         );
-        core.withdraw(positionId, address(this));
-
         uint256 n = info.ammPositionIds.length;
         IAmmModule.AmmPosition[]
             memory positionsBefore = new IAmmModule.AmmPosition[](n);
@@ -133,28 +142,14 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
             actualAmount1 = 0;
         }
         if (amount0 > 0 || amount1 > 0) {
-            for (uint256 i = 0; i < n; i++) {
-                if (positionsBefore[i].liquidity == 0) continue;
-                (bool success, bytes memory response) = address(
-                    ammDepositWithdrawModule
-                ).delegatecall(
-                        abi.encodeWithSelector(
-                            IAmmDepositWithdrawModule.deposit.selector,
-                            info.ammPositionIds[i],
-                            amounts0[i],
-                            amounts1[i],
-                            msg.sender
-                        )
-                    );
-                if (!success) revert DepositCallFailed();
-                (uint256 amount0_, uint256 amount1_) = abi.decode(
-                    response,
-                    (uint256, uint256)
-                );
-
-                actualAmount0 += amount0_;
-                actualAmount1 += amount1_;
-            }
+            (actualAmount0, actualAmount1) = _directDeposit(
+                amount0,
+                amount1,
+                amounts0,
+                amounts1,
+                positionsBefore,
+                info
+            );
         }
 
         IAmmModule.AmmPosition[]
@@ -166,12 +161,6 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         }
 
         uint256 totalSupply_ = totalSupply();
-        for (uint256 i = 0; i < n; i++) {
-            IERC721(positionManager).approve(
-                address(core),
-                info.ammPositionIds[i]
-            );
-        }
 
         lpAmount = type(uint256).max;
         for (uint256 i = 0; i < n; i++) {
@@ -188,17 +177,46 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
 
         if (lpAmount < minLpAmount) revert InsufficientLpAmount();
         _mint(to, lpAmount);
+    }
 
-        positionId = core.deposit(
-            ICore.DepositParams({
-                ammPositionIds: info.ammPositionIds,
-                owner: info.owner,
-                slippageD9: info.slippageD9,
-                callbackParams: info.callbackParams,
-                strategyParams: info.strategyParams,
-                securityParams: info.securityParams
-            })
-        );
+    function _directDeposit(
+        uint256 amount0,
+        uint256 amount1,
+        uint256[] memory amounts0,
+        uint256[] memory amounts1,
+        IAmmModule.AmmPosition[] memory positionsBefore,
+        ICore.ManagedPositionInfo memory info
+    ) private returns (uint256 actualAmount0, uint256 actualAmount1) {
+        address token0 = positionsBefore[0].token0;
+        address token1 = positionsBefore[0].token1;
+        address sender = msg.sender;
+        if (amount0 > 0) {
+            IERC20(token0).safeTransferFrom(sender, address(this), amount0);
+        }
+        if (amount1 > 0) {
+            IERC20(token1).safeTransferFrom(sender, address(this), amount1);
+        }
+
+        for (uint256 i = 0; i < positionsBefore.length; i++) {
+            if (positionsBefore[i].liquidity == 0) continue;
+            (uint256 amount0_, uint256 amount1_) = core.directDeposit(
+                positionId,
+                info.ammPositionIds[i],
+                amounts0[i],
+                amounts1[i],
+                true
+            );
+            actualAmount0 += amount0_;
+            actualAmount1 += amount1_;
+        }
+
+        if (actualAmount0 != amount0) {
+            IERC20(token0).safeTransfer(sender, amount0 - actualAmount0);
+        }
+
+        if (actualAmount1 != amount1) {
+            IERC20(token1).safeTransfer(sender, amount1 - actualAmount1);
+        }
     }
 
     /// @inheritdoc ILpWrapper
@@ -216,7 +234,6 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         ICore.ManagedPositionInfo memory info = core.managedPositionAt(
             positionId
         );
-        core.withdraw(positionId, address(this));
 
         actualLpAmount = balanceOf(msg.sender);
         if (actualLpAmount > lpAmount) {
@@ -228,10 +245,6 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
 
         {
             for (uint256 i = 0; i < info.ammPositionIds.length; i++) {
-                IERC721(positionManager).approve(
-                    address(core),
-                    info.ammPositionIds[i]
-                );
                 IAmmModule.AmmPosition memory position = ammModule
                     .getAmmPosition(info.ammPositionIds[i]);
                 uint256 liquidity = FullMath.mulDiv(
@@ -240,21 +253,15 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
                     totalSupply_
                 );
                 if (liquidity == 0) continue;
-                (bool success, bytes memory response) = address(
-                    ammDepositWithdrawModule
-                ).delegatecall(
-                        abi.encodeWithSelector(
-                            IAmmDepositWithdrawModule.withdraw.selector,
-                            info.ammPositionIds[i],
-                            liquidity,
-                            to
-                        )
+
+                (uint256 actualAmount0, uint256 actualAmount1) = core
+                    .directWithdraw(
+                        positionId,
+                        info.ammPositionIds[i],
+                        liquidity,
+                        to,
+                        true
                     );
-                if (!success) revert WithdrawCallFailed();
-                (uint256 actualAmount0, uint256 actualAmount1) = abi.decode(
-                    response,
-                    (uint256, uint256)
-                );
 
                 amount0 += actualAmount0;
                 amount1 += actualAmount1;
@@ -264,17 +271,6 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         if (amount0 < minAmount0 || amount1 < minAmount1) {
             revert InsufficientAmounts();
         }
-
-        positionId = core.deposit(
-            ICore.DepositParams({
-                ammPositionIds: info.ammPositionIds,
-                owner: info.owner,
-                slippageD9: info.slippageD9,
-                callbackParams: info.callbackParams,
-                strategyParams: info.strategyParams,
-                securityParams: info.securityParams
-            })
-        );
     }
 
     /// @inheritdoc ILpWrapper

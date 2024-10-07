@@ -53,7 +53,14 @@ contract Integration is Test {
         depositWithdrawModule = new VeloDepositWithdrawModule(positionManager);
         strategyModule = new PulseStrategyModule();
         oracle = new VeloOracle();
-        core = new Core(ammModule, strategyModule, oracle, CORE_ADMIN);
+        core = new Core(
+            ammModule,
+            depositWithdrawModule,
+            strategyModule,
+            oracle,
+            CORE_ADMIN,
+            Constants.WETH
+        );
 
         deployFactoryHelper = new VeloDeployFactoryHelper(Constants.WETH);
         deployFactory = new VeloDeployFactory(

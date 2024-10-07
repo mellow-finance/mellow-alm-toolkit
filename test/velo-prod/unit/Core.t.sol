@@ -19,13 +19,34 @@ contract Unit is Fixture {
 
     function testContructor() external {
         vm.expectRevert(abi.encodeWithSignature("AddressZero()"));
-        core = new Core(ammModule, strategyModule, oracle, address(0));
-        core = new Core(ammModule, strategyModule, oracle, Constants.OWNER);
+        core = new Core(
+            ammModule,
+            depositWithdrawModule,
+            strategyModule,
+            oracle,
+            address(0),
+            Constants.WETH
+        );
+        core = new Core(
+            ammModule,
+            depositWithdrawModule,
+            strategyModule,
+            oracle,
+            Constants.OWNER,
+            Constants.WETH
+        );
         assertTrue(address(core) != address(0));
     }
 
     function testDeposit() external {
-        core = new Core(ammModule, strategyModule, oracle, Constants.OWNER);
+        core = new Core(
+            ammModule,
+            depositWithdrawModule,
+            strategyModule,
+            oracle,
+            Constants.OWNER,
+            Constants.WETH
+        );
         uint256 tokenId = mint(
             pool.token0(),
             pool.token1(),
@@ -109,7 +130,14 @@ contract Unit is Fixture {
 
     function _depositToken(uint256 tokenId) private returns (uint256 id) {
         vm.startPrank(Constants.OWNER);
-        core = new Core(ammModule, strategyModule, oracle, Constants.OWNER);
+        core = new Core(
+            ammModule,
+            depositWithdrawModule,
+            strategyModule,
+            oracle,
+            Constants.OWNER,
+            Constants.WETH
+        );
         core.setProtocolParams(
             abi.encode(
                 IVeloAmmModule.ProtocolParams({
@@ -189,7 +217,14 @@ contract Unit is Fixture {
     }
 
     function testSetProtocolParams() external {
-        core = new Core(ammModule, strategyModule, oracle, Constants.OWNER);
+        core = new Core(
+            ammModule,
+            depositWithdrawModule,
+            strategyModule,
+            oracle,
+            Constants.OWNER,
+            Constants.WETH
+        );
         vm.expectRevert(abi.encodeWithSignature("Forbidden()"));
         core.setProtocolParams(new bytes(123));
         vm.startPrank(Constants.OWNER);
@@ -424,7 +459,14 @@ contract Unit is Fixture {
     }
 
     function testSetOperatorFlag() external {
-        core = new Core(ammModule, strategyModule, oracle, Constants.OWNER);
+        core = new Core(
+            ammModule,
+            depositWithdrawModule,
+            strategyModule,
+            oracle,
+            Constants.OWNER,
+            Constants.WETH
+        );
         vm.expectRevert(abi.encodeWithSignature("Forbidden()"));
         core.setOperatorFlag(true);
         vm.startPrank(Constants.OWNER);
@@ -628,7 +670,14 @@ contract Unit is Fixture {
             )
         });
 
-        core = new Core(ammModule, strategyModule, oracle, Constants.OWNER);
+        core = new Core(
+            ammModule,
+            depositWithdrawModule,
+            strategyModule,
+            oracle,
+            Constants.OWNER,
+            Constants.WETH
+        );
         vm.startPrank(Constants.OWNER);
         core.setProtocolParams(
             abi.encode(
@@ -685,7 +734,14 @@ contract Unit is Fixture {
     }
 
     function testProtocolParams() external {
-        core = new Core(ammModule, strategyModule, oracle, Constants.OWNER);
+        core = new Core(
+            ammModule,
+            depositWithdrawModule,
+            strategyModule,
+            oracle,
+            Constants.OWNER,
+            Constants.WETH
+        );
 
         assertEq(core.protocolParams(), new bytes(0));
         vm.startPrank(Constants.OWNER);
