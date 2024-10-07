@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSL-1.1
 pragma solidity ^0.8.0;
+import "test/velo-prod/unit/Constants.sol";
 
 import "forge-std/Test.sol";
 import "forge-std/Script.sol";
@@ -89,7 +90,8 @@ contract DeployVeloLazy is Script, Test {
 
             //-------------------------------------------------------------------------------
             VeloAmmModule ammModule = new VeloAmmModule(
-                NONFUNGIBLE_POSITION_MANAGER
+                NONFUNGIBLE_POSITION_MANAGER,
+                Constants.IS_POOL_SELECTOR
             );
             console2.log("VeloAmmModule", address(ammModule));
 

@@ -24,6 +24,7 @@ interface IVeloAmmModule is IAmmModule {
     error InvalidParams(); // Thrown when input parameters are invalid
     error InvalidLength(); // Thrown when array lengths are mismatched or invalid
     error InvalidGauge(); // Thrown when the gauge is invalid
+    error IsPool(); // Thrown when call isPool/isPair is failed
 
     /**
      * @dev Struct representing callback parameters for operations associated with the Velo protocol.
@@ -77,4 +78,10 @@ interface IVeloAmmModule is IAmmModule {
      * @return ICLFactory contract address.
      */
     function factory() external view returns (ICLFactory);
+
+    /**
+     * @dev Returns the selector of isPool/isPair function of the factory.
+     * @return bytes4 function selector.
+     */
+    function isPoolSelector() external view returns (bytes4);
 }

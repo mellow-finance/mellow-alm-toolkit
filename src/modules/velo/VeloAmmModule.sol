@@ -19,10 +19,16 @@ contract VeloAmmModule is IVeloAmmModule {
     address public immutable positionManager;
     /// @inheritdoc IVeloAmmModule
     ICLFactory public immutable factory;
+    /// @inheritdoc IVeloAmmModule
+    bytes4 public immutable isPoolSelector;
 
-    constructor(INonfungiblePositionManager positionManager_) {
+    constructor(
+        INonfungiblePositionManager positionManager_,
+        bytes4 isPoolSelector_
+    ) {
         positionManager = address(positionManager_);
         factory = ICLFactory(positionManager_.factory());
+        isPoolSelector = isPoolSelector_;
     }
 
     /// @inheritdoc IAmmModule
@@ -47,7 +53,8 @@ contract VeloAmmModule is IVeloAmmModule {
         if (params_.gauge == address(0)) revert AddressZero();
         if (params_.counter == address(0)) revert AddressZero();
         ICLPool pool = ICLGauge(params_.gauge).pool();
-        if (!factory.isPool(address(pool))) revert InvalidGauge();
+        //if (!factory.isPool(address(pool))) revert InvalidGauge();
+        if (!isPool(address(pool))) revert InvalidGauge();
         if (pool.gauge() != params_.gauge) revert InvalidGauge();
     }
 
@@ -119,6 +126,15 @@ contract VeloAmmModule is IVeloAmmModule {
         uint24 tickSpacing
     ) external view override returns (address) {
         return factory.getPool(token0, token1, int24(tickSpacing));
+    }
+
+    /// @inheritdoc IAmmModule
+    function isPool(address pool) public view override returns (bool) {
+        (bool success, bytes memory returnData) = address(factory).staticcall(
+            abi.encodeWithSelector(isPoolSelector, pool)
+        );
+        if (!success) revert IsPool();
+        return abi.decode(returnData, (bool));
     }
 
     /// @inheritdoc IAmmModule

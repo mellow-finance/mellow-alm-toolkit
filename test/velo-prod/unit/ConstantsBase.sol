@@ -16,6 +16,7 @@ import "../../../src/bots/PulseVeloBot.sol";
 import "../../../src/modules/velo/VeloAmmModule.sol";
 import "../../../src/modules/velo/VeloDepositWithdrawModule.sol";
 import "../../../src/modules/strategies/PulseStrategyModule.sol";
+import "../../../src/modules/strategies/PulseStrategyModuleV2.sol";
 import "../../../src/oracles/VeloOracle.sol";
 
 import "../../../src/interfaces/external/velo/ICLFactory.sol";
@@ -31,20 +32,18 @@ import "../../../src/libraries/external/velo/PositionValue.sol";
 import "../../../src/utils/LpWrapper.sol";
 
 import "../../../src/utils/VeloDeployFactory.sol";
-import "../../../src/utils/VeloDeployFactoryHelper.sol";
-import "../../../src/utils/VeloSugarHelper.sol";
 
 library Constants {
-    address public constant OP = 0x4200000000000000000000000000000000000042;
+    address public constant OP = 0x940181a94A35A4569E4529A3CDfB74e38FD98631; // AERO
     address public constant WETH = 0x4200000000000000000000000000000000000006;
-    address public constant VELO = 0x9560e827aF36c94D2Ac33a39bCE1Fe78631088Db;
+    address public constant VELO = 0x940181a94A35A4569E4529A3CDfB74e38FD98631; // AERO
 
     address public constant NONFUNGIBLE_POSITION_MANAGER =
-        0xbB5DFE1380333CEE4c2EeBd7202c80dE2256AdF4;
+        0x827922686190790b37229fd06084350E74485b72;
     address public constant VELO_FACTORY =
-        0x548118C7E0B865C2CfA94D15EC86B666468ac758;
+        0x5e7BB104d84c7CB9B682AaC2F3d509f5F406809A;
 
-    bytes4 public constant IS_POOL_SELECTOR = 0xe5e31b13;
+    bytes4 public constant IS_POOL_SELECTOR = 0x45e84a8d;
 
     address public constant SWAP_ROUTER =
         0xF132bdb9573867cD72f2585C338B923F973EB817;

@@ -15,7 +15,7 @@ contract Unit is Fixture {
     uint128 INITIAL_LIQUIDITY = 1 ether;
 
     VeloOracle public oracle = new VeloOracle();
-    VeloAmmModule public ammModule = new VeloAmmModule(positionManager);
+    VeloAmmModule public ammModule = new VeloAmmModule(positionManager, Constants.IS_POOL_SELECTOR);
     VeloDepositWithdrawModule public depositWithdrawModule =
         new VeloDepositWithdrawModule(positionManager);
     PulseStrategyModule public strategyModule = new PulseStrategyModule();
@@ -554,7 +554,7 @@ contract Unit is Fixture {
             Constants.DEPOSITOR,
             type(uint256).max
         );
-        
+
         lpWrapper.unstakeAndWithdraw(
             balance / 2,
             0,
@@ -568,7 +568,7 @@ contract Unit is Fixture {
             farm.balanceOf(Constants.DEPOSITOR),
             0 wei
         );
-        
+
         lpWrapper.unstakeAndWithdraw(
             type(uint256).max,
             0,
