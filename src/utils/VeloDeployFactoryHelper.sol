@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: BSL-1.1
 pragma solidity ^0.8.0;
 
-import "@synthetix/contracts/StakingRewards.sol";
-
 import "../interfaces/utils/IVeloDeployFactoryHelper.sol";
 
 import "./LpWrapper.sol";
@@ -21,7 +19,8 @@ contract VeloDeployFactoryHelper is IVeloDeployFactoryHelper {
         string memory name,
         string memory symbol,
         address admin,
-        address manager
+        address manager,
+        address pool
     ) external returns (ILpWrapper) {
         LpWrapper wrapper = new LpWrapper(
             core,
@@ -29,7 +28,9 @@ contract VeloDeployFactoryHelper is IVeloDeployFactoryHelper {
             name,
             symbol,
             address(this),
-            _weth
+            _weth,
+            msg.sender,
+            pool
         );
         wrapper.grantRole(wrapper.ADMIN_ROLE(), admin);
         if (manager != address(0)) {
@@ -38,15 +39,5 @@ contract VeloDeployFactoryHelper is IVeloDeployFactoryHelper {
         wrapper.renounceRole(wrapper.OPERATOR(), address(this));
         wrapper.renounceRole(wrapper.ADMIN_ROLE(), address(this));
         return wrapper;
-    }
-
-    /// @inheritdoc IVeloDeployFactoryHelper
-    function createStakingRewards(
-        address owner,
-        address operator,
-        address reward,
-        address token
-    ) external returns (address) {
-        return address(new StakingRewards(owner, operator, reward, token));
     }
 }
