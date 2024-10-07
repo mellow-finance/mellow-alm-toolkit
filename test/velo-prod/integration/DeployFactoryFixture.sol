@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSL-1.1
 pragma solidity ^0.8.0;
 
-import "./Constants.sol";
+import "../unit/Constants.sol";
 
 import {SwapRouter} from "../contracts/periphery/SwapRouter.sol";
 import {QuoterV2} from "../contracts/periphery/lens/QuoterV2.sol";
@@ -418,7 +418,8 @@ contract DeployFactoryFixture is Test {
         }
 
         ammModule = new VeloAmmModule(
-            INonfungiblePositionManager(positionManager)
+            INonfungiblePositionManager(positionManager),
+            Constants.IS_POOL_SELECTOR
         );
         strategyModule = new PulseStrategyModule();
         oracle = new VeloOracle();

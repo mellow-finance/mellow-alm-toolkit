@@ -49,7 +49,10 @@ contract Integration is Test {
     int24[1] public fees = [int24(200)];
 
     function setUp() external virtual {
-        ammModule = new VeloAmmModule(positionManager);
+        ammModule = new VeloAmmModule(
+            positionManager,
+            Constants.IS_POOL_SELECTOR
+        );
         depositWithdrawModule = new VeloDepositWithdrawModule(positionManager);
         strategyModule = new PulseStrategyModule();
         oracle = new VeloOracle();

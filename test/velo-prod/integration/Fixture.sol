@@ -9,6 +9,10 @@ import {QuoterV2} from "../contracts/periphery/lens/QuoterV2.sol";
 contract Fixture is Test {
     using SafeERC20 for IERC20;
 
+    int24 constant MAX_ALLOWED_DELTA = 100;
+    uint32 constant MAX_AGE = 1 hours;
+    uint128 INITIAL_LIQUIDITY = 1 ether;
+
     int24 public constant TICK_SPACING = 200;
     uint256 public constant Q96 = 2 ** 96;
 
@@ -24,6 +28,8 @@ contract Fixture is Test {
     VeloDepositWithdrawModule public dwModule;
     LpWrapper public lpWrapper;
     Core public core;
+    VeloDeployFactoryHelper public helper;
+    VeloDeployFactory public veloFactory;
     address public farm;
     StakingRewards public stakingRewards;
     PulseVeloBot public bot;
@@ -349,24 +355,78 @@ contract Fixture is Test {
             INonfungiblePositionManager(positionManager)
         );
 
-        lpWrapper = new LpWrapper(
+        helper = new VeloDeployFactoryHelper(Constants.WETH);
+        veloFactory = new VeloDeployFactory(
+            Constants.OWNER,
             core,
             dwModule,
-            "lp wrapper",
-            "LPWR",
-            Constants.OWNER,
-            Constants.WETH,
-            address(0),
-            address(0)
+            helper
         );
+
+        _createStrategy();
+
         stakingRewards = new StakingRewards(
             Constants.OWNER,
             Constants.OWNER,
-            address(Constants.VELO), // random reward address
+            address(Constants.VELO),
             address(lpWrapper)
         );
 
         bot = new PulseVeloBot(quoterV2, swapRouter, positionManager);
+
+        vm.stopPrank();
+    }
+
+    function _createStrategy() private {
+        pool.increaseObservationCardinalityNext(2);
+
+        uint256 tokenId = mint(
+            pool.token0(),
+            pool.token1(),
+            pool.tickSpacing(),
+            pool.tickSpacing() * 20,
+            INITIAL_LIQUIDITY
+        );
+
+        vm.startPrank(Constants.OWNER);
+        core.setProtocolParams(
+            abi.encode(
+                IVeloAmmModule.ProtocolParams({
+                    feeD9: Constants.PROTOCOL_FEE_D9,
+                    treasury: Constants.PROTOCOL_TREASURY
+                })
+            )
+        );
+        positionManager.approve(address(veloFactory), tokenId);
+        veloFactory.updateMutableParams(
+            IVeloDeployFactory.MutableParams({
+                lpWrapperAdmin: Constants.WRAPPER_ADMIN,
+                lpWrapperManager: address(0),
+                farmOwner: Constants.FARM_OWNER,
+                farmOperator: Constants.FARM_OPERATOR,
+                minInitialLiquidity: 1000
+            })
+        );
+
+        IVeloDeployFactory.PoolAddresses memory addresses = veloFactory
+            .createStrategy(
+                IVeloDeployFactory.DeployParams({
+                    tickNeighborhood: 0,
+                    slippageD9: 5 * 1e5,
+                    tokenId: tokenId,
+                    securityParams: abi.encode(
+                        IVeloOracle.SecurityParams({
+                            lookback: 1,
+                            maxAllowedDelta: MAX_ALLOWED_DELTA,
+                            maxAge: MAX_AGE
+                        })
+                    ),
+                    strategyType: IPulseStrategyModule.StrategyType.LazySyncing
+                })
+            );
+
+        lpWrapper = LpWrapper(payable(addresses.lpWrapper));
+        farm = addresses.synthetixFarm;
 
         vm.stopPrank();
     }

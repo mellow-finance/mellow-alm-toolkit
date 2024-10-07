@@ -10,7 +10,8 @@ contract Unit is Fixture {
 
     Core public core;
     VeloOracle public oracle = new VeloOracle();
-    VeloAmmModule public ammModule = new VeloAmmModule(positionManager);
+    VeloAmmModule public ammModule =
+        new VeloAmmModule(positionManager, Constants.IS_POOL_SELECTOR);
     VeloDepositWithdrawModule public depositWithdrawModule =
         new VeloDepositWithdrawModule(positionManager);
     PulseStrategyModule public strategyModule = new PulseStrategyModule();

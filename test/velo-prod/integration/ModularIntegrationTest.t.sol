@@ -72,7 +72,10 @@ contract Integration is Test {
     }
 
     function setUp() external {
-        ammModule = new VeloAmmModule(positionManager);
+        ammModule = new VeloAmmModule(
+            positionManager,
+            Constants.IS_POOL_SELECTOR
+        );
         depositWithdrawModule = new VeloDepositWithdrawModule(positionManager);
         strategyModule = new PulseStrategyModule();
         oracle = new VeloOracle();
@@ -219,7 +222,7 @@ contract Integration is Test {
         StakingRewards farm,
         ICLPool pool,
         Actions[] memory actions
-    ) private {
+    ) private returns (uint256 earned) {
         bool initialDeposit = true;
         for (uint256 i = 0; i < actions.length; i++) {
             Actions action = actions[i];
@@ -231,6 +234,7 @@ contract Integration is Test {
                     _deposit(DEPOSITOR, wrapper, farm, 100);
                 }
             } else if (action == Actions.WITHDRAW) {
+                earned = farm.earned(DEPOSITOR);
                 _withdraw(DEPOSITOR, 30, wrapper, farm);
             } else if (action == Actions.REBALANCE) {
                 _rebalance(CORE_OPERATOR, wrapper);
@@ -570,8 +574,8 @@ contract Integration is Test {
         actions[3] = Actions.PUSH_REWARDS;
         actions[4] = Actions.IDLE;
         actions[5] = Actions.WITHDRAW;
-        _execute(wrapper, farm, pool, actions);
-        uint256 earned = farm.earned(DEPOSITOR);
+
+        uint256 earned = _execute(wrapper, farm, pool, actions); // farm.earned(DEPOSITOR);
         assertTrue(earned > 0);
         vm.prank(DEPOSITOR);
         farm.getReward();

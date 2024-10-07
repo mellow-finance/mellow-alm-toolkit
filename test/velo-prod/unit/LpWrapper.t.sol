@@ -24,6 +24,7 @@ contract Unit is Fixture {
         new Core(ammModule, strategyModule, oracle, Constants.OWNER);
     LpWrapper public lpWrapper;
     StakingRewards public farm;
+    uint256 public tokenId;
 
     ICLPool public pool =
         ICLPool(factory.getPool(Constants.OP, Constants.WETH, 200));
@@ -39,7 +40,7 @@ contract Unit is Fixture {
         );
 
     function _depositToken(
-        uint256 tokenId,
+        uint256 tokenId_,
         address owner
     ) private returns (uint256 id) {
         vm.startPrank(Constants.OWNER);
@@ -52,11 +53,11 @@ contract Unit is Fixture {
             )
         );
 
-        positionManager.approve(address(core), tokenId);
+        positionManager.approve(address(core), tokenId_);
 
         ICore.DepositParams memory depositParams;
         depositParams.ammPositionIds = new uint256[](1);
-        depositParams.ammPositionIds[0] = tokenId;
+        depositParams.ammPositionIds[0] = tokenId_;
         depositParams.owner = owner;
         depositParams.callbackParams = abi.encode(
             IVeloAmmModule.CallbackParams({
@@ -94,9 +95,18 @@ contract Unit is Fixture {
         vm.stopPrank();
     }
 
-    function _createStrategy(
-        uint256 tokenId
-    ) private returns (IVeloDeployFactory.PoolAddresses memory addresses) {
+    function _createStrategy() private {
+        pool.increaseObservationCardinalityNext(2);
+
+        tokenId = mint(
+            pool.token0(),
+            pool.token1(),
+            pool.tickSpacing(),
+            pool.tickSpacing() * 20,
+            INITIAL_LIQUIDITY,
+            pool
+        );
+
         vm.startPrank(Constants.OWNER);
         core.setProtocolParams(
             abi.encode(
@@ -117,21 +127,26 @@ contract Unit is Fixture {
             })
         );
 
-        addresses = veloFactory.createStrategy(
-            IVeloDeployFactory.DeployParams({
-                tickNeighborhood: 0,
-                slippageD9: 5 * 1e5,
-                tokenId: tokenId,
-                securityParams: abi.encode(
-                    IVeloOracle.SecurityParams({
-                        lookback: 1,
-                        maxAllowedDelta: MAX_ALLOWED_DELTA,
-                        maxAge: MAX_AGE
-                    })
-                ),
-                strategyType: IPulseStrategyModule.StrategyType.LazySyncing
-            })
-        );
+        IVeloDeployFactory.PoolAddresses memory addresses = veloFactory
+            .createStrategy(
+                IVeloDeployFactory.DeployParams({
+                    tickNeighborhood: 0,
+                    slippageD9: 5 * 1e5,
+                    tokenId: tokenId,
+                    securityParams: abi.encode(
+                        IVeloOracle.SecurityParams({
+                            lookback: 1,
+                            maxAllowedDelta: MAX_ALLOWED_DELTA,
+                            maxAge: MAX_AGE
+                        })
+                    ),
+                    strategyType: IPulseStrategyModule.StrategyType.LazySyncing
+                })
+            );
+
+        lpWrapper = LpWrapper(payable(addresses.lpWrapper));
+        farm = StakingRewards(addresses.synthetixFarm);
+
         vm.stopPrank();
     }
 
@@ -175,7 +190,7 @@ contract Unit is Fixture {
             address(0)
         );
 
-        uint256 tokenId = mint(
+        uint256 tokenId_ = mint(
             pool.token0(),
             pool.token1(),
             pool.tickSpacing(),
@@ -184,7 +199,7 @@ contract Unit is Fixture {
             pool
         );
 
-        uint256 positionId = _depositToken(tokenId, Constants.OWNER);
+        uint256 positionId = _depositToken(tokenId_, Constants.OWNER);
 
         vm.expectRevert(abi.encodeWithSignature("Forbidden()"));
         lpWrapper.initialize(positionId, 1 ether);
@@ -212,6 +227,7 @@ contract Unit is Fixture {
 
     function testDeposit() external {
         pool.increaseObservationCardinalityNext(2);
+
         lpWrapper = new LpWrapper(
             core,
             depositWithdrawModule,
@@ -219,11 +235,11 @@ contract Unit is Fixture {
             "WLP",
             Constants.OWNER,
             Constants.WETH,
-            address(0),
-            address(0)
+            address(factory),
+            address(pool)
         );
 
-        uint256 tokenId = mint(
+        uint256 tokenId_ = mint(
             pool.token0(),
             pool.token1(),
             pool.tickSpacing(),
@@ -231,7 +247,7 @@ contract Unit is Fixture {
             10000,
             pool
         );
-        uint256 positionId = _depositToken(tokenId, address(lpWrapper));
+        uint256 positionId = _depositToken(tokenId_, address(lpWrapper));
 
         lpWrapper.initialize(positionId, 10000);
 
@@ -254,7 +270,7 @@ contract Unit is Fixture {
 
         uint256 totalSupplyBefore = lpWrapper.totalSupply();
         IAmmModule.AmmPosition memory positionBefore = ammModule.getAmmPosition(
-            tokenId
+            tokenId_
         );
 
         (uint256 amount0, uint256 amount1, uint256 lpAmount) = lpWrapper
@@ -273,7 +289,7 @@ contract Unit is Fixture {
 
         uint256 totalSupplyAfter = lpWrapper.totalSupply();
         IAmmModule.AmmPosition memory positionAfter = ammModule.getAmmPosition(
-            tokenId
+            tokenId_
         );
 
         {
@@ -312,29 +328,7 @@ contract Unit is Fixture {
     }
 
     function testWithdraw() external {
-        pool.increaseObservationCardinalityNext(2);
-        lpWrapper = new LpWrapper(
-            core,
-            depositWithdrawModule,
-            "Wrapper LP Token",
-            "WLP",
-            Constants.OWNER,
-            Constants.WETH,
-            address(0),
-            address(0)
-        );
-
-        uint256 tokenId = mint(
-            pool.token0(),
-            pool.token1(),
-            pool.tickSpacing(),
-            pool.tickSpacing() * 20,
-            10000,
-            pool
-        );
-        uint256 positionId = _depositToken(tokenId, address(lpWrapper));
-
-        lpWrapper.initialize(positionId, 10000);
+        _createStrategy();
 
         vm.startPrank(Constants.DEPOSITOR);
 
@@ -406,22 +400,7 @@ contract Unit is Fixture {
     }
 
     function testDepositAndStake() external {
-        pool.increaseObservationCardinalityNext(100);
-
-        uint256 tokenId = mint(
-            pool.token0(),
-            pool.token1(),
-            pool.tickSpacing(),
-            pool.tickSpacing() * 20,
-            INITIAL_LIQUIDITY,
-            pool
-        );
-
-        IVeloDeployFactory.PoolAddresses memory addresses = _createStrategy(
-            tokenId
-        );
-        lpWrapper = LpWrapper(payable(addresses.lpWrapper));
-        farm = StakingRewards(addresses.synthetixFarm);
+        _createStrategy();
 
         vm.startPrank(Constants.DEPOSITOR);
 
@@ -506,22 +485,7 @@ contract Unit is Fixture {
     }
 
     function testUnstakeAndWithdraw() external {
-        pool.increaseObservationCardinalityNext(2);
-
-        uint256 tokenId = mint(
-            pool.token0(),
-            pool.token1(),
-            pool.tickSpacing(),
-            pool.tickSpacing() * 20,
-            INITIAL_LIQUIDITY,
-            pool
-        );
-
-        IVeloDeployFactory.PoolAddresses memory addresses = _createStrategy(
-            tokenId
-        );
-        lpWrapper = LpWrapper(payable(addresses.lpWrapper));
-        farm = StakingRewards(addresses.synthetixFarm);
+        _createStrategy();
 
         vm.startPrank(Constants.DEPOSITOR);
 
@@ -604,22 +568,7 @@ contract Unit is Fixture {
     }
 
     function testReward() external {
-        pool.increaseObservationCardinalityNext(2);
-
-        uint256 tokenId = mint(
-            pool.token0(),
-            pool.token1(),
-            pool.tickSpacing(),
-            pool.tickSpacing() * 20,
-            INITIAL_LIQUIDITY,
-            pool
-        );
-
-        IVeloDeployFactory.PoolAddresses memory addresses = _createStrategy(
-            tokenId
-        );
-        lpWrapper = LpWrapper(payable(addresses.lpWrapper));
-        farm = StakingRewards(addresses.synthetixFarm);
+        _createStrategy();
 
         vm.startPrank(Constants.DEPOSITOR);
 
