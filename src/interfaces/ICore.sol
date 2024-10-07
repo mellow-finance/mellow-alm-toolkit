@@ -2,11 +2,14 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 import "./utils/IRebalanceCallback.sol";
 
 import "./modules/IStrategyModule.sol";
+import "./modules/IAmmDepositWithdrawModule.sol";
+import "./external/IWETH9.sol";
 
 interface ICore is IERC721Receiver {
     /**
@@ -190,6 +193,15 @@ interface ICore is IERC721Receiver {
     function ammModule() external view returns (IAmmModule);
 
     /**
+     * @dev Returns the address of the AMM deposit/withdraw module.
+     * @return address of the AMM deposit/withdraw module.
+     */
+    function ammDepositWithdrawModule()
+        external
+        view
+        returns (IAmmDepositWithdrawModule);
+
+    /**
      * @dev Returns the address of the oracle contract.
      * @return address of the oracle contract.
      */
@@ -312,6 +324,21 @@ interface ICore is IERC721Receiver {
         bytes memory securityParams
     ) external;
 
+    function directDeposit(
+        uint256 id,
+        uint256 tokenId,
+        uint256 amount0,
+        uint256 amount1,
+        bool requireSuccess
+    ) external returns (uint256, uint256);
+
+    function directWithdraw(
+        uint256 id,
+        uint256 tokenId,
+        uint256 liquidity,
+        address to,
+        bool requireSuccess
+    ) external returns (uint256, uint256);
     /**
      * @dev Deposits multiple tokens into the contract and creates new ManagedPosition.
      * @param params The deposit parameters including strategy parameters, security parameters, slippage, and token IDs.

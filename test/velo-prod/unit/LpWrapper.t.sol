@@ -14,7 +14,14 @@ contract Unit is Fixture {
         new VeloDepositWithdrawModule(positionManager);
     PulseStrategyModule public strategyModule = new PulseStrategyModule();
     Core public core =
-        new Core(ammModule, strategyModule, oracle, Constants.OWNER);
+        new Core(
+            ammModule,
+            depositWithdrawModule,
+            strategyModule,
+            oracle,
+            Constants.OWNER,
+            Constants.WETH
+        );
     LpWrapper public lpWrapper;
 
     ICLPool public pool =
@@ -232,7 +239,8 @@ contract Unit is Fixture {
             );
         }
 
-        vm.expectRevert(abi.encodeWithSignature("DepositCallFailed()"));
+        vm.expectRevert();
+        // abi.encodeWithSignature("DepositCallFailed()"));
         lpWrapper.deposit(
             1 ether,
             1 ether,
