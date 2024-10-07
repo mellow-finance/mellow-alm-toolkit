@@ -35,7 +35,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
     address private immutable _pool;
     VeloDeployFactory private immutable _factory;
 
-    uint56 immutable D9 = 10**9;
+    uint56 immutable D9 = 10 ** 9;
 
     /**
      * @dev Constructor function for the LpWrapper contract.
@@ -259,7 +259,14 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
 
         _mint(lpRecipient, lpAmount);
 
-        emit Deposit(msg.sender, to, _pool, lpAmount, actualAmount0, actualAmount1);
+        emit Deposit(
+            msg.sender,
+            to,
+            _pool,
+            lpAmount,
+            actualAmount0,
+            actualAmount1
+        );
     }
 
     /// @inheritdoc ILpWrapper

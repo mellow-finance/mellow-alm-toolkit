@@ -15,7 +15,8 @@ contract Unit is Fixture {
     uint128 INITIAL_LIQUIDITY = 1 ether;
 
     VeloOracle public oracle = new VeloOracle();
-    VeloAmmModule public ammModule = new VeloAmmModule(positionManager, Constants.IS_POOL_SELECTOR);
+    VeloAmmModule public ammModule =
+        new VeloAmmModule(positionManager, Constants.IS_POOL_SELECTOR);
     VeloDepositWithdrawModule public depositWithdrawModule =
         new VeloDepositWithdrawModule(positionManager);
     PulseStrategyModule public strategyModule = new PulseStrategyModule();

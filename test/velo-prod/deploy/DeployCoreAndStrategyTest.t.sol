@@ -8,7 +8,6 @@ import "src/scripts/deploy/optimism/DeployStrategy.s.sol";
 import "src/scripts/deploy/optimism/DeployVeloLazy.s.sol";
 
 contract DeployCoreAndStrategyTest is Test, DeployStrategy, DeployVeloLazy {
-
     function run() public override(DeployStrategy, DeployVeloLazy) {}
 
     function testDeploy() public {

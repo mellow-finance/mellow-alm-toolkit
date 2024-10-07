@@ -292,6 +292,7 @@ contract DeployStrategy is Script, Test {
 
         (
             IVeloDeployFactory.PoolAddresses memory poolAddresses,
+
         ) = createStrategyHelper.createStrategy(parameters[poolId]);
 
         print(poolAddresses, address(parameters[poolId].pool));
