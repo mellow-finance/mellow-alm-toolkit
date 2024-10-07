@@ -1,0 +1,424 @@
+[
+  {
+    "type": "constructor",
+    "inputs": [
+      { "name": "admin_", "type": "address", "internalType": "address" },
+      { "name": "core_", "type": "address", "internalType": "contract ICore" },
+      {
+        "name": "ammDepositWithdrawModule_",
+        "type": "address",
+        "internalType": "contract IVeloDepositWithdrawModule"
+      },
+      {
+        "name": "helper_",
+        "type": "address",
+        "internalType": "contract IVeloDeployFactoryHelper"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "ADMIN_DELEGATE_ROLE",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "bytes32", "internalType": "bytes32" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "ADMIN_ROLE",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "bytes32", "internalType": "bytes32" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "DEFAULT_ADMIN_ROLE",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "bytes32", "internalType": "bytes32" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "OPERATOR",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "bytes32", "internalType": "bytes32" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "createStrategy",
+    "inputs": [
+      {
+        "name": "params",
+        "type": "tuple",
+        "internalType": "struct IVeloDeployFactory.DeployParams",
+        "components": [
+          {
+            "name": "tickNeighborhood",
+            "type": "int24",
+            "internalType": "int24"
+          },
+          { "name": "slippageD9", "type": "uint32", "internalType": "uint32" },
+          { "name": "tokenId", "type": "uint256", "internalType": "uint256" },
+          {
+            "name": "securityParams",
+            "type": "bytes",
+            "internalType": "bytes"
+          },
+          {
+            "name": "strategyType",
+            "type": "uint8",
+            "internalType": "enum IPulseStrategyModule.StrategyType"
+          }
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "poolAddresses",
+        "type": "tuple",
+        "internalType": "struct IVeloDeployFactory.PoolAddresses",
+        "components": [
+          {
+            "name": "synthetixFarm",
+            "type": "address",
+            "internalType": "address"
+          },
+          { "name": "lpWrapper", "type": "address", "internalType": "address" }
+        ]
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "getImmutableParams",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct IVeloDeployFactory.ImmutableParams",
+        "components": [
+          {
+            "name": "core",
+            "type": "address",
+            "internalType": "contract ICore"
+          },
+          {
+            "name": "strategyModule",
+            "type": "address",
+            "internalType": "contract IPulseStrategyModule"
+          },
+          {
+            "name": "veloModule",
+            "type": "address",
+            "internalType": "contract IVeloAmmModule"
+          },
+          {
+            "name": "depositWithdrawModule",
+            "type": "address",
+            "internalType": "contract IVeloDepositWithdrawModule"
+          },
+          {
+            "name": "helper",
+            "type": "address",
+            "internalType": "contract IVeloDeployFactoryHelper"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getMutableParams",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct IVeloDeployFactory.MutableParams",
+        "components": [
+          {
+            "name": "lpWrapperAdmin",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "lpWrapperManager",
+            "type": "address",
+            "internalType": "address"
+          },
+          { "name": "farmOwner", "type": "address", "internalType": "address" },
+          {
+            "name": "farmOperator",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "minInitialLiquidity",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getRoleAdmin",
+    "inputs": [
+      { "name": "role", "type": "bytes32", "internalType": "bytes32" }
+    ],
+    "outputs": [{ "name": "", "type": "bytes32", "internalType": "bytes32" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getRoleMember",
+    "inputs": [
+      { "name": "role", "type": "bytes32", "internalType": "bytes32" },
+      { "name": "index", "type": "uint256", "internalType": "uint256" }
+    ],
+    "outputs": [{ "name": "", "type": "address", "internalType": "address" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getRoleMemberCount",
+    "inputs": [
+      { "name": "role", "type": "bytes32", "internalType": "bytes32" }
+    ],
+    "outputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "grantRole",
+    "inputs": [
+      { "name": "role", "type": "bytes32", "internalType": "bytes32" },
+      { "name": "account", "type": "address", "internalType": "address" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "hasRole",
+    "inputs": [
+      { "name": "role", "type": "bytes32", "internalType": "bytes32" },
+      { "name": "account", "type": "address", "internalType": "address" }
+    ],
+    "outputs": [{ "name": "", "type": "bool", "internalType": "bool" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "isAdmin",
+    "inputs": [
+      { "name": "sender", "type": "address", "internalType": "address" }
+    ],
+    "outputs": [{ "name": "", "type": "bool", "internalType": "bool" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "isOperator",
+    "inputs": [
+      { "name": "sender", "type": "address", "internalType": "address" }
+    ],
+    "outputs": [{ "name": "", "type": "bool", "internalType": "bool" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "onERC721Received",
+    "inputs": [
+      { "name": "", "type": "address", "internalType": "address" },
+      { "name": "", "type": "address", "internalType": "address" },
+      { "name": "", "type": "uint256", "internalType": "uint256" },
+      { "name": "", "type": "bytes", "internalType": "bytes" }
+    ],
+    "outputs": [{ "name": "", "type": "bytes4", "internalType": "bytes4" }],
+    "stateMutability": "pure"
+  },
+  {
+    "type": "function",
+    "name": "poolToAddresses",
+    "inputs": [
+      { "name": "pool", "type": "address", "internalType": "address" }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct IVeloDeployFactory.PoolAddresses",
+        "components": [
+          {
+            "name": "synthetixFarm",
+            "type": "address",
+            "internalType": "address"
+          },
+          { "name": "lpWrapper", "type": "address", "internalType": "address" }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "removeAddressesForPool",
+    "inputs": [
+      { "name": "pool", "type": "address", "internalType": "address" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "renounceRole",
+    "inputs": [
+      { "name": "role", "type": "bytes32", "internalType": "bytes32" },
+      { "name": "account", "type": "address", "internalType": "address" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "revokeRole",
+    "inputs": [
+      { "name": "role", "type": "bytes32", "internalType": "bytes32" },
+      { "name": "account", "type": "address", "internalType": "address" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "supportsInterface",
+    "inputs": [
+      { "name": "interfaceId", "type": "bytes4", "internalType": "bytes4" }
+    ],
+    "outputs": [{ "name": "", "type": "bool", "internalType": "bool" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "updateMutableParams",
+    "inputs": [
+      {
+        "name": "newMutableParams",
+        "type": "tuple",
+        "internalType": "struct IVeloDeployFactory.MutableParams",
+        "components": [
+          {
+            "name": "lpWrapperAdmin",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "lpWrapperManager",
+            "type": "address",
+            "internalType": "address"
+          },
+          { "name": "farmOwner", "type": "address", "internalType": "address" },
+          {
+            "name": "farmOperator",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "minInitialLiquidity",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "event",
+    "name": "RoleAdminChanged",
+    "inputs": [
+      {
+        "name": "role",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "previousAdminRole",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "newAdminRole",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "RoleGranted",
+    "inputs": [
+      {
+        "name": "role",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "account",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "sender",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "RoleRevoked",
+    "inputs": [
+      {
+        "name": "role",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "account",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "sender",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  { "type": "error", "name": "AddressZero", "inputs": [] },
+  { "type": "error", "name": "Forbidden", "inputs": [] },
+  { "type": "error", "name": "InvalidParams", "inputs": [] },
+  { "type": "error", "name": "LpWrapperAlreadyCreated", "inputs": [] }
+]

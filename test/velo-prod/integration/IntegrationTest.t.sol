@@ -48,7 +48,7 @@ contract Integration is Test {
     // parameters:
     int24[1] public fees = [int24(200)];
 
-    function setUp() external {
+    function setUp() external virtual {
         ammModule = new VeloAmmModule(positionManager);
         depositWithdrawModule = new VeloDepositWithdrawModule(positionManager);
         strategyModule = new PulseStrategyModule();
@@ -103,17 +103,17 @@ contract Integration is Test {
         uint128 liquidity,
         int24 width,
         address owner
-    ) public returns (uint256 tokenId) {
+    ) public returns (uint256 tokenId, int24 tickLower, int24 tickUpper) {
         vm.startPrank(owner);
 
         (uint160 sqrtPriceX96, int24 tick, , , , ) = pool.slot0();
-        int24 tickLower = tick - width / 2;
+        tickLower = tick - width / 2;
         {
             int24 remainder = tickLower % width;
             if (remainder < 0) remainder += width;
             tickLower -= remainder;
         }
-        int24 tickUpper = tickLower + width;
+        tickUpper = tickLower + width;
 
         (uint256 amount0, uint256 amount1) = LiquidityAmounts
             .getAmountsForLiquidity(
@@ -174,7 +174,7 @@ contract Integration is Test {
         mint(pool, 1000000, pool.tickSpacing() * 4, address(this));
         swapDust(pool.tickSpacing());
 
-        uint256 tokenId = mint(
+        (uint256 tokenId, , ) = mint(
             pool,
             1e8,
             pool.tickSpacing() * 4,
