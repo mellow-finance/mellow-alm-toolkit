@@ -1,39 +1,26 @@
 // SPDX-License-Identifier: BSL-1.1
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.25;
 
-import "forge-std/Script.sol";
-import "src/libraries/external/LiquidityAmounts.sol";
-import "src/libraries/external/TickMath.sol";
-import "src/utils/LpWrapper.sol";
-import "src/utils/VeloDeployFactory.sol";
-import "src/interfaces/external/velo/INonfungiblePositionManager.sol";
-import "src/interfaces/external/velo/ICLPool.sol";
+import "./base/Constants.sol";
 
-/// @dev =================== STAGE THREE =====================
-/// @dev address of @param LP_WRAPPER_ADDRESS is known after deploy the second STAGE
-/// @dev it should be used after deploy strategy for @param POOL_ADDRESS
-
-address constant POOL_ADDRESS = 0x8Ac2f9daC7a2852D44F3C09634444d533E4C078e;
-ICLPool constant pool = ICLPool(POOL_ADDRESS);
-IVeloDeployFactory constant veloDeployFactory = IVeloDeployFactory(
-    0xdca5BC88366A58883f2711708Ade7b1E866ecC83
-);
-INonfungiblePositionManager constant nft = INonfungiblePositionManager(
-    0x416b433906b1B72FA758e166e239c43d68dC6F29
-);
+/// @dev id of pool (see src/scripts/deploy/[chain]/PoolParameters.sol)
+uint256 constant POOL_ID = 3;
 
 // forge script DepositWithdraw.s.sol --rpc-url --broadcast --slow
-contract DepositWithdraw is Script {
+contract DepositWithdraw is Script, PoolParameters, Addresses {
+    ICLPool immutable pool = ICLPool(parameters[POOL_ID].pool);
+    INonfungiblePositionManager immutable nft =
+        INonfungiblePositionManager(Constants.NONFUNGIBLE_POSITION_MANAGER);
+
     uint256 immutable userPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
     address immutable userAddress = vm.addr(userPrivateKey);
     LpWrapper public lpWrapper;
 
     function run() public {
-        ICore core = ICore(0x30ce7bB58dd3ea6FbE32645f644462479170e090);
         //vm.startBroadcast(userPrivateKey);
         vm.startPrank(userAddress);
-        IVeloDeployFactory.PoolAddresses memory addr = veloDeployFactory
-            .poolToAddresses(POOL_ADDRESS);
+        IVeloDeployFactory.PoolAddresses memory addr = deployFactory
+            .poolToAddresses(address(pool));
         uint256 posId = core.getUserIds(addr.lpWrapper)[0];
         ICore.ManagedPositionInfo memory position = core.managedPositionAt(
             posId

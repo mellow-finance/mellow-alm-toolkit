@@ -4,17 +4,14 @@ pragma solidity ^0.8.0;
 import "forge-std/Test.sol";
 import "forge-std/Vm.sol";
 
-import "src/scripts/deploy/optimism/DeployStrategy.s.sol";
-import "src/scripts/deploy/optimism/DeployVeloLazy.s.sol";
+import "src/scripts/deploy/DeployStrategy.s.sol";
+import "src/scripts/deploy/DeployVeloLazy.s.sol";
 
 contract DeployCoreAndStrategyTest is Test, DeployStrategy, DeployVeloLazy {
     function run() public override(DeployStrategy, DeployVeloLazy) {}
 
     function testDeploy() public {
         vm.startPrank(DEPLOYER);
-
-        CreateStrategyHelper.PoolParameter[]
-            memory parameters = setPoolParameters();
 
         (
             address veloDeployFactoryAddress,
