@@ -64,8 +64,8 @@ contract CreateStrategyHelper {
                     tickNeighborhood: TICK_NEIGHBORHOOD,
                     slippageD9: SLIPPAGE_D9,
                     tokenId: tokenId,
-                    securityParams: abi.encode(
-                        _getSecurityParam(poolParameter.pool.tickSpacing())
+                    securityParams: _getSecurityParam(
+                        poolParameter.pool.tickSpacing()
                     ),
                     strategyType: STRATEGY_TYPE
                 })

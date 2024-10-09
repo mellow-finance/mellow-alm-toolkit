@@ -187,13 +187,11 @@ contract Integration is Test {
         positionManager.approve(address(deployFactory), tokenId);
         addresses = deployFactory.createStrategy(
             IVeloDeployFactory.DeployParams({
-                securityParams: abi.encode(
-                    IVeloOracle.SecurityParams({
-                        lookback: 1,
-                        maxAge: 7 days,
-                        maxAllowedDelta: type(int24).max
-                    })
-                ),
+                securityParams: IVeloOracle.SecurityParams({
+                    lookback: 1,
+                    maxAge: 7 days,
+                    maxAllowedDelta: type(int24).max
+                }),
                 slippageD9: 5 * 1e5,
                 tokenId: tokenId,
                 tickNeighborhood: 0,

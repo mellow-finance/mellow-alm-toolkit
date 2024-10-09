@@ -18,14 +18,13 @@ contract Integration is Fixture {
         );
         depositParams.owner = Constants.OWNER;
 
-        depositParams.strategyParams = abi.encode(
-            IPulseStrategyModule.StrategyParams({
+        depositParams.coreParams.strategyParams = IPulseStrategyModule
+            .StrategyParams({
                 tickNeighborhood: pool.tickSpacing() / 4,
                 tickSpacing: pool.tickSpacing(),
                 strategyType: IPulseStrategyModule.StrategyType.Original,
                 width: pool.tickSpacing()
-            })
-        );
+            });
 
         Counter counter = new Counter(
             Constants.OWNER,
@@ -34,15 +33,18 @@ contract Integration is Fixture {
             address(stakingRewards)
         );
 
-        depositParams.securityParams = new bytes(0);
+        depositParams.coreParams.securityParams = IVeloOracle.SecurityParams({
+            lookback: 0,
+            maxAge: 0,
+            maxAllowedDelta: 0
+        });
         depositParams.slippageD9 = 100 * 1e5;
-        depositParams.callbackParams = abi.encode(
-            IVeloAmmModule.CallbackParams({
+        depositParams.coreParams.callbackParams = IVeloAmmModule
+            .CallbackParams({
                 farm: address(stakingRewards),
                 gauge: pool.gauge(),
                 counter: address(counter)
-            })
-        );
+            });
 
         console2.log(address(stakingRewards), pool.gauge(), address(counter));
 

@@ -7,6 +7,9 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./utils/IRebalanceCallback.sol";
 
 import "./modules/IStrategyModule.sol";
+import "./modules/velo/IVeloAmmModule.sol";
+import "./modules/strategies/IPulseStrategyModule.sol";
+import "./oracles/IVeloOracle.sol";
 
 interface ICore is IERC721Receiver {
     struct RebalanceEventParams {
@@ -20,6 +23,33 @@ interface ICore is IERC721Receiver {
     }
 
     event Rebalance(RebalanceEventParams rebalanceEventParams);
+    /**
+     * @title CoreParam Structure
+     * @dev Contains core specific parameters
+     * @param callbackParams Custom data for the callback operation, facilitating specific interactions
+     * and operational adjustments during the rebalancing or other contract-driven processes.
+     * @param strategyParams Custom data defining the strategic parameters of the position, enabling
+     * strategic adjustments and alignments with market conditions or portfolio objectives.
+     * @param securityParams Custom data outlining the security parameters, crucial for adjusting the position's
+     * security settings and mechanisms in response to evolving market threats or operational requirements.
+     */
+    struct CoreParams {
+        /**
+         * @notice A byte array containing custom data for the corresponding AmmModule.
+         * @dev Stores information necessary for operations like staking, reward collection, etc., enabling customizable and protocol-specific interactions.
+         */
+        IVeloAmmModule.CallbackParams callbackParams;
+        /**
+         * @notice A byte array containing custom data for the corresponding StrategyModule.
+         * @dev Holds information about the parameters of the associated strategy, allowing for the implementation and execution of tailored strategic decisions.
+         */
+        IPulseStrategyModule.StrategyParams strategyParams;
+        /**
+         * @notice A byte array containing custom data for the corresponding Oracle.
+         * @dev Contains parameters for price fetching and protection against MEV (Miner Extractable Value) attacks, enhancing the security and integrity of the position.
+         */
+        IVeloOracle.SecurityParams securityParams;
+    }
 
     /**
      * @title ManagedPositionInfo Structure
@@ -54,21 +84,7 @@ interface ICore is IERC721Receiver {
          * @dev Allows for the aggregation and management of multiple AMM positions under a single managed position, enhancing the flexibility and capabilities of the system.
          */
         uint256[] ammPositionIds;
-        /**
-         * @notice A byte array containing custom data for the corresponding AmmModule.
-         * @dev Stores information necessary for operations like staking, reward collection, etc., enabling customizable and protocol-specific interactions.
-         */
-        bytes callbackParams;
-        /**
-         * @notice A byte array containing custom data for the corresponding StrategyModule.
-         * @dev Holds information about the parameters of the associated strategy, allowing for the implementation and execution of tailored strategic decisions.
-         */
-        bytes strategyParams;
-        /**
-         * @notice A byte array containing custom data for the corresponding Oracle.
-         * @dev Contains parameters for price fetching and protection against MEV (Miner Extractable Value) attacks, enhancing the security and integrity of the position.
-         */
-        bytes securityParams;
+        CoreParams coreParams;
     }
 
     /**
@@ -128,21 +144,7 @@ interface ICore is IERC721Receiver {
          * @dev Enables the aggregation of multiple AMM positions under a single managed position, facilitating collective management and strategic oversight.
          */
         uint256[] ammPositionIds;
-        /**
-         * @notice A byte array containing custom data for the corresponding AmmModule.
-         * @dev Stores operational data such as staking details, reward collection mechanisms, etc., providing a flexible interface for AMM-specific functionalities.
-         */
-        bytes callbackParams;
-        /**
-         * @notice A byte array containing custom data for the corresponding StrategyModule.
-         * @dev Encapsulates strategic information, including parameters guiding the management and rebalancing of the position, allowing for tailored strategic execution.
-         */
-        bytes strategyParams;
-        /**
-         * @notice A byte array containing custom data for the corresponding Oracle.
-         * @dev Contains parameters critical for accurate price fetching and MEV (Miner Extractable Value) protection mechanisms, enhancing the position's security and market responsiveness.
-         */
-        bytes securityParams;
+        CoreParams coreParams;
     }
 
     /**
@@ -303,12 +305,7 @@ interface ICore is IERC721Receiver {
      * @param slippageD9 The maximum allowable proportion of the position's capital that can be allocated
      * as compensation to rebalancers for their services. This value is scaled by a factor of 1,000,000,000 (1e9),
      * such that a value of 1,000,000,000 represents 100%, allowing for fine-grained control over rebalancing compensation.
-     * @param callbackParams Custom data for the callback operation, facilitating specific interactions
-     * and operational adjustments during the rebalancing or other contract-driven processes.
-     * @param strategyParams Custom data defining the strategic parameters of the position, enabling
-     * strategic adjustments and alignments with market conditions or portfolio objectives.
-     * @param securityParams Custom data outlining the security parameters, crucial for adjusting the position's
-     * security settings and mechanisms in response to evolving market threats or operational requirements.
+     * @param coreParams dsd
      *
      * Requirements:
      * - The caller must be the owner of the position, ensuring that only authorized entities can
@@ -319,9 +316,7 @@ interface ICore is IERC721Receiver {
     function setPositionParams(
         uint256 id,
         uint32 slippageD9,
-        bytes memory callbackParams,
-        bytes memory strategyParams,
-        bytes memory securityParams
+        CoreParams memory coreParams
     ) external;
 
     /**

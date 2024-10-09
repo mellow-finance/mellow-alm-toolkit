@@ -11,7 +11,7 @@ contract PulseStrategyModuleV2Test is Fixture {
         uint160 sqrtPriceX96;
         int24 tickLower;
         int24 tickUpper;
-        IPulseStrategyModuleV2.StrategyType strategyType;
+        IPulseStrategyModule.StrategyType strategyType;
         int24 tickSpacing;
         int24 tickNeighborhood;
         int24 tickLowerExpected;
@@ -31,8 +31,8 @@ contract PulseStrategyModuleV2Test is Fixture {
     function _test(TestCase memory tc) private {
         int24 width = tc.tickUpper - tc.tickLower;
         int24 spotTick = TickMath.getTickAtSqrtRatio(tc.sqrtPriceX96);
-        IPulseStrategyModuleV2.StrategyParams
-            memory params = IPulseStrategyModuleV2.StrategyParams({
+        IPulseStrategyModule.StrategyParams memory params = IPulseStrategyModule
+            .StrategyParams({
                 strategyType: tc.strategyType,
                 tickSpacing: tc.tickSpacing,
                 tickNeighborhood: tc.tickNeighborhood,
@@ -79,7 +79,7 @@ contract PulseStrategyModuleV2Test is Fixture {
         */
 
     function testCalculateTargetOriginalTS_1() external {
-        IPulseStrategyModuleV2.StrategyType t = IPulseStrategyModuleV2
+        IPulseStrategyModule.StrategyType t = IPulseStrategyModule
             .StrategyType
             .Original;
 
@@ -163,7 +163,7 @@ contract PulseStrategyModuleV2Test is Fixture {
     }
 
     function testCalculateTargetOriginaTS_greather_1() external {
-        IPulseStrategyModuleV2.StrategyType t = IPulseStrategyModuleV2
+        IPulseStrategyModule.StrategyType t = IPulseStrategyModule
             .StrategyType
             .Original;
 
@@ -463,7 +463,7 @@ contract PulseStrategyModuleV2Test is Fixture {
         int24 width,
         int24 tickSpacing
     ) internal {
-        IPulseStrategyModuleV2.StrategyType t = IPulseStrategyModuleV2
+        IPulseStrategyModule.StrategyType t = IPulseStrategyModule
             .StrategyType
             .LazyAscending;
 
@@ -515,7 +515,7 @@ contract PulseStrategyModuleV2Test is Fixture {
         int24 width,
         int24 tickSpacing
     ) internal {
-        IPulseStrategyModuleV2.StrategyType t = IPulseStrategyModuleV2
+        IPulseStrategyModule.StrategyType t = IPulseStrategyModule
             .StrategyType
             .LazyDescending;
 
@@ -567,7 +567,7 @@ contract PulseStrategyModuleV2Test is Fixture {
         int24 width,
         int24 tickSpacing
     ) internal {
-        IPulseStrategyModuleV2.StrategyType t = IPulseStrategyModuleV2
+        IPulseStrategyModule.StrategyType t = IPulseStrategyModule
             .StrategyType
             .LazySyncing;
 

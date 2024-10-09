@@ -157,8 +157,9 @@ contract LStrategyModule is IStrategyModule {
         target.upperTicks[1] = targetLower + half + width;
         target.liquidityRatiosX96[1] = Q96 - ratioX96;
 
-        uint256 maxDeviationX96 = abi
-            .decode(info.strategyParams, (StrategyParams))
+        uint256 maxDeviationX96 = info
+            .coreParams
+            .strategyParams
             .maxLiquidityRatioDeviationX96;
 
         if (

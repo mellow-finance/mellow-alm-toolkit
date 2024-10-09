@@ -201,13 +201,11 @@ contract Integration is Test {
         positionManager.approve(address(deployFactory), tokenId);
         addresses = deployFactory.createStrategy(
             IVeloDeployFactory.DeployParams({
-                securityParams: abi.encode(
-                    IVeloOracle.SecurityParams({
-                        lookback: 1,
-                        maxAge: 7 days,
-                        maxAllowedDelta: type(int24).max
-                    })
-                ),
+                securityParams: IVeloOracle.SecurityParams({
+                    lookback: 1,
+                    maxAge: 7 days,
+                    maxAllowedDelta: type(int24).max
+                }),
                 slippageD9: 5 * 1e5,
                 tokenId: tokenId,
                 tickNeighborhood: 0,
@@ -288,7 +286,7 @@ contract Integration is Test {
         (uint256 amount0, uint256 amount1) = ammModule.tvl(
             info.ammPositionIds[0],
             sqrtPriceX96,
-            info.callbackParams,
+            abi.encode(info.coreParams.callbackParams),
             new bytes(0)
         );
         ICLPool pool = ICLPool(info.pool);
@@ -329,7 +327,7 @@ contract Integration is Test {
         (uint256 amount0, uint256 amount1) = ammModule.tvl(
             info.ammPositionIds[0],
             sqrtPriceX96,
-            info.callbackParams,
+            abi.encode(info.coreParams.callbackParams),
             new bytes(0)
         );
         uint256 totalSupply = IERC20(address(wrapper)).totalSupply();
@@ -396,11 +394,8 @@ contract Integration is Test {
         ICore.ManagedPositionInfo memory info = core.managedPositionAt(
             wrapper.positionId()
         );
-        IVeloAmmModule.CallbackParams memory callbackParams = abi.decode(
-            info.callbackParams,
-            (IVeloAmmModule.CallbackParams)
-        );
-        Counter counter = Counter(callbackParams.counter);
+
+        Counter counter = Counter(info.coreParams.callbackParams.counter);
         if (counter.value() != 0 && block.timestamp >= farm.periodFinish()) {
             farm.notifyRewardAmount(counter.value());
             counter.reset();
@@ -929,22 +924,20 @@ contract Integration is Test {
         vm.startPrank(WRAPPER_ADMIN);
         wrapper.setPositionParams(
             info.slippageD9,
-            info.callbackParams,
-            abi.encode(
-                IPulseStrategyModule.StrategyParams({
+            ICore.CoreParams({
+                callbackParams: info.coreParams.callbackParams,
+                strategyParams: IPulseStrategyModule.StrategyParams({
                     strategyType: IPulseStrategyModule.StrategyType.Original,
                     tickNeighborhood: 100,
                     tickSpacing: 200,
                     width: 400
-                })
-            ),
-            abi.encode(
-                IVeloOracle.SecurityParams({
+                }),
+                securityParams: IVeloOracle.SecurityParams({
                     lookback: 1,
                     maxAllowedDelta: 1,
                     maxAge: 7 days
                 })
-            )
+            })
         );
         vm.stopPrank();
 
@@ -953,22 +946,20 @@ contract Integration is Test {
         vm.startPrank(WRAPPER_ADMIN);
         wrapper.setPositionParams(
             info.slippageD9,
-            info.callbackParams,
-            abi.encode(
-                IPulseStrategyModule.StrategyParams({
+            ICore.CoreParams({
+                callbackParams: info.coreParams.callbackParams,
+                strategyParams: IPulseStrategyModule.StrategyParams({
                     strategyType: IPulseStrategyModule.StrategyType.LazySyncing,
                     tickNeighborhood: 0,
                     tickSpacing: 200,
                     width: 400
-                })
-            ),
-            abi.encode(
-                IVeloOracle.SecurityParams({
+                }),
+                securityParams: IVeloOracle.SecurityParams({
                     lookback: 1,
                     maxAllowedDelta: 10000,
                     maxAge: 7 days
                 })
-            )
+            })
         );
         vm.stopPrank();
 

@@ -59,8 +59,8 @@ contract Unit is Fixture {
         depositParams.ammPositionIds = new uint256[](1);
         depositParams.ammPositionIds[0] = tokenId_;
         depositParams.owner = owner;
-        depositParams.callbackParams = abi.encode(
-            IVeloAmmModule.CallbackParams({
+        depositParams.coreParams.callbackParams = IVeloAmmModule
+            .CallbackParams({
                 gauge: address(pool.gauge()),
                 farm: address(1),
                 counter: address(
@@ -71,24 +71,20 @@ contract Unit is Fixture {
                         address(1)
                     )
                 )
-            })
-        );
-        depositParams.strategyParams = abi.encode(
-            IPulseStrategyModule.StrategyParams({
+            });
+        depositParams.coreParams.strategyParams = IPulseStrategyModule
+            .StrategyParams({
                 strategyType: IPulseStrategyModule.StrategyType.Original,
                 width: 1000,
                 tickSpacing: 200,
                 tickNeighborhood: 100
-            })
-        );
+            });
         depositParams.slippageD9 = 1 * 1e5;
-        depositParams.securityParams = abi.encode(
-            IVeloOracle.SecurityParams({
-                lookback: 1,
-                maxAllowedDelta: MAX_ALLOWED_DELTA,
-                maxAge: MAX_AGE
-            })
-        );
+        depositParams.coreParams.securityParams = IVeloOracle.SecurityParams({
+            lookback: 1,
+            maxAllowedDelta: MAX_ALLOWED_DELTA,
+            maxAge: MAX_AGE
+        });
 
         id = core.deposit(depositParams);
 
@@ -133,13 +129,11 @@ contract Unit is Fixture {
                     tickNeighborhood: 0,
                     slippageD9: 5 * 1e5,
                     tokenId: tokenId,
-                    securityParams: abi.encode(
-                        IVeloOracle.SecurityParams({
-                            lookback: 1,
-                            maxAllowedDelta: MAX_ALLOWED_DELTA,
-                            maxAge: MAX_AGE
-                        })
-                    ),
+                    securityParams: IVeloOracle.SecurityParams({
+                        lookback: 1,
+                        maxAllowedDelta: MAX_ALLOWED_DELTA,
+                        maxAge: MAX_AGE
+                    }),
                     strategyType: IPulseStrategyModule.StrategyType.LazySyncing
                 })
             );

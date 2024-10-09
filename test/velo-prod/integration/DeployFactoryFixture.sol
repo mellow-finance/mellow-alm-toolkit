@@ -448,21 +448,18 @@ contract DeployFactoryFixture is Test {
 
         ICore.DepositParams memory depositParams;
         depositParams.slippageD9 = 100 * 1e5;
-        depositParams.strategyParams = abi.encode(
-            IPulseStrategyModule.StrategyParams({
+        depositParams.coreParams.strategyParams = IPulseStrategyModule
+            .StrategyParams({
                 tickSpacing: TICK_SPACING,
                 tickNeighborhood: TICK_SPACING,
                 strategyType: IPulseStrategyModule.StrategyType.Original,
                 width: 200
-            })
-        );
-        depositParams.securityParams = abi.encode(
-            IVeloOracle.SecurityParams({
-                lookback: 1,
-                maxAllowedDelta: 10,
-                maxAge: 7 days
-            })
-        );
+            });
+        depositParams.coreParams.securityParams = IVeloOracle.SecurityParams({
+            lookback: 1,
+            maxAllowedDelta: 10,
+            maxAge: 7 days
+        });
 
         deployFactory.updateMutableParams(
             IVeloDeployFactory.MutableParams({

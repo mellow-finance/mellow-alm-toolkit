@@ -24,12 +24,11 @@ contract Compounder is DefaultAccessControl {
             if (timestamp < farm.periodFinish()) continue;
             ILpWrapper wrapper = ILpWrapper(addresses.lpWrapper);
             wrapper.emptyRebalance();
-            bytes memory params_ = ICore(wrapper.core())
+            IVeloAmmModule.CallbackParams memory params_ = ICore(wrapper.core())
                 .managedPositionAt(wrapper.positionId())
+                .coreParams
                 .callbackParams;
-            ICounter counter = ICounter(
-                abi.decode(params_, (IVeloAmmModule.CallbackParams)).counter
-            );
+            ICounter counter = ICounter(params_.counter);
             farm.notifyRewardAmount(counter.value());
             counter.reset();
         }

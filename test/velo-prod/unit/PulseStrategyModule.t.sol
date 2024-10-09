@@ -389,14 +389,12 @@ contract Unit is Fixture {
         info.ammPositionIds = new uint256[](1);
         info.ammPositionIds[0] = tokenId;
         info.pool = address(pool);
-        info.strategyParams = abi.encode(
-            IPulseStrategyModule.StrategyParams({
-                strategyType: IPulseStrategyModule.StrategyType.Original,
-                tickSpacing: pool.tickSpacing(),
-                tickNeighborhood: 50,
-                width: 300
-            })
-        );
+        info.coreParams.strategyParams = IPulseStrategyModule.StrategyParams({
+            strategyType: IPulseStrategyModule.StrategyType.Original,
+            tickSpacing: pool.tickSpacing(),
+            tickNeighborhood: 50,
+            width: 300
+        });
 
         VeloAmmModule ammModule = new VeloAmmModule(
             INonfungiblePositionManager(Constants.NONFUNGIBLE_POSITION_MANAGER),

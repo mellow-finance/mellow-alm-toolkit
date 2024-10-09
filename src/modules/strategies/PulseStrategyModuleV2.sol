@@ -15,13 +15,17 @@ contract PulseStrategyModuleV2 is IPulseStrategyModuleV2 {
         bytes memory params_
     ) external pure override {
         if (params_.length != 0x80) revert InvalidLength();
-        StrategyParams memory params = abi.decode(params_, (StrategyParams));
+        IPulseStrategyModule.StrategyParams memory params = abi.decode(
+            params_,
+            (IPulseStrategyModule.StrategyParams)
+        );
         if (
             params.width == 0 ||
             params.tickSpacing == 0 ||
             params.width % params.tickSpacing != 0 ||
             params.tickNeighborhood * 2 > params.width ||
-            (params.strategyType != StrategyType.Original &&
+            (params.strategyType !=
+                IPulseStrategyModule.StrategyType.Original &&
                 params.tickNeighborhood != 0)
         ) revert InvalidParams();
     }
@@ -46,10 +50,6 @@ contract PulseStrategyModuleV2 is IPulseStrategyModuleV2 {
         IAmmModule.AmmPosition memory position = ammModule.getAmmPosition(
             info.ammPositionIds[0]
         );
-        StrategyParams memory strategyParams = abi.decode(
-            info.strategyParams,
-            (StrategyParams)
-        );
         (uint160 sqrtPriceX96, int24 tick) = oracle.getOraclePrice(info.pool);
         return
             calculateTarget(
@@ -57,7 +57,7 @@ contract PulseStrategyModuleV2 is IPulseStrategyModuleV2 {
                 tick,
                 position.tickLower,
                 position.tickUpper,
-                strategyParams
+                info.coreParams.strategyParams
             );
     }
 
@@ -140,7 +140,7 @@ contract PulseStrategyModuleV2 is IPulseStrategyModuleV2 {
         int24 tick,
         int24 tickLower,
         int24 tickUpper,
-        StrategyParams memory params
+        IPulseStrategyModule.StrategyParams memory params
     ) private pure returns (int24 targetTickLower, int24 targetTickUpper) {
         if (params.width != tickUpper - tickLower)
             return
@@ -158,7 +158,7 @@ contract PulseStrategyModuleV2 is IPulseStrategyModuleV2 {
             TickMath.getSqrtRatioAtTick(tickUpper - params.tickNeighborhood)
         ) return (tickLower, tickUpper);
 
-        if (params.strategyType == StrategyType.Original)
+        if (params.strategyType == IPulseStrategyModule.StrategyType.Original)
             return
                 _centeredPosition(
                     sqrtPriceX96,
@@ -171,12 +171,14 @@ contract PulseStrategyModuleV2 is IPulseStrategyModuleV2 {
         uint160 sqrtPriceX96Upper = TickMath.getSqrtRatioAtTick(tickUpper);
 
         if (
-            params.strategyType == StrategyType.LazyDescending &&
+            params.strategyType ==
+            IPulseStrategyModule.StrategyType.LazyDescending &&
             sqrtPriceX96 >= sqrtPriceX96Lower
         ) return (tickLower, tickUpper);
 
         if (
-            params.strategyType == StrategyType.LazyAscending &&
+            params.strategyType ==
+            IPulseStrategyModule.StrategyType.LazyAscending &&
             sqrtPriceX96 <= sqrtPriceX96Upper
         ) return (tickLower, tickUpper);
         /*  
@@ -210,7 +212,7 @@ contract PulseStrategyModuleV2 is IPulseStrategyModuleV2 {
         int24 tick,
         int24 tickLower,
         int24 tickUpper,
-        StrategyParams memory params
+        IPulseStrategyModule.StrategyParams memory params
     )
         public
         pure

@@ -11,7 +11,7 @@ contract Integration is Fixture {
         int24 tickNeighborhood;
         int24 tickSpacing;
         uint32 slippageD9;
-        bytes securityParams;
+        IVeloOracle.SecurityParams securityParams;
     }
 
     uint256 public moveCoef = 1e8;
@@ -28,19 +28,18 @@ contract Integration is Fixture {
         );
         depositParams.owner = Constants.OWNER;
 
-        depositParams.strategyParams = abi.encode(
-            IPulseStrategyModule.StrategyParams({
+        depositParams.coreParams.strategyParams = IPulseStrategyModule
+            .StrategyParams({
                 tickNeighborhood: params.tickNeighborhood,
                 tickSpacing: params.tickSpacing,
                 strategyType: IPulseStrategyModule.StrategyType.Original,
                 width: params.width
-            })
-        );
-        depositParams.securityParams = params.securityParams;
+            });
+        depositParams.coreParams.securityParams = params.securityParams;
         depositParams.slippageD9 = params.slippageD9;
         depositParams.owner = address(lpWrapper);
-        depositParams.callbackParams = abi.encode(
-            IVeloAmmModule.CallbackParams({
+        depositParams.coreParams.callbackParams = IVeloAmmModule
+            .CallbackParams({
                 farm: address(stakingRewards),
                 gauge: address(pool.gauge()),
                 counter: address(
@@ -51,8 +50,7 @@ contract Integration is Fixture {
                         address(stakingRewards)
                     )
                 )
-            })
-        );
+            });
 
         vm.startPrank(Constants.OWNER);
         positionManager.approve(address(core), depositParams.ammPositionIds[0]);
@@ -70,7 +68,11 @@ contract Integration is Fixture {
                 width: tickSpacing * 4,
                 tickNeighborhood: tickSpacing,
                 slippageD9: 100 * 1e5,
-                securityParams: new bytes(0)
+                securityParams: IVeloOracle.SecurityParams({
+                    lookback: 0,
+                    maxAge: 0,
+                    maxAllowedDelta: 0
+                })
             })
         );
 
@@ -166,7 +168,11 @@ contract Integration is Fixture {
                 width: tickSpacing * 10,
                 tickNeighborhood: tickSpacing,
                 slippageD9: 100 * 1e5,
-                securityParams: new bytes(0)
+                securityParams: IVeloOracle.SecurityParams({
+                    lookback: 0,
+                    maxAge: 0,
+                    maxAllowedDelta: 0
+                })
             })
         );
 
@@ -273,13 +279,11 @@ contract Integration is Fixture {
                 width: tickSpacing * 10,
                 tickNeighborhood: tickSpacing,
                 slippageD9: 100 * 1e5,
-                securityParams: abi.encode(
-                    IVeloOracle.SecurityParams({
-                        lookback: 10,
-                        maxAllowedDelta: 10,
-                        maxAge: 7 days
-                    })
-                )
+                securityParams: IVeloOracle.SecurityParams({
+                    lookback: 10,
+                    maxAllowedDelta: 10,
+                    maxAge: 7 days
+                })
             })
         );
 

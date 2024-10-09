@@ -35,7 +35,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
     address private immutable _pool;
     VeloDeployFactory private immutable _factory;
 
-    uint56 immutable D9 = 10 ** 9;
+    uint56 private immutable D9 = 10 ** 9;
 
     /**
      * @dev Constructor function for the LpWrapper contract.
@@ -251,9 +251,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
                 ammPositionIds: info.ammPositionIds,
                 owner: info.owner,
                 slippageD9: info.slippageD9,
-                callbackParams: info.callbackParams,
-                strategyParams: info.strategyParams,
-                securityParams: info.securityParams
+                coreParams: info.coreParams
             })
         );
 
@@ -378,9 +376,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
                 ammPositionIds: info.ammPositionIds,
                 owner: info.owner,
                 slippageD9: info.slippageD9,
-                callbackParams: info.callbackParams,
-                strategyParams: info.strategyParams,
-                securityParams: info.securityParams
+                coreParams: info.coreParams
             })
         );
 
@@ -461,25 +457,12 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
     /// @inheritdoc ILpWrapper
     function setPositionParams(
         uint32 slippageD9,
-        bytes memory callbackParams,
-        bytes memory strategyParams,
-        bytes memory securityParams
+        ICore.CoreParams memory coreParams
     ) external {
         _requireAdmin();
-        core.setPositionParams(
-            positionId,
-            slippageD9,
-            callbackParams,
-            strategyParams,
-            securityParams
-        );
+        core.setPositionParams(positionId, slippageD9, coreParams);
 
-        emit PositionParamsSet(
-            slippageD9,
-            abi.decode(callbackParams, (IVeloAmmModule.CallbackParams)),
-            abi.decode(strategyParams, (IPulseStrategyModule.StrategyParams)),
-            abi.decode(securityParams, (IVeloOracle.SecurityParams))
-        );
+        emit PositionParamsSet(slippageD9, coreParams);
     }
 
     /// @inheritdoc ILpWrapper

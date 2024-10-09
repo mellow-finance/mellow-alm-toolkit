@@ -229,8 +229,8 @@ contract VeloAmmModule is IVeloAmmModule {
 
     /**
      * @dev makes a call to the ICLFactory and checks that address(0) does not belong to
-     *  if selectorIsPool is wrong then reverts with IsPool() reason 
-     * */ 
+     *  if selectorIsPool is wrong then reverts with IsPool() reason
+     * */
     function _validateSelectorIsPool() internal view {
         require(isPool(address(0)) == false);
     }

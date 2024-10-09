@@ -55,7 +55,7 @@ contract VeloDeployFactory is
 
         if (
             params.slippageD9 == 0 ||
-            params.securityParams.length == 0 ||
+            //params.securityParams.length == 0 ||
             params.tokenId == 0
         ) {
             revert InvalidParams();
@@ -83,7 +83,10 @@ contract VeloDeployFactory is
             revert LpWrapperAlreadyCreated();
         }
 
-        core.oracle().ensureNoMEV(address(pool), params.securityParams);
+        core.oracle().ensureNoMEV(
+            address(pool),
+            abi.encode(params.securityParams)
+        );
 
         IPulseStrategyModule.StrategyParams
             memory strategyParams = IPulseStrategyModule.StrategyParams({
@@ -157,7 +160,7 @@ contract VeloDeployFactory is
 
         ICore.DepositParams memory depositParams;
         {
-            depositParams.securityParams = params.securityParams;
+            depositParams.coreParams.securityParams = params.securityParams;
             depositParams.slippageD9 = params.slippageD9;
             depositParams.ammPositionIds = new uint256[](1);
             depositParams.ammPositionIds[0] = params.tokenId;
@@ -173,8 +176,8 @@ contract VeloDeployFactory is
                     address(lpWrapper)
                 )
             );
-            depositParams.callbackParams = abi.encode(
-                IVeloAmmModule.CallbackParams({
+            depositParams.coreParams.callbackParams = IVeloAmmModule
+                .CallbackParams({
                     farm: poolAddresses.synthetixFarm,
                     gauge: address(gauge),
                     counter: address(
@@ -185,9 +188,8 @@ contract VeloDeployFactory is
                             poolAddresses.synthetixFarm
                         )
                     )
-                })
-            );
-            depositParams.strategyParams = abi.encode(strategyParams);
+                });
+            depositParams.coreParams.strategyParams = strategyParams;
             _poolToAddresses[address(pool)] = poolAddresses;
         }
         INonfungiblePositionManager positionManager = INonfungiblePositionManager(

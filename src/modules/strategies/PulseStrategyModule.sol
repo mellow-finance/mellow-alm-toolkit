@@ -45,17 +45,13 @@ contract PulseStrategyModule is IPulseStrategyModule {
         IAmmModule.AmmPosition memory position = ammModule.getAmmPosition(
             info.ammPositionIds[0]
         );
-        StrategyParams memory strategyParams = abi.decode(
-            info.strategyParams,
-            (StrategyParams)
-        );
         (, int24 tick) = oracle.getOraclePrice(info.pool);
         return
             calculateTarget(
                 tick,
                 position.tickLower,
                 position.tickUpper,
-                strategyParams
+                info.coreParams.strategyParams
             );
     }
 

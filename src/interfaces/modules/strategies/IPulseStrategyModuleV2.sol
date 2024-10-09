@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "../IStrategyModule.sol";
-
+import "./IPulseStrategyModule.sol";
 /**
  * @title PulseStrategyModule
  * @dev Implements various strategies for Pulse V1, including Original, Lazy Syncing, Lazy Ascending, and Lazy Descending strategies.
@@ -13,23 +13,23 @@ interface IPulseStrategyModuleV2 is IStrategyModule {
     error InvalidLength(); // Thrown when an array length is incorrect
 
     // Enum representing different types of strategies
-    enum StrategyType {
+    /*     enum StrategyType {
         Original, // Original Pulse V1 strategy
         LazySyncing, // Lazy syncing strategy
         LazyAscending, // Lazy ascending strategy
         LazyDescending // Lazy descending strategy
-    }
+    } */
 
     /**
      * @dev Struct for strategy parameters.
      * Encapsulates the details required to execute different types of strategies.
      */
-    struct StrategyParams {
+    /*     struct StrategyParams {
         StrategyType strategyType; // Type of strategy
         int24 tickNeighborhood; // Neighborhood of ticks to consider for rebalancing
         int24 tickSpacing; // tickSpacing of the corresponding amm pool
         int24 width; // Width of the interval
-    }
+    } */
 
     /**
      * @dev Returns the constant value of Q96, representing 2 ** 96.
@@ -80,7 +80,7 @@ interface IPulseStrategyModuleV2 is IStrategyModule {
         int24 tick,
         int24 tickLower,
         int24 tickUpper,
-        StrategyParams memory params
+        IPulseStrategyModule.StrategyParams memory params
     )
         external
         pure

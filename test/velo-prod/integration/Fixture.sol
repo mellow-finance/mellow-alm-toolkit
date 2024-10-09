@@ -287,7 +287,7 @@ contract Fixture is Test {
         (uint256 amount0, uint256 amount1) = ammModule.tvl(
             tokenId,
             sqrtPriceX96,
-            info.callbackParams,
+            abi.encode(info.coreParams.callbackParams),
             new bytes(0)
         );
 
@@ -414,13 +414,11 @@ contract Fixture is Test {
                     tickNeighborhood: 0,
                     slippageD9: 5 * 1e5,
                     tokenId: tokenId,
-                    securityParams: abi.encode(
-                        IVeloOracle.SecurityParams({
-                            lookback: 1,
-                            maxAllowedDelta: MAX_ALLOWED_DELTA,
-                            maxAge: MAX_AGE
-                        })
-                    ),
+                    securityParams: IVeloOracle.SecurityParams({
+                        lookback: 1,
+                        maxAllowedDelta: MAX_ALLOWED_DELTA,
+                        maxAge: MAX_AGE
+                    }),
                     strategyType: IPulseStrategyModule.StrategyType.LazySyncing
                 })
             );

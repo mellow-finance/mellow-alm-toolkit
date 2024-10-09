@@ -77,7 +77,7 @@ contract VeloSugarHelper {
             (lp.reserve0, lp.reserve1) = ammModule.tvl(
                 lp.nft,
                 lp.price,
-                position.callbackParams,
+                abi.encode(position.coreParams.callbackParams),
                 protocolParams
             );
         }

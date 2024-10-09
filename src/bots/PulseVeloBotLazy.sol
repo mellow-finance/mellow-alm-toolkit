@@ -103,16 +103,11 @@ contract PulseVeloBotLazy is IPulseVeloBotLazy {
             .positions(tokenId);
         (, int24 tick, , , , ) = ICLPool(pool).slot0();
 
-        IPulseStrategyModule.StrategyParams memory params = abi.decode(
-            managedPositionInfo.strategyParams,
-            (IPulseStrategyModule.StrategyParams)
-        );
-
         (isRebalanceRequired, ) = strategyModule.calculateTarget(
             tick,
             tickLower,
             tickUpper,
-            params
+            managedPositionInfo.coreParams.strategyParams
         );
     }
 
