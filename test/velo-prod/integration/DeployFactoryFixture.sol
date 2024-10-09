@@ -419,7 +419,7 @@ contract DeployFactoryFixture is Test {
 
         ammModule = new VeloAmmModule(
             INonfungiblePositionManager(positionManager),
-            Constants.IS_POOL_SELECTOR
+            Constants.SELECTOR_IS_POOL
         );
         strategyModule = new PulseStrategyModule();
         oracle = new VeloOracle();

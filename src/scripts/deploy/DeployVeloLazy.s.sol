@@ -49,7 +49,7 @@ contract DeployVeloLazy is Script, Test, PoolParameters, Addresses {
         //-------------------------------------------------------------------------------
         ammModule = new VeloAmmModule(
             INonfungiblePositionManager(Constants.NONFUNGIBLE_POSITION_MANAGER),
-            Constants.IS_POOL_SELECTOR
+            Constants.SELECTOR_IS_POOL
         );
         console2.log("VeloAmmModule", address(ammModule));
 

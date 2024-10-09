@@ -9,7 +9,7 @@ contract Unit is Fixture {
     VeloAmmModule public module =
         new VeloAmmModule(
             INonfungiblePositionManager(Constants.NONFUNGIBLE_POSITION_MANAGER),
-            Constants.IS_POOL_SELECTOR
+            Constants.SELECTOR_IS_POOL
         );
 
     ICLPool public pool =
@@ -72,7 +72,7 @@ contract Unit is Fixture {
     function testConstructor() external {
         module = new VeloAmmModule(
             INonfungiblePositionManager(Constants.NONFUNGIBLE_POSITION_MANAGER),
-            Constants.IS_POOL_SELECTOR
+            Constants.SELECTOR_IS_POOL
         );
     }
 

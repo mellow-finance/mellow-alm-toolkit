@@ -83,5 +83,5 @@ interface IVeloAmmModule is IAmmModule {
      * @dev Returns the selector of isPool/isPair function of the factory.
      * @return bytes4 function selector.
      */
-    function isPoolSelector() external view returns (bytes4);
+    function selectorIsPool() external view returns (bytes4);
 }

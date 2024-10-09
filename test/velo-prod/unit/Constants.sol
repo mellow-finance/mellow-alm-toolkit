@@ -49,7 +49,7 @@ library Constants {
     address public constant VELO_FACTORY =
         0x548118C7E0B865C2CfA94D15EC86B666468ac758;
 
-    bytes4 public constant IS_POOL_SELECTOR = 0xe5e31b13;
+    bytes4 public constant SELECTOR_IS_POOL = 0xe5e31b13;
 
     address public constant SWAP_ROUTER =
         0xF132bdb9573867cD72f2585C338B923F973EB817;

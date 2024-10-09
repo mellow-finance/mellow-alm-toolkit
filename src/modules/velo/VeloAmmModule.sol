@@ -20,15 +20,16 @@ contract VeloAmmModule is IVeloAmmModule {
     /// @inheritdoc IVeloAmmModule
     ICLFactory public immutable factory;
     /// @inheritdoc IVeloAmmModule
-    bytes4 public immutable isPoolSelector;
+    bytes4 public immutable selectorIsPool;
 
     constructor(
         INonfungiblePositionManager positionManager_,
-        bytes4 isPoolSelector_
+        bytes4 selectorIsPool_
     ) {
         positionManager = address(positionManager_);
         factory = ICLFactory(positionManager_.factory());
-        isPoolSelector = isPoolSelector_;
+        selectorIsPool = selectorIsPool_;
+        _validateSelectorIsPool();
     }
 
     /// @inheritdoc IAmmModule
@@ -131,7 +132,7 @@ contract VeloAmmModule is IVeloAmmModule {
     /// @inheritdoc IAmmModule
     function isPool(address pool) public view override returns (bool) {
         (bool success, bytes memory returnData) = address(factory).staticcall(
-            abi.encodeWithSelector(isPoolSelector, pool)
+            abi.encodeWithSelector(selectorIsPool, pool)
         );
         if (!success) revert IsPool();
         return abi.decode(returnData, (bool));
@@ -224,5 +225,13 @@ contract VeloAmmModule is IVeloAmmModule {
                 })
             );
         }
+    }
+
+    /**
+     * @dev makes a call to the ICLFactory and checks that address(0) does not belong to
+     *  if selectorIsPool is wrong then reverts with IsPool() reason 
+     * */ 
+    function _validateSelectorIsPool() internal view {
+        require(isPool(address(0)) == false);
     }
 }

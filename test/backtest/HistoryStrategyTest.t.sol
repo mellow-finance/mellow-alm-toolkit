@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BSL-1.1
 pragma solidity ^0.8.0;
 import "../../test/velo-prod/integration/IntegrationTest.t.sol";
-import "../../test/velo-prod/contracts/periphery/interfaces/external/IWETH9.sol";
 import "../../src/modules/strategies/PulseStrategyModule.sol";
 import "../../src/bots/PulseVeloBot.sol";
 

@@ -78,7 +78,7 @@ contract Integration is Test {
     function setUp() external {
         ammModule = new VeloAmmModule(
             positionManager,
-            Constants.IS_POOL_SELECTOR
+            Constants.SELECTOR_IS_POOL
         );
         depositWithdrawModule = new VeloDepositWithdrawModule(positionManager);
         strategyModule = new PulseStrategyModule();
