@@ -45,12 +45,10 @@ contract Unit is Fixture {
     ) private returns (uint256 id) {
         vm.startPrank(Constants.OWNER);
         core.setProtocolParams(
-            abi.encode(
-                IVeloAmmModule.ProtocolParams({
-                    treasury: Constants.PROTOCOL_TREASURY,
-                    feeD9: Constants.PROTOCOL_FEE_D9
-                })
-            )
+            IAmmModule.ProtocolParams({
+                treasury: Constants.PROTOCOL_TREASURY,
+                feeD9: Constants.PROTOCOL_FEE_D9
+            })
         );
 
         positionManager.approve(address(core), tokenId_);
@@ -59,28 +57,28 @@ contract Unit is Fixture {
         depositParams.ammPositionIds = new uint256[](1);
         depositParams.ammPositionIds[0] = tokenId_;
         depositParams.owner = owner;
-        depositParams.coreParams.callbackParams = IVeloAmmModule
-            .CallbackParams({
-                gauge: address(pool.gauge()),
-                farm: address(1),
-                counter: address(
-                    new Counter(
-                        Constants.OWNER,
-                        address(core),
-                        Constants.VELO,
-                        address(1)
-                    )
+        depositParams.coreParams.callbackParams = IAmmModule.CallbackParams({
+            gauge: address(pool.gauge()),
+            farm: address(1),
+            counter: address(
+                new Counter(
+                    Constants.OWNER,
+                    address(core),
+                    Constants.VELO,
+                    address(1)
                 )
-            });
-        depositParams.coreParams.strategyParams = IPulseStrategyModule
+            )
+        });
+        depositParams.coreParams.strategyParams = IStrategyModule
             .StrategyParams({
-                strategyType: IPulseStrategyModule.StrategyType.Original,
+                strategyType: IStrategyModule.StrategyType.Original,
                 width: 1000,
                 tickSpacing: 200,
-                tickNeighborhood: 100
+                tickNeighborhood: 100,
+                maxLiquidityRatioDeviationX96: 0
             });
         depositParams.slippageD9 = 1 * 1e5;
-        depositParams.coreParams.securityParams = IVeloOracle.SecurityParams({
+        depositParams.coreParams.securityParams = IOracle.SecurityParams({
             lookback: 1,
             maxAllowedDelta: MAX_ALLOWED_DELTA,
             maxAge: MAX_AGE
@@ -105,12 +103,10 @@ contract Unit is Fixture {
 
         vm.startPrank(Constants.OWNER);
         core.setProtocolParams(
-            abi.encode(
-                IVeloAmmModule.ProtocolParams({
-                    feeD9: Constants.PROTOCOL_FEE_D9,
-                    treasury: Constants.PROTOCOL_TREASURY
-                })
-            )
+            IAmmModule.ProtocolParams({
+                feeD9: Constants.PROTOCOL_FEE_D9,
+                treasury: Constants.PROTOCOL_TREASURY
+            })
         );
         positionManager.approve(address(veloFactory), tokenId);
         veloFactory.updateMutableParams(
@@ -129,12 +125,12 @@ contract Unit is Fixture {
                     tickNeighborhood: 0,
                     slippageD9: 5 * 1e5,
                     tokenId: tokenId,
-                    securityParams: IVeloOracle.SecurityParams({
+                    securityParams: IOracle.SecurityParams({
                         lookback: 1,
                         maxAllowedDelta: MAX_ALLOWED_DELTA,
                         maxAge: MAX_AGE
                     }),
-                    strategyType: IPulseStrategyModule.StrategyType.LazySyncing
+                    strategyType: IStrategyModule.StrategyType.LazySyncing
                 })
             );
 

@@ -67,12 +67,10 @@ contract DeployVeloLazy is Script, Test, PoolParameters, Addresses {
         console2.log("Core", address(core));
 
         core.setProtocolParams(
-            abi.encode(
-                IVeloAmmModule.ProtocolParams({
-                    feeD9: Constants.PROTOCOL_FEE_D9,
-                    treasury: PROTOCOL_TREASURY
-                })
-            )
+            IAmmModule.ProtocolParams({
+                feeD9: Constants.PROTOCOL_FEE_D9,
+                treasury: PROTOCOL_TREASURY
+            })
         );
 
         core.setOperatorFlag(true);

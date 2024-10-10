@@ -425,12 +425,10 @@ contract DeployFactoryFixture is Test {
         oracle = new VeloOracle();
         core = new Core(ammModule, strategyModule, oracle, Constants.OWNER);
         core.setProtocolParams(
-            abi.encode(
-                IVeloAmmModule.ProtocolParams({
-                    feeD9: 1e8,
-                    treasury: Constants.PROTOCOL_TREASURY
-                })
-            )
+            IAmmModule.ProtocolParams({
+                feeD9: 1e8,
+                treasury: Constants.PROTOCOL_TREASURY
+            })
         );
 
         dwModule = new VeloDepositWithdrawModule(
@@ -448,14 +446,15 @@ contract DeployFactoryFixture is Test {
 
         ICore.DepositParams memory depositParams;
         depositParams.slippageD9 = 100 * 1e5;
-        depositParams.coreParams.strategyParams = IPulseStrategyModule
+        depositParams.coreParams.strategyParams = IStrategyModule
             .StrategyParams({
                 tickSpacing: TICK_SPACING,
                 tickNeighborhood: TICK_SPACING,
-                strategyType: IPulseStrategyModule.StrategyType.Original,
-                width: 200
+                strategyType: IStrategyModule.StrategyType.Original,
+                width: 200,
+                maxLiquidityRatioDeviationX96: 0
             });
-        depositParams.coreParams.securityParams = IVeloOracle.SecurityParams({
+        depositParams.coreParams.securityParams = IOracle.SecurityParams({
             lookback: 1,
             maxAllowedDelta: 10,
             maxAge: 7 days

@@ -65,10 +65,8 @@ contract VeloSugarHelper {
         lp.token1 = ICLPool(position.pool).token1();
         lp.tickSpacing = ICLPool(position.pool).tickSpacing();
         IAmmModule ammModule = core.ammModule();
-        bytes memory protocolParams = core.protocolParams();
-        lp.almFeeD9 = abi
-            .decode(protocolParams, (IVeloAmmModule.ProtocolParams))
-            .feeD9;
+        IAmmModule.ProtocolParams memory protocolParams = core.protocolParams();
+        lp.almFeeD9 = protocolParams.feeD9;
         lp.pool = position.pool;
         lp.initialized = true;
         lp.gauge = ICLPool(position.pool).gauge();
@@ -77,7 +75,7 @@ contract VeloSugarHelper {
             (lp.reserve0, lp.reserve1) = ammModule.tvl(
                 lp.nft,
                 lp.price,
-                abi.encode(position.coreParams.callbackParams),
+                position.coreParams.callbackParams,
                 protocolParams
             );
         }

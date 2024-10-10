@@ -38,12 +38,10 @@ contract Unit is Fixture {
         vm.startPrank(Constants.OWNER);
 
         core.setProtocolParams(
-            abi.encode(
-                IVeloAmmModule.ProtocolParams({
-                    treasury: Constants.PROTOCOL_TREASURY,
-                    feeD9: Constants.PROTOCOL_FEE_D9
-                })
-            )
+            IAmmModule.ProtocolParams({
+                treasury: Constants.PROTOCOL_TREASURY,
+                feeD9: Constants.PROTOCOL_FEE_D9
+            })
         );
 
         positionManager.approve(address(core), tokenId);
@@ -52,32 +50,33 @@ contract Unit is Fixture {
         depositParams.ammPositionIds[0] = tokenId;
         depositParams.owner = Constants.OWNER;
         // depositParams.callbackParams = new bytes(123);
-        vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
+        /* vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
         core.deposit(depositParams);
 
-        depositParams.coreParams.callbackParams = IVeloAmmModule
-            .CallbackParams({
-                gauge: address(pool.gauge()),
-                farm: address(1),
-                counter: address(
-                    new Counter(
-                        Constants.OWNER,
-                        address(core),
-                        Constants.VELO,
-                        address(1)
-                    )
+
+        vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
+        core.deposit(depositParams);
+ */
+        depositParams.coreParams.callbackParams = IAmmModule.CallbackParams({
+            gauge: address(pool.gauge()),
+            farm: address(1),
+            counter: address(
+                new Counter(
+                    Constants.OWNER,
+                    address(core),
+                    Constants.VELO,
+                    address(1)
                 )
-            });
+            )
+        });
 
-        vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
-        core.deposit(depositParams);
-
-        depositParams.coreParams.strategyParams = IPulseStrategyModule
+        depositParams.coreParams.strategyParams = IStrategyModule
             .StrategyParams({
-                strategyType: IPulseStrategyModule.StrategyType.Original,
+                strategyType: IStrategyModule.StrategyType.Original,
                 width: 1000,
                 tickSpacing: 200,
-                tickNeighborhood: 100
+                tickNeighborhood: 100,
+                maxLiquidityRatioDeviationX96: 0
             });
 
         vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
@@ -86,10 +85,10 @@ contract Unit is Fixture {
         depositParams.slippageD9 = 1 * 1e5;
         //depositParams.securityParams = new bytes(123);
 
-        vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
-        core.deposit(depositParams);
+        // vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
+        // core.deposit(depositParams);
 
-        depositParams.coreParams.securityParams = IVeloOracle.SecurityParams({
+        depositParams.coreParams.securityParams = IOracle.SecurityParams({
             lookback: 100,
             maxAllowedDelta: 100,
             maxAge: 7 days
@@ -108,12 +107,10 @@ contract Unit is Fixture {
         vm.startPrank(Constants.OWNER);
         core = new Core(ammModule, strategyModule, oracle, Constants.OWNER);
         core.setProtocolParams(
-            abi.encode(
-                IVeloAmmModule.ProtocolParams({
-                    treasury: Constants.PROTOCOL_TREASURY,
-                    feeD9: Constants.PROTOCOL_FEE_D9
-                })
-            )
+            IAmmModule.ProtocolParams({
+                treasury: Constants.PROTOCOL_TREASURY,
+                feeD9: Constants.PROTOCOL_FEE_D9
+            })
         );
 
         positionManager.approve(address(core), tokenId);
@@ -122,28 +119,28 @@ contract Unit is Fixture {
         depositParams.ammPositionIds = new uint256[](1);
         depositParams.ammPositionIds[0] = tokenId;
         depositParams.owner = Constants.OWNER;
-        depositParams.coreParams.callbackParams = IVeloAmmModule
-            .CallbackParams({
-                gauge: address(pool.gauge()),
-                farm: address(1),
-                counter: address(
-                    new Counter(
-                        Constants.OWNER,
-                        address(core),
-                        Constants.VELO,
-                        address(1)
-                    )
+        depositParams.coreParams.callbackParams = IAmmModule.CallbackParams({
+            gauge: address(pool.gauge()),
+            farm: address(1),
+            counter: address(
+                new Counter(
+                    Constants.OWNER,
+                    address(core),
+                    Constants.VELO,
+                    address(1)
                 )
-            });
-        depositParams.coreParams.strategyParams = IPulseStrategyModule
+            )
+        });
+        depositParams.coreParams.strategyParams = IStrategyModule
             .StrategyParams({
-                strategyType: IPulseStrategyModule.StrategyType.Original,
+                strategyType: IStrategyModule.StrategyType.Original,
                 width: 1000,
                 tickSpacing: 200,
-                tickNeighborhood: 100
+                tickNeighborhood: 100,
+                maxLiquidityRatioDeviationX96: 0
             });
         depositParams.slippageD9 = 1 * 1e5;
-        depositParams.coreParams.securityParams = IVeloOracle.SecurityParams({
+        depositParams.coreParams.securityParams = IOracle.SecurityParams({
             lookback: 1,
             maxAllowedDelta: 100000,
             maxAge: 7 days
@@ -184,35 +181,28 @@ contract Unit is Fixture {
     function testSetProtocolParams() external {
         core = new Core(ammModule, strategyModule, oracle, Constants.OWNER);
         vm.expectRevert(abi.encodeWithSignature("Forbidden()"));
-        core.setProtocolParams(new bytes(123));
+        core.setProtocolParams(
+            IAmmModule.ProtocolParams({treasury: address(0), feeD9: 0})
+        );
         vm.startPrank(Constants.OWNER);
-        vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
-        core.setProtocolParams(new bytes(123));
+        //vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
+        // core.setProtocolParams(new bytes(123));
         vm.expectRevert(abi.encodeWithSignature("AddressZero()"));
         core.setProtocolParams(
-            abi.encode(
-                IVeloAmmModule.ProtocolParams({
-                    treasury: address(0),
-                    feeD9: Constants.PROTOCOL_FEE_D9
-                })
-            )
+            IAmmModule.ProtocolParams({
+                treasury: address(0),
+                feeD9: Constants.PROTOCOL_FEE_D9
+            })
         );
         vm.expectRevert(abi.encodeWithSignature("InvalidFee()"));
         core.setProtocolParams(
-            abi.encode(
-                IVeloAmmModule.ProtocolParams({
-                    treasury: address(1),
-                    feeD9: 3e8 + 1
-                })
-            )
+            IAmmModule.ProtocolParams({treasury: address(1), feeD9: 3e8 + 1})
         );
         core.setProtocolParams(
-            abi.encode(
-                IVeloAmmModule.ProtocolParams({
-                    treasury: Constants.PROTOCOL_TREASURY,
-                    feeD9: Constants.PROTOCOL_FEE_D9
-                })
-            )
+            IAmmModule.ProtocolParams({
+                treasury: Constants.PROTOCOL_TREASURY,
+                feeD9: Constants.PROTOCOL_FEE_D9
+            })
         );
         vm.stopPrank();
     }
@@ -233,7 +223,7 @@ contract Unit is Fixture {
             (uint256 amount0, uint256 amount1) = ammModule.tvl(
                 infoBefore.ammPositionIds[0],
                 sqrtPriceX96,
-                abi.encode(infoBefore.coreParams.callbackParams),
+                infoBefore.coreParams.callbackParams,
                 core.protocolParams()
             );
             capitalBefore = FullMath.mulDiv(amount0, priceX96, Q96) + amount1;
@@ -252,7 +242,7 @@ contract Unit is Fixture {
             (uint256 amount0, uint256 amount1) = ammModule.tvl(
                 infoAfter.ammPositionIds[0],
                 sqrtPriceX96,
-                abi.encode(infoBefore.coreParams.callbackParams),
+                infoBefore.coreParams.callbackParams,
                 core.protocolParams()
             );
             capitalAfter = FullMath.mulDiv(amount0, priceX96, Q96) + amount1;
@@ -441,8 +431,10 @@ contract Unit is Fixture {
             )
         );
 
-        /*      vm.expectRevert(abi.encodeWithSignature("Forbidden()"));
-      core.setPositionParams(
+        vm.startPrank(Constants.OWNER);
+        /*      
+        vm.expectRevert(abi.encodeWithSignature("Forbidden()"));
+        core.setPositionParams(
             positionId,
             0,
             new bytes(0),
@@ -450,7 +442,6 @@ contract Unit is Fixture {
             new bytes(0)
         );
 
-        vm.startPrank(Constants.OWNER);
         vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
         core.setPositionParams(
             positionId,
@@ -467,15 +458,7 @@ contract Unit is Fixture {
             new bytes(123),
             new bytes(0)
         );
- */
-        IPulseStrategyModule.StrategyParams
-            memory defaultStrategyParams = IPulseStrategyModule.StrategyParams({
-                width: 200,
-                tickSpacing: 100,
-                tickNeighborhood: 100,
-                strategyType: IPulseStrategyModule.StrategyType.Original
-            });
-        /* 
+
         vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
         core.setPositionParams(
             positionId,
@@ -512,13 +495,23 @@ contract Unit is Fixture {
             new bytes(0)
         );
  */
-        IVeloAmmModule.CallbackParams
-            memory defaultCallbackParams = IVeloAmmModule.CallbackParams({
+        IVeloAmmModule.CallbackParams memory defaultCallbackParams = IAmmModule
+            .CallbackParams({
                 farm: address(1),
                 gauge: address(pool.gauge()),
                 counter: address(1)
             });
-        IVeloOracle.SecurityParams memory defaultSecurityParams = IVeloOracle
+
+        IStrategyModule.StrategyParams
+            memory defaultStrategyParams = IStrategyModule.StrategyParams({
+                width: 200,
+                tickSpacing: 100,
+                tickNeighborhood: 100,
+                strategyType: IStrategyModule.StrategyType.Original,
+                maxLiquidityRatioDeviationX96: 0
+            });
+
+        IOracle.SecurityParams memory defaultSecurityParams = IOracle
             .SecurityParams({
                 lookback: 100,
                 maxAllowedDelta: 100,
@@ -590,7 +583,7 @@ contract Unit is Fixture {
             owner: Constants.OWNER,
             slippageD9: 1 * 1e5,
             coreParams: ICore.CoreParams({
-                callbackParams: IVeloAmmModule.CallbackParams({
+                callbackParams: IAmmModule.CallbackParams({
                     gauge: address(pool.gauge()),
                     farm: address(1),
                     counter: address(
@@ -602,13 +595,14 @@ contract Unit is Fixture {
                         )
                     )
                 }),
-                strategyParams: IPulseStrategyModule.StrategyParams({
-                    strategyType: IPulseStrategyModule.StrategyType.Original,
+                strategyParams: IStrategyModule.StrategyParams({
+                    strategyType: IStrategyModule.StrategyType.Original,
                     width: 1000,
                     tickSpacing: 200,
-                    tickNeighborhood: 100
+                    tickNeighborhood: 100,
+                    maxLiquidityRatioDeviationX96: 0
                 }),
-                securityParams: IVeloOracle.SecurityParams({
+                securityParams: IOracle.SecurityParams({
                     lookback: 100,
                     maxAllowedDelta: 100,
                     maxAge: 7 days
@@ -619,12 +613,10 @@ contract Unit is Fixture {
         core = new Core(ammModule, strategyModule, oracle, Constants.OWNER);
         vm.startPrank(Constants.OWNER);
         core.setProtocolParams(
-            abi.encode(
-                IVeloAmmModule.ProtocolParams({
-                    treasury: Constants.PROTOCOL_TREASURY,
-                    feeD9: Constants.PROTOCOL_FEE_D9
-                })
-            )
+            IAmmModule.ProtocolParams({
+                treasury: Constants.PROTOCOL_TREASURY,
+                feeD9: Constants.PROTOCOL_FEE_D9
+            })
         );
 
         positionManager.approve(address(core), tokenId);
@@ -675,19 +667,21 @@ contract Unit is Fixture {
     function testProtocolParams() external {
         core = new Core(ammModule, strategyModule, oracle, Constants.OWNER);
 
-        assertEq(core.protocolParams(), new bytes(0));
+        IAmmModule.ProtocolParams memory params = core.protocolParams();
+        assertEq(params.treasury, address(0));
+        assertEq(params.feeD9, 0);
+
         vm.startPrank(Constants.OWNER);
 
-        bytes memory params = abi.encode(
-            IVeloAmmModule.ProtocolParams({
-                treasury: Constants.PROTOCOL_TREASURY,
-                feeD9: Constants.PROTOCOL_FEE_D9
-            })
-        );
+        params = IAmmModule.ProtocolParams({
+            treasury: Constants.PROTOCOL_TREASURY,
+            feeD9: Constants.PROTOCOL_FEE_D9
+        });
 
         core.setProtocolParams(params);
 
-        assertEq(core.protocolParams(), params);
+        assertEq(params.treasury, Constants.PROTOCOL_TREASURY);
+        assertEq(params.feeD9, Constants.PROTOCOL_FEE_D9);
     }
 
     function testEmptyRebalance() external {

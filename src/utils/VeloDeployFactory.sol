@@ -83,17 +83,15 @@ contract VeloDeployFactory is
             revert LpWrapperAlreadyCreated();
         }
 
-        core.oracle().ensureNoMEV(
-            address(pool),
-            abi.encode(params.securityParams)
-        );
+        core.oracle().ensureNoMEV(address(pool), params.securityParams);
 
-        IPulseStrategyModule.StrategyParams
-            memory strategyParams = IPulseStrategyModule.StrategyParams({
+        IStrategyModule.StrategyParams
+            memory strategyParams = IStrategyModule.StrategyParams({
                 tickNeighborhood: params.tickNeighborhood,
                 tickSpacing: int24(position.property),
                 strategyType: params.strategyType,
-                width: position.tickUpper - position.tickLower
+                width: position.tickUpper - position.tickLower,
+                maxLiquidityRatioDeviationX96: 0
             });
 
         {
@@ -176,7 +174,7 @@ contract VeloDeployFactory is
                     address(lpWrapper)
                 )
             );
-            depositParams.coreParams.callbackParams = IVeloAmmModule
+            depositParams.coreParams.callbackParams = IAmmModule
                 .CallbackParams({
                     farm: poolAddresses.synthetixFarm,
                     gauge: address(gauge),

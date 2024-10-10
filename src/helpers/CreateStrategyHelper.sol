@@ -22,8 +22,8 @@ contract CreateStrategyHelper {
     uint128 constant MIN_INITIAL_LIQUDITY = 1000;
     uint16 constant MIN_OBSERVATION_CARDINALITY = 100;
     int24 constant TICK_NEIGHBORHOOD = 0;
-    IPulseStrategyModule.StrategyType constant STRATEGY_TYPE =
-        IPulseStrategyModule.StrategyType.LazySyncing;
+    IStrategyModule.StrategyType constant STRATEGY_TYPE =
+        IStrategyModule.StrategyType.LazySyncing;
 
     address public immutable deployer;
     IVeloDeployFactory public immutable deployFactory;
@@ -129,9 +129,9 @@ contract CreateStrategyHelper {
 
     function _getSecurityParam(
         int24 tickSpacing
-    ) private pure returns (IVeloOracle.SecurityParams memory securityParam) {
+    ) private pure returns (IOracle.SecurityParams memory securityParam) {
         int24 maxAllowedDelta = tickSpacing / 10; // 10% of tickSpacing
-        securityParam = IVeloOracle.SecurityParams({
+        securityParam = IOracle.SecurityParams({
             lookback: MAX_LOOKBACK,
             maxAllowedDelta: maxAllowedDelta < int24(1)
                 ? int24(1)
@@ -155,11 +155,12 @@ contract CreateStrategyHelper {
         (uint160 sqrtPriceX96, int24 tick, , , , ) = poolParameter.pool.slot0();
 
         IPulseStrategyModule.StrategyParams
-            memory strategyParams = IPulseStrategyModule.StrategyParams({
+            memory strategyParams = IStrategyModule.StrategyParams({
                 tickNeighborhood: TICK_NEIGHBORHOOD,
                 tickSpacing: poolParameter.pool.tickSpacing(),
                 strategyType: STRATEGY_TYPE,
-                width: poolParameter.width
+                width: poolParameter.width,
+                maxLiquidityRatioDeviationX96: 0
             });
 
         IVeloDeployFactory.ImmutableParams memory params = deployFactory

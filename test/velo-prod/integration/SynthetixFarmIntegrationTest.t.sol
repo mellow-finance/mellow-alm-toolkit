@@ -29,17 +29,18 @@ contract Integration is Fixture {
             1e9
         );
         depositParams.owner = Constants.OWNER;
-        depositParams.coreParams.strategyParams = IPulseStrategyModule
+        depositParams.coreParams.strategyParams = IStrategyModule
             .StrategyParams({
                 tickNeighborhood: pool.tickSpacing() / 4,
                 tickSpacing: pool.tickSpacing(),
-                strategyType: IPulseStrategyModule.StrategyType.Original,
-                width: pool.tickSpacing() * 2
+                strategyType: IStrategyModule.StrategyType.Original,
+                width: pool.tickSpacing() * 2,
+                maxLiquidityRatioDeviationX96: 0
             });
-        depositParams.coreParams.securityParams = IVeloOracle.SecurityParams({
-            lookback: 0,
-            maxAge: 0,
-            maxAllowedDelta: 0
+        depositParams.coreParams.securityParams = IOracle.SecurityParams({
+            lookback: 1,
+            maxAllowedDelta: 1,
+            maxAge: 1 days
         });
         depositParams.slippageD9 = 100 * 1e5;
 
@@ -59,12 +60,11 @@ contract Integration is Fixture {
             Constants.VELO,
             address(stakingRewards)
         );
-        depositParams.coreParams.callbackParams = IVeloAmmModule
-            .CallbackParams({
-                farm: address(stakingRewards),
-                gauge: pool.gauge(),
-                counter: address(counter)
-            });
+        depositParams.coreParams.callbackParams = IAmmModule.CallbackParams({
+            farm: address(stakingRewards),
+            gauge: pool.gauge(),
+            counter: address(counter)
+        });
 
         uint256 nftId2 = core.deposit(depositParams);
 
@@ -155,17 +155,18 @@ contract Integration is Fixture {
             1e9
         );
         depositParams.owner = Constants.OWNER;
-        depositParams.coreParams.strategyParams = IPulseStrategyModule
+        depositParams.coreParams.strategyParams = IStrategyModule
             .StrategyParams({
                 tickNeighborhood: pool.tickSpacing() / 4,
                 tickSpacing: pool.tickSpacing(),
-                strategyType: IPulseStrategyModule.StrategyType.Original,
-                width: pool.tickSpacing() * 2
+                strategyType: IStrategyModule.StrategyType.Original,
+                width: pool.tickSpacing() * 2,
+                maxLiquidityRatioDeviationX96: 0
             });
-        depositParams.coreParams.securityParams = IVeloOracle.SecurityParams({
-            lookback: 0,
-            maxAge: 0,
-            maxAllowedDelta: 0
+        depositParams.coreParams.securityParams = IOracle.SecurityParams({
+            lookback: 1,
+            maxAllowedDelta: 1,
+            maxAge: 1 days
         });
         depositParams.slippageD9 = 100 * 1e5;
 
@@ -185,12 +186,11 @@ contract Integration is Fixture {
             Constants.VELO,
             address(stakingRewards)
         );
-        depositParams.coreParams.callbackParams = IVeloAmmModule
-            .CallbackParams({
-                farm: address(stakingRewards),
-                gauge: pool.gauge(),
-                counter: address(counter)
-            });
+        depositParams.coreParams.callbackParams = IAmmModule.CallbackParams({
+            farm: address(stakingRewards),
+            gauge: pool.gauge(),
+            counter: address(counter)
+        });
 
         uint256 nftId2 = core.deposit(depositParams);
 

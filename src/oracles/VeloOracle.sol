@@ -10,9 +10,8 @@ contract VeloOracle is IVeloOracle {
     /// @inheritdoc IOracle
     function ensureNoMEV(
         address poolAddress,
-        bytes memory params
+        SecurityParams memory securityParams
     ) external view override {
-        if (params.length == 0) return;
         (
             ,
             int24 spotTick,
@@ -21,10 +20,6 @@ contract VeloOracle is IVeloOracle {
             ,
 
         ) = ICLPool(poolAddress).slot0();
-        SecurityParams memory securityParams = abi.decode(
-            params,
-            (SecurityParams)
-        );
         uint16 lookback = securityParams.lookback;
         if (observationCardinality < lookback + 1)
             revert NotEnoughObservations();
@@ -64,14 +59,8 @@ contract VeloOracle is IVeloOracle {
 
     /// @inheritdoc IOracle
     function validateSecurityParams(
-        bytes memory params
+        SecurityParams memory securityParams
     ) external pure override {
-        if (params.length == 0) return;
-        if (params.length != 0x60) revert InvalidLength();
-        SecurityParams memory securityParams = abi.decode(
-            params,
-            (SecurityParams)
-        );
         if (
             securityParams.lookback == 0 ||
             securityParams.maxAge == 0 ||

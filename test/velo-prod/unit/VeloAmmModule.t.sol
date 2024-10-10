@@ -26,29 +26,25 @@ contract Unit is Fixture {
             )
         );
 
-    bytes public defaultCallbackParams =
-        abi.encode(
-            IVeloAmmModule.CallbackParams({
-                farm: testFarmAddress,
-                gauge: address(pool.gauge()),
-                counter: address(
-                    new Counter(
-                        address(this),
-                        address(this),
-                        Constants.VELO,
-                        testFarmAddress
-                    )
+    IAmmModule.CallbackParams public defaultCallbackParams =
+        IAmmModule.CallbackParams({
+            farm: testFarmAddress,
+            gauge: address(pool.gauge()),
+            counter: address(
+                new Counter(
+                    address(this),
+                    address(this),
+                    Constants.VELO,
+                    testFarmAddress
                 )
-            })
-        );
+            )
+        });
 
-    bytes public defaultProtocolParams =
-        abi.encode(
-            IVeloAmmModule.ProtocolParams({
-                feeD9: 3e8,
-                treasury: Constants.PROTOCOL_TREASURY
-            })
-        );
+    IAmmModule.ProtocolParams public defaultProtocolParams =
+        IAmmModule.ProtocolParams({
+            feeD9: 3e8,
+            treasury: Constants.PROTOCOL_TREASURY
+        });
 
     function addRewardToGauge(uint256 amount, ICLGauge gauge) public {
         address voter = address(gauge.voter());
@@ -297,17 +293,23 @@ contract Unit is Fixture {
 
     function testBeforeRebalance() external {
         vm.expectRevert();
-        module.beforeRebalance(0, new bytes(0), new bytes(0));
+        module.beforeRebalance(
+            0,
+            IAmmModule.CallbackParams({
+                farm: address(0),
+                gauge: address(0),
+                counter: address(0)
+            }),
+            IAmmModule.ProtocolParams({treasury: address(0), feeD9: 0})
+        );
         vm.expectRevert(abi.encodeWithSignature("AddressZero()"));
         module.beforeRebalance(
             0,
-            abi.encode(
-                IVeloAmmModule.CallbackParams({
-                    farm: address(0),
-                    gauge: address(0),
-                    counter: address(0)
-                })
-            ),
+            IAmmModule.CallbackParams({
+                farm: address(0),
+                gauge: address(0),
+                counter: address(0)
+            }),
             defaultProtocolParams
         );
 
@@ -355,17 +357,23 @@ contract Unit is Fixture {
 
     function testAfterRebalance() external {
         vm.expectRevert();
-        module.beforeRebalance(0, new bytes(0), new bytes(0));
+        module.beforeRebalance(
+            0,
+            IAmmModule.CallbackParams({
+                farm: address(0),
+                gauge: address(0),
+                counter: address(0)
+            }),
+            IAmmModule.ProtocolParams({treasury: address(0), feeD9: 0})
+        );
         vm.expectRevert(abi.encodeWithSignature("AddressZero()"));
         module.beforeRebalance(
             0,
-            abi.encode(
-                IVeloAmmModule.CallbackParams({
-                    farm: address(0),
-                    gauge: address(0),
-                    counter: address(0)
-                })
-            ),
+            IAmmModule.CallbackParams({
+                farm: address(0),
+                gauge: address(0),
+                counter: address(0)
+            }),
             defaultProtocolParams
         );
 
@@ -447,67 +455,46 @@ contract Unit is Fixture {
     function testValidateCallbackParams() external {
         vm.expectRevert(abi.encodeWithSignature("AddressZero()"));
         module.validateCallbackParams(
-            abi.encode(
-                IVeloAmmModule.CallbackParams({
-                    farm: address(0),
-                    gauge: address(0),
-                    counter: address(0)
-                })
-            )
+            IAmmModule.CallbackParams({
+                farm: address(0),
+                gauge: address(0),
+                counter: address(0)
+            })
         );
         vm.expectRevert(abi.encodeWithSignature("AddressZero()"));
         module.validateCallbackParams(
-            abi.encode(
-                IVeloAmmModule.CallbackParams({
-                    farm: address(1),
-                    gauge: address(0),
-                    counter: address(0)
-                })
-            )
+            IAmmModule.CallbackParams({
+                farm: address(1),
+                gauge: address(0),
+                counter: address(0)
+            })
         );
-        vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
-        module.validateCallbackParams(new bytes(123));
+        //    vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
+        //    module.validateCallbackParams(new bytes(123));
 
         module.validateCallbackParams(
-            abi.encode(
-                IVeloAmmModule.CallbackParams({
-                    farm: address(1),
-                    gauge: address(pool.gauge()),
-                    counter: address(1)
-                })
-            )
+            IAmmModule.CallbackParams({
+                farm: address(1),
+                gauge: address(pool.gauge()),
+                counter: address(1)
+            })
         );
     }
 
     function testValidateProtocolParams() external {
         vm.expectRevert(abi.encodeWithSignature("AddressZero()"));
         module.validateProtocolParams(
-            abi.encode(
-                IVeloAmmModule.ProtocolParams({
-                    feeD9: 3e8,
-                    treasury: address(0)
-                })
-            )
+            IAmmModule.ProtocolParams({feeD9: 3e8, treasury: address(0)})
         );
         vm.expectRevert(abi.encodeWithSignature("InvalidFee()"));
         module.validateProtocolParams(
-            abi.encode(
-                IVeloAmmModule.ProtocolParams({
-                    feeD9: 3e8 + 1,
-                    treasury: address(1)
-                })
-            )
+            IAmmModule.ProtocolParams({feeD9: 3e8 + 1, treasury: address(1)})
         );
-        vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
-        module.validateProtocolParams(new bytes(123));
+        // vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
+        // module.validateProtocolParams(new bytes(123));
 
         module.validateProtocolParams(
-            abi.encode(
-                IVeloAmmModule.ProtocolParams({
-                    feeD9: 3e8,
-                    treasury: address(1)
-                })
-            )
+            IAmmModule.ProtocolParams({feeD9: 3e8, treasury: address(1)})
         );
     }
 }

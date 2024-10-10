@@ -12,20 +12,15 @@ contract PulseStrategyModuleV2 is IPulseStrategyModuleV2 {
 
     /// @inheritdoc IStrategyModule
     function validateStrategyParams(
-        bytes memory params_
+        StrategyParams memory params
     ) external pure override {
-        if (params_.length != 0x80) revert InvalidLength();
-        IPulseStrategyModule.StrategyParams memory params = abi.decode(
-            params_,
-            (IPulseStrategyModule.StrategyParams)
-        );
         if (
             params.width == 0 ||
             params.tickSpacing == 0 ||
             params.width % params.tickSpacing != 0 ||
             params.tickNeighborhood * 2 > params.width ||
             (params.strategyType !=
-                IPulseStrategyModule.StrategyType.Original &&
+                StrategyType.Original &&
                 params.tickNeighborhood != 0)
         ) revert InvalidParams();
     }
@@ -158,7 +153,7 @@ contract PulseStrategyModuleV2 is IPulseStrategyModuleV2 {
             TickMath.getSqrtRatioAtTick(tickUpper - params.tickNeighborhood)
         ) return (tickLower, tickUpper);
 
-        if (params.strategyType == IPulseStrategyModule.StrategyType.Original)
+        if (params.strategyType == StrategyType.Original)
             return
                 _centeredPosition(
                     sqrtPriceX96,
@@ -172,13 +167,13 @@ contract PulseStrategyModuleV2 is IPulseStrategyModuleV2 {
 
         if (
             params.strategyType ==
-            IPulseStrategyModule.StrategyType.LazyDescending &&
+            StrategyType.LazyDescending &&
             sqrtPriceX96 >= sqrtPriceX96Lower
         ) return (tickLower, tickUpper);
 
         if (
             params.strategyType ==
-            IPulseStrategyModule.StrategyType.LazyAscending &&
+            StrategyType.LazyAscending &&
             sqrtPriceX96 <= sqrtPriceX96Upper
         ) return (tickLower, tickUpper);
         /*  

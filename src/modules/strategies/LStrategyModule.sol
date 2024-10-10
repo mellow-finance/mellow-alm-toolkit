@@ -19,26 +19,14 @@ contract LStrategyModule is IStrategyModule {
     uint256 public constant D4 = 1e4;
 
     /**
-     * @dev Struct representing the parameters for a strategy.
-     * @param maxLiquidityRatioDeviationX96 The maximum allowed deviation of the liquidity ratio for lower position.
-     */
-    struct StrategyParams {
-        uint256 maxLiquidityRatioDeviationX96;
-    }
-
-    /**
      * @dev Validates the strategy parameters.
-     * @param params The encoded strategy parameters.
+     * @param strategyParams The strategy parameters.
      * @notice This function decodes the `params` and checks if the `maxLiquidityRatioDeviationX96` is valid.
      *         If the `maxLiquidityRatioDeviationX96` is 0 or greater than half of Q96, it reverts with an `InvalidParams` error.
      */
     function validateStrategyParams(
-        bytes memory params
+        StrategyParams memory strategyParams
     ) external pure override {
-        StrategyParams memory strategyParams = abi.decode(
-            params,
-            (StrategyParams)
-        );
         if (
             strategyParams.maxLiquidityRatioDeviationX96 == 0 ||
             strategyParams.maxLiquidityRatioDeviationX96 > Q96 / 2

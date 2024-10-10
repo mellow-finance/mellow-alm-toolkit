@@ -77,7 +77,7 @@ contract Unit is Fixture {
     ) private {
         if (
             params.width != tickUpper - tickLower ||
-            params.strategyType == IPulseStrategyModule.StrategyType.Original
+            params.strategyType == IStrategyModule.StrategyType.Original
         ) {
             return
                 _validateOriginal(
@@ -92,7 +92,7 @@ contract Unit is Fixture {
 
         if (
             params.strategyType ==
-            IPulseStrategyModule.StrategyType.LazyAscending
+            IStrategyModule.StrategyType.LazyAscending
         ) {
             if (tickUpper + params.tickSpacing > spotTick) {
                 assertFalse(flag);
@@ -113,7 +113,7 @@ contract Unit is Fixture {
 
         if (
             params.strategyType ==
-            IPulseStrategyModule.StrategyType.LazyDescending
+            IStrategyModule.StrategyType.LazyDescending
         ) {
             if (tickLower - params.tickSpacing < spotTick) {
                 assertFalse(flag);
@@ -134,7 +134,7 @@ contract Unit is Fixture {
         }
 
         if (
-            params.strategyType == IPulseStrategyModule.StrategyType.LazySyncing
+            params.strategyType == IStrategyModule.StrategyType.LazySyncing
         ) {
             if (
                 tickLower - params.tickSpacing < spotTick &&
@@ -171,17 +171,18 @@ contract Unit is Fixture {
         int24 spotTick,
         int24 tickLower,
         int24 tickUpper,
-        IPulseStrategyModule.StrategyType strategyType,
+        IStrategyModule.StrategyType strategyType,
         int24 tickSpacing,
         int24 tickNeighborhood,
         int24 width
     ) private {
-        IPulseStrategyModule.StrategyParams memory params = IPulseStrategyModule
+        IStrategyModule.StrategyParams memory params = IStrategyModule
             .StrategyParams({
                 strategyType: strategyType,
                 tickSpacing: tickSpacing,
                 tickNeighborhood: tickNeighborhood,
-                width: width
+                width: width,
+                maxLiquidityRatioDeviationX96: 0
             });
         (
             bool isRebalanceRequired,
@@ -204,7 +205,7 @@ contract Unit is Fixture {
     }
 
     function testCalculateTargetOriginal() external {
-        IPulseStrategyModule.StrategyType t = IPulseStrategyModule
+        IStrategyModule.StrategyType t = IStrategyModule
             .StrategyType
             .Original;
         for (int24 spot = -200; spot <= 200; spot++) {
@@ -216,7 +217,7 @@ contract Unit is Fixture {
     }
 
     function testCalculateTargetLazyAscending() external {
-        IPulseStrategyModule.StrategyType t = IPulseStrategyModule
+        IStrategyModule.StrategyType t = IStrategyModule
             .StrategyType
             .LazyAscending;
         for (int24 spot = -200; spot <= 200; spot++) {
@@ -228,7 +229,7 @@ contract Unit is Fixture {
     }
 
     function testCalculateTargetLazyDescending() external {
-        IPulseStrategyModule.StrategyType t = IPulseStrategyModule
+        IStrategyModule.StrategyType t = IStrategyModule
             .StrategyType
             .LazyDescending;
         for (int24 spot = -200; spot <= 200; spot++) {
@@ -240,7 +241,7 @@ contract Unit is Fixture {
     }
 
     function testCalculateTargetLazySyncing() external {
-        IPulseStrategyModule.StrategyType t = IPulseStrategyModule
+        IStrategyModule.StrategyType t = IStrategyModule
             .StrategyType
             .LazySyncing;
         for (int24 spot = -200; spot <= 200; spot++) {
@@ -264,101 +265,92 @@ contract Unit is Fixture {
 
     function testValidateStrategyParams() external {
         pulseStrategyModule.validateStrategyParams(
-            abi.encode(
-                IPulseStrategyModule.StrategyParams({
-                    strategyType: IPulseStrategyModule.StrategyType.Original,
+                IStrategyModule.StrategyParams({
+                    strategyType: IStrategyModule.StrategyType.Original,
                     tickSpacing: 100,
                     tickNeighborhood: 50,
-                    width: 300
+                    width: 300,
+                    maxLiquidityRatioDeviationX96: 0
                 })
-            )
         );
         pulseStrategyModule.validateStrategyParams(
-            abi.encode(
-                IPulseStrategyModule.StrategyParams({
-                    strategyType: IPulseStrategyModule.StrategyType.Original,
+                IStrategyModule.StrategyParams({
+                    strategyType: IStrategyModule.StrategyType.Original,
                     tickSpacing: 1,
                     tickNeighborhood: 0,
-                    width: 1
+                    width: 1,
+                    maxLiquidityRatioDeviationX96: 0
                 })
-            )
         );
         vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
         pulseStrategyModule.validateStrategyParams(
-            abi.encode(
-                IPulseStrategyModule.StrategyParams({
-                    strategyType: IPulseStrategyModule.StrategyType.Original,
+                IStrategyModule.StrategyParams({
+                    strategyType: IStrategyModule.StrategyType.Original,
                     tickSpacing: 1,
                     tickNeighborhood: 1,
-                    width: 0
+                    width: 0,
+                    maxLiquidityRatioDeviationX96: 0
                 })
-            )
         );
         vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
         pulseStrategyModule.validateStrategyParams(
-            abi.encode(
-                IPulseStrategyModule.StrategyParams({
-                    strategyType: IPulseStrategyModule.StrategyType.Original,
+                IStrategyModule.StrategyParams({
+                    strategyType: IStrategyModule.StrategyType.Original,
                     tickSpacing: 0,
                     tickNeighborhood: 1,
-                    width: 1
+                    width: 1,
+                    maxLiquidityRatioDeviationX96: 0
                 })
-            )
         );
         vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
         pulseStrategyModule.validateStrategyParams(
-            abi.encode(
-                IPulseStrategyModule.StrategyParams({
-                    strategyType: IPulseStrategyModule.StrategyType.LazySyncing,
+                IStrategyModule.StrategyParams({
+                    strategyType: IStrategyModule.StrategyType.LazySyncing,
                     tickSpacing: 1,
                     tickNeighborhood: 1,
-                    width: 1
+                    width: 1,
+                    maxLiquidityRatioDeviationX96: 0
                 })
-            )
         );
         vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
         pulseStrategyModule.validateStrategyParams(
-            abi.encode(
-                IPulseStrategyModule.StrategyParams({
-                    strategyType: IPulseStrategyModule.StrategyType.Original,
+                IStrategyModule.StrategyParams({
+                    strategyType: IStrategyModule.StrategyType.Original,
                     tickSpacing: 2,
                     tickNeighborhood: 1,
-                    width: 3
+                    width: 3,
+                    maxLiquidityRatioDeviationX96: 0
                 })
-            )
         );
         vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
         pulseStrategyModule.validateStrategyParams(
-            abi.encode(
-                IPulseStrategyModule.StrategyParams({
-                    strategyType: IPulseStrategyModule.StrategyType.Original,
+                IStrategyModule.StrategyParams({
+                    strategyType: IStrategyModule.StrategyType.Original,
                     tickSpacing: 1,
                     tickNeighborhood: 1,
-                    width: 1
+                    width: 1,
+                    maxLiquidityRatioDeviationX96: 0
                 })
-            )
         );
 
         pulseStrategyModule.validateStrategyParams(
-            abi.encode(
-                IPulseStrategyModule.StrategyParams({
-                    strategyType: IPulseStrategyModule.StrategyType.Original,
+                IStrategyModule.StrategyParams({
+                    strategyType: IStrategyModule.StrategyType.Original,
                     tickSpacing: 1,
                     tickNeighborhood: 1,
-                    width: 2
+                    width: 2,
+                    maxLiquidityRatioDeviationX96: 0
                 })
-            )
         );
 
         pulseStrategyModule.validateStrategyParams(
-            abi.encode(
-                IPulseStrategyModule.StrategyParams({
-                    strategyType: IPulseStrategyModule.StrategyType.Original,
+                IStrategyModule.StrategyParams({
+                    strategyType: IStrategyModule.StrategyType.Original,
                     tickSpacing: 50,
                     tickNeighborhood: 200,
-                    width: 4200
+                    width: 4200,
+                    maxLiquidityRatioDeviationX96: 0
                 })
-            )
         );
     }
 
@@ -389,11 +381,12 @@ contract Unit is Fixture {
         info.ammPositionIds = new uint256[](1);
         info.ammPositionIds[0] = tokenId;
         info.pool = address(pool);
-        info.coreParams.strategyParams = IPulseStrategyModule.StrategyParams({
-            strategyType: IPulseStrategyModule.StrategyType.Original,
+        info.coreParams.strategyParams = IStrategyModule.StrategyParams({
+            strategyType: IStrategyModule.StrategyType.Original,
             tickSpacing: pool.tickSpacing(),
             tickNeighborhood: 50,
-            width: 300
+            width: 300,
+            maxLiquidityRatioDeviationX96: 0
         });
 
         VeloAmmModule ammModule = new VeloAmmModule(

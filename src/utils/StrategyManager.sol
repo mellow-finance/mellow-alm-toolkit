@@ -6,9 +6,9 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 import {IVeloDeployFactory, ILpWrapper, ICore} from "../interfaces/utils/IVeloDeployFactory.sol";
 import {DefaultAccessControl} from "./DefaultAccessControl.sol";
 
-import {IVeloOracle} from "../interfaces/oracles/IVeloOracle.sol";
+import "../interfaces/oracles/IVeloOracle.sol";
 import {IVeloAmmModule} from "../interfaces/modules/velo/IVeloAmmModule.sol";
-import {IPulseStrategyModule} from "../interfaces/modules/strategies/IPulseStrategyModule.sol";
+import "../interfaces/modules/strategies/IPulseStrategyModule.sol";
 
 contract StrategyManager is DefaultAccessControl {
     error InvalidLength();
@@ -25,15 +25,11 @@ contract StrategyManager is DefaultAccessControl {
         if (params.length == 0) return "No parameters found";
         (
             uint32 slippageD9,
-            bytes memory strategyParams_,
-            bytes memory securityParams_
-        ) = abi.decode(params, (uint32, bytes, bytes));
+            IStrategyModule.StrategyParams memory strategyParams,
+            IOracle.SecurityParams memory securityParams
+        ) = abi.decode(params, (uint32, IStrategyModule.StrategyParams, IOracle.SecurityParams));
         string memory securityParamsStr;
         {
-            IVeloOracle.SecurityParams memory securityParams = abi.decode(
-                securityParams_,
-                (IVeloOracle.SecurityParams)
-            );
             securityParamsStr = string(
                 abi.encodePacked(
                     "\nSecurity Params: ",
@@ -46,8 +42,6 @@ contract StrategyManager is DefaultAccessControl {
         }
         string memory strategyParamsStr;
         {
-            IPulseStrategyModule.StrategyParams memory strategyParams = abi
-                .decode(strategyParams_, (IPulseStrategyModule.StrategyParams));
             strategyParamsStr = string(
                 abi.encodePacked(
                     "\nStrategy Params: ",
@@ -75,8 +69,8 @@ contract StrategyManager is DefaultAccessControl {
 
     function addParameters(
         uint32 slippageD9,
-        bytes memory strategyParams,
-        bytes memory securityParams
+        IPulseStrategyModule.StrategyParams memory strategyParams,
+        IOracle.SecurityParams memory securityParams
     ) external {
         _requireAtLeastOperator();
         _parametersById[nextId++] = abi.encode(
@@ -106,18 +100,27 @@ contract StrategyManager is DefaultAccessControl {
 
             (
                 uint32 slippageD9,
-                bytes memory strategyParams,
-                bytes memory securityParams
-            ) = abi.decode(params, (uint32, bytes, bytes));
+                IStrategyModule.StrategyParams memory strategyParams,
+                IOracle.SecurityParams memory securityParams
+            ) = abi.decode(
+                    params,
+                    (
+                        uint32,
+                        IStrategyModule.StrategyParams,
+                        IOracle.SecurityParams
+                    )
+                );
             ILpWrapper wrapper = ILpWrapper(addresses.lpWrapper);
-            bytes memory callbackParams = ICore(wrapper.core())
-                .managedPositionAt(wrapper.positionId())
-                .callbackParams;
+            IVeloAmmModule.CallbackParams memory callbackParams = ICore(
+                wrapper.core()
+            ).managedPositionAt(wrapper.positionId()).coreParams.callbackParams;
             ILpWrapper(addresses.lpWrapper).setPositionParams(
                 slippageD9,
-                callbackParams,
-                strategyParams,
-                securityParams
+                ICore.CoreParams({
+                    callbackParams: callbackParams,
+                    strategyParams: strategyParams,
+                    securityParams: securityParams
+                })
             );
         }
     }

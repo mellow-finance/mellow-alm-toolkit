@@ -405,12 +405,9 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
     function protocolParams()
         external
         view
-        returns (IVeloAmmModule.ProtocolParams memory params, uint256 d9)
+        returns (IAmmModule.ProtocolParams memory params, uint256 d9)
     {
-        return (
-            abi.decode(core.protocolParams(), (IVeloAmmModule.ProtocolParams)),
-            D9
-        );
+        return (core.protocolParams(), D9);
     }
 
     /// @inheritdoc ILpWrapper

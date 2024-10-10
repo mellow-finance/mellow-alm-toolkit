@@ -22,7 +22,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     /// @inheritdoc ICore
     bool public operatorFlag;
 
-    bytes private _protocolParams;
+    IAmmModule.ProtocolParams private _protocolParams;
     ManagedPositionInfo[] private _positions;
     mapping(address => EnumerableSet.UintSet) private _userIds;
 
@@ -64,7 +64,12 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     }
 
     /// @inheritdoc ICore
-    function protocolParams() external view override returns (bytes memory) {
+    function protocolParams()
+        external
+        view
+        override
+        returns (IAmmModule.ProtocolParams memory)
+    {
         return _protocolParams;
     }
 
@@ -78,7 +83,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
 
     /// @inheritdoc ICore
     function setProtocolParams(
-        bytes memory params
+        IAmmModule.ProtocolParams memory params
     ) external override nonReentrant {
         _requireAdmin();
         ammModule.validateProtocolParams(params);
@@ -101,11 +106,11 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     }
 
     function validateCoreParams(CoreParams memory coreParams) internal view {
-        ammModule.validateCallbackParams(abi.encode(coreParams.callbackParams));
+        ammModule.validateCallbackParams(coreParams.callbackParams);
         strategyModule.validateStrategyParams(
-            abi.encode(coreParams.strategyParams)
+            coreParams.strategyParams
         );
-        oracle.validateSecurityParams(abi.encode(coreParams.securityParams));
+        oracle.validateSecurityParams(coreParams.securityParams);
     }
 
     /// @inheritdoc ICore
@@ -116,7 +121,6 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
             revert InvalidParams();
         validateCoreParams(params.coreParams);
         address pool;
-        bytes memory protocolParams_ = _protocolParams;
         bool hasLiquidity = false;
         for (uint256 i = 0; i < params.ammPositionIds.length; i++) {
             uint256 tokenId = params.ammPositionIds[i];
@@ -140,7 +144,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
             _afterRebalance(
                 tokenId,
                 params.coreParams.callbackParams,
-                protocolParams_
+                _protocolParams
             );
         }
         if (!hasLiquidity) revert InvalidParams();
@@ -164,13 +168,12 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         if (info.owner != msg.sender) revert Forbidden();
         _userIds[info.owner].remove(id);
         delete _positions[id];
-        bytes memory protocolParams_ = _protocolParams;
         for (uint256 i = 0; i < info.ammPositionIds.length; i++) {
             uint256 tokenId = info.ammPositionIds[i];
             _beforeRebalance(
                 tokenId,
                 info.coreParams.callbackParams,
-                protocolParams_
+                _protocolParams
             );
             _transferFrom(address(this), to, tokenId);
         }
@@ -185,13 +188,9 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
             params.ids.length
         );
         uint256 iterator = 0;
-        bytes memory protocolParams_ = _protocolParams;
         for (uint256 i = 0; i < params.ids.length; i++) {
             ManagedPositionInfo memory info = _positions[params.ids[i]];
-            oracle.ensureNoMEV(
-                info.pool,
-                abi.encode(info.coreParams.securityParams)
-            );
+            oracle.ensureNoMEV(info.pool, info.coreParams.securityParams);
             (bool flag, TargetPositionInfo memory target) = strategyModule
                 .getTargets(info, ammModule, oracle);
             if (!flag) continue;
@@ -203,7 +202,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
             uint256 capitalInToken1 = _preprocess(
                 params,
                 info,
-                protocolParams_,
+                _protocolParams,
                 sqrtPriceX96,
                 priceX96
             );
@@ -261,7 +260,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
                 _afterRebalance(
                     tokenId,
                     target.info.coreParams.callbackParams,
-                    protocolParams_
+                    _protocolParams
                 );
 
                 _emitRebalanceEvent(
@@ -307,18 +306,17 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     function emptyRebalance(uint256 id) external override nonReentrant {
         ManagedPositionInfo memory params = _positions[id];
         if (params.owner != msg.sender) revert Forbidden();
-        bytes memory protocolParams_ = _protocolParams;
         for (uint256 i = 0; i < params.ammPositionIds.length; i++) {
             uint256 tokenId = params.ammPositionIds[i];
             _beforeRebalance(
                 tokenId,
                 params.coreParams.callbackParams,
-                protocolParams_
+                _protocolParams
             );
             _afterRebalance(
                 tokenId,
                 params.coreParams.callbackParams,
-                protocolParams_
+                _protocolParams
             );
         }
     }
@@ -372,7 +370,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     function _preprocess(
         RebalanceParams memory params,
         ManagedPositionInfo memory info,
-        bytes memory protocolParams_,
+        IAmmModule.ProtocolParams memory protocolParams_,
         uint160 sqrtPriceX96,
         uint256 priceX96
     ) private returns (uint256 capitalInToken1) {
@@ -381,7 +379,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
             (uint256 amount0, uint256 amount1) = ammModule.tvl(
                 tokenId,
                 sqrtPriceX96,
-                abi.encode(info.coreParams.callbackParams),
+                info.coreParams.callbackParams,
                 protocolParams_
             );
             capitalInToken1 +=
@@ -411,7 +409,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     function _beforeRebalance(
         uint256 tokenId,
         IVeloAmmModule.CallbackParams memory callbackParams_,
-        bytes memory protocolParams_
+        IAmmModule.ProtocolParams memory protocolParams_
     ) private {
         (bool success, ) = address(ammModule).delegatecall(
             abi.encodeWithSelector(
@@ -427,7 +425,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     function _afterRebalance(
         uint256 tokenId,
         IVeloAmmModule.CallbackParams memory callbackParams_,
-        bytes memory protocolParams_
+        IAmmModule.ProtocolParams memory protocolParams_
     ) private {
         (bool success, ) = address(ammModule).delegatecall(
             abi.encodeWithSelector(

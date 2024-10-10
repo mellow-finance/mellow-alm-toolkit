@@ -38,7 +38,7 @@ interface ICore is IERC721Receiver {
          * @notice A byte array containing custom data for the corresponding AmmModule.
          * @dev Stores information necessary for operations like staking, reward collection, etc., enabling customizable and protocol-specific interactions.
          */
-        IVeloAmmModule.CallbackParams callbackParams;
+        IAmmModule.CallbackParams callbackParams;
         /**
          * @notice A byte array containing custom data for the corresponding StrategyModule.
          * @dev Holds information about the parameters of the associated strategy, allowing for the implementation and execution of tailored strategic decisions.
@@ -48,7 +48,7 @@ interface ICore is IERC721Receiver {
          * @notice A byte array containing custom data for the corresponding Oracle.
          * @dev Contains parameters for price fetching and protection against MEV (Miner Extractable Value) attacks, enhancing the security and integrity of the position.
          */
-        IVeloOracle.SecurityParams securityParams;
+        IOracle.SecurityParams securityParams;
     }
 
     /**
@@ -144,6 +144,9 @@ interface ICore is IERC721Receiver {
          * @dev Enables the aggregation of multiple AMM positions under a single managed position, facilitating collective management and strategic oversight.
          */
         uint256[] ammPositionIds;
+        /**
+         * @notice Contains core specific parameters
+         */
         CoreParams coreParams;
     }
 
@@ -255,7 +258,10 @@ interface ICore is IERC721Receiver {
      * interpretation of these parameters depend on the AmmModule implementation and the
      * specific protocol logic it adheres to.
      */
-    function protocolParams() external view returns (bytes memory);
+    function protocolParams()
+        external
+        view
+        returns (IAmmModule.ProtocolParams memory);
 
     /**
      * @dev Sets the operator flag to enable or disable specific operator functionalities,
@@ -293,7 +299,9 @@ interface ICore is IERC721Receiver {
      * Requirements:
      * - Only the admin of Core.sol can call this function.
      */
-    function setProtocolParams(bytes memory params) external;
+    function setProtocolParams(
+        IAmmModule.ProtocolParams memory params
+    ) external;
 
     /**
      * @dev Sets the parameters for a specific managed position identified by its ID.

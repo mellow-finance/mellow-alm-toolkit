@@ -68,12 +68,10 @@ contract Integration is Test {
 
         vm.prank(CORE_ADMIN);
         core.setProtocolParams(
-            abi.encode(
-                IVeloAmmModule.ProtocolParams({
-                    feeD9: MELLOW_PROTOCOL_FEE,
-                    treasury: MELLOW_PROTOCOL_TREASURY
-                })
-            )
+            IAmmModule.ProtocolParams({
+                feeD9: MELLOW_PROTOCOL_FEE,
+                treasury: MELLOW_PROTOCOL_TREASURY
+            })
         );
 
         vm.startPrank(VELO_DEPLOY_FACTORY_ADMIN);
@@ -187,7 +185,7 @@ contract Integration is Test {
         positionManager.approve(address(deployFactory), tokenId);
         addresses = deployFactory.createStrategy(
             IVeloDeployFactory.DeployParams({
-                securityParams: IVeloOracle.SecurityParams({
+                securityParams: IOracle.SecurityParams({
                     lookback: 1,
                     maxAge: 7 days,
                     maxAllowedDelta: type(int24).max
@@ -195,7 +193,7 @@ contract Integration is Test {
                 slippageD9: 5 * 1e5,
                 tokenId: tokenId,
                 tickNeighborhood: 0,
-                strategyType: IPulseStrategyModule.StrategyType.LazySyncing
+                strategyType: IStrategyModule.StrategyType.LazySyncing
             })
         );
         vm.stopPrank();

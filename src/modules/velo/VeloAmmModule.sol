@@ -33,30 +33,23 @@ contract VeloAmmModule is IVeloAmmModule {
     }
 
     /// @inheritdoc IAmmModule
-    function validateProtocolParams(bytes memory params) external pure {
-        if (params.length != 0x40) revert InvalidLength();
-        IVeloAmmModule.ProtocolParams memory params_ = abi.decode(
-            params,
-            (IVeloAmmModule.ProtocolParams)
-        );
-        if (params_.feeD9 > MAX_PROTOCOL_FEE) revert InvalidFee();
-        if (params_.treasury == address(0)) revert AddressZero();
+    function validateProtocolParams(
+        ProtocolParams memory params
+    ) external pure {
+        if (params.feeD9 > MAX_PROTOCOL_FEE) revert InvalidFee();
+        if (params.treasury == address(0)) revert AddressZero();
     }
 
     /// @inheritdoc IAmmModule
-    function validateCallbackParams(bytes memory params) external view {
-        if (params.length != 0x60) revert InvalidLength();
-        IVeloAmmModule.CallbackParams memory params_ = abi.decode(
-            params,
-            (IVeloAmmModule.CallbackParams)
-        );
-
-        if (params_.farm == address(0)) revert AddressZero();
-        if (params_.gauge == address(0)) revert AddressZero();
-        if (params_.counter == address(0)) revert AddressZero();
-        ICLPool pool = ICLGauge(params_.gauge).pool();
+    function validateCallbackParams(
+        CallbackParams memory params
+    ) external view {
+        if (params.farm == address(0)) revert AddressZero();
+        if (params.gauge == address(0)) revert AddressZero();
+        if (params.counter == address(0)) revert AddressZero();
+        ICLPool pool = ICLGauge(params.gauge).pool();
         if (!isPool(address(pool))) revert InvalidGauge();
-        if (pool.gauge() != params_.gauge) revert InvalidGauge();
+        if (pool.gauge() != params.gauge) revert InvalidGauge();
     }
 
     /// @inheritdoc IAmmModule
@@ -79,15 +72,15 @@ contract VeloAmmModule is IVeloAmmModule {
     function tvl(
         uint256 tokenId,
         uint160 sqrtRatioX96,
-        bytes memory callbackParams,
-        bytes memory
+        CallbackParams memory callbackParams,
+        ProtocolParams memory
     ) external view override returns (uint256 amount0, uint256 amount1) {
         (amount0, amount1) = PositionValue.principal(
             INonfungiblePositionManager(positionManager),
             tokenId,
             sqrtRatioX96
         );
-        address gauge = abi.decode(callbackParams, (CallbackParams)).gauge;
+        address gauge = callbackParams.gauge;
         if (IERC721(positionManager).ownerOf(tokenId) != gauge) {
             (uint256 fees0, uint256 fees1) = PositionValue.fees(
                 INonfungiblePositionManager(positionManager),
@@ -146,45 +139,37 @@ contract VeloAmmModule is IVeloAmmModule {
     /// @inheritdoc IAmmModule
     function beforeRebalance(
         uint256 tokenId,
-        bytes memory callbackParams,
-        bytes memory protocolParams
+        CallbackParams memory callbackParams,
+        ProtocolParams memory protocolParams
     ) external virtual override {
-        CallbackParams memory callbackParams_ = abi.decode(
-            callbackParams,
-            (CallbackParams)
-        );
-        if (callbackParams_.farm == address(0)) revert AddressZero();
-        ProtocolParams memory protocolParams_ = abi.decode(
-            protocolParams,
-            (ProtocolParams)
-        );
-        if (protocolParams_.feeD9 > MAX_PROTOCOL_FEE) revert InvalidFee();
-        address gauge = callbackParams_.gauge;
+        if (callbackParams.farm == address(0)) revert AddressZero();
+        if (protocolParams.feeD9 > MAX_PROTOCOL_FEE) revert InvalidFee();
+        address gauge = callbackParams.gauge;
         if (IERC721(positionManager).ownerOf(tokenId) != gauge) return;
         ICLGauge(gauge).getReward(tokenId);
         address token = ICLGauge(gauge).rewardToken();
         uint256 balance = IERC20(token).balanceOf(address(this));
         if (balance > 0) {
             uint256 protocolReward = FullMath.mulDiv(
-                protocolParams_.feeD9,
+                protocolParams.feeD9,
                 balance,
                 D9
             );
 
             if (protocolReward > 0) {
                 IERC20(token).safeTransfer(
-                    protocolParams_.treasury,
+                    protocolParams.treasury,
                     protocolReward
                 );
             }
 
             balance -= protocolReward;
             if (balance > 0) {
-                IERC20(token).safeTransfer(callbackParams_.farm, balance);
-                ICounter(callbackParams_.counter).add(
+                IERC20(token).safeTransfer(callbackParams.farm, balance);
+                ICounter(callbackParams.counter).add(
                     balance,
                     token,
-                    callbackParams_.farm
+                    callbackParams.farm
                 );
             }
         }
@@ -194,10 +179,10 @@ contract VeloAmmModule is IVeloAmmModule {
     /// @inheritdoc IAmmModule
     function afterRebalance(
         uint256 tokenId,
-        bytes memory callbackParams,
-        bytes memory
+        CallbackParams memory callbackParams,
+        ProtocolParams memory
     ) external virtual override {
-        address gauge = abi.decode(callbackParams, (CallbackParams)).gauge;
+        address gauge = callbackParams.gauge;
         if (!ICLGauge(gauge).voter().isAlive(gauge)) return;
         INonfungiblePositionManager(positionManager).approve(gauge, tokenId);
         ICLGauge(gauge).deposit(tokenId);

@@ -81,12 +81,10 @@ contract HistoryTest is Test {
         );
         core = new Core(ammModule, strategyModule, oracle, address(this));
         core.setProtocolParams(
-            abi.encode(
-                IVeloAmmModule.ProtocolParams({
-                    feeD9: 1e8,
-                    treasury: Constants.PROTOCOL_TREASURY
-                })
-            )
+            IAmmModule.ProtocolParams({
+                feeD9: 1e8,
+                treasury: Constants.PROTOCOL_TREASURY
+            })
         );
         core.setOperatorFlag(false);
         veloDeployFactory = new VeloDeployFactory(
@@ -166,14 +164,12 @@ contract HistoryTest is Test {
                 tickNeighborhood: 0,
                 slippageD9: 1e8,
                 tokenId: tokenId,
-                securityParams: abi.encode(
-                    IVeloOracle.SecurityParams({
-                        lookback: 1,
-                        maxAge: 1 days,
-                        maxAllowedDelta: 1000
-                    })
-                ),
-                strategyType: IPulseStrategyModule.StrategyType.LazySyncing
+                securityParams: IOracle.SecurityParams({
+                    lookback: 1,
+                    maxAge: 1 days,
+                    maxAllowedDelta: 1000
+                }),
+                strategyType: IStrategyModule.StrategyType.LazySyncing
             })
         );
     }

@@ -95,12 +95,10 @@ contract Integration is Test {
 
         vm.prank(CORE_ADMIN);
         core.setProtocolParams(
-            abi.encode(
-                IVeloAmmModule.ProtocolParams({
-                    feeD9: MELLOW_PROTOCOL_FEE,
-                    treasury: MELLOW_PROTOCOL_TREASURY
-                })
-            )
+            IAmmModule.ProtocolParams({
+                feeD9: MELLOW_PROTOCOL_FEE,
+                treasury: MELLOW_PROTOCOL_TREASURY
+            })
         );
 
         vm.startPrank(VELO_DEPLOY_FACTORY_ADMIN);
@@ -201,7 +199,7 @@ contract Integration is Test {
         positionManager.approve(address(deployFactory), tokenId);
         addresses = deployFactory.createStrategy(
             IVeloDeployFactory.DeployParams({
-                securityParams: IVeloOracle.SecurityParams({
+                securityParams: IOracle.SecurityParams({
                     lookback: 1,
                     maxAge: 7 days,
                     maxAllowedDelta: type(int24).max
@@ -209,7 +207,7 @@ contract Integration is Test {
                 slippageD9: 5 * 1e5,
                 tokenId: tokenId,
                 tickNeighborhood: 0,
-                strategyType: IPulseStrategyModule.StrategyType.LazySyncing
+                strategyType: IStrategyModule.StrategyType.LazySyncing
             })
         );
         vm.stopPrank();
@@ -286,8 +284,8 @@ contract Integration is Test {
         (uint256 amount0, uint256 amount1) = ammModule.tvl(
             info.ammPositionIds[0],
             sqrtPriceX96,
-            abi.encode(info.coreParams.callbackParams),
-            new bytes(0)
+            info.coreParams.callbackParams,
+            IAmmModule.ProtocolParams({treasury: address(0), feeD9: 0})
         );
         ICLPool pool = ICLPool(info.pool);
 
@@ -327,8 +325,8 @@ contract Integration is Test {
         (uint256 amount0, uint256 amount1) = ammModule.tvl(
             info.ammPositionIds[0],
             sqrtPriceX96,
-            abi.encode(info.coreParams.callbackParams),
-            new bytes(0)
+            info.coreParams.callbackParams,
+            IAmmModule.ProtocolParams({treasury: address(0), feeD9: 0})
         );
         uint256 totalSupply = IERC20(address(wrapper)).totalSupply();
         uint256 lpAmount = (totalSupply * d2) / 100;
@@ -926,13 +924,14 @@ contract Integration is Test {
             info.slippageD9,
             ICore.CoreParams({
                 callbackParams: info.coreParams.callbackParams,
-                strategyParams: IPulseStrategyModule.StrategyParams({
-                    strategyType: IPulseStrategyModule.StrategyType.Original,
+                strategyParams: IStrategyModule.StrategyParams({
+                    strategyType: IStrategyModule.StrategyType.Original,
                     tickNeighborhood: 100,
                     tickSpacing: 200,
-                    width: 400
+                    width: 400,
+                    maxLiquidityRatioDeviationX96: 0
                 }),
-                securityParams: IVeloOracle.SecurityParams({
+                securityParams: IOracle.SecurityParams({
                     lookback: 1,
                     maxAllowedDelta: 1,
                     maxAge: 7 days
@@ -948,13 +947,14 @@ contract Integration is Test {
             info.slippageD9,
             ICore.CoreParams({
                 callbackParams: info.coreParams.callbackParams,
-                strategyParams: IPulseStrategyModule.StrategyParams({
-                    strategyType: IPulseStrategyModule.StrategyType.LazySyncing,
+                strategyParams: IStrategyModule.StrategyParams({
+                    strategyType: IStrategyModule.StrategyType.LazySyncing,
                     tickNeighborhood: 0,
                     tickSpacing: 200,
-                    width: 400
+                    width: 400,
+                    maxLiquidityRatioDeviationX96: 0
                 }),
-                securityParams: IVeloOracle.SecurityParams({
+                securityParams: IOracle.SecurityParams({
                     lookback: 1,
                     maxAllowedDelta: 10000,
                     maxAge: 7 days

@@ -11,7 +11,7 @@ contract Integration is Fixture {
         int24 tickNeighborhood;
         int24 tickSpacing;
         uint32 slippageD9;
-        IVeloOracle.SecurityParams securityParams;
+        IOracle.SecurityParams securityParams;
     }
 
     uint256 public moveCoef = 1e8;
@@ -28,29 +28,29 @@ contract Integration is Fixture {
         );
         depositParams.owner = Constants.OWNER;
 
-        depositParams.coreParams.strategyParams = IPulseStrategyModule
+        depositParams.coreParams.strategyParams = IStrategyModule
             .StrategyParams({
                 tickNeighborhood: params.tickNeighborhood,
                 tickSpacing: params.tickSpacing,
-                strategyType: IPulseStrategyModule.StrategyType.Original,
-                width: params.width
+                strategyType: IStrategyModule.StrategyType.Original,
+                width: params.width,
+                maxLiquidityRatioDeviationX96: 0
             });
         depositParams.coreParams.securityParams = params.securityParams;
         depositParams.slippageD9 = params.slippageD9;
         depositParams.owner = address(lpWrapper);
-        depositParams.coreParams.callbackParams = IVeloAmmModule
-            .CallbackParams({
-                farm: address(stakingRewards),
-                gauge: address(pool.gauge()),
-                counter: address(
-                    new Counter(
-                        address(core),
-                        address(core),
-                        Constants.VELO,
-                        address(stakingRewards)
-                    )
+        depositParams.coreParams.callbackParams = IAmmModule.CallbackParams({
+            farm: address(stakingRewards),
+            gauge: address(pool.gauge()),
+            counter: address(
+                new Counter(
+                    address(core),
+                    address(core),
+                    Constants.VELO,
+                    address(stakingRewards)
                 )
-            });
+            )
+        });
 
         vm.startPrank(Constants.OWNER);
         positionManager.approve(address(core), depositParams.ammPositionIds[0]);
@@ -68,10 +68,10 @@ contract Integration is Fixture {
                 width: tickSpacing * 4,
                 tickNeighborhood: tickSpacing,
                 slippageD9: 100 * 1e5,
-                securityParams: IVeloOracle.SecurityParams({
-                    lookback: 0,
-                    maxAge: 0,
-                    maxAllowedDelta: 0
+                securityParams: IOracle.SecurityParams({
+                    lookback: 1,
+                    maxAllowedDelta: 1000,
+                    maxAge: 1 days
                 })
             })
         );
@@ -168,10 +168,10 @@ contract Integration is Fixture {
                 width: tickSpacing * 10,
                 tickNeighborhood: tickSpacing,
                 slippageD9: 100 * 1e5,
-                securityParams: IVeloOracle.SecurityParams({
-                    lookback: 0,
-                    maxAge: 0,
-                    maxAllowedDelta: 0
+                securityParams: IOracle.SecurityParams({
+                    lookback: 1,
+                    maxAllowedDelta: 1000,
+                    maxAge: 1 days
                 })
             })
         );
@@ -279,7 +279,7 @@ contract Integration is Fixture {
                 width: tickSpacing * 10,
                 tickNeighborhood: tickSpacing,
                 slippageD9: 100 * 1e5,
-                securityParams: IVeloOracle.SecurityParams({
+                securityParams: IOracle.SecurityParams({
                     lookback: 10,
                     maxAllowedDelta: 10,
                     maxAge: 7 days
@@ -373,19 +373,17 @@ contract Integration is Fixture {
         // oracle.ensureNoMEV(
         //     address(pool),
         //     abi.encode(
-        //         IVeloOracle.SecurityParams({lookback: 5, maxAllowedDelta: 0})
+        //         IOracle.SecurityParams({lookback: 5, maxAllowedDelta: 0})
         //     )
         // );
         vm.expectRevert(abi.encodeWithSignature("NotEnoughObservations()"));
         oracle.ensureNoMEV(
             address(pool),
-            abi.encode(
-                IVeloOracle.SecurityParams({
-                    lookback: 1000,
-                    maxAllowedDelta: 10,
-                    maxAge: 7 days
-                })
-            )
+            IOracle.SecurityParams({
+                lookback: 1000,
+                maxAllowedDelta: 10,
+                maxAge: 7 days
+            })
         );
         // vm.expectRevert(abi.encodeWithSignature("NotEnoughObservations()"));
         // oracle.ensureNoMEV(
@@ -413,32 +411,26 @@ contract Integration is Fixture {
     function testOracleValidateSecurityParams() external {
         vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
         oracle.validateSecurityParams(
-            abi.encode(
-                IVeloOracle.SecurityParams({
-                    lookback: 0,
-                    maxAllowedDelta: 0,
-                    maxAge: 7 days
-                })
-            )
+            IOracle.SecurityParams({
+                lookback: 0,
+                maxAllowedDelta: 0,
+                maxAge: 7 days
+            })
         );
         vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
         oracle.validateSecurityParams(
-            abi.encode(
-                IVeloOracle.SecurityParams({
-                    lookback: 1,
-                    maxAllowedDelta: -1,
-                    maxAge: 7 days
-                })
-            )
+            IOracle.SecurityParams({
+                lookback: 1,
+                maxAllowedDelta: -1,
+                maxAge: 7 days
+            })
         );
         oracle.validateSecurityParams(
-            abi.encode(
-                IVeloOracle.SecurityParams({
-                    lookback: 10,
-                    maxAllowedDelta: 10,
-                    maxAge: 7 days
-                })
-            )
+            IOracle.SecurityParams({
+                lookback: 10,
+                maxAllowedDelta: 10,
+                maxAge: 7 days
+            })
         );
     }
 }

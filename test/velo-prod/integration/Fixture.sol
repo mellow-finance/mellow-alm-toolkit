@@ -287,8 +287,8 @@ contract Fixture is Test {
         (uint256 amount0, uint256 amount1) = ammModule.tvl(
             tokenId,
             sqrtPriceX96,
-            abi.encode(info.coreParams.callbackParams),
-            new bytes(0)
+            info.coreParams.callbackParams,
+            IAmmModule.ProtocolParams({treasury: address(0), feeD9: 0})
         );
 
         PulseVeloBot.SwapParams memory swapParams = bot
@@ -343,12 +343,10 @@ contract Fixture is Test {
         oracle = new VeloOracle();
         core = new Core(ammModule, strategyModule, oracle, Constants.OWNER);
         core.setProtocolParams(
-            abi.encode(
-                IVeloAmmModule.ProtocolParams({
-                    feeD9: 1e8,
-                    treasury: Constants.PROTOCOL_TREASURY
-                })
-            )
+            IAmmModule.ProtocolParams({
+                feeD9: 1e8,
+                treasury: Constants.PROTOCOL_TREASURY
+            })
         );
 
         dwModule = new VeloDepositWithdrawModule(
@@ -390,12 +388,10 @@ contract Fixture is Test {
 
         vm.startPrank(Constants.OWNER);
         core.setProtocolParams(
-            abi.encode(
-                IVeloAmmModule.ProtocolParams({
-                    feeD9: Constants.PROTOCOL_FEE_D9,
-                    treasury: Constants.PROTOCOL_TREASURY
-                })
-            )
+            IAmmModule.ProtocolParams({
+                feeD9: Constants.PROTOCOL_FEE_D9,
+                treasury: Constants.PROTOCOL_TREASURY
+            })
         );
         positionManager.approve(address(veloFactory), tokenId);
         veloFactory.updateMutableParams(
@@ -414,12 +410,12 @@ contract Fixture is Test {
                     tickNeighborhood: 0,
                     slippageD9: 5 * 1e5,
                     tokenId: tokenId,
-                    securityParams: IVeloOracle.SecurityParams({
+                    securityParams: IOracle.SecurityParams({
                         lookback: 1,
                         maxAllowedDelta: MAX_ALLOWED_DELTA,
                         maxAge: MAX_AGE
                     }),
-                    strategyType: IPulseStrategyModule.StrategyType.LazySyncing
+                    strategyType: IStrategyModule.StrategyType.LazySyncing
                 })
             );
 

@@ -17,24 +17,15 @@ contract AgniOracle is IOracle {
     error NotEnoughObservations();
 
     /**
-     * @dev Struct representing the security parameters for the Agni Oracle.
-     */
-    struct SecurityParams {
-        uint16 lookback; // Number of historical data points to consider
-        int24 maxAllowedDelta; // Maximum allowed change in the data points
-    }
-
-    /**
      * @dev Ensures that there is no Miner Extractable Value (MEV) manipulation in the AgniPool.
      * @param poolAddress The address of the Agni pool.
-     * @param params The parameters for security checks.
+     * @param securityParams The parameters for security checks.
      * @notice throws PriceManipulationDetected if MEV manipulation is detected.
      */
     function ensureNoMEV(
         address poolAddress,
-        bytes memory params
+        SecurityParams memory securityParams
     ) external view {
-        if (params.length == 0) return;
         (
             ,
             int24 spotTick,
@@ -44,10 +35,6 @@ contract AgniOracle is IOracle {
             ,
 
         ) = IAgniPool(poolAddress).slot0();
-        SecurityParams memory securityParams = abi.decode(
-            params,
-            (SecurityParams)
-        );
         uint16 lookback = securityParams.lookback;
         if (observationCardinality < lookback + 1)
             revert NotEnoughObservations();
@@ -121,17 +108,14 @@ contract AgniOracle is IOracle {
 
     /**
      * @dev Validates the security parameters.
-     * @param params The security parameters to be validated.
+     * @param securityParams The security parameters to be validated.
      * @notice This function checks if the security parameters are valid. It decodes the `params` parameter
      * and checks if the `lookback` value is non-zero and the `maxAllowedDelta` value is greater than or equal to zero.
      * If any of these conditions are not met, it reverts with an `InvalidParams` error.
      */
-    function validateSecurityParams(bytes memory params) external pure {
-        if (params.length == 0) return;
-        SecurityParams memory securityParams = abi.decode(
-            params,
-            (SecurityParams)
-        );
+    function validateSecurityParams(
+        SecurityParams memory securityParams
+    ) external pure {
         if (securityParams.lookback == 0 || securityParams.maxAllowedDelta < 0)
             revert InvalidParams();
     }

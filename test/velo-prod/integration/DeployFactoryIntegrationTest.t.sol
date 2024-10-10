@@ -31,7 +31,7 @@ contract Integration is DeployFactoryFixture {
         IVeloDeployFactory.PoolAddresses memory poolAddresses = deployFactory
             .createStrategy(
                 IVeloDeployFactory.DeployParams({
-                    securityParams: IVeloOracle.SecurityParams({
+                    securityParams: IOracle.SecurityParams({
                         lookback: 1,
                         maxAge: 7 days,
                         maxAllowedDelta: type(int24).max
@@ -39,7 +39,7 @@ contract Integration is DeployFactoryFixture {
                     slippageD9: 5 * 1e5,
                     tokenId: tokenId,
                     tickNeighborhood: 0,
-                    strategyType: IPulseStrategyModule.StrategyType.LazySyncing
+                    strategyType: IStrategyModule.StrategyType.LazySyncing
                 })
             );
         vm.stopPrank();

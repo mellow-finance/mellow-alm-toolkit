@@ -12,25 +12,6 @@ interface IPulseStrategyModule is IStrategyModule {
     error InvalidParams(); // Thrown when input parameters are invalid
     error InvalidLength(); // Thrown when an array length is incorrect
 
-    // Enum representing different types of strategies
-    enum StrategyType {
-        Original, // Original Pulse V1 strategy
-        LazySyncing, // Lazy syncing strategy
-        LazyAscending, // Lazy ascending strategy
-        LazyDescending // Lazy descending strategy
-    }
-
-    /**
-     * @dev Struct for strategy parameters.
-     * Encapsulates the details required to execute different types of strategies.
-     */
-    struct StrategyParams {
-        StrategyType strategyType; // Type of strategy
-        int24 tickNeighborhood; // Neighborhood of ticks to consider for rebalancing
-        int24 tickSpacing; // tickSpacing of the corresponding amm pool
-        int24 width; // Width of the interval
-    }
-
     /**
      * @dev Returns the constant value of Q96, representing 2 ** 96.
      * Used for fixed-point arithmetic operations.

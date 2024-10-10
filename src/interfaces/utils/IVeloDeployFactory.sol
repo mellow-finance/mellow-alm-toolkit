@@ -69,8 +69,8 @@ interface IVeloDeployFactory {
         int24 tickNeighborhood;
         uint32 slippageD9;
         uint256 tokenId;
-        IVeloOracle.SecurityParams securityParams;
-        IPulseStrategyModule.StrategyType strategyType;
+        IOracle.SecurityParams securityParams;
+        IStrategyModule.StrategyType strategyType;
     }
 
     /**
