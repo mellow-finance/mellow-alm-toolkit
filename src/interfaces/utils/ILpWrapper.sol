@@ -255,6 +255,22 @@ interface ILpWrapper {
      */
     function setPositionParams(
         uint32 slippageD9,
+        IVeloAmmModule.CallbackParams memory callbackParams,
+        IPulseStrategyModule.StrategyParams memory strategyParams,
+        IVeloOracle.SecurityParams memory securityParams
+    ) external;
+    
+    /**
+     * @dev Sets the managed position parameters for a specified ID, including slippage, strategy, and security parameters.
+     * @param slippageD9 Maximum permissible proportion of capital allocated to positions for compensating rebalancers, scaled by 1e9.
+     * @param callbackParams Callback parameters for the position.
+     * @param strategyParams Strategy parameters for managing the position.
+     * @param securityParams Security parameters for protecting the position.
+     * Requirements:
+     * - Caller must have the ADMIN_ROLE.
+     */
+    function setPositionParams(
+        uint32 slippageD9,
         bytes memory callbackParams,
         bytes memory strategyParams,
         bytes memory securityParams

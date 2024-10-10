@@ -461,6 +461,30 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
     /// @inheritdoc ILpWrapper
     function setPositionParams(
         uint32 slippageD9,
+        IVeloAmmModule.CallbackParams memory callbackParams,
+        IPulseStrategyModule.StrategyParams memory strategyParams,
+        IVeloOracle.SecurityParams memory securityParams
+    ) external {
+        _requireAdmin();
+        core.setPositionParams(
+            positionId,
+            slippageD9,
+            abi.encode(callbackParams),
+            abi.encode(strategyParams),
+            abi.encode(securityParams)
+        );
+
+        emit PositionParamsSet(
+            slippageD9,
+            callbackParams,
+            strategyParams,
+            securityParams
+        );
+    }
+
+    /// @inheritdoc ILpWrapper
+    function setPositionParams(
+        uint32 slippageD9,
         bytes memory callbackParams,
         bytes memory strategyParams,
         bytes memory securityParams
