@@ -4,15 +4,18 @@ pragma solidity ^0.8.0;
 import "../../interfaces/modules/IStrategyModule.sol";
 
 import "../../libraries/external/FullMath.sol";
+import "../../libraries/external/TickMath.sol";
 
 /**
  * @title LStrategyModule
  * @dev A strategy module contract that implements the optimised for alm base version LStrategy.
  */
 contract LStrategyModule is IStrategyModule {
+    using FullMath for uint256;
     // Error definitions
     error InvalidParams();
     error InvalidLength();
+    error InvalidPosition();
 
     // Constants
     uint256 public constant Q96 = 2 ** 96;
@@ -49,35 +52,49 @@ contract LStrategyModule is IStrategyModule {
 
     /**
      * @dev Calculates the target lower tick and liquidity ratio of the lower position based on the given parameters.
+     * @param sqrtPriceX96 The current sqrtPriceX96 of the market, indicating the instantaneous price level.
      * @param tickLower The lower tick value.
      * @param half Half of the width of each position.
-     * @param tick The current spot tick value.
      * @return targetLower The calculated target lower tick.
      * @return liquidityRatioX96 The calculated liquidity ratio.
      */
     function calculateTarget(
+        uint256 sqrtPriceX96,
         int24 tickLower,
-        int24 half,
-        int24 tick
+        int24 half
     ) public pure returns (int24 targetLower, uint256 liquidityRatioX96) {
         int24 width = half * 2;
-        if (tick < tickLower + half) {
+        uint256 sqrtPriceX96LowerHalf = TickMath.getSqrtRatioAtTick(
+            tickLower + half
+        );
+        uint256 sqrtPriceX96LowerWidth = TickMath.getSqrtRatioAtTick(
+            tickLower + width
+        );
+        if (sqrtPriceX96 < sqrtPriceX96LowerHalf) {
             targetLower = tickLower - half;
-        } else if (tick > tickLower + width) {
+        } else if (sqrtPriceX96 > sqrtPriceX96LowerWidth) {
             targetLower = tickLower + half;
         } else {
             targetLower = tickLower;
         }
-        if (tickLower + half >= tick) {
+        if (sqrtPriceX96LowerHalf >= sqrtPriceX96) {
             liquidityRatioX96 = Q96;
-        } else if (tickLower + width <= tick) {
+        } else if (sqrtPriceX96LowerWidth <= sqrtPriceX96) {
             liquidityRatioX96 = 0;
         } else {
-            liquidityRatioX96 = FullMath.mulDiv(
-                uint24(tickLower + width - tick),
+            /**
+             * @dev shift sqrtPrices for (x+w/2), in ticks [x + w/2, x + w] -> [0, w/2]
+             * so sqrtPriceX96Shifted belongs to [Q96, sqrtPriceX96Half]
+             * liquidityRatioX96 can be calculated as (sqrtPriceX96Half - sqrtPriceX96Shifted)/(sqrtPriceX96Half - Q96) that is equivalent to
+             * (1 - 2 * tickShifted/w) in ticks, where tickShifted belongs to [0, w/2]
+             */
+            uint256 sqrtPriceX96Half = TickMath.getSqrtRatioAtTick(half);
+            uint256 sqrtPriceX96Shifted = sqrtPriceX96.mulDiv(
                 Q96,
-                uint24(half)
+                sqrtPriceX96LowerHalf
             );
+            liquidityRatioX96 = uint256(sqrtPriceX96Half - sqrtPriceX96Shifted)
+                .mulDiv(Q96, sqrtPriceX96Half - Q96);
         }
     }
 
@@ -115,8 +132,7 @@ contract LStrategyModule is IStrategyModule {
         override
         returns (bool, ICore.TargetPositionInfo memory target)
     {
-        int24 tick;
-        (, tick) = oracle.getOraclePrice(info.pool);
+        (uint160 sqrtPriceX96, ) = oracle.getOraclePrice(info.pool);
         if (info.ammPositionIds.length != 2) revert InvalidLength();
         IAmmModule.AmmPosition memory lowerPosition = ammModule.getAmmPosition(
             info.ammPositionIds[0]
@@ -132,13 +148,13 @@ contract LStrategyModule is IStrategyModule {
             upperPosition.tickLower != lowerPosition.tickLower + half ||
             upperPosition.tickUpper != lowerPosition.tickUpper + half
         ) {
-            revert InvalidLength();
+            revert InvalidPosition();
         }
 
         (int24 targetLower, uint256 targetRatioX96) = calculateTarget(
+            sqrtPriceX96,
             lowerPosition.tickLower,
-            half,
-            tick
+            half
         );
 
         uint256 ratioX96 = FullMath.mulDiv(
