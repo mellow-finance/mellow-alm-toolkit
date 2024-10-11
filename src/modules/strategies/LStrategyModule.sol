@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BSL-1.1
 pragma solidity ^0.8.0;
 
-import "../../interfaces/modules/IStrategyModule.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 
-import "../../libraries/external/FullMath.sol";
+import "../../interfaces/modules/IStrategyModule.sol";
 import "../../libraries/external/TickMath.sol";
 
 /**
@@ -11,7 +11,7 @@ import "../../libraries/external/TickMath.sol";
  * @dev A strategy module contract that implements the optimised for alm base version LStrategy.
  */
 contract LStrategyModule is IStrategyModule {
-    using FullMath for uint256;
+    using Math for uint256;
     // Error definitions
     error InvalidParams();
     error InvalidLength();
@@ -157,7 +157,7 @@ contract LStrategyModule is IStrategyModule {
             half
         );
 
-        uint256 ratioX96 = FullMath.mulDiv(
+        uint256 ratioX96 = Math.mulDiv(
             lowerPosition.liquidity,
             Q96,
             lowerPosition.liquidity + upperPosition.liquidity

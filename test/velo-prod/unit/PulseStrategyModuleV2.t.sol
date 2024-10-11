@@ -5,7 +5,7 @@ import "./Fixture.sol";
 
 contract PulseStrategyModuleV2Test is Fixture {
     using SafeERC20 for IERC20;
-    using FullMath for uint256;
+    using Math for uint256;
 
     struct TestCase {
         uint160 sqrtPriceX96;

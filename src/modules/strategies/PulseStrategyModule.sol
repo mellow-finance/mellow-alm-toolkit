@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BSL-1.1
 pragma solidity ^0.8.0;
 
-import "../../interfaces/modules/strategies/IPulseStrategyModule.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 
-import "../../libraries/external/FullMath.sol";
+import "../../interfaces/modules/strategies/IPulseStrategyModule.sol";
 
 contract PulseStrategyModule is IPulseStrategyModule {
     /// @inheritdoc IPulseStrategyModule

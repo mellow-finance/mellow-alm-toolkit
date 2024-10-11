@@ -42,14 +42,14 @@ contract PulseVeloBot is IPulseVeloBot {
                 data.sqrtUpperRatioX96,
                 uint128(Q96)
             );
-        return FullMath.mulDiv(amount0, Q96, amount0 + amount1);
+        return Math.mulDiv(amount0, Q96, amount0 + amount1);
     }
 
     function calculateSwapAmountsPreciselySingle(
         SingleIntervalData memory data
     ) public returns (SwapParams memory swapParams) {
         if (data.amount0 + data.amount1 == 0) return swapParams;
-        uint256 currentRatioX96 = FullMath.mulDiv(
+        uint256 currentRatioX96 = Math.mulDiv(
             data.amount0,
             Q96,
             data.amount0 + data.amount1
@@ -87,7 +87,7 @@ contract PulseVeloBot is IPulseVeloBot {
                         })
                     );
 
-                    uint256 resultingRatioX96 = FullMath.mulDiv(
+                    uint256 resultingRatioX96 = Math.mulDiv(
                         data.amount0 - uint256(mid),
                         Q96,
                         data.amount0 -
@@ -134,7 +134,7 @@ contract PulseVeloBot is IPulseVeloBot {
                         })
                     );
 
-                    uint256 resultingRatioX96 = FullMath.mulDiv(
+                    uint256 resultingRatioX96 = Math.mulDiv(
                         data.amount0 + swapParams.expectedAmountOut,
                         Q96,
                         data.amount0 +
@@ -172,7 +172,7 @@ contract PulseVeloBot is IPulseVeloBot {
                     pool: ICLPool(address(0))
                 })
             );
-            finalRatioX96 += FullMath.mulDiv(
+            finalRatioX96 += Math.mulDiv(
                 tokenRatioX96,
                 data.ratiosX96[i],
                 Q96
@@ -184,7 +184,7 @@ contract PulseVeloBot is IPulseVeloBot {
         MultipleIntervalsData memory data
     ) public returns (SwapParams memory swapParams) {
         if (data.amount0 + data.amount1 == 0) return swapParams;
-        uint256 currentRatioX96 = FullMath.mulDiv(
+        uint256 currentRatioX96 = Math.mulDiv(
             data.amount0,
             Q96,
             data.amount0 + data.amount1
@@ -222,7 +222,7 @@ contract PulseVeloBot is IPulseVeloBot {
                         })
                     );
 
-                    uint256 resultingRatioX96 = FullMath.mulDiv(
+                    uint256 resultingRatioX96 = Math.mulDiv(
                         data.amount0 - uint256(mid),
                         Q96,
                         data.amount0 -
@@ -272,7 +272,7 @@ contract PulseVeloBot is IPulseVeloBot {
                         })
                     );
 
-                    uint256 resultingRatioX96 = FullMath.mulDiv(
+                    uint256 resultingRatioX96 = Math.mulDiv(
                         data.amount0 + swapParams.expectedAmountOut,
                         Q96,
                         data.amount0 +

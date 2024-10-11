@@ -245,9 +245,9 @@ contract DeployFactoryFixture is Test {
 
         {
             (uint160 sqrtRatioX96, , , , , ) = pool.slot0();
-            uint256 priceX96 = FullMath.mulDiv(sqrtRatioX96, sqrtRatioX96, Q96);
+            uint256 priceX96 = Math.mulDiv(sqrtRatioX96, sqrtRatioX96, Q96);
             uint256 usdcAmount = 5e12;
-            uint256 wethAmount = FullMath.mulDiv(usdcAmount, Q96, priceX96);
+            uint256 wethAmount = Math.mulDiv(usdcAmount, Q96, priceX96);
 
             for (int24 i = 1; i <= 20; i++) {
                 int24 lowerTick = targetTick - i * TICK_SPACING;

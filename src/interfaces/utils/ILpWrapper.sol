@@ -259,7 +259,7 @@ interface ILpWrapper {
         IPulseStrategyModule.StrategyParams memory strategyParams,
         IVeloOracle.SecurityParams memory securityParams
     ) external;
-    
+
     /**
      * @dev Sets the managed position parameters for a specified ID, including slippage, strategy, and security parameters.
      * @param slippageD9 Maximum permissible proportion of capital allocated to positions for compensating rebalancers, scaled by 1e9.

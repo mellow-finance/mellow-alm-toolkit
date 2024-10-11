@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BSL-1.1
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts/utils/math/Math.sol";
+
 import "../interfaces/external/velo/INonfungiblePositionManager.sol";
 import "../interfaces/utils/ILpWrapper.sol";
-
-import "../libraries/external/FullMath.sol";
 
 import "./DefaultAccessControl.sol";
 import "./StakingRewards.sol";
@@ -173,14 +173,14 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
             }
             for (uint256 i = 0; i < n; i++) {
                 if (actualAmount0 != 0) {
-                    amounts0[i] = FullMath.mulDiv(
+                    amounts0[i] = Math.mulDiv(
                         amount0,
                         amounts0[i],
                         actualAmount0
                     );
                 }
                 if (actualAmount1 != 0) {
-                    amounts1[i] = FullMath.mulDiv(
+                    amounts1[i] = Math.mulDiv(
                         amount1,
                         amounts1[i],
                         actualAmount1
@@ -235,7 +235,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         lpAmount = type(uint256).max;
         for (uint256 i = 0; i < n; i++) {
             if (positionsBefore[i].liquidity == 0) continue;
-            uint256 currentLpAmount = FullMath.mulDiv(
+            uint256 currentLpAmount = Math.mulDiv(
                 positionsAfter[i].liquidity - positionsBefore[i].liquidity,
                 totalSupply_,
                 positionsBefore[i].liquidity
@@ -342,7 +342,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
                 );
                 IAmmModule.AmmPosition memory position = ammModule
                     .getAmmPosition(info.ammPositionIds[i]);
-                uint256 liquidity = FullMath.mulDiv(
+                uint256 liquidity = Math.mulDiv(
                     position.liquidity,
                     actualLpAmount,
                     totalSupply_

@@ -163,12 +163,12 @@ contract Integration is Fixture {
                     info.ammPositionIds[0],
                     sqrtPriceX96
                 );
-                uint256 priceX96 = FullMath.mulDiv(
+                uint256 priceX96 = Math.mulDiv(
                     sqrtPriceX96,
                     sqrtPriceX96,
                     2 ** 96
                 );
-                uint256 capital = FullMath.mulDiv(amount0, priceX96, 2 ** 96) +
+                uint256 capital = Math.mulDiv(amount0, priceX96, 2 ** 96) +
                     amount1;
                 console2.log("Capital usdc:", capital);
                 console2.log(

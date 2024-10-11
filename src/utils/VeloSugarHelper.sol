@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BSL-1.1
 pragma solidity ^0.8.0;
 
-import "./StakingRewards.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 
-import "../libraries/external/FullMath.sol";
+import "./StakingRewards.sol";
 
 import "./VeloDeployFactory.sol";
 
@@ -82,12 +82,12 @@ contract VeloSugarHelper {
             );
         }
         uint256 totalSupply = IERC20(addresses.lpWrapper).totalSupply();
-        lp.amount0 = FullMath.mulDiv(
+        lp.amount0 = Math.mulDiv(
             lp.reserve0,
             lp.lpAmount + lp.stakedLpAmount,
             totalSupply
         );
-        lp.amount1 = FullMath.mulDiv(
+        lp.amount1 = Math.mulDiv(
             lp.reserve1,
             lp.lpAmount + lp.stakedLpAmount,
             totalSupply

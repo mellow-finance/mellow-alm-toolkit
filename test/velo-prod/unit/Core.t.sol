@@ -235,7 +235,7 @@ contract Unit is Fixture {
         uint256 capitalBefore = 0;
         uint256 capitalAfter = 0;
         (uint160 sqrtPriceX96, int24 tick, , , , ) = pool.slot0();
-        uint256 priceX96 = FullMath.mulDiv(sqrtPriceX96, sqrtPriceX96, Q96);
+        uint256 priceX96 = Math.mulDiv(sqrtPriceX96, sqrtPriceX96, Q96);
 
         {
             (uint256 amount0, uint256 amount1) = ammModule.tvl(
@@ -244,7 +244,7 @@ contract Unit is Fixture {
                 infoBefore.callbackParams,
                 core.protocolParams()
             );
-            capitalBefore = FullMath.mulDiv(amount0, priceX96, Q96) + amount1;
+            capitalBefore = Math.mulDiv(amount0, priceX96, Q96) + amount1;
         }
 
         core.rebalance(rebalanceParams);
@@ -263,7 +263,7 @@ contract Unit is Fixture {
                 infoAfter.callbackParams,
                 core.protocolParams()
             );
-            capitalAfter = FullMath.mulDiv(amount0, priceX96, Q96) + amount1;
+            capitalAfter = Math.mulDiv(amount0, priceX96, Q96) + amount1;
         }
 
         IPulseStrategyModule.StrategyParams memory strategyParams = abi.decode(
@@ -272,7 +272,7 @@ contract Unit is Fixture {
         );
 
         assertTrue(
-            FullMath.mulDiv(capitalBefore, D9 - infoBefore.slippageD9, D9) <=
+            Math.mulDiv(capitalBefore, D9 - infoBefore.slippageD9, D9) <=
                 capitalAfter
         );
 

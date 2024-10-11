@@ -293,7 +293,7 @@ contract Unit is Fixture {
         );
 
         {
-            uint256 expectedLiquidityIncrease = FullMath.mulDiv(
+            uint256 expectedLiquidityIncrease = Math.mulDiv(
                 positionBefore.liquidity,
                 totalSupplyAfter - totalSupplyBefore,
                 totalSupplyBefore
@@ -306,7 +306,7 @@ contract Unit is Fixture {
             );
 
             assertEq(
-                FullMath.mulDiv(
+                Math.mulDiv(
                     positionAfter.liquidity - positionBefore.liquidity,
                     totalSupplyBefore,
                     positionBefore.liquidity
@@ -384,7 +384,7 @@ contract Unit is Fixture {
         );
 
         {
-            uint256 expectedLiquidityDecrease = FullMath.mulDiv(
+            uint256 expectedLiquidityDecrease = Math.mulDiv(
                 positionBefore.liquidity,
                 totalSupplyBefore - totalSupplyAfter,
                 totalSupplyBefore
@@ -445,7 +445,7 @@ contract Unit is Fixture {
         );
 
         {
-            uint256 expectedLiquidityIncrease = FullMath.mulDiv(
+            uint256 expectedLiquidityIncrease = Math.mulDiv(
                 positionBefore.liquidity,
                 totalSupplyAfter - totalSupplyBefore,
                 totalSupplyBefore
@@ -458,7 +458,7 @@ contract Unit is Fixture {
             );
 
             assertEq(
-                FullMath.mulDiv(
+                Math.mulDiv(
                     positionAfter.liquidity - positionBefore.liquidity,
                     totalSupplyBefore,
                     positionBefore.liquidity
@@ -547,7 +547,7 @@ contract Unit is Fixture {
         );
 
         {
-            uint256 expectedLiquidityDecrease = FullMath.mulDiv(
+            uint256 expectedLiquidityDecrease = Math.mulDiv(
                 positionBefore.liquidity,
                 totalSupplyBefore - totalSupplyAfter,
                 totalSupplyBefore

@@ -457,14 +457,14 @@ contract HistoryTest is Test {
         ) = _getFeeGrowthInside(tick, tickLower, tickUpper);
 
         fee0 = feeGrowthInside0X128 > feeGrowthInside0LastX128
-            ? FullMath.mulDiv(
+            ? Math.mulDiv(
                 liquidity,
                 feeGrowthInside0X128 - feeGrowthInside0LastX128,
                 Q128
             )
             : 0;
         fee1 = feeGrowthInside1X128 > feeGrowthInside1LastX128
-            ? FullMath.mulDiv(
+            ? Math.mulDiv(
                 liquidity,
                 feeGrowthInside1X128 - feeGrowthInside1LastX128,
                 Q128
