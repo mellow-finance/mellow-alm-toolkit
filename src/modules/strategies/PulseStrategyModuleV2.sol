@@ -46,7 +46,7 @@ contract PulseStrategyModuleV2 is IPulseStrategyModuleV2 {
             (StrategyParams)
         );
         (uint160 sqrtPriceX96, int24 tick) = oracle.getOraclePrice(info.pool);
-        if (strategyParams.strategyType == StrategyType.TamperSyncing) {
+        if (strategyParams.strategyType == StrategyType.L2Syncing) {
             if (info.ammPositionIds.length != 2) revert InvalidLength();
 
             IAmmModule.AmmPosition memory lowerPosition = ammModule
@@ -54,7 +54,7 @@ contract PulseStrategyModuleV2 is IPulseStrategyModuleV2 {
             IAmmModule.AmmPosition memory upperPosition = ammModule
                 .getAmmPosition(info.ammPositionIds[1]);
             return
-                calculateTarget(
+                calculateTargetTamper(
                     sqrtPriceX96,
                     lowerPosition,
                     upperPosition,
@@ -68,7 +68,7 @@ contract PulseStrategyModuleV2 is IPulseStrategyModuleV2 {
                 info.ammPositionIds[0]
             );
             return
-                calculateTarget(
+                calculateTargetPulse(
                     sqrtPriceX96,
                     tick,
                     position.tickLower,
@@ -221,7 +221,7 @@ contract PulseStrategyModuleV2 is IPulseStrategyModuleV2 {
         targetTickUpper = targetTickLower + params.width;
     }
 
-    function calculateTarget(
+    function calculateTargetPulse(
         uint160 sqrtPriceX96,
         int24 tick,
         int24 tickLower,
@@ -301,11 +301,11 @@ contract PulseStrategyModuleV2 is IPulseStrategyModuleV2 {
         }
     }
 
-    function calculateTarget(
+    function calculateTargetTamper(
         uint256 sqrtPriceX96,
         IAmmModule.AmmPosition memory lowerPosition,
         IAmmModule.AmmPosition memory upperPosition,
-        StrategyParams memory strategyParams
+        StrategyParams memory params
     )
         public
         pure
@@ -317,6 +317,14 @@ contract PulseStrategyModuleV2 is IPulseStrategyModuleV2 {
         int24 width = lowerPosition.tickUpper - lowerPosition.tickLower;
         int24 half = width / 2;
         int24 tickLower = lowerPosition.tickLower;
+
+        if (
+            width % 2 != 0 ||
+            upperPosition.tickLower != lowerPosition.tickLower + half ||
+            upperPosition.tickUpper != lowerPosition.tickUpper + half
+        ) {
+            revert InvalidPosition();
+        }
 
         (int24 targetLower, uint256 liquidityRatioX96) = _getCrossedPositions(
             sqrtPriceX96,
@@ -345,7 +353,7 @@ contract PulseStrategyModuleV2 is IPulseStrategyModuleV2 {
             _checkDeviation(
                 ratioX96,
                 liquidityRatioX96,
-                strategyParams.maxLiquidityRatioDeviationX96
+                params.maxLiquidityRatioDeviationX96
             )
         ) return (true, target);
         if (
@@ -353,7 +361,7 @@ contract PulseStrategyModuleV2 is IPulseStrategyModuleV2 {
             _checkDeviation(
                 Q96 - ratioX96,
                 liquidityRatioX96,
-                strategyParams.maxLiquidityRatioDeviationX96
+                params.maxLiquidityRatioDeviationX96
             )
         ) return (true, target);
         if (
@@ -361,7 +369,7 @@ contract PulseStrategyModuleV2 is IPulseStrategyModuleV2 {
             _checkDeviation(
                 ratioX96,
                 Q96 - liquidityRatioX96,
-                strategyParams.maxLiquidityRatioDeviationX96
+                params.maxLiquidityRatioDeviationX96
             )
         ) return (true, target);
 

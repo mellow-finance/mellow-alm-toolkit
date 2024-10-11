@@ -40,7 +40,7 @@ contract PulseStrategyModuleV2Test is Fixture {
                 maxLiquidityRatioDeviationX96: 0
             });
         (, ICore.TargetPositionInfo memory target) = pulseStrategyModule
-            .calculateTarget(
+            .calculateTargetPulse(
                 tc.sqrtPriceX96,
                 spotTick,
                 tc.tickLower,
