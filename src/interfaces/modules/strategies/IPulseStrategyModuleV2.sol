@@ -17,7 +17,8 @@ interface IPulseStrategyModuleV2 is IStrategyModule {
         Original, // Original Pulse V1 strategy
         LazySyncing, // Lazy syncing strategy
         LazyAscending, // Lazy ascending strategy
-        LazyDescending // Lazy descending strategy
+        LazyDescending, // Lazy descending strategy
+        TamperSyncing // Tamper strategy
     }
 
     /**
@@ -29,6 +30,7 @@ interface IPulseStrategyModuleV2 is IStrategyModule {
         int24 tickNeighborhood; // Neighborhood of ticks to consider for rebalancing
         int24 tickSpacing; // tickSpacing of the corresponding amm pool
         int24 width; // Width of the interval
+        uint256 maxLiquidityRatioDeviationX96; // The maximum allowed deviation of the liquidity ratio for lower position.
     }
 
     /**
@@ -63,6 +65,12 @@ interface IPulseStrategyModuleV2 is IStrategyModule {
      * Opposite to LazyAscending, this strategy caters to descending market conditions. If the current tick is greater than tickUpper,
      * it does not prompt a rebalance. The strategy focuses on rebalancing when the market descends below tickLower,
      * aiming to manage downward trends without reacting to upward movements.
+     *
+     * StrategyType.TamperSyncing:
+     * Handles two crossed positions upper position [tickLower, tickLower+width] and lower [tickLower+width/2, tickLower+width+width/2]
+     *   - If tick in range [tickLower+width/2, tickLower+width] it rebalances liquidity between these two position to achieve better utilization.
+     *   - If tick < tickLower+width/2 it moves upper position under lower postion
+     *   - If tick > tickLower+width it moves lower position above upper postion
      *
      * For each strategy, the function evaluates whether rebalancing is necessary based on the current tick's position relative to the strategy's parameters.
      * If rebalancing is required, it calculates the target position details, ensuring strategic alignment with the current market conditions.

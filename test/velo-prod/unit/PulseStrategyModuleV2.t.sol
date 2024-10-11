@@ -36,7 +36,8 @@ contract PulseStrategyModuleV2Test is Fixture {
                 strategyType: tc.strategyType,
                 tickSpacing: tc.tickSpacing,
                 tickNeighborhood: tc.tickNeighborhood,
-                width: width
+                width: width,
+                maxLiquidityRatioDeviationX96: 0
             });
         (, ICore.TargetPositionInfo memory target) = pulseStrategyModule
             .calculateTarget(

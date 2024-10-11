@@ -7,6 +7,7 @@ import "../../interfaces/modules/strategies/IPulseStrategyModuleV2.sol";
 import "../../libraries/external/TickMath.sol";
 
 contract PulseStrategyModuleV2 is IPulseStrategyModuleV2 {
+    using Math for uint256;
     /// @inheritdoc IPulseStrategyModuleV2
     uint256 public constant Q96 = 2 ** 96;
 
@@ -40,25 +41,41 @@ contract PulseStrategyModuleV2 is IPulseStrategyModuleV2 {
             ICore.TargetPositionInfo memory target
         )
     {
-        if (info.ammPositionIds.length != 1) {
-            revert InvalidLength();
-        }
-        IAmmModule.AmmPosition memory position = ammModule.getAmmPosition(
-            info.ammPositionIds[0]
-        );
         StrategyParams memory strategyParams = abi.decode(
             info.strategyParams,
             (StrategyParams)
         );
         (uint160 sqrtPriceX96, int24 tick) = oracle.getOraclePrice(info.pool);
-        return
-            calculateTarget(
-                sqrtPriceX96,
-                tick,
-                position.tickLower,
-                position.tickUpper,
-                strategyParams
+        if (strategyParams.strategyType == StrategyType.TamperSyncing) {
+            if (info.ammPositionIds.length != 2) revert InvalidLength();
+
+            IAmmModule.AmmPosition memory lowerPosition = ammModule
+                .getAmmPosition(info.ammPositionIds[0]);
+            IAmmModule.AmmPosition memory upperPosition = ammModule
+                .getAmmPosition(info.ammPositionIds[1]);
+            return
+                calculateTarget(
+                    sqrtPriceX96,
+                    lowerPosition,
+                    upperPosition,
+                    strategyParams
+                );
+        } else {
+            if (info.ammPositionIds.length != 1) {
+                revert InvalidLength();
+            }
+            IAmmModule.AmmPosition memory position = ammModule.getAmmPosition(
+                info.ammPositionIds[0]
             );
+            return
+                calculateTarget(
+                    sqrtPriceX96,
+                    tick,
+                    position.tickLower,
+                    position.tickUpper,
+                    strategyParams
+                );
+        }
     }
 
     function _calculatePenalty(
@@ -204,7 +221,6 @@ contract PulseStrategyModuleV2 is IPulseStrategyModuleV2 {
         targetTickUpper = targetTickLower + params.width;
     }
 
-    /// @inheritdoc IPulseStrategyModuleV2
     function calculateTarget(
         uint160 sqrtPriceX96,
         int24 tick,
@@ -237,8 +253,139 @@ contract PulseStrategyModuleV2 is IPulseStrategyModuleV2 {
         isRebalanceRequired = true;
     }
 
+    /**
+     * @dev Calculates the target lower tick and liquidity ratio of the lower position based on the given parameters.
+     * @param sqrtPriceX96 The current sqrtPriceX96 of the market, indicating the instantaneous price level.
+     * @param tickLower The lower tick value.
+     * @param half Half of the width of each position.
+     * @return targetLower The calculated target lower tick.
+     * @return liquidityRatioX96 The calculated liquidity ratio.
+     */
+    function _getCrossedPositions(
+        uint256 sqrtPriceX96,
+        int24 tickLower,
+        int24 half
+    ) private pure returns (int24 targetLower, uint256 liquidityRatioX96) {
+        int24 width = half * 2;
+        uint256 sqrtPriceX96LowerHalf = TickMath.getSqrtRatioAtTick(
+            tickLower + half
+        );
+        uint256 sqrtPriceX96LowerWidth = TickMath.getSqrtRatioAtTick(
+            tickLower + width
+        );
+        if (sqrtPriceX96 < sqrtPriceX96LowerHalf) {
+            targetLower = tickLower - half;
+        } else if (sqrtPriceX96 > sqrtPriceX96LowerWidth) {
+            targetLower = tickLower + half;
+        } else {
+            targetLower = tickLower;
+        }
+        if (sqrtPriceX96LowerHalf >= sqrtPriceX96) {
+            liquidityRatioX96 = Q96;
+        } else if (sqrtPriceX96LowerWidth <= sqrtPriceX96) {
+            liquidityRatioX96 = 0;
+        } else {
+            /**
+             * @dev shift sqrtPrices for (x+w/2), in ticks [x + w/2, x + w] -> [0, w/2]
+             * so sqrtPriceX96Shifted belongs to [Q96, sqrtPriceX96Half]
+             * liquidityRatioX96 can be calculated as (sqrtPriceX96Half - sqrtPriceX96Shifted)/(sqrtPriceX96Half - Q96) that is equivalent to
+             * (1 - 2 * tickShifted/w) in ticks, where tickShifted belongs to [0, w/2]
+             */
+            uint256 sqrtPriceX96Half = TickMath.getSqrtRatioAtTick(half);
+            uint256 sqrtPriceX96Shifted = sqrtPriceX96.mulDiv(
+                Q96,
+                sqrtPriceX96LowerHalf
+            );
+            liquidityRatioX96 = uint256(sqrtPriceX96Half - sqrtPriceX96Shifted)
+                .mulDiv(Q96, sqrtPriceX96Half - Q96);
+        }
+    }
+
+    function calculateTarget(
+        uint256 sqrtPriceX96,
+        IAmmModule.AmmPosition memory lowerPosition,
+        IAmmModule.AmmPosition memory upperPosition,
+        StrategyParams memory strategyParams
+    )
+        public
+        pure
+        returns (
+            bool isRebalanceRequired,
+            ICore.TargetPositionInfo memory target
+        )
+    {
+        int24 width = lowerPosition.tickUpper - lowerPosition.tickLower;
+        int24 half = width / 2;
+        int24 tickLower = lowerPosition.tickLower;
+
+        (int24 targetLower, uint256 liquidityRatioX96) = _getCrossedPositions(
+            sqrtPriceX96,
+            tickLower,
+            half
+        );
+
+        uint256 ratioX96 = Math.mulDiv(
+            lowerPosition.liquidity,
+            Q96,
+            lowerPosition.liquidity + upperPosition.liquidity
+        );
+
+        target.lowerTicks = new int24[](2);
+        target.upperTicks = new int24[](2);
+        target.liquidityRatiosX96 = new uint256[](2);
+        target.lowerTicks[0] = targetLower;
+        target.upperTicks[0] = targetLower + width;
+        target.liquidityRatiosX96[0] = ratioX96;
+        target.lowerTicks[1] = targetLower + half;
+        target.upperTicks[1] = targetLower + half + width;
+        target.liquidityRatiosX96[1] = Q96 - ratioX96;
+
+        if (
+            targetLower == lowerPosition.tickLower &&
+            _checkDeviation(
+                ratioX96,
+                liquidityRatioX96,
+                strategyParams.maxLiquidityRatioDeviationX96
+            )
+        ) return (true, target);
+        if (
+            targetLower + half == lowerPosition.tickLower &&
+            _checkDeviation(
+                Q96 - ratioX96,
+                liquidityRatioX96,
+                strategyParams.maxLiquidityRatioDeviationX96
+            )
+        ) return (true, target);
+        if (
+            targetLower - half == lowerPosition.tickLower &&
+            _checkDeviation(
+                ratioX96,
+                Q96 - liquidityRatioX96,
+                strategyParams.maxLiquidityRatioDeviationX96
+            )
+        ) return (true, target);
+
+        return (false, target);
+    }
+
     function _max(int24 a, int24 b) private pure returns (int24) {
         if (a < b) return b;
         return a;
+    }
+
+    /**
+     * @dev Checks if the difference between two numbers exceeds a specified deviation.
+     * @param a The first number.
+     * @param b The second number.
+     * @param deviation The maximum allowed difference between the two numbers.
+     * @return bool true if the difference between `a` and `b` exceeds `deviation`, false otherwise.
+     */
+    function _checkDeviation(
+        uint256 a,
+        uint256 b,
+        uint256 deviation
+    ) internal pure returns (bool) {
+        if (a + deviation > b || b + deviation > a) return true;
+        return false;
     }
 }
