@@ -367,9 +367,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
                 info.callbackParams,
                 protocolParams_
             );
-            capitalInToken1 +=
-                Math.mulDiv(amount0, priceX96, Q96) +
-                amount1;
+            capitalInToken1 += Math.mulDiv(amount0, priceX96, Q96) + amount1;
             _beforeRebalance(tokenId, info.callbackParams, protocolParams_);
             _transferFrom(address(this), params.callback, tokenId);
         }

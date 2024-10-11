@@ -172,11 +172,7 @@ contract PulseVeloBot is IPulseVeloBot {
                     pool: ICLPool(address(0))
                 })
             );
-            finalRatioX96 += Math.mulDiv(
-                tokenRatioX96,
-                data.ratiosX96[i],
-                Q96
-            );
+            finalRatioX96 += Math.mulDiv(tokenRatioX96, data.ratiosX96[i], Q96);
         }
     }
 
