@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.0;
 
-import "./FullMath.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
+
 import "./FixedPoint128.sol";
 import "./LiquidityMath.sol";
 
@@ -69,14 +70,14 @@ library Position {
         if (!staked) {
             // calculate accumulated fees
             tokensOwed0 = uint128(
-                FullMath.mulDiv(
+                Math.mulDiv(
                     feeGrowthInside0X128 - _self.feeGrowthInside0LastX128,
                     _self.liquidity,
                     FixedPoint128.Q128
                 )
             );
             tokensOwed1 = uint128(
-                FullMath.mulDiv(
+                Math.mulDiv(
                     feeGrowthInside1X128 - _self.feeGrowthInside1LastX128,
                     _self.liquidity,
                     FixedPoint128.Q128

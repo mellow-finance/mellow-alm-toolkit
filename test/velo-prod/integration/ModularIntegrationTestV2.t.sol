@@ -76,7 +76,10 @@ contract Integration is Test {
     }
 
     function setUp() external {
-        ammModule = new VeloAmmModule(positionManager);
+        ammModule = new VeloAmmModule(
+            positionManager,
+            Constants.SELECTOR_IS_POOL
+        );
         depositWithdrawModule = new VeloDepositWithdrawModule(positionManager);
         strategyModule = new PulseStrategyModule();
         oracle = new VeloOracle();
@@ -502,27 +505,27 @@ contract Integration is Test {
                         liquidity
                     );
                 {
-                    uint256 priceX96 = FullMath.mulDiv(
+                    uint256 priceX96 = Math.mulDiv(
                         sqrtPriceX96,
                         sqrtPriceX96,
                         2 ** 96
                     );
-                    uint256 targetCapital = FullMath.mulDiv(
+                    uint256 targetCapital = Math.mulDiv(
                         target0,
                         priceX96,
                         2 ** 96
                     ) + target1;
-                    uint256 currentCapital = FullMath.mulDiv(
+                    uint256 currentCapital = Math.mulDiv(
                         current0,
                         priceX96,
                         2 ** 96
                     ) + current1;
-                    target0 = FullMath.mulDiv(
+                    target0 = Math.mulDiv(
                         target0,
                         currentCapital,
                         targetCapital
                     );
-                    target1 = FullMath.mulDiv(
+                    target1 = Math.mulDiv(
                         target1,
                         currentCapital,
                         targetCapital

@@ -19,10 +19,17 @@ contract VeloAmmModule is IVeloAmmModule {
     address public immutable positionManager;
     /// @inheritdoc IVeloAmmModule
     ICLFactory public immutable factory;
+    /// @inheritdoc IVeloAmmModule
+    bytes4 public immutable selectorIsPool;
 
-    constructor(INonfungiblePositionManager positionManager_) {
+    constructor(
+        INonfungiblePositionManager positionManager_,
+        bytes4 selectorIsPool_
+    ) {
         positionManager = address(positionManager_);
         factory = ICLFactory(positionManager_.factory());
+        selectorIsPool = selectorIsPool_;
+        _validateSelectorIsPool();
     }
 
     /// @inheritdoc IAmmModule
@@ -43,11 +50,12 @@ contract VeloAmmModule is IVeloAmmModule {
             params,
             (IVeloAmmModule.CallbackParams)
         );
+
         if (params_.farm == address(0)) revert AddressZero();
         if (params_.gauge == address(0)) revert AddressZero();
         if (params_.counter == address(0)) revert AddressZero();
         ICLPool pool = ICLGauge(params_.gauge).pool();
-        if (!factory.isPair(address(pool))) revert InvalidGauge();
+        if (!isPool(address(pool))) revert InvalidGauge();
         if (pool.gauge() != params_.gauge) revert InvalidGauge();
     }
 
@@ -122,6 +130,15 @@ contract VeloAmmModule is IVeloAmmModule {
     }
 
     /// @inheritdoc IAmmModule
+    function isPool(address pool) public view override returns (bool) {
+        (bool success, bytes memory returnData) = address(factory).staticcall(
+            abi.encodeWithSelector(selectorIsPool, pool)
+        );
+        if (!success) revert IsPool();
+        return abi.decode(returnData, (bool));
+    }
+
+    /// @inheritdoc IAmmModule
     function getProperty(address pool) external view override returns (uint24) {
         return uint24(ICLPool(pool).tickSpacing());
     }
@@ -148,7 +165,7 @@ contract VeloAmmModule is IVeloAmmModule {
         address token = ICLGauge(gauge).rewardToken();
         uint256 balance = IERC20(token).balanceOf(address(this));
         if (balance > 0) {
-            uint256 protocolReward = FullMath.mulDiv(
+            uint256 protocolReward = Math.mulDiv(
                 protocolParams_.feeD9,
                 balance,
                 D9
@@ -208,5 +225,13 @@ contract VeloAmmModule is IVeloAmmModule {
                 })
             );
         }
+    }
+
+    /**
+     * @dev makes a call to the ICLFactory and checks that address(0) does not belong to
+     *  if selectorIsPool is wrong then reverts with IsPool() reason
+     * */
+    function _validateSelectorIsPool() internal view {
+        require(isPool(address(0)) == false);
     }
 }

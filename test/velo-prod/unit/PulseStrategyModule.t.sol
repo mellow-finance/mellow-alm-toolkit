@@ -399,7 +399,8 @@ contract Unit is Fixture {
         );
 
         VeloAmmModule ammModule = new VeloAmmModule(
-            INonfungiblePositionManager(Constants.NONFUNGIBLE_POSITION_MANAGER)
+            INonfungiblePositionManager(Constants.NONFUNGIBLE_POSITION_MANAGER),
+            Constants.SELECTOR_IS_POOL
         );
 
         VeloOracle oracle = new VeloOracle();

@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.0;
 
-import "./FullMath.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
+
 import "./FixedPoint96.sol";
 
 /// @title Liquidity amount functions
@@ -27,14 +28,14 @@ library LiquidityAmounts {
     ) internal pure returns (uint128 liquidity) {
         if (sqrtRatioAX96 > sqrtRatioBX96)
             (sqrtRatioAX96, sqrtRatioBX96) = (sqrtRatioBX96, sqrtRatioAX96);
-        uint256 intermediate = FullMath.mulDiv(
+        uint256 intermediate = Math.mulDiv(
             sqrtRatioAX96,
             sqrtRatioBX96,
             FixedPoint96.Q96
         );
         return
             toUint128(
-                FullMath.mulDiv(
+                Math.mulDiv(
                     amount0,
                     intermediate,
                     sqrtRatioBX96 - sqrtRatioAX96
@@ -57,7 +58,7 @@ library LiquidityAmounts {
             (sqrtRatioAX96, sqrtRatioBX96) = (sqrtRatioBX96, sqrtRatioAX96);
         return
             toUint128(
-                FullMath.mulDiv(
+                Math.mulDiv(
                     amount1,
                     FixedPoint96.Q96,
                     sqrtRatioBX96 - sqrtRatioAX96
@@ -171,7 +172,7 @@ library LiquidityAmounts {
             (sqrtRatioAX96, sqrtRatioBX96) = (sqrtRatioBX96, sqrtRatioAX96);
 
         return
-            FullMath.mulDiv(
+            Math.mulDiv(
                 uint256(liquidity) << FixedPoint96.RESOLUTION,
                 sqrtRatioBX96 - sqrtRatioAX96,
                 sqrtRatioBX96
@@ -192,7 +193,7 @@ library LiquidityAmounts {
             (sqrtRatioAX96, sqrtRatioBX96) = (sqrtRatioBX96, sqrtRatioAX96);
 
         return
-            FullMath.mulDiv(
+            Math.mulDiv(
                 liquidity,
                 sqrtRatioBX96 - sqrtRatioAX96,
                 FixedPoint96.Q96

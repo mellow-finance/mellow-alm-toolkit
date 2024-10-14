@@ -108,3 +108,6 @@ dist
 broadcast/
 cache/
 out/
+
+# Backtest data
+test/backtest/data

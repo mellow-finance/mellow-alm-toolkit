@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: BSL-1.1
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts/utils/math/Math.sol";
+
 import "./interfaces/ICore.sol";
-
-import "./libraries/external/FullMath.sol";
-
 import "./utils/DefaultAccessControl.sol";
 
 contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
@@ -191,7 +190,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
             target.info = info;
             _validateTarget(target);
             (uint160 sqrtPriceX96, ) = oracle.getOraclePrice(info.pool);
-            uint256 priceX96 = FullMath.mulDiv(sqrtPriceX96, sqrtPriceX96, Q96);
+            uint256 priceX96 = Math.mulDiv(sqrtPriceX96, sqrtPriceX96, Q96);
             uint256 capitalInToken1 = _preprocess(
                 params,
                 info,
@@ -206,12 +205,12 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
             );
             target.minLiquidities = new uint256[](info.ammPositionIds.length);
             for (uint256 j = 0; j < info.ammPositionIds.length; j++) {
-                target.minLiquidities[j] = FullMath.mulDiv(
+                target.minLiquidities[j] = Math.mulDiv(
                     target.liquidityRatiosX96[j],
                     capitalInToken1,
                     targetCapitalInToken1X96
                 );
-                target.minLiquidities[j] = FullMath.mulDiv(
+                target.minLiquidities[j] = Math.mulDiv(
                     target.minLiquidities[j],
                     D9 - info.slippageD9,
                     D9
@@ -255,9 +254,44 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
                     target.info.callbackParams,
                     protocolParams_
                 );
+
+                _emitRebalanceEvent(
+                    target.info.pool,
+                    target.info.ammPositionIds[j],
+                    tokenId
+                );
             }
             _positions[target.id].ammPositionIds = ammPositionIds;
         }
+    }
+
+    function _emitRebalanceEvent(
+        address pool,
+        uint256 tokenIdBefore,
+        uint256 tokenIdAfter
+    ) private {
+        IAmmModule.AmmPosition memory info = ammModule.getAmmPosition(
+            tokenIdAfter
+        );
+        (uint160 sqrtPriceX96, ) = oracle.getOraclePrice(pool);
+        (uint256 amount0, uint256 amount1) = ammModule.getAmountsForLiquidity(
+            info.liquidity,
+            sqrtPriceX96,
+            info.tickLower,
+            info.tickUpper
+        );
+
+        emit Rebalance(
+            RebalanceEventParams({
+                pool: pool,
+                ammPositionInfo: info,
+                sqrtPriceX96: sqrtPriceX96,
+                amount0: amount0,
+                amount1: amount1,
+                ammPositionIdBefore: tokenIdBefore,
+                ammPositionIdAfter: tokenIdAfter
+            })
+        );
     }
 
     /// @inheritdoc ICore
@@ -313,7 +347,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
                     target.upperTicks[j]
                 );
             targetCapitalInToken1X96 +=
-                FullMath.mulDiv(amount0, priceX96, Q96) +
+                Math.mulDiv(amount0, priceX96, Q96) +
                 amount1;
         }
     }
@@ -333,9 +367,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
                 info.callbackParams,
                 protocolParams_
             );
-            capitalInToken1 +=
-                FullMath.mulDiv(amount0, priceX96, Q96) +
-                amount1;
+            capitalInToken1 += Math.mulDiv(amount0, priceX96, Q96) + amount1;
             _beforeRebalance(tokenId, info.callbackParams, protocolParams_);
             _transferFrom(address(this), params.callback, tokenId);
         }

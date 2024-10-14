@@ -9,6 +9,18 @@ import "./utils/IRebalanceCallback.sol";
 import "./modules/IStrategyModule.sol";
 
 interface ICore is IERC721Receiver {
+    struct RebalanceEventParams {
+        address pool;
+        IAmmModule.AmmPosition ammPositionInfo;
+        uint160 sqrtPriceX96;
+        uint256 amount0;
+        uint256 amount1;
+        uint256 ammPositionIdBefore;
+        uint256 ammPositionIdAfter;
+    }
+
+    event Rebalance(RebalanceEventParams rebalanceEventParams);
+
     /**
      * @title ManagedPositionInfo Structure
      * @dev This structure holds information about a managed position within a liquidity management system.

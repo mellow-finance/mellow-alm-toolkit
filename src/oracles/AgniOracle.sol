@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: BSL-1.1
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts/utils/math/Math.sol";
+
 import "../interfaces/external/agni/IAgniPool.sol";
+
 import "../interfaces/oracles/IOracle.sol";
 
-import "../libraries/external/FullMath.sol";
 import "../libraries/external/TickMath.sol";
 
 /**

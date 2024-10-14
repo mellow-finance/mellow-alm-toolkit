@@ -87,6 +87,12 @@ interface IAmmModule {
     ) external view returns (address);
 
     /**
+     * @dev Returns whether the given pool address belongs to the factory.
+     * @param pool Address of pool
+     */
+    function isPool(address pool) external view returns (bool);
+
+    /**
      * @dev Retrieves the property of a pool.
      * @param pool Pool address.
      * @return Property value of the pool.

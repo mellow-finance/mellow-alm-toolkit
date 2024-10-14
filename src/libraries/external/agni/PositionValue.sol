@@ -139,7 +139,7 @@ library PositionValue {
 
         unchecked {
             amount0 =
-                FullMath.mulDiv(
+                Math.mulDiv(
                     poolFeeGrowthInside0LastX128 -
                         feeParams.positionFeeGrowthInside0LastX128,
                     feeParams.liquidity,
@@ -148,7 +148,7 @@ library PositionValue {
                 feeParams.tokensOwed0;
 
             amount1 =
-                FullMath.mulDiv(
+                Math.mulDiv(
                     poolFeeGrowthInside1LastX128 -
                         feeParams.positionFeeGrowthInside1LastX128,
                     feeParams.liquidity,

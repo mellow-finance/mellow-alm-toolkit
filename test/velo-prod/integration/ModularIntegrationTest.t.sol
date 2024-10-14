@@ -72,7 +72,10 @@ contract Integration is Test {
     }
 
     function setUp() external {
-        ammModule = new VeloAmmModule(positionManager);
+        ammModule = new VeloAmmModule(
+            positionManager,
+            Constants.SELECTOR_IS_POOL
+        );
         depositWithdrawModule = new VeloDepositWithdrawModule(positionManager);
         strategyModule = new PulseStrategyModule();
         oracle = new VeloOracle();
@@ -219,7 +222,7 @@ contract Integration is Test {
         StakingRewards farm,
         ICLPool pool,
         Actions[] memory actions
-    ) private {
+    ) private returns (uint256 earned) {
         bool initialDeposit = true;
         for (uint256 i = 0; i < actions.length; i++) {
             Actions action = actions[i];
@@ -231,6 +234,7 @@ contract Integration is Test {
                     _deposit(DEPOSITOR, wrapper, farm, 100);
                 }
             } else if (action == Actions.WITHDRAW) {
+                earned = farm.earned(DEPOSITOR);
                 _withdraw(DEPOSITOR, 30, wrapper, farm);
             } else if (action == Actions.REBALANCE) {
                 _rebalance(CORE_OPERATOR, wrapper);
@@ -461,27 +465,27 @@ contract Integration is Test {
                         liquidity
                     );
                 {
-                    uint256 priceX96 = FullMath.mulDiv(
+                    uint256 priceX96 = Math.mulDiv(
                         sqrtPriceX96,
                         sqrtPriceX96,
                         2 ** 96
                     );
-                    uint256 targetCapital = FullMath.mulDiv(
+                    uint256 targetCapital = Math.mulDiv(
                         target0,
                         priceX96,
                         2 ** 96
                     ) + target1;
-                    uint256 currentCapital = FullMath.mulDiv(
+                    uint256 currentCapital = Math.mulDiv(
                         current0,
                         priceX96,
                         2 ** 96
                     ) + current1;
-                    target0 = FullMath.mulDiv(
+                    target0 = Math.mulDiv(
                         target0,
                         currentCapital,
                         targetCapital
                     );
-                    target1 = FullMath.mulDiv(
+                    target1 = Math.mulDiv(
                         target1,
                         currentCapital,
                         targetCapital
@@ -570,8 +574,8 @@ contract Integration is Test {
         actions[3] = Actions.PUSH_REWARDS;
         actions[4] = Actions.IDLE;
         actions[5] = Actions.WITHDRAW;
-        _execute(wrapper, farm, pool, actions);
-        uint256 earned = farm.earned(DEPOSITOR);
+
+        uint256 earned = _execute(wrapper, farm, pool, actions); // farm.earned(DEPOSITOR);
         assertTrue(earned > 0);
         vm.prank(DEPOSITOR);
         farm.getReward();

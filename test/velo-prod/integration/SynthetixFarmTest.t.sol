@@ -17,13 +17,6 @@ contract Integration is Fixture {
             1e9
         );
         depositParams.owner = Constants.OWNER;
-        depositParams.callbackParams = abi.encode(
-            IVeloAmmModule.CallbackParams({
-                farm: address(0),
-                gauge: address(0),
-                counter: address(0)
-            })
-        );
 
         depositParams.strategyParams = abi.encode(
             IPulseStrategyModule.StrategyParams({
@@ -50,6 +43,8 @@ contract Integration is Fixture {
                 counter: address(counter)
             })
         );
+
+        console2.log(address(stakingRewards), pool.gauge(), address(counter));
 
         vm.startPrank(Constants.OWNER);
         positionManager.approve(address(core), depositParams.ammPositionIds[0]);
@@ -168,12 +163,12 @@ contract Integration is Fixture {
                     info.ammPositionIds[0],
                     sqrtPriceX96
                 );
-                uint256 priceX96 = FullMath.mulDiv(
+                uint256 priceX96 = Math.mulDiv(
                     sqrtPriceX96,
                     sqrtPriceX96,
                     2 ** 96
                 );
-                uint256 capital = FullMath.mulDiv(amount0, priceX96, 2 ** 96) +
+                uint256 capital = Math.mulDiv(amount0, priceX96, 2 ** 96) +
                     amount1;
                 console2.log("Capital usdc:", capital);
                 console2.log(

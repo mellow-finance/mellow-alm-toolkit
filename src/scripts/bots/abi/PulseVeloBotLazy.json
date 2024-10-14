@@ -1,0 +1,227 @@
+[
+  {
+    "type": "constructor",
+    "inputs": [
+      {
+        "name": "positionManager_",
+        "type": "address",
+        "internalType": "address"
+      },
+      { "name": "core_", "type": "address", "internalType": "address" },
+      { "name": "fatory_", "type": "address", "internalType": "address" }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "D6",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "Q128",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "Q96",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "ammModule",
+    "inputs": [],
+    "outputs": [
+      { "name": "", "type": "address", "internalType": "contract IAmmModule" }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "call",
+    "inputs": [
+      { "name": "data", "type": "bytes", "internalType": "bytes" },
+      {
+        "name": "targets",
+        "type": "tuple[]",
+        "internalType": "struct ICore.TargetPositionInfo[]",
+        "components": [
+          { "name": "id", "type": "uint256", "internalType": "uint256" },
+          {
+            "name": "lowerTicks",
+            "type": "int24[]",
+            "internalType": "int24[]"
+          },
+          {
+            "name": "upperTicks",
+            "type": "int24[]",
+            "internalType": "int24[]"
+          },
+          {
+            "name": "liquidityRatiosX96",
+            "type": "uint256[]",
+            "internalType": "uint256[]"
+          },
+          {
+            "name": "minLiquidities",
+            "type": "uint256[]",
+            "internalType": "uint256[]"
+          },
+          {
+            "name": "info",
+            "type": "tuple",
+            "internalType": "struct ICore.ManagedPositionInfo",
+            "components": [
+              {
+                "name": "slippageD9",
+                "type": "uint32",
+                "internalType": "uint32"
+              },
+              {
+                "name": "property",
+                "type": "uint24",
+                "internalType": "uint24"
+              },
+              { "name": "owner", "type": "address", "internalType": "address" },
+              { "name": "pool", "type": "address", "internalType": "address" },
+              {
+                "name": "ammPositionIds",
+                "type": "uint256[]",
+                "internalType": "uint256[]"
+              },
+              {
+                "name": "callbackParams",
+                "type": "bytes",
+                "internalType": "bytes"
+              },
+              {
+                "name": "strategyParams",
+                "type": "bytes",
+                "internalType": "bytes"
+              },
+              {
+                "name": "securityParams",
+                "type": "bytes",
+                "internalType": "bytes"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "newTokenIds",
+        "type": "uint256[][]",
+        "internalType": "uint256[][]"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "core",
+    "inputs": [],
+    "outputs": [
+      { "name": "", "type": "address", "internalType": "contract ICore" }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "fatory",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract IVeloDeployFactory"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "necessarySwapAmountForMint",
+    "inputs": [
+      { "name": "pool", "type": "address", "internalType": "address" },
+      { "name": "priceTargetX96", "type": "uint256", "internalType": "uint256" }
+    ],
+    "outputs": [
+      {
+        "name": "swapQuoteParams",
+        "type": "tuple",
+        "internalType": "struct IPulseVeloBotLazy.SwapQuoteParams",
+        "components": [
+          { "name": "tokenIn", "type": "address", "internalType": "address" },
+          { "name": "tokenOut", "type": "address", "internalType": "address" },
+          { "name": "amountIn", "type": "uint256", "internalType": "uint256" }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "needRebalancePosition",
+    "inputs": [
+      { "name": "pool", "type": "address", "internalType": "address" }
+    ],
+    "outputs": [
+      { "name": "isRebalanceRequired", "type": "bool", "internalType": "bool" }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "oracle",
+    "inputs": [],
+    "outputs": [
+      { "name": "", "type": "address", "internalType": "contract IOracle" }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "poolPositionId",
+    "inputs": [
+      { "name": "pool", "type": "address", "internalType": "address" }
+    ],
+    "outputs": [
+      { "name": "positionId", "type": "uint256", "internalType": "uint256" }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "positionManager",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract INonfungiblePositionManager"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "strategyModule",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract IPulseStrategyModule"
+      }
+    ],
+    "stateMutability": "view"
+  }
+]
