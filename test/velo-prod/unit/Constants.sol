@@ -19,7 +19,7 @@ import "../../../src/bots/PulseVeloBotLazy.sol";
 import "../../../src/modules/velo/VeloAmmModule.sol";
 import "../../../src/modules/velo/VeloDepositWithdrawModule.sol";
 import "../../../src/modules/strategies/PulseStrategyModule.sol";
-import "../../../src/modules/strategies/PulseStrategyModuleV2.sol";
+import "../../../src/modules/strategies/PulseStrategyModule.sol";
 import "../../../src/oracles/VeloOracle.sol";
 
 import "../../../src/interfaces/external/velo/ICLFactory.sol";

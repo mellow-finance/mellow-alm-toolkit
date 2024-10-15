@@ -935,7 +935,8 @@ contract Integration is Test {
                     strategyType: IPulseStrategyModule.StrategyType.Original,
                     tickNeighborhood: 100,
                     tickSpacing: 200,
-                    width: 400
+                    width: 400,
+                maxLiquidityRatioDeviationX96: 0
                 })
             ),
             abi.encode(
@@ -959,7 +960,8 @@ contract Integration is Test {
                     strategyType: IPulseStrategyModule.StrategyType.LazySyncing,
                     tickNeighborhood: 0,
                     tickSpacing: 200,
-                    width: 400
+                    width: 400,
+                maxLiquidityRatioDeviationX96: 0
                 })
             ),
             abi.encode(

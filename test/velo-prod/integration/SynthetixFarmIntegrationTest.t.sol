@@ -34,7 +34,8 @@ contract Integration is Fixture {
                 tickNeighborhood: pool.tickSpacing() / 4,
                 tickSpacing: pool.tickSpacing(),
                 strategyType: IPulseStrategyModule.StrategyType.Original,
-                width: pool.tickSpacing() * 2
+                width: pool.tickSpacing() * 2,
+                maxLiquidityRatioDeviationX96: 0
             })
         );
         depositParams.securityParams = new bytes(0);
@@ -158,7 +159,8 @@ contract Integration is Fixture {
                 tickNeighborhood: pool.tickSpacing() / 4,
                 tickSpacing: pool.tickSpacing(),
                 strategyType: IPulseStrategyModule.StrategyType.Original,
-                width: pool.tickSpacing() * 2
+                width: pool.tickSpacing() * 2,
+                maxLiquidityRatioDeviationX96: 0
             })
         );
         depositParams.securityParams = new bytes(0);

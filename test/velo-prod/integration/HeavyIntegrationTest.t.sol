@@ -33,7 +33,8 @@ contract Integration is Fixture {
                 tickNeighborhood: params.tickNeighborhood,
                 tickSpacing: params.tickSpacing,
                 strategyType: IPulseStrategyModule.StrategyType.Original,
-                width: params.width
+                width: params.width,
+                maxLiquidityRatioDeviationX96: 0
             })
         );
         depositParams.securityParams = params.securityParams;

@@ -90,15 +90,17 @@ contract VeloDeployFactory is
                 tickNeighborhood: params.tickNeighborhood,
                 tickSpacing: int24(position.property),
                 strategyType: params.strategyType,
-                width: position.tickUpper - position.tickLower
+                width: position.tickUpper - position.tickLower,
+                maxLiquidityRatioDeviationX96: 0
             });
 
         {
-            (, int24 tick, , , , ) = pool.slot0();
+            (uint160 sqrtPriceX96, int24 tick, , , , ) = pool.slot0();
             (
                 bool isRebalanceRequired,
                 ICore.TargetPositionInfo memory target
-            ) = immutableParams.strategyModule.calculateTarget(
+            ) = immutableParams.strategyModule.calculateTargetPulse(
+                    sqrtPriceX96,
                     tick,
                     0,
                     0,

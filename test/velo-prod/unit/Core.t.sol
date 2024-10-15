@@ -78,7 +78,8 @@ contract Unit is Fixture {
                 strategyType: IPulseStrategyModule.StrategyType.Original,
                 width: 1000,
                 tickSpacing: 200,
-                tickNeighborhood: 100
+                tickNeighborhood: 100,
+                maxLiquidityRatioDeviationX96: 0
             })
         );
 
@@ -145,7 +146,8 @@ contract Unit is Fixture {
                 strategyType: IPulseStrategyModule.StrategyType.Original,
                 width: 1000,
                 tickSpacing: 200,
-                tickNeighborhood: 100
+                tickNeighborhood: 100,
+                maxLiquidityRatioDeviationX96: 0
             })
         );
         depositParams.slippageD9 = 1 * 1e5;
@@ -482,7 +484,8 @@ contract Unit is Fixture {
                 width: 200,
                 tickSpacing: 100,
                 tickNeighborhood: 100,
-                strategyType: IPulseStrategyModule.StrategyType.Original
+                strategyType: IPulseStrategyModule.StrategyType.Original,
+                maxLiquidityRatioDeviationX96: 0
             })
         );
 
@@ -617,7 +620,8 @@ contract Unit is Fixture {
                     strategyType: IPulseStrategyModule.StrategyType.Original,
                     width: 1000,
                     tickSpacing: 200,
-                    tickNeighborhood: 100
+                    tickNeighborhood: 100,
+                maxLiquidityRatioDeviationX96: 0
                 })
             ),
             securityParams: abi.encode(

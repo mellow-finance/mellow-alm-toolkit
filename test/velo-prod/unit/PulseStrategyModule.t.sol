@@ -181,12 +181,14 @@ contract Unit is Fixture {
                 strategyType: strategyType,
                 tickSpacing: tickSpacing,
                 tickNeighborhood: tickNeighborhood,
-                width: width
+                width: width,
+                maxLiquidityRatioDeviationX96: 0
             });
         (
             bool isRebalanceRequired,
             ICore.TargetPositionInfo memory target
-        ) = pulseStrategyModule.calculateTarget(
+        ) = pulseStrategyModule.calculateTargetPulse(
+                TickMath.getSqrtRatioAtTick(spotTick),
                 spotTick,
                 tickLower,
                 tickUpper,
@@ -269,7 +271,8 @@ contract Unit is Fixture {
                     strategyType: IPulseStrategyModule.StrategyType.Original,
                     tickSpacing: 100,
                     tickNeighborhood: 50,
-                    width: 300
+                    width: 300,
+                maxLiquidityRatioDeviationX96: 0
                 })
             )
         );
@@ -279,7 +282,8 @@ contract Unit is Fixture {
                     strategyType: IPulseStrategyModule.StrategyType.Original,
                     tickSpacing: 1,
                     tickNeighborhood: 0,
-                    width: 1
+                    width: 1,
+                maxLiquidityRatioDeviationX96: 0
                 })
             )
         );
@@ -290,7 +294,8 @@ contract Unit is Fixture {
                     strategyType: IPulseStrategyModule.StrategyType.Original,
                     tickSpacing: 1,
                     tickNeighborhood: 1,
-                    width: 0
+                    width: 0,
+                maxLiquidityRatioDeviationX96: 0
                 })
             )
         );
@@ -301,7 +306,8 @@ contract Unit is Fixture {
                     strategyType: IPulseStrategyModule.StrategyType.Original,
                     tickSpacing: 0,
                     tickNeighborhood: 1,
-                    width: 1
+                    width: 1,
+                maxLiquidityRatioDeviationX96: 0
                 })
             )
         );
@@ -312,7 +318,8 @@ contract Unit is Fixture {
                     strategyType: IPulseStrategyModule.StrategyType.LazySyncing,
                     tickSpacing: 1,
                     tickNeighborhood: 1,
-                    width: 1
+                    width: 1,
+                maxLiquidityRatioDeviationX96: 0
                 })
             )
         );
@@ -323,7 +330,8 @@ contract Unit is Fixture {
                     strategyType: IPulseStrategyModule.StrategyType.Original,
                     tickSpacing: 2,
                     tickNeighborhood: 1,
-                    width: 3
+                    width: 3,
+                maxLiquidityRatioDeviationX96: 0
                 })
             )
         );
@@ -334,7 +342,8 @@ contract Unit is Fixture {
                     strategyType: IPulseStrategyModule.StrategyType.Original,
                     tickSpacing: 1,
                     tickNeighborhood: 1,
-                    width: 1
+                    width: 1,
+                maxLiquidityRatioDeviationX96: 0
                 })
             )
         );
@@ -345,7 +354,8 @@ contract Unit is Fixture {
                     strategyType: IPulseStrategyModule.StrategyType.Original,
                     tickSpacing: 1,
                     tickNeighborhood: 1,
-                    width: 2
+                    width: 2,
+                maxLiquidityRatioDeviationX96: 0
                 })
             )
         );
@@ -356,7 +366,8 @@ contract Unit is Fixture {
                     strategyType: IPulseStrategyModule.StrategyType.Original,
                     tickSpacing: 50,
                     tickNeighborhood: 200,
-                    width: 4200
+                    width: 4200,
+                maxLiquidityRatioDeviationX96: 0
                 })
             )
         );
@@ -364,18 +375,30 @@ contract Unit is Fixture {
 
     function testGetTargets() external {
         ICore.ManagedPositionInfo memory info;
-        info.ammPositionIds = new uint256[](2);
+      //  info.ammPositionIds = new uint256[](3);
+
+        ICLPool pool = ICLPool(
+            factory.getPool(Constants.WETH, Constants.OP, 200)
+        );
+        info.pool = address(pool);
+        VeloOracle oracle = new VeloOracle();
+        info.strategyParams = abi.encode(
+            IPulseStrategyModule.StrategyParams({
+                strategyType: IPulseStrategyModule.StrategyType.Original,
+                tickSpacing: pool.tickSpacing(),
+                tickNeighborhood: 50,
+                width: 300,
+                maxLiquidityRatioDeviationX96: 0
+            })
+        );
 
         vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
         pulseStrategyModule.getTargets(
             info,
             IAmmModule(address(0)),
-            IOracle(address(0))
+            oracle
         );
 
-        ICLPool pool = ICLPool(
-            factory.getPool(Constants.WETH, Constants.OP, 200)
-        );
         pool.increaseObservationCardinalityNext(2);
         uint256 tokenId = mint(
             pool.token0(),
@@ -388,22 +411,11 @@ contract Unit is Fixture {
 
         info.ammPositionIds = new uint256[](1);
         info.ammPositionIds[0] = tokenId;
-        info.pool = address(pool);
-        info.strategyParams = abi.encode(
-            IPulseStrategyModule.StrategyParams({
-                strategyType: IPulseStrategyModule.StrategyType.Original,
-                tickSpacing: pool.tickSpacing(),
-                tickNeighborhood: 50,
-                width: 300
-            })
-        );
 
         VeloAmmModule ammModule = new VeloAmmModule(
             INonfungiblePositionManager(Constants.NONFUNGIBLE_POSITION_MANAGER),
             Constants.SELECTOR_IS_POOL
         );
-
-        VeloOracle oracle = new VeloOracle();
 
         (
             bool isRebalanceRequired,

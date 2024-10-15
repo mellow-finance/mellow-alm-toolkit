@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./Fixture.sol";
 
-contract PulseStrategyModuleV2Test is Fixture {
+contract PulseStrategyModuleTest is Fixture {
     using SafeERC20 for IERC20;
     using Math for uint256;
 
@@ -11,15 +11,15 @@ contract PulseStrategyModuleV2Test is Fixture {
         uint160 sqrtPriceX96;
         int24 tickLower;
         int24 tickUpper;
-        IPulseStrategyModuleV2.StrategyType strategyType;
+        IPulseStrategyModule.StrategyType strategyType;
         int24 tickSpacing;
         int24 tickNeighborhood;
         int24 tickLowerExpected;
         int24 tickUpperExpected;
     }
 
-    PulseStrategyModuleV2 public pulseStrategyModule =
-        new PulseStrategyModuleV2();
+    PulseStrategyModule public pulseStrategyModule =
+        new PulseStrategyModule();
 
     uint160 sqrtPriceX96Frac_near_0 = 79228162514264733714550801400; // 1.0001^(1e-10/2) * Q96
     uint160 sqrtPriceX96Frac_0_0001 = 79228162910385345434860427129; // 1.0001^(0.0001/2) * Q96
@@ -31,8 +31,8 @@ contract PulseStrategyModuleV2Test is Fixture {
     function _test(TestCase memory tc) private {
         int24 width = tc.tickUpper - tc.tickLower;
         int24 spotTick = TickMath.getTickAtSqrtRatio(tc.sqrtPriceX96);
-        IPulseStrategyModuleV2.StrategyParams
-            memory params = IPulseStrategyModuleV2.StrategyParams({
+        IPulseStrategyModule.StrategyParams
+            memory params = IPulseStrategyModule.StrategyParams({
                 strategyType: tc.strategyType,
                 tickSpacing: tc.tickSpacing,
                 tickNeighborhood: tc.tickNeighborhood,
@@ -80,7 +80,7 @@ contract PulseStrategyModuleV2Test is Fixture {
         */
 
     function testCalculateTargetOriginalTS_1() external {
-        IPulseStrategyModuleV2.StrategyType t = IPulseStrategyModuleV2
+        IPulseStrategyModule.StrategyType t = IPulseStrategyModule
             .StrategyType
             .Original;
 
@@ -164,7 +164,7 @@ contract PulseStrategyModuleV2Test is Fixture {
     }
 
     function testCalculateTargetOriginaTS_greather_1() external {
-        IPulseStrategyModuleV2.StrategyType t = IPulseStrategyModuleV2
+        IPulseStrategyModule.StrategyType t = IPulseStrategyModule
             .StrategyType
             .Original;
 
@@ -464,7 +464,7 @@ contract PulseStrategyModuleV2Test is Fixture {
         int24 width,
         int24 tickSpacing
     ) internal {
-        IPulseStrategyModuleV2.StrategyType t = IPulseStrategyModuleV2
+        IPulseStrategyModule.StrategyType t = IPulseStrategyModule
             .StrategyType
             .LazyAscending;
 
@@ -516,7 +516,7 @@ contract PulseStrategyModuleV2Test is Fixture {
         int24 width,
         int24 tickSpacing
     ) internal {
-        IPulseStrategyModuleV2.StrategyType t = IPulseStrategyModuleV2
+        IPulseStrategyModule.StrategyType t = IPulseStrategyModule
             .StrategyType
             .LazyDescending;
 
@@ -568,7 +568,7 @@ contract PulseStrategyModuleV2Test is Fixture {
         int24 width,
         int24 tickSpacing
     ) internal {
-        IPulseStrategyModuleV2.StrategyType t = IPulseStrategyModuleV2
+        IPulseStrategyModule.StrategyType t = IPulseStrategyModule
             .StrategyType
             .LazySyncing;
 

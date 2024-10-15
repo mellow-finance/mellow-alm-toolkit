@@ -453,7 +453,8 @@ contract DeployFactoryFixture is Test {
                 tickSpacing: TICK_SPACING,
                 tickNeighborhood: TICK_SPACING,
                 strategyType: IPulseStrategyModule.StrategyType.Original,
-                width: 200
+                width: 200,
+                maxLiquidityRatioDeviationX96: 0
             })
         );
         depositParams.securityParams = abi.encode(

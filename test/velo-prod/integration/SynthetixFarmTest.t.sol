@@ -23,7 +23,8 @@ contract Integration is Fixture {
                 tickNeighborhood: pool.tickSpacing() / 4,
                 tickSpacing: pool.tickSpacing(),
                 strategyType: IPulseStrategyModule.StrategyType.Original,
-                width: pool.tickSpacing()
+                width: pool.tickSpacing(),
+                maxLiquidityRatioDeviationX96: 0
             })
         );
 

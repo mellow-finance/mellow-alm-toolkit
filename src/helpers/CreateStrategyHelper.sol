@@ -159,7 +159,8 @@ contract CreateStrategyHelper {
                 tickNeighborhood: TICK_NEIGHBORHOOD,
                 tickSpacing: poolParameter.pool.tickSpacing(),
                 strategyType: STRATEGY_TYPE,
-                width: poolParameter.width
+                width: poolParameter.width,
+                maxLiquidityRatioDeviationX96: 0
             });
 
         IVeloDeployFactory.ImmutableParams memory params = deployFactory
@@ -168,7 +169,7 @@ contract CreateStrategyHelper {
             params.strategyModule
         );
         (, ICore.TargetPositionInfo memory target) = strategyModule
-            .calculateTarget(tick, 0, 0, strategyParams);
+            .calculateTargetPulse(sqrtPriceX96, tick, 0, 0, strategyParams);
 
         (tickLower, tickUpper) = (target.lowerTicks[0], target.upperTicks[0]);
         (amount0, amount1) = _getAmounts(
