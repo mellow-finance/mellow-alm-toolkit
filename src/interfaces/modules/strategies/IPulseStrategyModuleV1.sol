@@ -7,19 +7,17 @@ import "../IStrategyModule.sol";
  * @title PulseStrategyModule
  * @dev Implements various strategies for Pulse V1, including Original, Lazy Syncing, Lazy Ascending, and Lazy Descending strategies.
  */
-interface IPulseStrategyModuleV2 is IStrategyModule {
+interface IPulseStrategyModuleV1 is IStrategyModule {
     // Custom errors to address operation failures
     error InvalidParams(); // Thrown when input parameters are invalid
     error InvalidLength(); // Thrown when an array length is incorrect
-    error InvalidPosition(); // Thrown when count of amm position is not equal to 2 in case of L2Syncing strategy
 
     // Enum representing different types of strategies
     enum StrategyType {
         Original, // Original Pulse V1 strategy
         LazySyncing, // Lazy syncing strategy
         LazyAscending, // Lazy ascending strategy
-        LazyDescending, // Lazy descending strategy
-        L2Syncing // Tamper strategy
+        LazyDescending // Lazy descending strategy
     }
 
     /**
@@ -31,7 +29,6 @@ interface IPulseStrategyModuleV2 is IStrategyModule {
         int24 tickNeighborhood; // Neighborhood of ticks to consider for rebalancing
         int24 tickSpacing; // tickSpacing of the corresponding amm pool
         int24 width; // Width of the interval
-        uint256 maxLiquidityRatioDeviationX96; // The maximum allowed deviation of the liquidity ratio for lower position.
     }
 
     /**
@@ -70,7 +67,6 @@ interface IPulseStrategyModuleV2 is IStrategyModule {
      * For each strategy, the function evaluates whether rebalancing is necessary based on the current tick's position relative to the strategy's parameters.
      * If rebalancing is required, it calculates the target position details, ensuring strategic alignment with the current market conditions.
      *
-     * @param sqrtPriceX96 The current sqrtPriceX96 of the market, indicating the instantaneous price level.
      * @param tick The current tick of the market, indicating the instantaneous price level.
      * @param tickLower The lower bound tick of the existing position.
      * @param tickUpper The upper bound tick of the existing position.
@@ -78,44 +74,10 @@ interface IPulseStrategyModuleV2 is IStrategyModule {
      * @return isRebalanceRequired A boolean indicating if rebalancing is needed based on the current market condition and strategy parameters.
      * @return target Details of the target position if rebalancing is required, including new tick bounds and liquidity distribution.
      */
-    function calculateTargetPulse(
-        uint160 sqrtPriceX96,
+    function calculateTarget(
         int24 tick,
         int24 tickLower,
         int24 tickUpper,
-        StrategyParams memory params
-    )
-        external
-        pure
-        returns (
-            bool isRebalanceRequired,
-            ICore.TargetPositionInfo memory target
-        );
-
-    /**
-     * @dev Calculates the target position after rebalance based on the provided strategy parameters and the current market state.
-     * This function's behavior varies with the chosen strategy type, adapting to market movements and strategic requirements:
-     * 
-     * StrategyType.L2Syncing:
-     * Handles two crossed positions upper position [tickLower, tickLower+width] and lower [tickLower+width/2, tickLower+width+width/2]
-     *   - If tick in range [tickLower+width/2, tickLower+width] it rebalances liquidity between these two position to achieve better utilization.
-     *   - If tick < tickLower+width/2 it moves upper position under lower postion
-     *   - If tick > tickLower+width it moves lower position above upper postion
-     *
-     * For each strategy, the function evaluates whether rebalancing is necessary based on the current tick's position relative to the strategy's parameters.
-     * If rebalancing is required, it calculates the target position details, ensuring strategic alignment with the current market conditions.
-     *
-     * @param sqrtPriceX96 The current sqrtPriceX96 of the market, indicating the instantaneous price level.
-     * @param lowerPosition The lower position.
-     * @param upperPosition The upper position.
-     * @param params The strategy parameters defining the rebalancing logic, including strategy type, tick neighborhood, and desired position width.
-     * @return isRebalanceRequired A boolean indicating if rebalancing is needed based on the current market condition and strategy parameters.
-     * @return target Details of the target position if rebalancing is required, including new tick bounds and liquidity distribution.
-     */
-    function calculateTargetTamper(
-        uint256 sqrtPriceX96,
-        IAmmModule.AmmPosition memory lowerPosition,
-        IAmmModule.AmmPosition memory upperPosition,
         StrategyParams memory params
     )
         external

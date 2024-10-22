@@ -11,7 +11,7 @@ contract PoolParameters {
     uint256 MAX_ETH_AMOUNT = uint256(10 ** 18) / 2500; // 1 ETH/2500 ~ 1 USD
     uint256 MAX_BTC_AMOUNT = uint256(10 ** 8) / 50000; // 1 BTC/50000 ~ 1 USD
 
-    CreateStrategyHelper.PoolParameter[11] parameters;
+    //CreateStrategyHelper.PoolParameter[11] parameters;
 
     constructor() {
         /*
@@ -33,7 +33,7 @@ contract PoolParameters {
             [10] 0x8Ac2f9daC7a2852D44F3C09634444d533E4C078e |    1 |   1 | usdc   |   lusd |       |     |    |
             --------------------------------------------------------------------------------------------------|
         */
-
+        /* 
         parameters[0].pool = ICLPool(
             0xeBD5311beA1948e1441333976EadCFE5fBda777C
         );
@@ -109,6 +109,6 @@ contract PoolParameters {
         );
         parameters[10].width = 1;
         parameters[10].maxAmount0 = MAX_USD_AMOUNT;
-        parameters[10].maxAmount1 = MAX_LUSD_AMOUNT;
+        parameters[10].maxAmount1 = MAX_LUSD_AMOUNT;*/
     }
 }

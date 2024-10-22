@@ -35,6 +35,7 @@ contract Unit is Fixture {
         ICLPool pool = ICLPool(
             factory.getPool(Constants.WETH, Constants.OP, 200)
         );
+        (, , , uint16 observationCardinality, , ) = pool.slot0();
         assertEq(pool.tickSpacing(), 200);
         oracle.ensureNoMEV(
             address(pool),
@@ -64,7 +65,7 @@ contract Unit is Fixture {
             address(pool),
             abi.encode(
                 IVeloOracle.SecurityParams({
-                    lookback: 1,
+                    lookback: observationCardinality + 1,
                     maxAllowedDelta: 0,
                     maxAge: 7 days
                 })
@@ -76,7 +77,7 @@ contract Unit is Fixture {
             address(pool),
             abi.encode(
                 IVeloOracle.SecurityParams({
-                    lookback: 1,
+                    lookback: observationCardinality + 3,
                     maxAllowedDelta: 0,
                     maxAge: 7 days
                 })
@@ -116,7 +117,7 @@ contract Unit is Fixture {
             address(pool),
             abi.encode(
                 IVeloOracle.SecurityParams({
-                    lookback: 2,
+                    lookback: observationCardinality + 1,
                     maxAllowedDelta: 0,
                     maxAge: 7 days
                 })

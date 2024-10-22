@@ -42,9 +42,12 @@ library Constants {
     address public constant USDC = 0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85;
 
     address public constant NONFUNGIBLE_POSITION_MANAGER =
-        0xbB5DFE1380333CEE4c2EeBd7202c80dE2256AdF4;
+        0x416b433906b1B72FA758e166e239c43d68dC6F29;
     address public constant VELO_FACTORY =
-        0x548118C7E0B865C2CfA94D15EC86B666468ac758;
+        0xCc0bDDB707055e04e497aB22a59c2aF4391cd12F;
+
+    bytes4 public constant SELECTOR_IS_POOL =
+        bytes4(keccak256("isPair(address)"));
 
     address public constant SWAP_ROUTER =
         0xF132bdb9573867cD72f2585C338B923F973EB817;

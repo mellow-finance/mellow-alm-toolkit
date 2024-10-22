@@ -9,6 +9,26 @@ import {QuoterV2} from "../contracts/periphery/lens/QuoterV2.sol";
 contract Fixture is Test {
     using SafeERC20 for IERC20;
 
+    enum Actions {
+        DEPOSIT,
+        WITHDRAW,
+        REBALANCE,
+        PUSH_REWARDS,
+        SWAP_DUST,
+        SWAP_LEFT_5,
+        SWAP_LEFT_25,
+        SWAP_LEFT_50,
+        SWAP_LEFT_90,
+        SWAP_RIGHT_5,
+        SWAP_RIGHT_25,
+        SWAP_RIGHT_50,
+        SWAP_RIGHT_90,
+        ADD_REWARDS,
+        IDLE,
+        KILL_GAUGE,
+        REVIVE_GAUGE
+    }
+
     int24 constant MAX_ALLOWED_DELTA = 100;
     uint32 constant MAX_AGE = 1 hours;
     uint128 INITIAL_LIQUIDITY = 1 ether;
@@ -30,6 +50,7 @@ contract Fixture is Test {
     Core public core;
     VeloDeployFactoryHelper public helper;
     VeloDeployFactory public veloFactory;
+    IVeloFactoryDeposit public factoryDeposit;
     address public farm;
     StakingRewards public stakingRewards;
     PulseVeloBot public bot;
@@ -354,79 +375,95 @@ contract Fixture is Test {
         dwModule = new VeloDepositWithdrawModule(
             INonfungiblePositionManager(positionManager)
         );
+        factoryDeposit = new VeloFactoryDeposit(
+            core,
+            strategyModule,
+            positionManager
+        );
 
         helper = new VeloDeployFactoryHelper(Constants.WETH);
         veloFactory = new VeloDeployFactory(
             Constants.OWNER,
             core,
             dwModule,
-            helper
+            helper,
+            factoryDeposit
         );
 
-        _createStrategy();
+        veloFactory.updateMutableParams(
+            IVeloDeployFactory.MutableParams({
+                lpWrapperAdmin: Constants.OWNER,
+                lpWrapperManager: address(0),
+                farmOwner: Constants.OWNER,
+                farmOperator: Constants.FARM_OPERATOR,
+                minInitialLiquidity: 1000
+            })
+        );
 
-        stakingRewards = new StakingRewards(
+        createStrategy(pool);
+
+        /* stakingRewards = new StakingRewards(
             Constants.OWNER,
             Constants.OWNER,
             address(Constants.VELO),
             address(lpWrapper)
-        );
+        ); */
 
         bot = new PulseVeloBot(quoterV2, swapRouter, positionManager);
 
         vm.stopPrank();
     }
 
-    function _createStrategy() private {
-        pool.increaseObservationCardinalityNext(2);
-
-        uint256 tokenId = mint(
-            pool.token0(),
-            pool.token1(),
-            pool.tickSpacing(),
-            pool.tickSpacing() * 20,
-            INITIAL_LIQUIDITY
-        );
+    function createStrategy(
+        ICLPool pool_
+    ) public returns (IVeloDeployFactory.PoolAddresses memory addresses) {
+        vm.startPrank(Constants.OWNER);
+        if (
+            veloFactory.poolToAddresses(address(pool)).lpWrapper != address(0)
+        ) {
+            veloFactory.removeAddressesForPool(address(pool));
+        }
+        vm.stopPrank();
 
         vm.startPrank(Constants.OWNER);
-        core.setProtocolParams(
-            abi.encode(
-                IVeloAmmModule.ProtocolParams({
-                    feeD9: Constants.PROTOCOL_FEE_D9,
-                    treasury: Constants.PROTOCOL_TREASURY
-                })
-            )
+
+        IVeloDeployFactory.DeployParams
+            memory parameters = IVeloDeployFactory.DeployParams({
+                pool: pool_,
+                strategyType: IPulseStrategyModule.StrategyType.Original,
+                width: pool_.tickSpacing() * 20,
+                tickNeighborhood: 0,
+                slippageD9: 5 * 1e5,
+                maxAmount0: 1 ether,
+                maxAmount1: 1 ether,
+                maxLiquidityRatioDeviationX96: 0,
+                totalSupplyLimit: 1000 ether,
+                securityParams: abi.encode(
+                    IVeloOracle.SecurityParams({
+                        lookback: 1,
+                        maxAllowedDelta: MAX_ALLOWED_DELTA,
+                        maxAge: MAX_AGE
+                    })
+                ),
+                tokenId: new uint256[](0)
+            });
+
+        deal(pool_.token0(), Constants.OWNER, 1000 ether);
+        deal(pool_.token1(), Constants.OWNER, 1000 ether);
+
+        IERC20(pool_.token0()).approve(
+            address(factoryDeposit),
+            type(uint256).max
         );
-        positionManager.approve(address(veloFactory), tokenId);
-        veloFactory.updateMutableParams(
-            IVeloDeployFactory.MutableParams({
-                lpWrapperAdmin: Constants.WRAPPER_ADMIN,
-                lpWrapperManager: address(0),
-                farmOwner: Constants.FARM_OWNER,
-                farmOperator: Constants.FARM_OPERATOR,
-                minInitialLiquidity: 1000
-            })
+        IERC20(pool_.token1()).approve(
+            address(factoryDeposit),
+            type(uint256).max
         );
 
-        IVeloDeployFactory.PoolAddresses memory addresses = veloFactory
-            .createStrategy(
-                IVeloDeployFactory.DeployParams({
-                    tickNeighborhood: 0,
-                    slippageD9: 5 * 1e5,
-                    tokenId: tokenId,
-                    securityParams: abi.encode(
-                        IVeloOracle.SecurityParams({
-                            lookback: 1,
-                            maxAllowedDelta: MAX_ALLOWED_DELTA,
-                            maxAge: MAX_AGE
-                        })
-                    ),
-                    strategyType: IPulseStrategyModule.StrategyType.LazySyncing
-                })
-            );
+        addresses = veloFactory.createStrategy(parameters);
 
         lpWrapper = LpWrapper(payable(addresses.lpWrapper));
-        farm = addresses.synthetixFarm;
+        stakingRewards = StakingRewards(addresses.synthetixFarm);
 
         vm.stopPrank();
     }

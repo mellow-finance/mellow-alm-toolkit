@@ -112,8 +112,11 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         ammModule.validateCallbackParams(params.callbackParams);
         strategyModule.validateStrategyParams(params.strategyParams);
         oracle.validateSecurityParams(params.securityParams);
-        if (params.slippageD9 > D9 / 4 || params.slippageD9 == 0)
-            revert InvalidParams();
+        if (
+            params.slippageD9 > D9 / 4 ||
+            params.slippageD9 == 0 ||
+            params.owner == address(0)
+        ) revert InvalidParams();
 
         address pool;
         bytes memory protocolParams_ = _protocolParams;
@@ -155,7 +158,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
             })
         );
     }
-
+    
     /// @inheritdoc ICore
     function withdraw(uint256 id, address to) external override nonReentrant {
         ManagedPositionInfo memory info = _positions[id];

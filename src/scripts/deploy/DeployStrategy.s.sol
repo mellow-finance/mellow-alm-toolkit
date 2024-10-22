@@ -7,7 +7,7 @@ contract DeployStrategy is Script, Test, PoolParameters, Addresses {
     function run() public virtual {
         vm.startBroadcast(deployerPrivateKey);
 
-        deployAllStrategies();
+        //  deployAllStrategies();
 
         vm.stopBroadcast();
     }
@@ -20,7 +20,7 @@ contract DeployStrategy is Script, Test, PoolParameters, Addresses {
         );
 
         vm.startBroadcast(deployerPrivateKey);
-        CreateStrategyHelper createStrategyHelper = new CreateStrategyHelper(
+        /*  CreateStrategyHelper createStrategyHelper = new CreateStrategyHelper(
             address(veloDeployFactory),
             vm.addr(deployerPrivateKey)
         );
@@ -28,7 +28,7 @@ contract DeployStrategy is Script, Test, PoolParameters, Addresses {
             veloDeployFactory.ADMIN_DELEGATE_ROLE(),
             address(createStrategyHelper)
         );
-        console2.log("createStrategyHelper", address(createStrategyHelper));
+        console2.log("createStrategyHelper", address(createStrategyHelper)); */
     }
 
     function withdraw(address lpWrapper, address to) private {
@@ -49,7 +49,7 @@ contract DeployStrategy is Script, Test, PoolParameters, Addresses {
         console2.log("   amount1: ", amount1);
         console2.log("  lpAmount: ", actualLpAmount);
     }
-
+    /* 
     function deployAllStrategies() internal {
         for (uint i = 0; i < parameters.length; i++) {
             deployStrategy(
@@ -112,7 +112,7 @@ contract DeployStrategy is Script, Test, PoolParameters, Addresses {
 
         // print(poolAddresses, address(parameters[poolId].pool));
     }
-
+ */
     function print(
         ICore core,
         address veloDeployFactoryHelper,

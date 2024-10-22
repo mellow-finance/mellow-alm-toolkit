@@ -20,8 +20,6 @@ contract Addresses is Script {
     Core core = Core(0x71D022eBA6F2607Ab8EC32Cb894075D94e10CEb8);
     VeloDeployFactory deployFactory =
         VeloDeployFactory(0xeD8b81E3fF6c54951621715F5992CA52007D88bA);
-    CreateStrategyHelper createStrategyHelper =
-        CreateStrategyHelper(0x5B1b1aaC71bDca9Ed1dCb2AA357f678584db4029);
     Compounder compounder;
     VeloOracle oracle;
     PulseStrategyModule strategyModule;

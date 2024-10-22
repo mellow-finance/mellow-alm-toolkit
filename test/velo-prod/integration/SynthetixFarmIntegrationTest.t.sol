@@ -34,7 +34,8 @@ contract Integration is Fixture {
                 tickNeighborhood: pool.tickSpacing() / 4,
                 tickSpacing: pool.tickSpacing(),
                 strategyType: IPulseStrategyModule.StrategyType.Original,
-                width: pool.tickSpacing() * 2
+                width: pool.tickSpacing() * 2,
+                maxLiquidityRatioDeviationX96: 0
             })
         );
         depositParams.securityParams = new bytes(0);
@@ -105,17 +106,24 @@ contract Integration is Fixture {
                 Constants.DEPOSITOR
             );
 
-            vm.startPrank(Constants.OWNER);
+            vm.prank(Constants.OWNER);
             lpWrapper.emptyRebalance();
             assertEq(
                 counter.value(),
                 IERC20(Constants.VELO).balanceOf(address(stakingRewards))
             );
-            stakingRewards.notifyRewardAmount(counter.value());
+
+            uint256 addedRewards = counter.value();
+
+            vm.prank(Constants.FARM_OPERATOR);
+            stakingRewards.notifyRewardAmount(addedRewards);
+
             skip(7 days);
+            vm.prank(Constants.OWNER);
+
             counter.reset();
             assertEq(counter.value(), 0);
-            vm.stopPrank();
+
             vm.startPrank(Constants.DEPOSITOR);
 
             stakingRewards.getReward();
@@ -158,7 +166,8 @@ contract Integration is Fixture {
                 tickNeighborhood: pool.tickSpacing() / 4,
                 tickSpacing: pool.tickSpacing(),
                 strategyType: IPulseStrategyModule.StrategyType.Original,
-                width: pool.tickSpacing() * 2
+                width: pool.tickSpacing() * 2,
+                maxLiquidityRatioDeviationX96: 0
             })
         );
         depositParams.securityParams = new bytes(0);
@@ -220,18 +229,21 @@ contract Integration is Fixture {
         for (uint256 i = 0; i < 10; i++) {
             addRewardToGauge(10 ether);
             skip(7 days);
-            vm.startPrank(Constants.OWNER);
+            vm.prank(Constants.OWNER);
             lpWrapper.emptyRebalance();
             cumulativeCounterValue += counter.value();
             assertEq(
                 cumulativeCounterValue,
                 IERC20(Constants.VELO).balanceOf(address(stakingRewards))
             );
-            stakingRewards.notifyRewardAmount(counter.value());
+            uint256 addedRewards = counter.value();
+
+            vm.prank(Constants.FARM_OPERATOR);
+            stakingRewards.notifyRewardAmount(addedRewards);
             skip(7 days);
+            vm.prank(Constants.OWNER);
             counter.reset();
             assertEq(counter.value(), 0);
-            vm.stopPrank();
         }
     }
 }

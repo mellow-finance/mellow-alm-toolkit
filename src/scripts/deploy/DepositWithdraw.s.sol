@@ -8,7 +8,7 @@ uint256 constant POOL_ID = 3;
 
 // forge script DepositWithdraw.s.sol --rpc-url --broadcast --slow
 contract DepositWithdraw is Script, PoolParameters, Addresses {
-    ICLPool immutable pool = ICLPool(parameters[POOL_ID].pool);
+    ICLPool immutable pool = ICLPool(address(0)); // ICLPool(parameters[POOL_ID].pool);
     INonfungiblePositionManager immutable nft =
         INonfungiblePositionManager(Constants.NONFUNGIBLE_POSITION_MANAGER);
 

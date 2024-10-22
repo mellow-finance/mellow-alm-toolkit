@@ -24,7 +24,7 @@ contract DeployCoreAndStrategyTest is Test, DeployStrategy, DeployVeloLazy {
 
         Compounder farmOperator = Compounder(params.farmOperator);
 
-        address[] memory poolAddresses = new address[](parameters.length);
+        /*         address[] memory poolAddresses = new address[](parameters.length);
 
         for (uint i = 0; i < parameters.length; i++) {
             poolAddresses[i] = address(parameters[i].pool);
@@ -34,18 +34,18 @@ contract DeployCoreAndStrategyTest is Test, DeployStrategy, DeployVeloLazy {
                 i
             );
         }
-
+ */
         vm.stopPrank();
 
         skip(7 days + 1);
 
         vm.startPrank(CORE_OPERATOR);
 
-        farmOperator.compound(
+        /*         farmOperator.compound(
             IVeloDeployFactory(veloDeployFactoryAddress),
             poolAddresses
         );
-
+ */
         vm.stopPrank();
     }
 }

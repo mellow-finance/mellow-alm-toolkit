@@ -78,7 +78,8 @@ contract Unit is Fixture {
                 strategyType: IPulseStrategyModule.StrategyType.Original,
                 width: 1000,
                 tickSpacing: 200,
-                tickNeighborhood: 100
+                tickNeighborhood: 100,
+                maxLiquidityRatioDeviationX96: 0
             })
         );
 
@@ -101,6 +102,11 @@ contract Unit is Fixture {
 
         assertEq(positionManager.ownerOf(tokenId), Constants.OWNER);
 
+        depositParams.owner = address(0);
+        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        core.deposit(depositParams);
+
+        depositParams.owner = Constants.OWNER;
         core.deposit(depositParams);
 
         assertEq(positionManager.ownerOf(tokenId), address(pool.gauge()));
@@ -145,7 +151,8 @@ contract Unit is Fixture {
                 strategyType: IPulseStrategyModule.StrategyType.Original,
                 width: 1000,
                 tickSpacing: 200,
-                tickNeighborhood: 100
+                tickNeighborhood: 100,
+                maxLiquidityRatioDeviationX96: 0
             })
         );
         depositParams.slippageD9 = 1 * 1e5;
@@ -311,7 +318,7 @@ contract Unit is Fixture {
 
         uint256 positionId = _depositToken(tokenId);
         vm.startPrank(Constants.DEPLOYER);
-        movePrice(-10, pool);
+        movePrice(73400, pool);
         vm.stopPrank();
 
         vm.startPrank(Constants.OWNER);
@@ -482,7 +489,8 @@ contract Unit is Fixture {
                 width: 200,
                 tickSpacing: 100,
                 tickNeighborhood: 100,
-                strategyType: IPulseStrategyModule.StrategyType.Original
+                strategyType: IPulseStrategyModule.StrategyType.Original,
+                maxLiquidityRatioDeviationX96: 0
             })
         );
 
@@ -617,7 +625,8 @@ contract Unit is Fixture {
                     strategyType: IPulseStrategyModule.StrategyType.Original,
                     width: 1000,
                     tickSpacing: 200,
-                    tickNeighborhood: 100
+                    tickNeighborhood: 100,
+                    maxLiquidityRatioDeviationX96: 0
                 })
             ),
             securityParams: abi.encode(

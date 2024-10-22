@@ -33,7 +33,8 @@ contract Integration is Fixture {
                 tickNeighborhood: params.tickNeighborhood,
                 tickSpacing: params.tickSpacing,
                 strategyType: IPulseStrategyModule.StrategyType.Original,
-                width: params.width
+                width: params.width,
+                maxLiquidityRatioDeviationX96: 0
             })
         );
         depositParams.securityParams = params.securityParams;
@@ -275,7 +276,7 @@ contract Integration is Fixture {
                 slippageD9: 100 * 1e5,
                 securityParams: abi.encode(
                     IVeloOracle.SecurityParams({
-                        lookback: 10,
+                        lookback: 1000,
                         maxAllowedDelta: 10,
                         maxAge: 7 days
                     })
