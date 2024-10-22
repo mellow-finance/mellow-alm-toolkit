@@ -272,7 +272,7 @@ contract Unit is Fixture {
                     tickSpacing: 100,
                     tickNeighborhood: 50,
                     width: 300,
-                maxLiquidityRatioDeviationX96: 0
+                    maxLiquidityRatioDeviationX96: 0
                 })
             )
         );
@@ -283,7 +283,7 @@ contract Unit is Fixture {
                     tickSpacing: 1,
                     tickNeighborhood: 0,
                     width: 1,
-                maxLiquidityRatioDeviationX96: 0
+                    maxLiquidityRatioDeviationX96: 0
                 })
             )
         );
@@ -295,7 +295,7 @@ contract Unit is Fixture {
                     tickSpacing: 1,
                     tickNeighborhood: 1,
                     width: 0,
-                maxLiquidityRatioDeviationX96: 0
+                    maxLiquidityRatioDeviationX96: 0
                 })
             )
         );
@@ -307,7 +307,7 @@ contract Unit is Fixture {
                     tickSpacing: 0,
                     tickNeighborhood: 1,
                     width: 1,
-                maxLiquidityRatioDeviationX96: 0
+                    maxLiquidityRatioDeviationX96: 0
                 })
             )
         );
@@ -319,7 +319,7 @@ contract Unit is Fixture {
                     tickSpacing: 1,
                     tickNeighborhood: 1,
                     width: 1,
-                maxLiquidityRatioDeviationX96: 0
+                    maxLiquidityRatioDeviationX96: 0
                 })
             )
         );
@@ -331,7 +331,7 @@ contract Unit is Fixture {
                     tickSpacing: 2,
                     tickNeighborhood: 1,
                     width: 3,
-                maxLiquidityRatioDeviationX96: 0
+                    maxLiquidityRatioDeviationX96: 0
                 })
             )
         );
@@ -343,7 +343,7 @@ contract Unit is Fixture {
                     tickSpacing: 1,
                     tickNeighborhood: 1,
                     width: 1,
-                maxLiquidityRatioDeviationX96: 0
+                    maxLiquidityRatioDeviationX96: 0
                 })
             )
         );
@@ -355,7 +355,7 @@ contract Unit is Fixture {
                     tickSpacing: 1,
                     tickNeighborhood: 1,
                     width: 2,
-                maxLiquidityRatioDeviationX96: 0
+                    maxLiquidityRatioDeviationX96: 0
                 })
             )
         );
@@ -367,7 +367,7 @@ contract Unit is Fixture {
                     tickSpacing: 50,
                     tickNeighborhood: 200,
                     width: 4200,
-                maxLiquidityRatioDeviationX96: 0
+                    maxLiquidityRatioDeviationX96: 0
                 })
             )
         );
@@ -375,7 +375,7 @@ contract Unit is Fixture {
 
     function testGetTargets() external {
         ICore.ManagedPositionInfo memory info;
-      //  info.ammPositionIds = new uint256[](3);
+        //  info.ammPositionIds = new uint256[](3);
 
         ICLPool pool = ICLPool(
             factory.getPool(Constants.WETH, Constants.OP, 200)
@@ -393,11 +393,7 @@ contract Unit is Fixture {
         );
 
         vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
-        pulseStrategyModule.getTargets(
-            info,
-            IAmmModule(address(0)),
-            oracle
-        );
+        pulseStrategyModule.getTargets(info, IAmmModule(address(0)), oracle);
 
         pool.increaseObservationCardinalityNext(2);
         uint256 tokenId = mint(

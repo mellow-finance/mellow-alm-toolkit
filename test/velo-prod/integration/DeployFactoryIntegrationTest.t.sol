@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BSL-1.1
 pragma solidity ^0.8.0;
 
-import "./DeployFactoryFixture.sol";
+import "./Fixture.sol";
 
-contract Integration is DeployFactoryFixture {
+contract Integration is Fixture {
     using SafeERC20 for IERC20;
 
     ICLGauge public gauge = ICLGauge(pool.gauge());
@@ -19,36 +19,6 @@ contract Integration is DeployFactoryFixture {
     }
 
     function testSynthetixFarm() external {
-        uint256 tokenId = mint(
-            pool.token0(),
-            pool.token1(),
-            pool.tickSpacing(),
-            pool.tickSpacing() * 20,
-            1e8
-        );
-        vm.startPrank(Constants.OWNER);
-        positionManager.approve(address(deployFactory), tokenId);
-        IVeloDeployFactory.PoolAddresses memory poolAddresses = deployFactory
-            .createStrategy(
-                IVeloDeployFactory.DeployParams({
-                    securityParams: abi.encode(
-                        IVeloOracle.SecurityParams({
-                            lookback: 1,
-                            maxAge: 7 days,
-                            maxAllowedDelta: type(int24).max
-                        })
-                    ),
-                    slippageD9: 5 * 1e5,
-                    tokenId: tokenId,
-                    tickNeighborhood: 0,
-                    strategyType: IPulseStrategyModule.StrategyType.LazySyncing
-                })
-            );
-        vm.stopPrank();
-
-        lpWrapper = LpWrapper(payable(poolAddresses.lpWrapper));
-        stakingRewards = StakingRewards(poolAddresses.synthetixFarm);
-
         vm.startPrank(Constants.DEPOSITOR);
         deal(Constants.OP, Constants.DEPOSITOR, 1e6 * 1e6);
         deal(Constants.WETH, Constants.DEPOSITOR, 500 ether);
@@ -85,15 +55,18 @@ contract Integration is DeployFactoryFixture {
                 Constants.DEPOSITOR
             );
 
-            vm.startPrank(Constants.OWNER);
+            vm.prank(Constants.OWNER);
             lpWrapper.emptyRebalance();
-            stakingRewards.notifyRewardAmount(
-                IERC20(Constants.VELO).balanceOf(address(stakingRewards))
+
+            uint256 rewards = IERC20(Constants.VELO).balanceOf(
+                address(stakingRewards)
             );
+
+            vm.prank(Constants.FARM_OPERATOR);
+            stakingRewards.notifyRewardAmount(rewards);
 
             skip(7 days);
 
-            vm.stopPrank();
             vm.startPrank(Constants.DEPOSITOR);
 
             stakingRewards.getReward();

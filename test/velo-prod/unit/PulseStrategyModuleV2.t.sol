@@ -18,8 +18,7 @@ contract PulseStrategyModuleTest is Fixture {
         int24 tickUpperExpected;
     }
 
-    PulseStrategyModule public pulseStrategyModule =
-        new PulseStrategyModule();
+    PulseStrategyModule public pulseStrategyModule = new PulseStrategyModule();
 
     uint160 sqrtPriceX96Frac_near_0 = 79228162514264733714550801400; // 1.0001^(1e-10/2) * Q96
     uint160 sqrtPriceX96Frac_0_0001 = 79228162910385345434860427129; // 1.0001^(0.0001/2) * Q96
@@ -31,8 +30,8 @@ contract PulseStrategyModuleTest is Fixture {
     function _test(TestCase memory tc) private {
         int24 width = tc.tickUpper - tc.tickLower;
         int24 spotTick = TickMath.getTickAtSqrtRatio(tc.sqrtPriceX96);
-        IPulseStrategyModule.StrategyParams
-            memory params = IPulseStrategyModule.StrategyParams({
+        IPulseStrategyModule.StrategyParams memory params = IPulseStrategyModule
+            .StrategyParams({
                 strategyType: tc.strategyType,
                 tickSpacing: tc.tickSpacing,
                 tickNeighborhood: tc.tickNeighborhood,

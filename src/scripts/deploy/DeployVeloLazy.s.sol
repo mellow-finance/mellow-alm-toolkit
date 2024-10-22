@@ -86,7 +86,8 @@ contract DeployVeloLazy is Script, Test, PoolParameters, Addresses {
             DEPLOYER,
             core,
             veloDepositWithdrawModule,
-            velotrDeployFactoryHelper
+            velotrDeployFactoryHelper,
+            IVeloFactoryDeposit(address(0))
         );
         console2.log("VeloDeployFactory", address(deployFactory));
         veloDeployFactoryAddress = address(deployFactory);
@@ -110,12 +111,12 @@ contract DeployVeloLazy is Script, Test, PoolParameters, Addresses {
         console2.log("PulseVeloBotLazy", address(pulseVeloBot));
 
         //-------------------------------------------------------------------------------
-        createStrategyHelper = new CreateStrategyHelper(
+        /* createStrategyHelper = new CreateStrategyHelper(
             address(deployFactory),
             VELO_DEPLOY_FACTORY_OPERATOR
         );
         console2.log("CreateStrategyHelper", address(createStrategyHelper));
-        createStrategyHelperAddress = address(createStrategyHelper);
+        createStrategyHelperAddress = address(createStrategyHelper); */
 
         //-------------------------------------------------------------------------------
         veloSugarHelper = new VeloSugarHelper(address(deployFactory));
@@ -152,11 +153,11 @@ contract DeployVeloLazy is Script, Test, PoolParameters, Addresses {
         );
 
         // grant rights to deploy strategies for new pools
-        deployFactory.grantRole(
+        /*         deployFactory.grantRole(
             deployFactory.OPERATOR(),
             address(createStrategyHelper)
         );
-
+ */
         deployFactory.revokeRole(deployFactory.ADMIN_DELEGATE_ROLE(), DEPLOYER);
 
         core.revokeRole(core.ADMIN_DELEGATE_ROLE(), DEPLOYER);
@@ -169,8 +170,8 @@ contract DeployVeloLazy is Script, Test, PoolParameters, Addresses {
         require(core.isOperator(CORE_OPERATOR));
 
         require(!deployFactory.isAdmin(DEPLOYER));
-        require(!deployFactory.isAdmin(address(createStrategyHelper)));
-        require(deployFactory.isOperator(address(createStrategyHelper)));
+        //    require(!deployFactory.isAdmin(address(createStrategyHelper)));
+        //    require(deployFactory.isOperator(address(createStrategyHelper)));
 
         require(deployFactory.isAdmin(CORE_ADMIN));
         require(deployFactory.isOperator(VELO_DEPLOY_FACTORY_OPERATOR));

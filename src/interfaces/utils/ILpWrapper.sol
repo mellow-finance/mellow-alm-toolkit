@@ -27,6 +27,7 @@ interface ILpWrapper {
     error WithdrawCallFailed(); // Thrown when a withdrawal operation fails due to deletage call to the AmmDepositWithdrawModule
     error Deadline(); // Thrown when the deadline for a function call has passed
     error InvalidPositionsCount(); // Thrown when the number of positions is invalid
+    error TotalSupplyLimitReached(); // Thrown when the amount of liquidity is above the limit
 
     event Deposit(
         address indexed sender,

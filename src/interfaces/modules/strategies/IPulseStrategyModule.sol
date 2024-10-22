@@ -113,7 +113,8 @@ interface IPulseStrategyModule is IStrategyModule {
      * @return target Details of the target position if rebalancing is required, including new tick bounds and liquidity distribution.
      */
     function calculateTargetTamper(
-        uint256 sqrtPriceX96,
+        uint160 sqrtPriceX96,
+        int24 tick,
         IAmmModule.AmmPosition memory lowerPosition,
         IAmmModule.AmmPosition memory upperPosition,
         StrategyParams memory params

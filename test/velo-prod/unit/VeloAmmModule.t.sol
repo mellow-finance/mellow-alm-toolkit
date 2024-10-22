@@ -163,7 +163,7 @@ contract Unit is Fixture {
             assertEq(amount1, expected1);
         }
         vm.startPrank(Constants.DEPLOYER);
-        movePrice(100, pool);
+        movePrice(73400, pool);
         (sqrtPriceX96, , , , , ) = pool.slot0();
         vm.stopPrank();
         {
@@ -268,7 +268,7 @@ contract Unit is Fixture {
             address(0),
             address(0),
             address(0),
-            address(0x1e60272caDcFb575247a666c11DBEA146299A2c4),
+            address(0x4DC22588Ade05C40338a9D95A6da9dCeE68Bcd60),
             address(0),
             address(0)
         ];
@@ -288,7 +288,7 @@ contract Unit is Fixture {
     function testGetProperty() external {
         int24[1] memory tickSpacings = [int24(200)];
 
-        address[1] memory pools = [0x1e60272caDcFb575247a666c11DBEA146299A2c4];
+        address[1] memory pools = [0x4DC22588Ade05C40338a9D95A6da9dCeE68Bcd60];
 
         for (uint256 i = 0; i < pools.length; i++) {
             assertEq(uint24(tickSpacings[i]), module.getProperty(pools[i]));

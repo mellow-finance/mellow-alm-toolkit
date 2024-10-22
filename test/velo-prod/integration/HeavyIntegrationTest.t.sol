@@ -276,7 +276,7 @@ contract Integration is Fixture {
                 slippageD9: 100 * 1e5,
                 securityParams: abi.encode(
                     IVeloOracle.SecurityParams({
-                        lookback: 10,
+                        lookback: 1000,
                         maxAllowedDelta: 10,
                         maxAge: 7 days
                     })

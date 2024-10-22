@@ -36,6 +36,7 @@ import "../../../src/utils/Compounder.sol";
 import "../../../src/utils/LpWrapper.sol";
 import "../../../src/utils/StakingRewards.sol";
 import "../../../src/utils/VeloDeployFactory.sol";
+import "../../../src/utils/VeloFactoryDeposit.sol";
 import "../../../src/utils/VeloDeployFactoryHelper.sol";
 import "../../../src/utils/VeloSugarHelper.sol";
 
@@ -45,11 +46,12 @@ library Constants {
     address public constant VELO = 0x9560e827aF36c94D2Ac33a39bCE1Fe78631088Db;
 
     address public constant NONFUNGIBLE_POSITION_MANAGER =
-        0xbB5DFE1380333CEE4c2EeBd7202c80dE2256AdF4;
+        0x416b433906b1B72FA758e166e239c43d68dC6F29;
     address public constant VELO_FACTORY =
-        0x548118C7E0B865C2CfA94D15EC86B666468ac758;
+        0xCc0bDDB707055e04e497aB22a59c2aF4391cd12F;
 
-    bytes4 public constant SELECTOR_IS_POOL = 0xe5e31b13;
+    bytes4 public constant SELECTOR_IS_POOL =
+        bytes4(keccak256("isPair(address)"));
 
     address public constant SWAP_ROUTER =
         0xF132bdb9573867cD72f2585C338B923F973EB817;
@@ -57,6 +59,7 @@ library Constants {
         0xA2DEcF05c16537C702779083Fe067e308463CE45;
 
     address public constant DEPLOYER = address(bytes20(keccak256("deployer")));
+    address public constant USER = address(bytes20(keccak256("USER")));
     address public constant DEPOSITOR =
         address(bytes20(keccak256("depositor-1")));
     address public constant DEPOSITOR_2 =
@@ -65,6 +68,8 @@ library Constants {
         address(bytes20(keccak256("depositor-3")));
     address public constant DEPOSITOR_4 =
         address(bytes20(keccak256("depositor-4")));
+    address public constant DEPOSITOR_FACTORY =
+        address(bytes20(keccak256("depositor factory")));
     address public constant ADMIN = address(bytes20(keccak256("admin")));
     address public constant OWNER = address(bytes20(keccak256("owner")));
     address public constant FARM_OWNER =

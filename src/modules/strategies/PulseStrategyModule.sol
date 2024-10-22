@@ -24,7 +24,8 @@ contract PulseStrategyModule is IPulseStrategyModule {
             params.tickNeighborhood * 2 > params.width ||
             (params.strategyType != StrategyType.Original &&
                 params.tickNeighborhood != 0) ||
-            (params.strategyType == StrategyType.Tamper && params.maxLiquidityRatioDeviationX96 == 0)
+            (params.strategyType == StrategyType.Tamper &&
+                params.maxLiquidityRatioDeviationX96 == 0)
         ) revert InvalidParams();
     }
 
@@ -57,6 +58,7 @@ contract PulseStrategyModule is IPulseStrategyModule {
             return
                 calculateTargetTamper(
                     sqrtPriceX96,
+                    tick,
                     lowerPosition,
                     upperPosition,
                     strategyParams
@@ -303,13 +305,15 @@ contract PulseStrategyModule is IPulseStrategyModule {
     }
 
     function calculateTargetTamper(
-        uint256 sqrtPriceX96,
+        uint160 sqrtPriceX96,
+        int24 tick,
         IAmmModule.AmmPosition memory lowerPosition,
         IAmmModule.AmmPosition memory upperPosition,
         StrategyParams memory params
     )
         public
         pure
+        override
         returns (
             bool isRebalanceRequired,
             ICore.TargetPositionInfo memory target
@@ -319,12 +323,24 @@ contract PulseStrategyModule is IPulseStrategyModule {
         int24 half = width / 2;
         int24 tickLower = lowerPosition.tickLower;
 
-        if (
-            width % 2 != 0 ||
-            upperPosition.tickLower != lowerPosition.tickLower + half ||
-            upperPosition.tickUpper != lowerPosition.tickUpper + half
-        ) {
-            revert InvalidPosition();
+        if (width != params.width) {
+            (tickLower, ) = _centeredPosition(
+                sqrtPriceX96,
+                tick,
+                params.width,
+                params.tickSpacing
+            );
+            width = params.width;
+            half = width / 2;
+        } else {
+            if (
+                width % 2 != 0 ||
+                upperPosition.tickLower != lowerPosition.tickLower + half ||
+                upperPosition.tickUpper != lowerPosition.tickUpper + half ||
+                width != upperPosition.tickUpper - upperPosition.tickLower
+            ) {
+                revert InvalidPosition();
+            }
         }
 
         (int24 targetLower, uint256 liquidityRatioX96) = _getCrossedPositions(

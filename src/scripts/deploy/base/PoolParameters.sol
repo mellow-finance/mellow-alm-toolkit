@@ -12,7 +12,7 @@ contract PoolParameters {
     uint256 constant MAX_USD6_AMOUNT = 10 ** 6; // 1 USD
     uint256 constant MAX_USD18_AMOUNT = 10 ** 18; // 1 USD
 
-    CreateStrategyHelper.PoolParameter[15] parameters;
+    //   CreateStrategyHelper.PoolParameter[15] parameters;
 
     constructor() {
         /*
@@ -38,7 +38,7 @@ contract PoolParameters {
             | 0x4e962BB3889Bf030368F56810A9c96B83CB3E778 | 4000 | 100 |  usdc  | cbbtc  |   -   |     |    |
             |----------------------------------------------------------------------------------------------|
         */
-
+        /* 
         parameters[0].pool = ICLPool(
             0x4e829F8A5213c42535AB84AA40BD4aDCCE9cBa02
         );
@@ -142,6 +142,6 @@ contract PoolParameters {
         );
         parameters[14].width = 4000;
         parameters[14].maxAmount0 = MAX_USD6_AMOUNT;
-        parameters[14].maxAmount1 = MAX_BTC_AMOUNT;
+        parameters[14].maxAmount1 = MAX_BTC_AMOUNT;*/
     }
 }

@@ -3,219 +3,9 @@ pragma solidity ^0.8.0;
 
 import "./Fixture.sol";
 
-contract Integration is Test {
+contract Integration is Fixture {
     using EnumerableSet for EnumerableSet.AddressSet;
     using SafeERC20 for IERC20;
-
-    // constants:
-    address public constant VELO_DEPLOY_FACTORY_ADMIN =
-        address(bytes20(keccak256("VELO_DEPLOY_FACTORY_ADMIN")));
-    address public constant VELO_DEPLOY_FACTORY_OPERATOR =
-        address(bytes20(keccak256("VELO_DEPLOY_FACTORY_OPERATOR")));
-    address public constant CORE_ADMIN =
-        address(bytes20(keccak256("CORE_ADMIN")));
-    address public constant CORE_OPERATOR =
-        address(bytes20(keccak256("CORE_OPERATOR")));
-    address public constant MELLOW_PROTOCOL_TREASURY =
-        address(bytes20(keccak256("MELLOW_PROTOCOL_TREASURY")));
-    address public constant WRAPPER_ADMIN =
-        address(bytes20(keccak256("WRAPPER_ADMIN")));
-    address public constant FARM_OWNER =
-        address(bytes20(keccak256("FARM_OWNER")));
-    address public constant FARM_OPERATOR =
-        address(bytes20(keccak256("FARM_OPERATOR")));
-    uint32 public constant MELLOW_PROTOCOL_FEE = 1e8;
-    address public constant DEPOSITOR =
-        address(bytes20(keccak256("DEPOSITOR")));
-    address public constant USER = address(bytes20(keccak256("USER")));
-
-    // mellow contracts:
-    Core public core;
-    VeloAmmModule public ammModule;
-    VeloDepositWithdrawModule public depositWithdrawModule;
-    VeloOracle public oracle;
-    PulseStrategyModule public strategyModule;
-    VeloDeployFactoryHelper public deployFactoryHelper;
-    VeloDeployFactory public deployFactory;
-
-    // velodrome contracts:
-    INonfungiblePositionManager public positionManager =
-        INonfungiblePositionManager(Constants.NONFUNGIBLE_POSITION_MANAGER);
-    ICLFactory public factory = ICLFactory(Constants.VELO_FACTORY);
-
-    ISwapRouter public swapRouter =
-        ISwapRouter(address(new SwapRouter(address(factory), Constants.WETH)));
-
-    IQuoterV2 public quoterV2 =
-        IQuoterV2(address(new QuoterV2(address(factory), Constants.WETH)));
-
-    // helpers:
-    PulseVeloBot public bot =
-        new PulseVeloBot(quoterV2, swapRouter, positionManager);
-
-    enum Actions {
-        DEPOSIT,
-        WITHDRAW,
-        REBALANCE,
-        PUSH_REWARDS,
-        SWAP_DUST,
-        SWAP_LEFT_5,
-        SWAP_LEFT_25,
-        SWAP_LEFT_50,
-        SWAP_LEFT_90,
-        SWAP_RIGHT_5,
-        SWAP_RIGHT_25,
-        SWAP_RIGHT_50,
-        SWAP_RIGHT_90,
-        ADD_REWARDS,
-        IDLE
-    }
-
-    function setUp() external {
-        ammModule = new VeloAmmModule(
-            positionManager,
-            Constants.SELECTOR_IS_POOL
-        );
-        depositWithdrawModule = new VeloDepositWithdrawModule(positionManager);
-        strategyModule = new PulseStrategyModule();
-        oracle = new VeloOracle();
-        core = new Core(ammModule, strategyModule, oracle, CORE_ADMIN);
-        vm.startPrank(CORE_ADMIN);
-        core.grantRole(core.ADMIN_DELEGATE_ROLE(), CORE_ADMIN);
-        core.grantRole(core.OPERATOR(), CORE_OPERATOR);
-        vm.stopPrank();
-
-        deployFactoryHelper = new VeloDeployFactoryHelper(Constants.WETH);
-        deployFactory = new VeloDeployFactory(
-            VELO_DEPLOY_FACTORY_ADMIN,
-            core,
-            depositWithdrawModule,
-            deployFactoryHelper
-        );
-
-        vm.prank(CORE_ADMIN);
-        core.setProtocolParams(
-            abi.encode(
-                IVeloAmmModule.ProtocolParams({
-                    feeD9: MELLOW_PROTOCOL_FEE,
-                    treasury: MELLOW_PROTOCOL_TREASURY
-                })
-            )
-        );
-
-        vm.startPrank(VELO_DEPLOY_FACTORY_ADMIN);
-
-        deployFactory.updateMutableParams(
-            IVeloDeployFactory.MutableParams({
-                lpWrapperAdmin: WRAPPER_ADMIN,
-                lpWrapperManager: address(0),
-                farmOwner: FARM_OWNER,
-                farmOperator: FARM_OPERATOR,
-                minInitialLiquidity: 1000
-            })
-        );
-
-        deployFactory.grantRole(
-            deployFactory.ADMIN_DELEGATE_ROLE(),
-            VELO_DEPLOY_FACTORY_ADMIN
-        );
-
-        deployFactory.grantRole(
-            deployFactory.OPERATOR(),
-            VELO_DEPLOY_FACTORY_OPERATOR
-        );
-
-        vm.stopPrank();
-    }
-
-    function mint(
-        ICLPool pool,
-        uint128 liquidity,
-        int24 width,
-        address owner
-    ) public returns (uint256 tokenId) {
-        vm.startPrank(owner);
-
-        (uint160 sqrtPriceX96, int24 tick, , , , ) = pool.slot0();
-        int24 tickLower = tick - width / 2;
-
-        {
-            int24 tickSpacing = pool.tickSpacing();
-            int24 remainder = tickLower % tickSpacing;
-            if (remainder < 0) remainder += tickSpacing;
-            if (remainder > tickSpacing / 2) {
-                tickLower += tickSpacing - remainder;
-            } else {
-                tickLower -= remainder;
-            }
-        }
-        int24 tickUpper = tickLower + width;
-
-        (uint256 amount0, uint256 amount1) = LiquidityAmounts
-            .getAmountsForLiquidity(
-                sqrtPriceX96,
-                TickMath.getSqrtRatioAtTick(tickLower),
-                TickMath.getSqrtRatioAtTick(tickUpper),
-                liquidity + 1
-            );
-
-        deal(pool.token0(), owner, amount0);
-        deal(pool.token1(), owner, amount1);
-
-        IERC20(pool.token0()).approve(address(positionManager), amount0);
-        IERC20(pool.token1()).approve(address(positionManager), amount1);
-
-        (tokenId, , , ) = positionManager.mint(
-            INonfungiblePositionManager.MintParams({
-                token0: pool.token0(),
-                token1: pool.token1(),
-                tickLower: tickLower,
-                tickUpper: tickUpper,
-                tickSpacing: pool.tickSpacing(),
-                amount0Desired: amount0,
-                amount1Desired: amount1,
-                amount0Min: 0,
-                amount1Min: 0,
-                recipient: owner,
-                deadline: block.timestamp,
-                sqrtPriceX96: 0
-            })
-        );
-
-        vm.stopPrank();
-    }
-
-    function createStrategy(
-        ICLPool pool
-    ) public returns (IVeloDeployFactory.PoolAddresses memory addresses) {
-        pool.increaseObservationCardinalityNext(2);
-        mint(pool, 1e19, pool.tickSpacing() * 1000, address(this));
-        _swap(address(123), pool, false, 1 gwei);
-        uint256 tokenId = mint(
-            pool,
-            100000,
-            1000,
-            VELO_DEPLOY_FACTORY_OPERATOR
-        );
-        vm.startPrank(VELO_DEPLOY_FACTORY_OPERATOR);
-        positionManager.approve(address(deployFactory), tokenId);
-        addresses = deployFactory.createStrategy(
-            IVeloDeployFactory.DeployParams({
-                securityParams: abi.encode(
-                    IVeloOracle.SecurityParams({
-                        lookback: 1,
-                        maxAge: 7 days,
-                        maxAllowedDelta: type(int24).max
-                    })
-                ),
-                slippageD9: 5 * 1e5,
-                tokenId: tokenId,
-                tickNeighborhood: 0,
-                strategyType: IPulseStrategyModule.StrategyType.LazySyncing
-            })
-        );
-        vm.stopPrank();
-    }
 
     function _execute(
         ILpWrapper wrapper,
@@ -228,18 +18,18 @@ contract Integration is Test {
             Actions action = actions[i];
             if (action == Actions.DEPOSIT) {
                 if (initialDeposit) {
-                    _deposit(DEPOSITOR, wrapper, farm, 50000);
+                    _deposit(Constants.DEPOSITOR, wrapper, farm, 50000);
                     initialDeposit = false;
                 } else {
-                    _deposit(DEPOSITOR, wrapper, farm, 100);
+                    _deposit(Constants.DEPOSITOR, wrapper, farm, 100);
                 }
             } else if (action == Actions.WITHDRAW) {
-                earned = farm.earned(DEPOSITOR);
-                _withdraw(DEPOSITOR, 30, wrapper, farm);
+                earned = farm.earned(Constants.DEPOSITOR);
+                _withdraw(Constants.DEPOSITOR, 30, wrapper, farm);
             } else if (action == Actions.REBALANCE) {
-                _rebalance(CORE_OPERATOR, wrapper);
+                _rebalance(Constants.OWNER, wrapper);
             } else if (action == Actions.PUSH_REWARDS) {
-                _pushRewards(FARM_OPERATOR, wrapper, farm);
+                _pushRewards(Constants.FARM_OPERATOR, wrapper, farm);
             } else if (action == Actions.ADD_REWARDS) {
                 _addRewards(pool, 1 ether);
             } else if (action == Actions.IDLE) {
@@ -252,23 +42,23 @@ contract Integration is Test {
                     address(pool)
                 ) / 100;
                 if (action == Actions.SWAP_DUST)
-                    _swap(USER, pool, false, amount0 / 10000);
+                    _swap(Constants.USER, pool, false, amount0 / 10000);
                 else if (action == Actions.SWAP_LEFT_5)
-                    _swap(USER, pool, false, amount0 / 20);
+                    _swap(Constants.USER, pool, false, amount0 / 20);
                 else if (action == Actions.SWAP_LEFT_25)
-                    _swap(USER, pool, false, amount0 / 4);
+                    _swap(Constants.USER, pool, false, amount0 / 4);
                 else if (action == Actions.SWAP_LEFT_50)
-                    _swap(USER, pool, false, amount0 / 2);
+                    _swap(Constants.USER, pool, false, amount0 / 2);
                 else if (action == Actions.SWAP_LEFT_90)
-                    _swap(USER, pool, false, (amount0 * 9) / 10);
+                    _swap(Constants.USER, pool, false, (amount0 * 9) / 10);
                 else if (action == Actions.SWAP_RIGHT_5)
-                    _swap(USER, pool, true, amount1 / 20);
+                    _swap(Constants.USER, pool, true, amount1 / 20);
                 else if (action == Actions.SWAP_RIGHT_25)
-                    _swap(USER, pool, true, amount1 / 4);
+                    _swap(Constants.USER, pool, true, amount1 / 4);
                 else if (action == Actions.SWAP_RIGHT_50)
-                    _swap(USER, pool, true, amount1 / 2);
+                    _swap(Constants.USER, pool, true, amount1 / 2);
                 else if (action == Actions.SWAP_RIGHT_90)
-                    _swap(USER, pool, true, (amount1 * 9) / 10);
+                    _swap(Constants.USER, pool, true, (amount1 * 9) / 10);
             }
         }
     }
@@ -575,11 +365,11 @@ contract Integration is Test {
         actions[4] = Actions.IDLE;
         actions[5] = Actions.WITHDRAW;
 
-        uint256 earned = _execute(wrapper, farm, pool, actions); // farm.earned(DEPOSITOR);
+        uint256 earned = _execute(wrapper, farm, pool, actions); // farm.earned(Constants.DEPOSITOR);
         assertTrue(earned > 0);
-        vm.prank(DEPOSITOR);
+        vm.prank(Constants.DEPOSITOR);
         farm.getReward();
-        assertEq(earned, IERC20(Constants.VELO).balanceOf(DEPOSITOR));
+        assertEq(earned, IERC20(Constants.VELO).balanceOf(Constants.DEPOSITOR));
     }
 
     function testRebalance1() external {
@@ -926,7 +716,7 @@ contract Integration is Test {
             wrapper.positionId()
         );
 
-        vm.startPrank(WRAPPER_ADMIN);
+        vm.prank(Constants.OWNER);
         wrapper.setPositionParams(
             info.slippageD9,
             info.callbackParams,
@@ -936,7 +726,7 @@ contract Integration is Test {
                     tickNeighborhood: 100,
                     tickSpacing: 200,
                     width: 400,
-                maxLiquidityRatioDeviationX96: 0
+                    maxLiquidityRatioDeviationX96: 0
                 })
             ),
             abi.encode(
@@ -951,7 +741,7 @@ contract Integration is Test {
 
         _execute(wrapper, farm, pool, actions);
 
-        vm.startPrank(WRAPPER_ADMIN);
+        vm.prank(Constants.OWNER);
         wrapper.setPositionParams(
             info.slippageD9,
             info.callbackParams,
@@ -961,7 +751,7 @@ contract Integration is Test {
                     tickNeighborhood: 0,
                     tickSpacing: 200,
                     width: 400,
-                maxLiquidityRatioDeviationX96: 0
+                    maxLiquidityRatioDeviationX96: 0
                 })
             ),
             abi.encode(

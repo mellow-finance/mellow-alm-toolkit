@@ -13,6 +13,8 @@ import "./VeloDeployFactory.sol";
 contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
     using SafeERC20 for IERC20;
 
+    uint256 public totalSupplyLimit;
+
     /// @inheritdoc ILpWrapper
     address public immutable positionManager;
 
@@ -71,14 +73,36 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
     /// @inheritdoc ILpWrapper
     function initialize(
         uint256 positionId_,
-        uint256 initialTotalSupply
+        uint256 totalSupplyLimit_
     ) external {
         if (positionId != 0) revert AlreadyInitialized();
         if (core.managedPositionAt(positionId_).owner != address(this))
             revert Forbidden();
+
+        ICore.ManagedPositionInfo memory position = core.managedPositionAt(
+            positionId
+        );
+
+        uint256 initialTotalSupply;
+        for (uint i = 0; i < position.ammPositionIds.length; i++) {
+            IAmmModule.AmmPosition memory ammPosition = ammModule
+                .getAmmPosition(position.ammPositionIds[i]);
+            initialTotalSupply += uint256(ammPosition.liquidity);
+        }
+
         if (initialTotalSupply == 0) revert InsufficientLpAmount();
+
         positionId = positionId_;
-        _mint(address(this), initialTotalSupply);
+        totalSupplyLimit = 10 ** 50;
+
+        _mintLiquidity(address(this), initialTotalSupply);
+    }
+
+    function _mintLiquidity(address account, uint256 amount) private {
+        if (totalSupply() + amount > totalSupplyLimit) {
+            revert TotalSupplyLimitReached();
+        }
+        _mint(account, amount);
     }
 
     /// @inheritdoc ILpWrapper
@@ -257,7 +281,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
             })
         );
 
-        _mint(lpRecipient, lpAmount);
+        _mintLiquidity(lpRecipient, lpAmount);
 
         emit Deposit(
             msg.sender,

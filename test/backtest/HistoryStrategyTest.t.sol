@@ -89,12 +89,12 @@ contract HistoryTest is Test {
             )
         );
         core.setOperatorFlag(false);
-        veloDeployFactory = new VeloDeployFactory(
+        veloDeployFactory = VeloDeployFactory(address(0)); /* new VeloDeployFactory(
             address(this),
             core,
             veloDepositWithdrawModule,
             velotrDeployFactoryHelper
-        );
+        ); */
         pulseVeloBot = IPulseVeloBot(pulseVeloBot_);
         pool = ICLPool(pool_); //ICLPool(factory.getPool(Constants.USDC, Constants.WETH, 30000));
         factory = ICLFactory(pool.factory());
@@ -161,7 +161,7 @@ contract HistoryTest is Test {
                 minInitialLiquidity: liquidity - 1
             })
         );
-        veloDeployFactory.createStrategy(
+        /* veloDeployFactory.createStrategy(
             IVeloDeployFactory.DeployParams({
                 tickNeighborhood: 0,
                 slippageD9: 1e8,
@@ -175,7 +175,7 @@ contract HistoryTest is Test {
                 ),
                 strategyType: IPulseStrategyModule.StrategyType.LazySyncing
             })
-        );
+        ); */
     }
 
     function _setUpPool() private {

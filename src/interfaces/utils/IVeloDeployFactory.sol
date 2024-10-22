@@ -10,6 +10,7 @@ import "../modules/velo/IVeloDepositWithdrawModule.sol";
 import "../modules/strategies/IPulseStrategyModule.sol";
 
 import "./IVeloDeployFactoryHelper.sol";
+import "./IVeloFactoryDeposit.sol";
 
 /**
  * @title IVeloDeployFactory Interface
@@ -23,7 +24,7 @@ interface IVeloDeployFactory {
 
     struct StrategyCreatedParams {
         address pool;
-        IVeloAmmModule.AmmPosition ammPosition;
+        IVeloAmmModule.AmmPosition[] ammPosition;
         IPulseStrategyModule.StrategyParams strategyParams;
         address lpWrapper;
         address synthetixFarm;
@@ -41,6 +42,7 @@ interface IVeloDeployFactory {
         IVeloAmmModule veloModule; // Velo AMM module contract interface
         IVeloDepositWithdrawModule depositWithdrawModule; // Velo deposit/withdraw module contract interface
         IVeloDeployFactoryHelper helper; // Helper contract interface for the VeloDeployFactory
+        IVeloFactoryDeposit factoryDeposit; // Contract for creating NFT postion with specific parameters.
     }
 
     /**
@@ -66,11 +68,17 @@ interface IVeloDeployFactory {
      * @dev Represents the parameters for configuring a strategy.
      */
     struct DeployParams {
+        ICLPool pool;
+        IPulseStrategyModule.StrategyType strategyType;
+        int24 width;
         int24 tickNeighborhood;
         uint32 slippageD9;
-        uint256 tokenId;
+        uint256 maxAmount0;
+        uint256 maxAmount1;
+        uint256 maxLiquidityRatioDeviationX96; // The maximum allowed deviation of the liquidity ratio for lower position.
+        uint256 totalSupplyLimit;
         bytes securityParams;
-        IPulseStrategyModule.StrategyType strategyType;
+        uint256[] tokenId;
     }
 
     /**
