@@ -402,13 +402,6 @@ contract Fixture is Test {
 
         createStrategy(pool);
 
-        /* stakingRewards = new StakingRewards(
-            Constants.OWNER,
-            Constants.OWNER,
-            address(Constants.VELO),
-            address(lpWrapper)
-        ); */
-
         bot = new PulseVeloBot(quoterV2, swapRouter, positionManager);
 
         vm.stopPrank();
@@ -427,8 +420,8 @@ contract Fixture is Test {
 
         vm.startPrank(Constants.OWNER);
 
-        IVeloDeployFactory.DeployParams
-            memory parameters = IVeloDeployFactory.DeployParams({
+        IVeloDeployFactory.DeployParams memory parameters = IVeloDeployFactory
+            .DeployParams({
                 pool: pool_,
                 strategyType: IPulseStrategyModule.StrategyType.Original,
                 width: pool_.tickSpacing() * 20,
@@ -437,7 +430,7 @@ contract Fixture is Test {
                 maxAmount0: 1 ether,
                 maxAmount1: 1 ether,
                 maxLiquidityRatioDeviationX96: 0,
-                totalSupplyLimit: 1000 ether,
+                totalSupplyLimit: type(uint256).max,
                 securityParams: abi.encode(
                     IVeloOracle.SecurityParams({
                         lookback: 1,

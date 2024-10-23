@@ -233,7 +233,7 @@ contract Unit is Fixture {
         uint256 positionId = _depositToken(tokenId_, Constants.OWNER);
 
         vm.expectRevert(abi.encodeWithSignature("Forbidden()"));
-        lpWrapper.initialize(positionId, 1 ether);
+        lpWrapper.initialize(positionId, type(uint256).max);
 
         positionId = _depositToken(
             mint(
@@ -247,13 +247,13 @@ contract Unit is Fixture {
             address(lpWrapper)
         );
 
-        lpWrapper.initialize(positionId, 1 ether);
+        lpWrapper.initialize(positionId, type(uint256).max);
 
         assertApproxEqAbs(lpWrapper.totalSupply(), 1 ether, 1);
         assertApproxEqAbs(lpWrapper.balanceOf(address(lpWrapper)), 1 ether, 1);
 
         vm.expectRevert(abi.encodeWithSignature("AlreadyInitialized()"));
-        lpWrapper.initialize(positionId, 1 ether);
+        lpWrapper.initialize(positionId, type(uint256).max);
     }
 
     function testDeposit() external {
@@ -280,7 +280,7 @@ contract Unit is Fixture {
         );
         uint256 positionId = _depositToken(tokenId_, address(lpWrapper));
 
-        lpWrapper.initialize(positionId, 10000);
+        lpWrapper.initialize(positionId, type(uint256).max);
 
         vm.startPrank(Constants.DEPOSITOR);
 
@@ -355,6 +355,94 @@ contract Unit is Fixture {
             type(uint256).max
         );
 
+        vm.stopPrank();
+    }
+
+    function testTotalSupplyLimitUpdate() external {
+        lpWrapper = new LpWrapper(
+            core,
+            depositWithdrawModule,
+            "Wrapper LP Token",
+            "WLP",
+            Constants.OWNER,
+            Constants.WETH,
+            address(0),
+            address(0)
+        );
+
+        uint256 positionId = _depositToken(
+            mint(
+                pool.token0(),
+                pool.token1(),
+                pool.tickSpacing(),
+                pool.tickSpacing() * 2,
+                1 ether - 1,
+                pool
+            ),
+            address(lpWrapper)
+        );
+
+        lpWrapper.initialize(positionId, 1 ether);
+
+        assertApproxEqAbs(lpWrapper.totalSupply(), 1 ether, 1);
+        assertApproxEqAbs(lpWrapper.balanceOf(address(lpWrapper)), 1 ether, 1);
+        assertEq(lpWrapper.totalSupplyLimit(), 1 ether);
+
+        vm.expectRevert(abi.encodeWithSignature("Forbidden()"));
+        lpWrapper.setTotalSupplyLimit(2 ether);
+        assertEq(lpWrapper.totalSupplyLimit(), 1 ether);
+
+        vm.prank(Constants.OWNER);
+        lpWrapper.setTotalSupplyLimit(2 ether);
+        assertEq(lpWrapper.totalSupplyLimit(), 2 ether);
+    }
+
+    function testTotalSupplyLimit() external {
+        lpWrapper = new LpWrapper(
+            core,
+            depositWithdrawModule,
+            "Wrapper LP Token",
+            "WLP",
+            Constants.OWNER,
+            Constants.WETH,
+            address(0),
+            address(0)
+        );
+
+        uint256 positionId0 = _depositToken(
+            mint(
+                pool.token0(),
+                pool.token1(),
+                pool.tickSpacing(),
+                pool.tickSpacing() * 2,
+                1 ether - 1,
+                pool
+            ),
+            address(lpWrapper)
+        );
+
+        vm.expectRevert(abi.encodeWithSignature("TotalSupplyLimitReached()"));
+        lpWrapper.initialize(positionId0, 1 ether / 2);
+
+        lpWrapper.initialize(positionId0, 1 ether);
+
+        assertApproxEqAbs(lpWrapper.totalSupply(), 1 ether, 1);
+        assertApproxEqAbs(lpWrapper.balanceOf(address(lpWrapper)), 1 ether, 1);
+
+        deal(pool.token0(), Constants.DEPOSITOR, 100 wei);
+        deal(pool.token1(), Constants.DEPOSITOR, 100 wei);
+
+        vm.startPrank(Constants.DEPOSITOR);
+        IERC20(pool.token0()).approve(address(lpWrapper), 100 wei);
+        IERC20(pool.token1()).approve(address(lpWrapper), 100 wei);
+        vm.expectRevert(abi.encodeWithSignature("TotalSupplyLimitReached()"));
+        lpWrapper.deposit(
+            100 wei,
+            100 wei,
+            0,
+            Constants.DEPOSITOR,
+            type(uint256).max
+        );
         vm.stopPrank();
     }
 

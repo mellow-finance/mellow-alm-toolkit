@@ -59,7 +59,7 @@ contract Integration is Fixture {
 
         uint256 nftId2 = core.deposit(depositParams);
 
-        lpWrapper.initialize(nftId2, 5e5);
+        lpWrapper.initialize(nftId2, type(uint256).max);
         vm.stopPrank();
 
         vm.startPrank(Constants.DEPOSITOR);

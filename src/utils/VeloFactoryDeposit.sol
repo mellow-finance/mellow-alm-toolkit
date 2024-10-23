@@ -36,8 +36,6 @@ contract VeloFactoryDeposit is IVeloFactoryDeposit {
         int24 tickUpper,
         uint128 liquidity
     ) public returns (uint256 tokenId) {
-        //_requireDepositior();
-
         (, , , , uint16 observationCardinalityNext, ) = pool.slot0();
 
         if (observationCardinalityNext < MIN_OBSERVATION_CARDINALITY) {
@@ -57,20 +55,6 @@ contract VeloFactoryDeposit is IVeloFactoryDeposit {
                 liquidity
             );
 
-        /*  {
-            uint256 balance0 = IERC20(token0).balanceOf(address(this));
-            uint256 balance1 = IERC20(token1).balanceOf(address(this));
-            if (balance0 < amount0) {
-                amount0 -= balance0;
-                token0.safeTransferFrom(msg.sender, address(this), amount0);
-                token0.safeIncreaseAllowance(address(positionManager), amount0);
-            }
-            if (balance1 < amount1) {
-                amount1 -= balance1;
-                token1.safeTransferFrom(msg.sender, address(this), amount1);
-                token1.safeIncreaseAllowance(address(positionManager), amount1);
-            }
-        } */
         {
             token0.safeTransferFrom(depositor, address(this), amount0);
             token1.safeTransferFrom(depositor, address(this), amount1);
@@ -100,16 +84,6 @@ contract VeloFactoryDeposit is IVeloFactoryDeposit {
 
         _collect(depositor, token0);
         _collect(depositor, token1);
-        //positionManager.safeTransferFrom(address(this), to, tokenId);
-
-        /* uint256 balance0 = IERC20(token0).balanceOf(address(this));
-        if (balance0 > 0) {
-            token0.safeTransferFrom(address(this), depositor, balance0);
-        }
-        uint256 balance1 = IERC20(token1).balanceOf(address(this));
-        if (balance1 > 0) {
-            token1.safeTransferFrom(address(this), depositor, balance1);
-        } */
 
         return tokenId;
     }
@@ -120,7 +94,6 @@ contract VeloFactoryDeposit is IVeloFactoryDeposit {
         address owner,
         PoolStrategyParameter calldata creationParameters
     ) external returns (uint256[] memory tokenIds) {
-
         if (!core.ammModule().isPool(address(creationParameters.pool)))
             revert ForbiddenPool();
 
@@ -174,7 +147,7 @@ contract VeloFactoryDeposit is IVeloFactoryDeposit {
                 tokenIds[i] = tokenId;
             }
         } else {
-            /// @dev mint positions in favor of deployFactory
+            /// @dev mint positions in favor of depositor
             for (uint i = 0; i < tokenIds.length; i++) {
                 tokenIds[i] = mint(
                     depositor,

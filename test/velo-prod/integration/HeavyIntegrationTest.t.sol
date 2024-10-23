@@ -58,7 +58,7 @@ contract Integration is Fixture {
         vm.startPrank(Constants.OWNER);
         positionManager.approve(address(core), depositParams.ammPositionIds[0]);
         uint256 nftId = core.deposit(depositParams);
-        lpWrapper.initialize(nftId, 5e5);
+        lpWrapper.initialize(nftId, type(uint256).max);
         vm.stopPrank();
         return nftId;
     }

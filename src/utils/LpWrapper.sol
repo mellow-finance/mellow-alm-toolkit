@@ -13,8 +13,6 @@ import "./VeloDeployFactory.sol";
 contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
     using SafeERC20 for IERC20;
 
-    uint256 public totalSupplyLimit;
-
     /// @inheritdoc ILpWrapper
     address public immutable positionManager;
 
@@ -32,6 +30,9 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
 
     /// @inheritdoc ILpWrapper
     uint256 public positionId;
+
+    /// @inheritdoc ILpWrapper
+    uint256 public totalSupplyLimit;
 
     address private immutable _weth;
     address private immutable _pool;
@@ -93,16 +94,11 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         if (initialTotalSupply == 0) revert InsufficientLpAmount();
 
         positionId = positionId_;
-        totalSupplyLimit = 10 ** 50;
+        totalSupplyLimit = totalSupplyLimit_;
 
         _mintLiquidity(address(this), initialTotalSupply);
-    }
 
-    function _mintLiquidity(address account, uint256 amount) private {
-        if (totalSupply() + amount > totalSupplyLimit) {
-            revert TotalSupplyLimitReached();
-        }
-        _mint(account, amount);
+        emit TotalSupplyLimitUpdated(totalSupplyLimit, 0, totalSupply());
     }
 
     /// @inheritdoc ILpWrapper
@@ -149,6 +145,13 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         address farm = getFarm();
         _approve(address(this), farm, lpAmount);
         StakingRewards(farm).stakeOnBehalf(lpAmount, to);
+    }
+
+    function _mintLiquidity(address account, uint256 amount) private {
+        if (totalSupply() + amount > totalSupplyLimit) {
+            revert TotalSupplyLimitReached();
+        }
+        _mint(account, amount);
     }
 
     function _deposit(
@@ -287,9 +290,10 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
             msg.sender,
             to,
             _pool,
-            lpAmount,
             actualAmount0,
-            actualAmount1
+            actualAmount1,
+            lpAmount,
+            totalSupply()
         );
     }
 
@@ -410,7 +414,15 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
 
         _getReward();
 
-        emit Withdraw(msg.sender, to, _pool, lpAmount, amount0, amount1);
+        emit Withdraw(
+            msg.sender,
+            to,
+            _pool,
+            amount0,
+            amount1,
+            lpAmount,
+            totalSupply()
+        );
     }
 
     /// @inheritdoc ILpWrapper
@@ -527,6 +539,20 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
             abi.decode(callbackParams, (IVeloAmmModule.CallbackParams)),
             abi.decode(strategyParams, (IPulseStrategyModule.StrategyParams)),
             abi.decode(securityParams, (IVeloOracle.SecurityParams))
+        );
+    }
+
+    /// @inheritdoc ILpWrapper
+    function setTotalSupplyLimit(uint256 totalSupplyLimitNew) external {
+        _requireAdmin();
+
+        uint256 totalSupplyLimitOld = totalSupplyLimit;
+        totalSupplyLimit = totalSupplyLimitNew;
+
+        emit TotalSupplyLimitUpdated(
+            totalSupplyLimitNew,
+            totalSupplyLimitOld,
+            totalSupply()
         );
     }
 

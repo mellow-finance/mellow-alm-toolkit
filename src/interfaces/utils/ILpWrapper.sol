@@ -33,18 +33,20 @@ interface ILpWrapper {
         address indexed sender,
         address indexed recipient,
         address indexed pool,
-        uint256 lpAmount,
         uint256 amount0,
-        uint256 amount1
+        uint256 amount1,
+        uint256 lpAmount,
+        uint256 totalSupply
     );
 
     event Withdraw(
         address indexed sender,
         address indexed recipient,
         address indexed pool,
-        uint256 lpAmount,
         uint256 amount0,
-        uint256 amount1
+        uint256 amount1,
+        uint256 lpAmount,
+        uint256 totalSupply
     );
 
     event PositionParamsSet(
@@ -52,6 +54,12 @@ interface ILpWrapper {
         IVeloAmmModule.CallbackParams callbackParams,
         IPulseStrategyModule.StrategyParams strategyParams,
         IVeloOracle.SecurityParams securityParams
+    );
+
+    event TotalSupplyLimitUpdated(
+        uint256 totalSupplyLimitNew,
+        uint256 totalSupplyLimitOld,
+        uint256 totalSupplyCurrent
     );
 
     // Position data structure
@@ -190,6 +198,12 @@ interface ILpWrapper {
     function positionId() external view returns (uint256);
 
     /**
+     * @dev Returns the limit of the total supply.
+     * @return Value of the limit of the total supply.
+     */
+    function totalSupplyLimit() external view returns (uint256);
+
+    /**
      * @dev Initializes the LP wrapper contract with the specified token ID and initial total supply.
      * @param positionId_ Managed position ID to be associated with the LP wrapper contract.
      * @param initialTotalSupply Initial total supply of the LP wrapper contract.
@@ -276,6 +290,14 @@ interface ILpWrapper {
         bytes memory strategyParams,
         bytes memory securityParams
     ) external;
+
+    /**
+     * @dev Sets a new value of `totalSupplyLimit`
+     * @param totalSupplyLimitNew The value of a new `totalSupplyLimit`.
+     * Requirements:
+     * - Caller must have the ADMIN_ROLE.
+     */
+    function setTotalSupplyLimit(uint256 totalSupplyLimitNew) external;
 
     /**
      * @dev This function is used to perform an empty rebalance for a specific position.
