@@ -8,13 +8,6 @@ import "../../../src/bots/EmptyBot.sol";
 contract Unit is Fixture {
     using SafeERC20 for IERC20;
 
-    Core public core;
-    VeloOracle public oracle = new VeloOracle();
-    VeloAmmModule public ammModule =
-        new VeloAmmModule(positionManager, Constants.SELECTOR_IS_POOL);
-    VeloDepositWithdrawModule public depositWithdrawModule =
-        new VeloDepositWithdrawModule(positionManager);
-    PulseStrategyModule public strategyModule = new PulseStrategyModule();
     ICLPool public pool =
         ICLPool(factory.getPool(Constants.WETH, Constants.OP, 200));
 

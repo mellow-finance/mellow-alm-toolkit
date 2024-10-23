@@ -13,34 +13,10 @@ contract Unit is Fixture {
     int24 constant MAX_ALLOWED_DELTA = 100;
     uint32 constant MAX_AGE = 1 hours;
     uint128 INITIAL_LIQUIDITY = 1 ether;
-
-    VeloOracle public oracle = new VeloOracle();
-    VeloAmmModule public ammModule =
-        new VeloAmmModule(positionManager, Constants.SELECTOR_IS_POOL);
-    VeloDepositWithdrawModule public depositWithdrawModule =
-        new VeloDepositWithdrawModule(positionManager);
-    PulseStrategyModule public strategyModule = new PulseStrategyModule();
-    Core public core =
-        new Core(ammModule, strategyModule, oracle, Constants.OWNER);
     LpWrapper public lpWrapper;
     StakingRewards public farm;
-
     ICLPool public pool =
         ICLPool(factory.getPool(Constants.OP, Constants.WETH, 200));
-
-    VeloDeployFactoryHelper helper =
-        new VeloDeployFactoryHelper(Constants.WETH);
-
-    VeloFactoryDeposit factoryDeposit =
-        new VeloFactoryDeposit(core, strategyModule, positionManager);
-    VeloDeployFactory veloFactory =
-        new VeloDeployFactory(
-            Constants.OWNER,
-            core,
-            depositWithdrawModule,
-            helper,
-            factoryDeposit
-        );
 
     function _depositToken(
         uint256 tokenId_,
@@ -152,7 +128,7 @@ contract Unit is Fixture {
         vm.stopPrank();
     }
 
-    function setUp() external {
+/*     function setUp() external {
         vm.startPrank(Constants.OWNER);
 
         core.setProtocolParams(
@@ -175,7 +151,7 @@ contract Unit is Fixture {
         );
 
         vm.stopPrank();
-    }
+    } */
 
     function testConstructor() external {
         vm.expectRevert(abi.encodeWithSignature("AddressZero()"));

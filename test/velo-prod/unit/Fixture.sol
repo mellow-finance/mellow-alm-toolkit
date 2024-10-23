@@ -27,6 +27,59 @@ contract Fixture is Test {
             address(new QuoterV2(positionManager.factory(), Constants.WETH))
         );
 
+    VeloAmmModule ammModule =
+        new VeloAmmModule(
+            INonfungiblePositionManager(positionManager),
+            Constants.SELECTOR_IS_POOL
+        );
+    PulseStrategyModule strategyModule = new PulseStrategyModule();
+    VeloOracle oracle = new VeloOracle();
+    Core core = new Core(ammModule, strategyModule, oracle, Constants.OWNER);
+
+    VeloDepositWithdrawModule depositWithdrawModule =
+        new VeloDepositWithdrawModule(
+            INonfungiblePositionManager(positionManager)
+        );
+
+    VeloFactoryDeposit factoryDeposit =
+        new VeloFactoryDeposit(core, strategyModule, positionManager);
+
+    VeloDeployFactoryHelper helper =
+        new VeloDeployFactoryHelper(Constants.WETH);
+    VeloDeployFactory veloFactory =
+        new VeloDeployFactory(
+            Constants.OWNER,
+            core,
+            depositWithdrawModule,
+            helper,
+            factoryDeposit
+        );
+
+    function setUp() public {
+        vm.startPrank(Constants.OWNER);
+
+        core.setProtocolParams(
+            abi.encode(
+                IVeloAmmModule.ProtocolParams({
+                    feeD9: 1e8,
+                    treasury: Constants.PROTOCOL_TREASURY
+                })
+            )
+        );
+
+        veloFactory.updateMutableParams(
+            IVeloDeployFactory.MutableParams({
+                lpWrapperAdmin: Constants.OWNER,
+                lpWrapperManager: address(0),
+                farmOwner: Constants.OWNER,
+                farmOperator: Constants.FARM_OPERATOR,
+                minInitialLiquidity: 1000
+            })
+        );
+
+        vm.stopPrank();
+    }
+
     function mint(
         address token0,
         address token1,
