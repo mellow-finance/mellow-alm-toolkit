@@ -207,10 +207,12 @@ interface ILpWrapper {
      * @dev Initializes the LP wrapper contract with the specified token ID and initial total supply.
      * @param positionId_ Managed position ID to be associated with the LP wrapper contract.
      * @param initialTotalSupply Initial total supply of the LP wrapper contract.
+     * @param totalSupplyLimit Initial total supply limit.
      */
     function initialize(
         uint256 positionId_,
-        uint256 initialTotalSupply
+        uint256 initialTotalSupply,
+        uint256 totalSupplyLimit
     ) external;
 
     /**

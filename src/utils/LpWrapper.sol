@@ -74,24 +74,12 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
     /// @inheritdoc ILpWrapper
     function initialize(
         uint256 positionId_,
+        uint256 initialTotalSupply,
         uint256 totalSupplyLimit_
     ) external {
         if (positionId != 0) revert AlreadyInitialized();
         if (core.managedPositionAt(positionId_).owner != address(this))
             revert Forbidden();
-
-        ICore.ManagedPositionInfo memory position = core.managedPositionAt(
-            positionId
-        );
-
-        uint256 initialTotalSupply;
-        for (uint i = 0; i < position.ammPositionIds.length; i++) {
-            IAmmModule.AmmPosition memory ammPosition = ammModule
-                .getAmmPosition(position.ammPositionIds[i]);
-            initialTotalSupply += uint256(ammPosition.liquidity);
-        }
-
-        if (initialTotalSupply == 0) revert InsufficientLpAmount();
 
         positionId = positionId_;
         totalSupplyLimit = totalSupplyLimit_;

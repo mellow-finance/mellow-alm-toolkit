@@ -191,7 +191,7 @@ contract VeloDeployFactory is
         INonfungiblePositionManager positionManager = INonfungiblePositionManager(
                 immutableParams.veloModule.positionManager()
             );
-            
+
         for (uint i = 0; i < depositParams.ammPositionIds.length; i++) {
             positionManager.approve(
                 address(core),
@@ -203,6 +203,7 @@ contract VeloDeployFactory is
 
         ILpWrapper(poolAddresses.lpWrapper).initialize(
             positionId,
+            1 ether,
             params.totalSupplyLimit
         );
 
