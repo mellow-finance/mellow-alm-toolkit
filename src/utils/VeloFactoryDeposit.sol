@@ -13,18 +13,15 @@ contract VeloFactoryDeposit is IVeloFactoryDeposit {
 
     uint16 constant MIN_OBSERVATION_CARDINALITY = 100;
 
-    constructor(
-        ICore core_,
-        IPulseStrategyModule strategyModule_,
-        INonfungiblePositionManager positionManager_
-    ) {
+    constructor(ICore core_, IPulseStrategyModule strategyModule_) {
         if (address(core_) == address(0)) revert AddressZero();
         if (address(strategyModule_) == address(0)) revert AddressZero();
-        if (address(positionManager_) == address(0)) revert AddressZero();
 
         core = core_;
         strategyModule = strategyModule_;
-        positionManager = positionManager_;
+        positionManager = INonfungiblePositionManager(
+            core.ammModule().positionManager()
+        );
     }
 
     /// @inheritdoc IVeloFactoryDeposit
@@ -96,6 +93,14 @@ contract VeloFactoryDeposit is IVeloFactoryDeposit {
     ) external returns (uint256[] memory tokenIds) {
         if (!core.ammModule().isPool(address(creationParameters.pool)))
             revert ForbiddenPool();
+        if (
+            creationParameters.width % creationParameters.pool.tickSpacing() !=
+            0 ||
+            creationParameters.width <= 0 ||
+            creationParameters.tickNeighborhood < 0 ||
+            (creationParameters.maxAmount0 == 0 &&
+                creationParameters.maxAmount1 == 0)
+        ) revert InvalidParams();
 
         core.oracle().ensureNoMEV(
             address(creationParameters.pool),
@@ -200,7 +205,8 @@ contract VeloFactoryDeposit is IVeloFactoryDeposit {
                 tickSpacing: poolParameter.pool.tickSpacing(),
                 strategyType: poolParameter.strategyType,
                 width: poolParameter.width,
-                maxLiquidityRatioDeviationX96: 0
+                maxLiquidityRatioDeviationX96: poolParameter
+                    .maxLiquidityRatioDeviationX96
             });
 
         (, ICore.TargetPositionInfo memory target) = strategyModule

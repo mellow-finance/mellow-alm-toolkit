@@ -42,7 +42,7 @@ contract Fixture is Test {
         );
 
     VeloFactoryDeposit factoryDeposit =
-        new VeloFactoryDeposit(core, strategyModule, positionManager);
+        new VeloFactoryDeposit(core, strategyModule);
 
     VeloDeployFactoryHelper helper =
         new VeloDeployFactoryHelper(Constants.WETH);

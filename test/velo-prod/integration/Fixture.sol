@@ -375,11 +375,7 @@ contract Fixture is Test {
         dwModule = new VeloDepositWithdrawModule(
             INonfungiblePositionManager(positionManager)
         );
-        factoryDeposit = new VeloFactoryDeposit(
-            core,
-            strategyModule,
-            positionManager
-        );
+        factoryDeposit = new VeloFactoryDeposit(core, strategyModule);
 
         helper = new VeloDeployFactoryHelper(Constants.WETH);
         veloFactory = new VeloDeployFactory(

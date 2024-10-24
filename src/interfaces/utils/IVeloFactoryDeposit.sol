@@ -22,15 +22,15 @@ interface IVeloFactoryDeposit {
     error InvalidParams();
 
     struct PoolStrategyParameter {
-        uint256[] tokenId;
         ICLPool pool;
         IPulseStrategyModule.StrategyType strategyType;
         int24 width;
+        int24 tickNeighborhood;
         uint256 maxAmount0;
         uint256 maxAmount1;
-        int24 tickNeighborhood;
         uint256 maxLiquidityRatioDeviationX96;
         bytes securityParams;
+        uint256[] tokenId;
     }
 
     /**

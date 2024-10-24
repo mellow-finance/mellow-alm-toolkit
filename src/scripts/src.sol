@@ -11,8 +11,6 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import "src/Core.sol";
 
-import "src/helpers/CreateStrategyHelper.sol";
-
 import "src/bots/PulseVeloBot.sol";
 import "src/bots/PulseVeloBotLazy.sol";
 

@@ -104,8 +104,7 @@ contract VeloDeployFactory is
                 params.maxAmount0 == 0 &&
                 params.maxAmount1 == 0) ||
             (params.strategyType == IPulseStrategyModule.StrategyType.Tamper &&
-                params.maxLiquidityRatioDeviationX96 == 0) ||
-            (params.strategyType == IPulseStrategyModule.StrategyType.Tamper)
+                params.maxLiquidityRatioDeviationX96 == 0)
         ) {
             revert InvalidParams();
         }
@@ -132,7 +131,6 @@ contract VeloDeployFactory is
             })
         );
 
-        //ICLPool pool = ICLPool(position.pool);
         IPulseStrategyModule.StrategyParams memory strategyParams;
         bytes memory callbackParams;
 

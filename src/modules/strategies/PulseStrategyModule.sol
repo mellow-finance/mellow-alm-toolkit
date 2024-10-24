@@ -322,6 +322,7 @@ contract PulseStrategyModule is IPulseStrategyModule {
         int24 width = lowerPosition.tickUpper - lowerPosition.tickLower;
         int24 half = width / 2;
         int24 tickLower = lowerPosition.tickLower;
+        if (params.maxLiquidityRatioDeviationX96 == 0) revert InvalidPosition();
 
         if (width != params.width) {
             (tickLower, ) = _centeredPosition(
