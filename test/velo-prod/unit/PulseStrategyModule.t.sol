@@ -76,7 +76,7 @@ contract Unit is Fixture {
         ICore.TargetPositionInfo memory target
     ) private {
         if (
-            params.width != tickUpper - tickLower ||
+            (params.width != tickUpper - tickLower && tickUpper == tickLower) ||
             params.strategyType == IPulseStrategyModule.StrategyType.Original
         ) {
             return

@@ -478,4 +478,53 @@ contract Integration is Fixture {
         actions[47] = Actions.REBALANCE;
         _execute(wrapper, farm, pool, actions);
     }
+
+    function testChangeStrategyWidth() external {
+        (ILpWrapper wrapper, StakingRewards farm, ICLPool pool) = build(200);
+        ICore.ManagedPositionInfo memory position = core.managedPositionAt(
+            wrapper.positionId()
+        );
+        IPulseStrategyModule.StrategyParams memory strategyParams = abi.decode(
+            position.strategyParams,
+            (IPulseStrategyModule.StrategyParams)
+        );
+
+        strategyParams.width = pool.tickSpacing();
+        strategyParams.strategyType = IPulseStrategyModule
+            .StrategyType
+            .LazySyncing;
+
+        vm.startPrank(Constants.OWNER);
+        wrapper.setPositionParams(
+            position.slippageD9,
+            position.callbackParams,
+            abi.encode(strategyParams),
+            position.securityParams
+        );
+        vm.stopPrank();
+
+        Actions[] memory actions = new Actions[](2);
+        actions[0] = Actions.SWAP_LEFT_25;
+        actions[1] = Actions.REBALANCE;
+        _execute(wrapper, farm, pool, actions);
+
+        strategyParams.width = 2 * pool.tickSpacing();
+
+        vm.startPrank(Constants.OWNER);
+        wrapper.setPositionParams(
+            position.slippageD9,
+            position.callbackParams,
+            abi.encode(strategyParams),
+            position.securityParams
+        );
+        vm.stopPrank();
+
+        actions = new Actions[](5);
+        actions[0] = Actions.DEPOSIT;
+        actions[1] = Actions.SWAP_LEFT_5;
+        actions[2] = Actions.REBALANCE;
+        actions[3] = Actions.DEPOSIT;
+        actions[4] = Actions.WITHDRAW;
+        _execute(wrapper, farm, pool, actions);
+    }
 }

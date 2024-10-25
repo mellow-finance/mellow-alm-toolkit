@@ -15,6 +15,8 @@ interface IStrategyModule {
 
     /**
      * @dev Retrieves the target information for rebalancing based on the given parameters.
+     * Always calculate centered position if provided position has equal lower and upper ticks,
+     * else gets ttargets align strategy type. It should be used only at initial setup.
      * @param info position information.
      * @param ammModule The AMM module.
      * @param oracle The oracle.

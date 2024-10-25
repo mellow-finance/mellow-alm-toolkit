@@ -162,23 +162,18 @@ contract PulseStrategyModule is IPulseStrategyModule {
         int24 tickUpper,
         StrategyParams memory params
     ) private pure returns (int24 targetTickLower, int24 targetTickUpper) {
-        if (params.width != tickUpper - tickLower)
-            return
-                _centeredPosition(
-                    sqrtPriceX96,
-                    tick,
-                    params.width,
-                    params.tickSpacing
-                );
-
         if (
             sqrtPriceX96 >=
             TickMath.getSqrtRatioAtTick(tickLower + params.tickNeighborhood) &&
             sqrtPriceX96 <=
-            TickMath.getSqrtRatioAtTick(tickUpper - params.tickNeighborhood)
+            TickMath.getSqrtRatioAtTick(tickUpper - params.tickNeighborhood) &&
+            params.width == tickUpper - tickLower
         ) return (tickLower, tickUpper);
 
-        if (params.strategyType == StrategyType.Original)
+        if (
+            (params.width != tickUpper - tickLower && tickUpper == tickLower) ||
+            (params.strategyType == StrategyType.Original)
+        )
             return
                 _centeredPosition(
                     sqrtPriceX96,
@@ -220,6 +215,8 @@ contract PulseStrategyModule is IPulseStrategyModule {
             ) {
                 targetTickLower += params.tickSpacing;
             }
+        } else {
+            return (tickLower, tickUpper);
         }
         targetTickUpper = targetTickLower + params.width;
     }
@@ -319,12 +316,26 @@ contract PulseStrategyModule is IPulseStrategyModule {
             ICore.TargetPositionInfo memory target
         )
     {
+        if (
+            sqrtPriceX96 >=
+            TickMath.getSqrtRatioAtTick(
+                lowerPosition.tickLower + params.tickNeighborhood
+            ) &&
+            sqrtPriceX96 <=
+            TickMath.getSqrtRatioAtTick(
+                upperPosition.tickUpper - params.tickNeighborhood
+            )
+        ) return (false, target);
+
         int24 width = lowerPosition.tickUpper - lowerPosition.tickLower;
         int24 half = width / 2;
         int24 tickLower = lowerPosition.tickLower;
         if (params.maxLiquidityRatioDeviationX96 == 0) revert InvalidPosition();
 
-        if (width != params.width) {
+        if (
+            width != params.width &&
+            lowerPosition.tickUpper == lowerPosition.tickLower
+        ) {
             (tickLower, ) = _centeredPosition(
                 sqrtPriceX96,
                 tick,
