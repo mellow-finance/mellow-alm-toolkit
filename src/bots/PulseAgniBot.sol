@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../interfaces/bots/IPulseAgniBot.sol";
 
 import "../libraries/external/LiquidityAmounts.sol";
-import "../libraries/external/TickMath.sol";
+import "@uniswap/libraries/TickMath.sol";
 
 import "forge-std/Test.sol";
 

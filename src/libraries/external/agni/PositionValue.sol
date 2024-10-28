@@ -5,7 +5,7 @@ import "../../../interfaces/external/agni/IAgniPool.sol";
 import "../../../interfaces/external/agni/INonfungiblePositionManager.sol";
 import "../FixedPoint128.sol";
 
-import "../TickMath.sol";
+import "@uniswap/libraries/TickMath.sol";
 import "../LiquidityAmounts.sol";
 
 /// @title Returns information about the token value held in a Uniswap V3 NFT

@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: BSL-1.1
 pragma solidity ^0.8.0;
+
 import "../interfaces/utils/IVeloFactoryDeposit.sol";
 import "src/libraries/external/LiquidityAmounts.sol";
-import "src/libraries/external/TickMath.sol";
+import "@uniswap/libraries/TickMath.sol";
 
 contract VeloFactoryDeposit is IVeloFactoryDeposit {
     using SafeERC20 for IERC20;

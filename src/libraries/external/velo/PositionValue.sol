@@ -6,7 +6,7 @@ import "../../../interfaces/external/velo/ICLFactory.sol";
 import "../../../interfaces/external/velo/INonfungiblePositionManager.sol";
 import "../FixedPoint128.sol";
 
-import "../TickMath.sol";
+import "@uniswap/libraries/TickMath.sol";
 import "../LiquidityAmounts.sol";
 
 /// @title Returns information about the token value held in a Uniswap V3 NFT

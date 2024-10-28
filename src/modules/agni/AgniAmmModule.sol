@@ -13,7 +13,7 @@ pragma solidity ^0.8.0;
 // import "../../libraries/external/LiquidityAmounts.sol";
 // import "../../libraries/external/agni/PositionValue.sol";
 
-// import "../../libraries/external/TickMath.sol";
+// import "@uniswap/libraries/TickMath.sol";
 
 // contract AgniAmmModule is IAmmModule {
 //     using SafeERC20 for IERC20;

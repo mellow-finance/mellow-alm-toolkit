@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 import "../interfaces/bots/IPulseVeloBot.sol";
 
 import "../libraries/external/LiquidityAmounts.sol";
-import "../libraries/external/TickMath.sol";
+import "@uniswap/libraries/TickMath.sol";
 
 import "forge-std/Test.sol";
 

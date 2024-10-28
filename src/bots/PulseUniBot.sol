@@ -10,7 +10,7 @@ import "../interfaces/external/univ3/ISwapRouter.sol";
 import "../interfaces/external/univ3/INonfungiblePositionManager.sol";
 
 import "../libraries/external/LiquidityAmounts.sol";
-import "../libraries/external/TickMath.sol";
+import "@uniswap/libraries/TickMath.sol";
 
 contract PulseUniBot is IRebalanceCallback {
     using SafeERC20 for IERC20;

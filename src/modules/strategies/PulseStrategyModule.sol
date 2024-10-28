@@ -2,7 +2,6 @@
 pragma solidity ^0.8.25;
 
 import "../../interfaces/modules/strategies/IPulseStrategyModule.sol";
-import "../../libraries/external/TickMath.sol";
 
 contract PulseStrategyModule is IPulseStrategyModule {
     using Math for uint256;

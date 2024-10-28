@@ -7,7 +7,7 @@ import "../interfaces/external/agni/IAgniPool.sol";
 
 import "../interfaces/oracles/IOracle.sol";
 
-import "../libraries/external/TickMath.sol";
+import "@uniswap/libraries/TickMath.sol";
 
 /**
  * @title AgniOracle

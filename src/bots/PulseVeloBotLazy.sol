@@ -9,7 +9,7 @@ import "src/interfaces/modules/strategies/IPulseStrategyModule.sol";
 import "src/interfaces/utils/IVeloDeployFactory.sol";
 
 import "../libraries/external/LiquidityAmounts.sol";
-import "../libraries/external/TickMath.sol";
+import "@uniswap/libraries/TickMath.sol";
 
 contract PulseVeloBotLazy is IPulseVeloBotLazy {
     using SafeERC20 for IERC20;
