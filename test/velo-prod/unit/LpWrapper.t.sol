@@ -492,7 +492,7 @@ contract Unit is Fixture {
 
         vm.stopPrank();
     }
-    
+
     function testDepositAndStake() external {
         _createStrategy();
 

@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: BSL-1.1
 pragma solidity ^0.8.25;
 
-import "@openzeppelin/contracts/utils/math/Math.sol";
-
 import "../../interfaces/modules/strategies/IPulseStrategyModule.sol";
 import "../../libraries/external/TickMath.sol";
 
@@ -50,17 +48,12 @@ contract PulseStrategyModule is IPulseStrategyModule {
         (uint160 sqrtPriceX96, int24 tick) = oracle.getOraclePrice(info.pool);
         if (strategyParams.strategyType == StrategyType.Tamper) {
             if (info.ammPositionIds.length != 2) revert InvalidLength();
-
-            IAmmModule.AmmPosition memory lowerPosition = ammModule
-                .getAmmPosition(info.ammPositionIds[0]);
-            IAmmModule.AmmPosition memory upperPosition = ammModule
-                .getAmmPosition(info.ammPositionIds[1]);
             return
                 calculateTargetTamper(
                     sqrtPriceX96,
                     tick,
-                    lowerPosition,
-                    upperPosition,
+                    ammModule.getAmmPosition(info.ammPositionIds[0]),
+                    ammModule.getAmmPosition(info.ammPositionIds[1]),
                     strategyParams
                 );
         } else {

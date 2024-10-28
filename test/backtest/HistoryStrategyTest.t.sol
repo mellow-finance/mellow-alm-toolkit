@@ -89,7 +89,9 @@ contract HistoryTest is Test {
             )
         );
         core.setOperatorFlag(false);
-        veloDeployFactory = VeloDeployFactory(address(0)); /* new VeloDeployFactory(
+        veloDeployFactory = VeloDeployFactory(
+            address(0)
+        ); /* new VeloDeployFactory(
             address(this),
             core,
             veloDepositWithdrawModule,

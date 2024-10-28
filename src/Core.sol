@@ -158,7 +158,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
             })
         );
     }
-    
+
     /// @inheritdoc ICore
     function withdraw(uint256 id, address to) external override nonReentrant {
         ManagedPositionInfo memory info = _positions[id];
