@@ -2,20 +2,22 @@
 pragma solidity ^0.8.0;
 pragma abicoder v2;
 
+import "test/velo-prod/contracts/core/interfaces/ICLPool.sol";
 import "test/velo-prod/contracts/core/libraries/SafeCast.sol";
 import "test/velo-prod/contracts/core/libraries/TickMath.sol";
-import "test/velo-prod/contracts/core/interfaces/ICLPool.sol";
 
-import "./interfaces/ISwapRouter.sol";
-import "./base/PeripheryImmutableState.sol";
-import "./base/PeripheryValidation.sol";
-import "./base/PeripheryPaymentsWithFee.sol";
 import "./base/Multicall.sol";
+import "./base/PeripheryImmutableState.sol";
+import "./base/PeripheryPaymentsWithFee.sol";
+import "./base/PeripheryValidation.sol";
+
 import "./base/SelfPermit.sol";
+import "./interfaces/ISwapRouter.sol";
+
+import "./interfaces/external/IWETH9.sol";
+import "./libraries/CallbackValidation.sol";
 import "./libraries/Path.sol";
 import "./libraries/PoolAddress.sol";
-import "./libraries/CallbackValidation.sol";
-import "./interfaces/external/IWETH9.sol";
 
 /// @title CL Swap Router
 /// @notice Router for stateless execution of swaps against CL
@@ -37,24 +39,17 @@ contract SwapRouter is
     /// @dev Transient storage variable used for returning the computed amount in for an exact output swap.
     uint256 private amountInCached = DEFAULT_AMOUNT_IN_CACHED;
 
-    constructor(
-        address _factory,
-        address _WETH9
-    ) PeripheryImmutableState(_factory, _WETH9) {}
+    constructor(address _factory, address _WETH9) PeripheryImmutableState(_factory, _WETH9) {}
 
     /// @dev Returns the pool for the given token pair and fee. The pool contract may or may not exist.
-    function getPool(
-        address tokenA,
-        address tokenB,
-        int24 tickSpacing
-    ) private view returns (ICLPool) {
-        return
-            ICLPool(
-                PoolAddress.computeAddress(
-                    factory,
-                    PoolAddress.getPoolKey(tokenA, tokenB, tickSpacing)
-                )
-            );
+    function getPool(address tokenA, address tokenB, int24 tickSpacing)
+        private
+        view
+        returns (ICLPool)
+    {
+        return ICLPool(
+            PoolAddress.computeAddress(factory, PoolAddress.getPoolKey(tokenA, tokenB, tickSpacing))
+        );
     }
 
     struct SwapCallbackData {
@@ -63,22 +58,14 @@ contract SwapRouter is
     }
 
     /// @inheritdoc ICLSwapCallback
-    function uniswapV3SwapCallback(
-        int256 amount0Delta,
-        int256 amount1Delta,
-        bytes calldata _data
-    ) external override {
+    function uniswapV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata _data)
+        external
+        override
+    {
         require(amount0Delta > 0 || amount1Delta > 0); // swaps entirely within 0-liquidity regions are not supported
         SwapCallbackData memory data = abi.decode(_data, (SwapCallbackData));
-        (address tokenIn, address tokenOut, int24 tickSpacing) = data
-            .path
-            .decodeFirstPool();
-        CallbackValidation.verifyCallback(
-            factory,
-            tokenIn,
-            tokenOut,
-            tickSpacing
-        );
+        (address tokenIn, address tokenOut, int24 tickSpacing) = data.path.decodeFirstPool();
+        CallbackValidation.verifyCallback(factory, tokenIn, tokenOut, tickSpacing);
 
         (bool isExactInput, uint256 amountToPay) = amount0Delta > 0
             ? (tokenIn < tokenOut, uint256(amount0Delta))
@@ -106,39 +93,29 @@ contract SwapRouter is
         SwapCallbackData memory data
     ) private returns (uint256 amountOut) {
         // allow swapping to the router address with address 0
-        if (recipient == address(0)) recipient = address(this);
+        if (recipient == address(0)) {
+            recipient = address(this);
+        }
 
-        (address tokenIn, address tokenOut, int24 tickSpacing) = data
-            .path
-            .decodeFirstPool();
+        (address tokenIn, address tokenOut, int24 tickSpacing) = data.path.decodeFirstPool();
 
         bool zeroForOne = tokenIn < tokenOut;
 
-        (int256 amount0, int256 amount1) = getPool(
-            tokenIn,
-            tokenOut,
-            tickSpacing
-        ).swap(
-                recipient,
-                zeroForOne,
-                amountIn.toInt256(),
-                sqrtPriceLimitX96 == 0
-                    ? (
-                        zeroForOne
-                            ? TickMath.MIN_SQRT_RATIO + 1
-                            : TickMath.MAX_SQRT_RATIO - 1
-                    )
-                    : sqrtPriceLimitX96,
-                abi.encode(data)
-            );
+        (int256 amount0, int256 amount1) = getPool(tokenIn, tokenOut, tickSpacing).swap(
+            recipient,
+            zeroForOne,
+            amountIn.toInt256(),
+            sqrtPriceLimitX96 == 0
+                ? (zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1)
+                : sqrtPriceLimitX96,
+            abi.encode(data)
+        );
 
         return uint256(-(zeroForOne ? amount1 : amount0));
     }
 
     /// @inheritdoc ISwapRouter
-    function exactInputSingle(
-        ExactInputSingleParams calldata params
-    )
+    function exactInputSingle(ExactInputSingleParams calldata params)
         external
         payable
         override
@@ -150,11 +127,7 @@ contract SwapRouter is
             params.recipient,
             params.sqrtPriceLimitX96,
             SwapCallbackData({
-                path: abi.encodePacked(
-                    params.tokenIn,
-                    params.tickSpacing,
-                    params.tokenOut
-                ),
+                path: abi.encodePacked(params.tokenIn, params.tickSpacing, params.tokenOut),
                 payer: msg.sender
             })
         );
@@ -162,9 +135,7 @@ contract SwapRouter is
     }
 
     /// @inheritdoc ISwapRouter
-    function exactInput(
-        ExactInputParams memory params
-    )
+    function exactInput(ExactInputParams memory params)
         external
         payable
         override
@@ -208,31 +179,23 @@ contract SwapRouter is
         SwapCallbackData memory data
     ) private returns (uint256 amountIn) {
         // allow swapping to the router address with address 0
-        if (recipient == address(0)) recipient = address(this);
+        if (recipient == address(0)) {
+            recipient = address(this);
+        }
 
-        (address tokenOut, address tokenIn, int24 tickSpacing) = data
-            .path
-            .decodeFirstPool();
+        (address tokenOut, address tokenIn, int24 tickSpacing) = data.path.decodeFirstPool();
 
         bool zeroForOne = tokenIn < tokenOut;
 
-        (int256 amount0Delta, int256 amount1Delta) = getPool(
-            tokenIn,
-            tokenOut,
-            tickSpacing
-        ).swap(
-                recipient,
-                zeroForOne,
-                -amountOut.toInt256(),
-                sqrtPriceLimitX96 == 0
-                    ? (
-                        zeroForOne
-                            ? TickMath.MIN_SQRT_RATIO + 1
-                            : TickMath.MAX_SQRT_RATIO - 1
-                    )
-                    : sqrtPriceLimitX96,
-                abi.encode(data)
-            );
+        (int256 amount0Delta, int256 amount1Delta) = getPool(tokenIn, tokenOut, tickSpacing).swap(
+            recipient,
+            zeroForOne,
+            -amountOut.toInt256(),
+            sqrtPriceLimitX96 == 0
+                ? (zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1)
+                : sqrtPriceLimitX96,
+            abi.encode(data)
+        );
 
         uint256 amountOutReceived;
         (amountIn, amountOutReceived) = zeroForOne
@@ -240,13 +203,13 @@ contract SwapRouter is
             : (uint256(amount1Delta), uint256(-amount0Delta));
         // it's technically possible to not receive the full output amount,
         // so if no price limit has been specified, require this possibility away
-        if (sqrtPriceLimitX96 == 0) require(amountOutReceived == amountOut);
+        if (sqrtPriceLimitX96 == 0) {
+            require(amountOutReceived == amountOut);
+        }
     }
 
     /// @inheritdoc ISwapRouter
-    function exactOutputSingle(
-        ExactOutputSingleParams calldata params
-    )
+    function exactOutputSingle(ExactOutputSingleParams calldata params)
         external
         payable
         override
@@ -259,11 +222,7 @@ contract SwapRouter is
             params.recipient,
             params.sqrtPriceLimitX96,
             SwapCallbackData({
-                path: abi.encodePacked(
-                    params.tokenOut,
-                    params.tickSpacing,
-                    params.tokenIn
-                ),
+                path: abi.encodePacked(params.tokenOut, params.tickSpacing, params.tokenIn),
                 payer: msg.sender
             })
         );
@@ -274,9 +233,7 @@ contract SwapRouter is
     }
 
     /// @inheritdoc ISwapRouter
-    function exactOutput(
-        ExactOutputParams calldata params
-    )
+    function exactOutput(ExactOutputParams calldata params)
         external
         payable
         override

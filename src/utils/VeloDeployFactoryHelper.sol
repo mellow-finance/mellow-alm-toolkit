@@ -23,14 +23,7 @@ contract VeloDeployFactoryHelper is IVeloDeployFactoryHelper {
         address pool
     ) external returns (ILpWrapper) {
         LpWrapper wrapper = new LpWrapper(
-            core,
-            ammDepositWithdrawModule,
-            name,
-            symbol,
-            address(this),
-            _weth,
-            msg.sender,
-            pool
+            core, ammDepositWithdrawModule, name, symbol, address(this), _weth, msg.sender, pool
         );
         wrapper.grantRole(wrapper.ADMIN_ROLE(), admin);
         if (manager != address(0)) {

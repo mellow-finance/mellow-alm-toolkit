@@ -21,13 +21,8 @@ contract Integration is Fixture {
     function testSynthetixFarm() external {
         ICore.DepositParams memory depositParams;
         depositParams.ammPositionIds = new uint256[](1);
-        depositParams.ammPositionIds[0] = mint(
-            Constants.OP,
-            Constants.WETH,
-            TICK_SPACING,
-            pool.tickSpacing() * 8,
-            1e9
-        );
+        depositParams.ammPositionIds[0] =
+            mint(Constants.OP, Constants.WETH, TICK_SPACING, pool.tickSpacing() * 8, 1e9);
         depositParams.owner = Constants.OWNER;
         depositParams.strategyParams = abi.encode(
             IPulseStrategyModule.StrategyParams({
@@ -51,12 +46,8 @@ contract Integration is Fixture {
 
         positionManager.approve(address(core), depositParams.ammPositionIds[0]);
         depositParams.owner = address(lpWrapper);
-        Counter counter = new Counter(
-            Constants.OWNER,
-            address(core),
-            Constants.VELO,
-            address(stakingRewards)
-        );
+        Counter counter =
+            new Counter(Constants.OWNER, address(core), Constants.VELO, address(stakingRewards));
         depositParams.callbackParams = abi.encode(
             IVeloAmmModule.CallbackParams({
                 farm: address(stakingRewards),
@@ -74,18 +65,10 @@ contract Integration is Fixture {
         deal(Constants.OP, Constants.DEPOSITOR, 1e6 * 1e6);
         deal(Constants.WETH, Constants.DEPOSITOR, 500 ether);
         IERC20(Constants.OP).safeApprove(address(lpWrapper), type(uint256).max);
-        IERC20(Constants.WETH).safeApprove(
-            address(lpWrapper),
-            type(uint256).max
-        );
+        IERC20(Constants.WETH).safeApprove(address(lpWrapper), type(uint256).max);
         {
-            (, , uint256 lpAmount) = lpWrapper.deposit(
-                500 ether,
-                1e6,
-                1e3,
-                Constants.DEPOSITOR,
-                type(uint256).max
-            );
+            (,, uint256 lpAmount) =
+                lpWrapper.deposit(500 ether, 1e6, 1e3, Constants.DEPOSITOR, type(uint256).max);
             require(lpAmount > 0, "Invalid lp amount");
             console2.log("Actual lp amount:", lpAmount);
             lpWrapper.approve(address(stakingRewards), type(uint256).max);
@@ -98,20 +81,14 @@ contract Integration is Fixture {
         skip(7 days);
 
         {
-            uint256 treasuryBalanceBefore = IERC20(Constants.VELO).balanceOf(
-                Constants.PROTOCOL_TREASURY
-            );
+            uint256 treasuryBalanceBefore =
+                IERC20(Constants.VELO).balanceOf(Constants.PROTOCOL_TREASURY);
 
-            uint256 depositorBalanceBefore = IERC20(Constants.VELO).balanceOf(
-                Constants.DEPOSITOR
-            );
+            uint256 depositorBalanceBefore = IERC20(Constants.VELO).balanceOf(Constants.DEPOSITOR);
 
             vm.prank(Constants.OWNER);
             lpWrapper.emptyRebalance();
-            assertEq(
-                counter.value(),
-                IERC20(Constants.VELO).balanceOf(address(stakingRewards))
-            );
+            assertEq(counter.value(), IERC20(Constants.VELO).balanceOf(address(stakingRewards)));
 
             uint256 addedRewards = counter.value();
 
@@ -128,18 +105,13 @@ contract Integration is Fixture {
 
             stakingRewards.getReward();
 
-            uint256 depositorBalanceAfter = IERC20(Constants.VELO).balanceOf(
-                Constants.DEPOSITOR
-            );
+            uint256 depositorBalanceAfter = IERC20(Constants.VELO).balanceOf(Constants.DEPOSITOR);
 
-            uint256 treasuryBalanceAfter = IERC20(Constants.VELO).balanceOf(
-                Constants.PROTOCOL_TREASURY
-            );
+            uint256 treasuryBalanceAfter =
+                IERC20(Constants.VELO).balanceOf(Constants.PROTOCOL_TREASURY);
 
-            uint256 userRewards = depositorBalanceAfter -
-                depositorBalanceBefore;
-            uint256 protocolRewards = treasuryBalanceAfter -
-                treasuryBalanceBefore;
+            uint256 userRewards = depositorBalanceAfter - depositorBalanceBefore;
+            uint256 protocolRewards = treasuryBalanceAfter - treasuryBalanceBefore;
 
             uint256 totalRewards = userRewards + protocolRewards;
             console2.log(userRewards, protocolRewards, totalRewards);
@@ -153,13 +125,8 @@ contract Integration is Fixture {
     function testSynthetixFarmMultiple() external {
         ICore.DepositParams memory depositParams;
         depositParams.ammPositionIds = new uint256[](1);
-        depositParams.ammPositionIds[0] = mint(
-            Constants.OP,
-            Constants.WETH,
-            TICK_SPACING,
-            pool.tickSpacing() * 8,
-            1e9
-        );
+        depositParams.ammPositionIds[0] =
+            mint(Constants.OP, Constants.WETH, TICK_SPACING, pool.tickSpacing() * 8, 1e9);
         depositParams.owner = Constants.OWNER;
         depositParams.strategyParams = abi.encode(
             IPulseStrategyModule.StrategyParams({
@@ -183,12 +150,8 @@ contract Integration is Fixture {
 
         positionManager.approve(address(core), depositParams.ammPositionIds[0]);
         depositParams.owner = address(lpWrapper);
-        Counter counter = new Counter(
-            Constants.OWNER,
-            address(core),
-            Constants.VELO,
-            address(stakingRewards)
-        );
+        Counter counter =
+            new Counter(Constants.OWNER, address(core), Constants.VELO, address(stakingRewards));
         depositParams.callbackParams = abi.encode(
             IVeloAmmModule.CallbackParams({
                 farm: address(stakingRewards),
@@ -206,18 +169,10 @@ contract Integration is Fixture {
         deal(Constants.OP, Constants.DEPOSITOR, 1e6 * 1e6);
         deal(Constants.WETH, Constants.DEPOSITOR, 500 ether);
         IERC20(Constants.OP).safeApprove(address(lpWrapper), type(uint256).max);
-        IERC20(Constants.WETH).safeApprove(
-            address(lpWrapper),
-            type(uint256).max
-        );
+        IERC20(Constants.WETH).safeApprove(address(lpWrapper), type(uint256).max);
         {
-            (, , uint256 lpAmount) = lpWrapper.deposit(
-                500 ether,
-                1e6,
-                1e3,
-                Constants.DEPOSITOR,
-                type(uint256).max
-            );
+            (,, uint256 lpAmount) =
+                lpWrapper.deposit(500 ether, 1e6, 1e3, Constants.DEPOSITOR, type(uint256).max);
             require(lpAmount > 0, "Invalid lp amount");
             console2.log("Actual lp amount:", lpAmount);
             lpWrapper.approve(address(stakingRewards), type(uint256).max);
@@ -233,8 +188,7 @@ contract Integration is Fixture {
             lpWrapper.emptyRebalance();
             cumulativeCounterValue += counter.value();
             assertEq(
-                cumulativeCounterValue,
-                IERC20(Constants.VELO).balanceOf(address(stakingRewards))
+                cumulativeCounterValue, IERC20(Constants.VELO).balanceOf(address(stakingRewards))
             );
             uint256 addedRewards = counter.value();
 

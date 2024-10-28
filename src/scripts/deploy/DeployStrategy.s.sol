@@ -12,12 +12,8 @@ contract DeployStrategy is Script, Test, PoolParameters, Addresses {
         vm.stopBroadcast();
     }
 
-    function deployCreateStrategyHelper(
-        address veloDeployFactoryAddress
-    ) internal {
-        VeloDeployFactory veloDeployFactory = VeloDeployFactory(
-            veloDeployFactoryAddress
-        );
+    function deployCreateStrategyHelper(address veloDeployFactoryAddress) internal {
+        VeloDeployFactory veloDeployFactory = VeloDeployFactory(veloDeployFactoryAddress);
 
         vm.startBroadcast(deployerPrivateKey);
         /*  CreateStrategyHelper createStrategyHelper = new CreateStrategyHelper(
@@ -33,15 +29,13 @@ contract DeployStrategy is Script, Test, PoolParameters, Addresses {
 
     function withdraw(address lpWrapper, address to) private {
         /// @dev withdraw whole assets
-        (uint256 amount0, uint256 amount1, uint256 actualLpAmount) = ILpWrapper(
-            lpWrapper
-        ).withdraw(
-                type(uint256).max, // it will be truncated to the actual owned lpTokens
-                0,
-                0,
-                to,
-                type(uint256).max
-            );
+        (uint256 amount0, uint256 amount1, uint256 actualLpAmount) = ILpWrapper(lpWrapper).withdraw(
+            type(uint256).max, // it will be truncated to the actual owned lpTokens
+            0,
+            0,
+            to,
+            type(uint256).max
+        );
 
         console2.log(" ================== withdraw info ==================== ");
         console2.log("withdrawer: ", to);
@@ -112,7 +106,8 @@ contract DeployStrategy is Script, Test, PoolParameters, Addresses {
 
         // print(poolAddresses, address(parameters[poolId].pool));
     }
- */
+    */
+
     function print(
         ICore core,
         address veloDeployFactoryHelper,
@@ -123,10 +118,7 @@ contract DeployStrategy is Script, Test, PoolParameters, Addresses {
         console2.log(" =======     POOL ", address(pool), "    ========");
 
         console2.log("        lpWrapper:", poolAddresses.lpWrapper);
-        console2.log(
-            "   lpWrapper name:",
-            ERC20(poolAddresses.lpWrapper).name()
-        );
+        console2.log("   lpWrapper name:", ERC20(poolAddresses.lpWrapper).name());
 
         {
             bytes memory createCalldata = abi.encode(
@@ -139,10 +131,7 @@ contract DeployStrategy is Script, Test, PoolParameters, Addresses {
                 veloDeployFactory,
                 address(pool)
             );
-            console2.log(
-                " lpWrapper symbol:",
-                ERC20(poolAddresses.lpWrapper).symbol()
-            );
+            console2.log(" lpWrapper symbol:", ERC20(poolAddresses.lpWrapper).symbol());
             console2.logBytes(createCalldata);
         }
         console2.log("    synthetixFarm:", poolAddresses.synthetixFarm);

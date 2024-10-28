@@ -8,8 +8,7 @@ import "../../../src/bots/EmptyBot.sol";
 contract Unit is Fixture {
     using SafeERC20 for IERC20;
 
-    ICLPool public pool =
-        ICLPool(factory.getPool(Constants.WETH, Constants.OP, 200));
+    ICLPool public pool = ICLPool(factory.getPool(Constants.WETH, Constants.OP, 200));
 
     function testContructor() external {
         vm.expectRevert(abi.encodeWithSignature("AddressZero()"));
@@ -21,12 +20,7 @@ contract Unit is Fixture {
     function testDeposit() external {
         core = new Core(ammModule, strategyModule, oracle, Constants.OWNER);
         uint256 tokenId = mint(
-            pool.token0(),
-            pool.token1(),
-            pool.tickSpacing(),
-            pool.tickSpacing() * 2,
-            10000,
-            pool
+            pool.token0(), pool.token1(), pool.tickSpacing(), pool.tickSpacing() * 2, 10000, pool
         );
         vm.startPrank(Constants.OWNER);
 
@@ -53,12 +47,7 @@ contract Unit is Fixture {
                 gauge: address(pool.gauge()),
                 farm: address(1),
                 counter: address(
-                    new Counter(
-                        Constants.OWNER,
-                        address(core),
-                        Constants.VELO,
-                        address(1)
-                    )
+                    new Counter(Constants.OWNER, address(core), Constants.VELO, address(1))
                 )
             })
         );
@@ -86,11 +75,7 @@ contract Unit is Fixture {
         core.deposit(depositParams);
 
         depositParams.securityParams = abi.encode(
-            IVeloOracle.SecurityParams({
-                lookback: 100,
-                maxAllowedDelta: 100,
-                maxAge: 7 days
-            })
+            IVeloOracle.SecurityParams({lookback: 100, maxAllowedDelta: 100, maxAge: 7 days})
         );
 
         assertEq(positionManager.ownerOf(tokenId), Constants.OWNER);
@@ -130,12 +115,7 @@ contract Unit is Fixture {
                 gauge: address(pool.gauge()),
                 farm: address(1),
                 counter: address(
-                    new Counter(
-                        Constants.OWNER,
-                        address(core),
-                        Constants.VELO,
-                        address(1)
-                    )
+                    new Counter(Constants.OWNER, address(core), Constants.VELO, address(1))
                 )
             })
         );
@@ -150,11 +130,7 @@ contract Unit is Fixture {
         );
         depositParams.slippageD9 = 1 * 1e5;
         depositParams.securityParams = abi.encode(
-            IVeloOracle.SecurityParams({
-                lookback: 1,
-                maxAllowedDelta: 100000,
-                maxAge: 7 days
-            })
+            IVeloOracle.SecurityParams({lookback: 1, maxAllowedDelta: 100000, maxAge: 7 days})
         );
 
         id = core.deposit(depositParams);
@@ -164,12 +140,7 @@ contract Unit is Fixture {
 
     function testWithdraw() external {
         uint256 tokenId = mint(
-            pool.token0(),
-            pool.token1(),
-            pool.tickSpacing(),
-            pool.tickSpacing() * 2,
-            10000,
-            pool
+            pool.token0(), pool.token1(), pool.tickSpacing(), pool.tickSpacing() * 2, 10000, pool
         );
 
         uint256 positionId = _depositToken(tokenId);
@@ -207,12 +178,7 @@ contract Unit is Fixture {
         );
         vm.expectRevert(abi.encodeWithSignature("InvalidFee()"));
         core.setProtocolParams(
-            abi.encode(
-                IVeloAmmModule.ProtocolParams({
-                    treasury: address(1),
-                    feeD9: 3e8 + 1
-                })
-            )
+            abi.encode(IVeloAmmModule.ProtocolParams({treasury: address(1), feeD9: 3e8 + 1}))
         );
         core.setProtocolParams(
             abi.encode(
@@ -225,16 +191,13 @@ contract Unit is Fixture {
         vm.stopPrank();
     }
 
-    function _checkState(
-        uint256 positionId,
-        ICore.RebalanceParams memory rebalanceParams
-    ) private {
-        ICore.ManagedPositionInfo memory infoBefore = core.managedPositionAt(
-            positionId
-        );
+    function _checkState(uint256 positionId, ICore.RebalanceParams memory rebalanceParams)
+        private
+    {
+        ICore.ManagedPositionInfo memory infoBefore = core.managedPositionAt(positionId);
         uint256 capitalBefore = 0;
         uint256 capitalAfter = 0;
-        (uint160 sqrtPriceX96, int24 tick, , , , ) = pool.slot0();
+        (uint160 sqrtPriceX96, int24 tick,,,,) = pool.slot0();
         uint256 priceX96 = Math.mulDiv(sqrtPriceX96, sqrtPriceX96, Q96);
 
         {
@@ -249,12 +212,9 @@ contract Unit is Fixture {
 
         core.rebalance(rebalanceParams);
 
-        ICore.ManagedPositionInfo memory infoAfter = core.managedPositionAt(
-            positionId
-        );
-        IAmmModule.AmmPosition memory positionAfter = ammModule.getAmmPosition(
-            infoAfter.ammPositionIds[0]
-        );
+        ICore.ManagedPositionInfo memory infoAfter = core.managedPositionAt(positionId);
+        IAmmModule.AmmPosition memory positionAfter =
+            ammModule.getAmmPosition(infoAfter.ammPositionIds[0]);
 
         {
             (uint256 amount0, uint256 amount1) = ammModule.tvl(
@@ -266,25 +226,15 @@ contract Unit is Fixture {
             capitalAfter = Math.mulDiv(amount0, priceX96, Q96) + amount1;
         }
 
-        IPulseStrategyModule.StrategyParams memory strategyParams = abi.decode(
-            infoBefore.strategyParams,
-            (IPulseStrategyModule.StrategyParams)
-        );
+        IPulseStrategyModule.StrategyParams memory strategyParams =
+            abi.decode(infoBefore.strategyParams, (IPulseStrategyModule.StrategyParams));
 
-        assertTrue(
-            Math.mulDiv(capitalBefore, D9 - infoBefore.slippageD9, D9) <=
-                capitalAfter
-        );
+        assertTrue(Math.mulDiv(capitalBefore, D9 - infoBefore.slippageD9, D9) <= capitalAfter);
 
-        assertEq(
-            positionAfter.tickUpper - positionAfter.tickLower,
-            strategyParams.width
-        );
+        assertEq(positionAfter.tickUpper - positionAfter.tickLower, strategyParams.width);
         assertEq(positionAfter.tickUpper % strategyParams.tickSpacing, 0);
         assertEq(positionAfter.tickLower % strategyParams.tickSpacing, 0);
-        assertTrue(
-            positionAfter.tickLower <= tick && tick <= positionAfter.tickUpper
-        );
+        assertTrue(positionAfter.tickLower <= tick && tick <= positionAfter.tickUpper);
     }
 
     function testRebalance() external {
@@ -299,12 +249,7 @@ contract Unit is Fixture {
         );
 
         uint256 tokenId = mint(
-            pool.token0(),
-            pool.token1(),
-            pool.tickSpacing(),
-            pool.tickSpacing() * 2,
-            10000,
-            pool
+            pool.token0(), pool.token1(), pool.tickSpacing(), pool.tickSpacing() * 2, 10000, pool
         );
 
         ICore.RebalanceParams memory rebalanceParams;
@@ -336,9 +281,7 @@ contract Unit is Fixture {
         vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
         core.rebalance(rebalanceParams);
 
-        rebalanceParams.callback = address(
-            new PulseVeloBot(quoterV2, swapRouter, positionManager)
-        );
+        rebalanceParams.callback = address(new PulseVeloBot(quoterV2, swapRouter, positionManager));
 
         vm.expectRevert();
         core.rebalance(rebalanceParams);
@@ -451,31 +394,13 @@ contract Unit is Fixture {
         );
 
         vm.expectRevert(abi.encodeWithSignature("Forbidden()"));
-        core.setPositionParams(
-            positionId,
-            0,
-            new bytes(0),
-            new bytes(0),
-            new bytes(0)
-        );
+        core.setPositionParams(positionId, 0, new bytes(0), new bytes(0), new bytes(0));
 
         vm.startPrank(Constants.OWNER);
         vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
-        core.setPositionParams(
-            positionId,
-            1,
-            new bytes(123),
-            new bytes(0),
-            new bytes(0)
-        );
+        core.setPositionParams(positionId, 1, new bytes(123), new bytes(0), new bytes(0));
         vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
-        core.setPositionParams(
-            positionId,
-            1,
-            new bytes(0),
-            new bytes(123),
-            new bytes(0)
-        );
+        core.setPositionParams(positionId, 1, new bytes(0), new bytes(123), new bytes(0));
 
         bytes memory defaultStrategyParams = abi.encode(
             IPulseStrategyModule.StrategyParams({
@@ -488,39 +413,19 @@ contract Unit is Fixture {
         );
 
         vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
+        core.setPositionParams(positionId, 1, new bytes(0), defaultStrategyParams, new bytes(123));
+
+        vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
+        core.setPositionParams(positionId, 0, new bytes(0), defaultStrategyParams, new bytes(0));
+
+        vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
         core.setPositionParams(
-            positionId,
-            1,
-            new bytes(0),
-            defaultStrategyParams,
-            new bytes(123)
+            positionId, uint32(D9 / 20 + 1), new bytes(0), defaultStrategyParams, new bytes(0)
         );
 
         vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
         core.setPositionParams(
-            positionId,
-            0,
-            new bytes(0),
-            defaultStrategyParams,
-            new bytes(0)
-        );
-
-        vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
-        core.setPositionParams(
-            positionId,
-            uint32(D9 / 20 + 1),
-            new bytes(0),
-            defaultStrategyParams,
-            new bytes(0)
-        );
-
-        vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
-        core.setPositionParams(
-            positionId,
-            uint32(D9 / 20),
-            new bytes(0),
-            defaultStrategyParams,
-            new bytes(0)
+            positionId, uint32(D9 / 20), new bytes(0), defaultStrategyParams, new bytes(0)
         );
 
         bytes memory defaultCallbackParams = abi.encode(
@@ -531,11 +436,7 @@ contract Unit is Fixture {
             })
         );
         bytes memory defaultSecurityParams = abi.encode(
-            IVeloOracle.SecurityParams({
-                lookback: 100,
-                maxAllowedDelta: 100,
-                maxAge: 7 days
-            })
+            IVeloOracle.SecurityParams({lookback: 100, maxAllowedDelta: 100, maxAge: 7 days})
         );
 
         vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
@@ -558,18 +459,11 @@ contract Unit is Fixture {
 
     function testPosition() external {
         uint256 tokenId = mint(
-            pool.token0(),
-            pool.token1(),
-            pool.tickSpacing(),
-            pool.tickSpacing() * 2,
-            10000,
-            pool
+            pool.token0(), pool.token1(), pool.tickSpacing(), pool.tickSpacing() * 2, 10000, pool
         );
         uint256 positionId = _depositToken(tokenId);
 
-        ICore.ManagedPositionInfo memory info = core.managedPositionAt(
-            positionId
-        );
+        ICore.ManagedPositionInfo memory info = core.managedPositionAt(positionId);
 
         assertEq(info.ammPositionIds.length, 1);
         assertEq(info.ammPositionIds[0], tokenId);
@@ -586,12 +480,7 @@ contract Unit is Fixture {
 
     function testPositionCount() external {
         uint256 tokenId = mint(
-            pool.token0(),
-            pool.token1(),
-            pool.tickSpacing(),
-            pool.tickSpacing() * 2,
-            10000,
-            pool
+            pool.token0(), pool.token1(), pool.tickSpacing(), pool.tickSpacing() * 2, 10000, pool
         );
         uint256[] memory ammPositionIds = new uint256[](1);
         ammPositionIds[0] = tokenId;
@@ -604,12 +493,7 @@ contract Unit is Fixture {
                     gauge: address(pool.gauge()),
                     farm: address(1),
                     counter: address(
-                        new Counter(
-                            Constants.OWNER,
-                            address(core),
-                            Constants.VELO,
-                            address(1)
-                        )
+                        new Counter(Constants.OWNER, address(core), Constants.VELO, address(1))
                     )
                 })
             ),
@@ -623,11 +507,7 @@ contract Unit is Fixture {
                 })
             ),
             securityParams: abi.encode(
-                IVeloOracle.SecurityParams({
-                    lookback: 100,
-                    maxAllowedDelta: 100,
-                    maxAge: 7 days
-                })
+                IVeloOracle.SecurityParams({lookback: 100, maxAllowedDelta: 100, maxAge: 7 days})
             )
         });
 

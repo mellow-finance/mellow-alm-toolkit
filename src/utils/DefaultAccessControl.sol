@@ -19,7 +19,9 @@ contract DefaultAccessControl is AccessControlEnumerable {
     /// @notice Creates a new contract.
     /// @param admin Admin of the contract
     constructor(address admin) {
-        if (admin == address(0)) revert AddressZero();
+        if (admin == address(0)) {
+            revert AddressZero();
+        }
 
         _grantRole(OPERATOR, admin);
         _grantRole(ADMIN_ROLE, admin);
@@ -35,8 +37,7 @@ contract DefaultAccessControl is AccessControlEnumerable {
     /// @param sender Adddress to check
     /// @return `true` if sender is an admin, `false` otherwise
     function isAdmin(address sender) public view returns (bool) {
-        return
-            hasRole(ADMIN_ROLE, sender) || hasRole(ADMIN_DELEGATE_ROLE, sender);
+        return hasRole(ADMIN_ROLE, sender) || hasRole(ADMIN_DELEGATE_ROLE, sender);
     }
 
     /// @notice Checks if the address is OPERATOR.

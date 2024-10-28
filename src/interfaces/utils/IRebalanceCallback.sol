@@ -10,8 +10,7 @@ interface IRebalanceCallback {
      * @param targets An array of target position information.
      * @return newAmmPositionIds An array of new AMM position IDs.
      */
-    function call(
-        bytes memory data,
-        ICore.TargetPositionInfo[] memory targets
-    ) external returns (uint256[][] memory newAmmPositionIds);
+    function call(bytes memory data, ICore.TargetPositionInfo[] memory targets)
+        external
+        returns (uint256[][] memory newAmmPositionIds);
 }

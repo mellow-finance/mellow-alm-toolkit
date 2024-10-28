@@ -3,9 +3,10 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
-import {LiquidityAmounts} from "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
+
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {TickMath} from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
+import {LiquidityAmounts} from "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 
 import "../interfaces/bots/IPulseVeloBotLazy.sol";
 import "src/interfaces/modules/strategies/IPulseStrategyModule.sol";
@@ -36,53 +37,41 @@ contract PulseVeloBotLazy is IPulseVeloBotLazy {
     /// @param pool address of Pool
     /// @param priceTargetX96 actual price of exchange token0<->token1: 2^96 * amountOut/amountIn
     /// @return swapQuoteParams contains ecessery amountIn amd amountOut to swap for desired target position
-    function necessarySwapAmountForMint(
-        address pool,
-        uint256 priceTargetX96
-    ) external view returns (SwapQuoteParams memory swapQuoteParams) {
-        if (!needRebalancePosition(pool)) return swapQuoteParams;
-
-        (
-            ,
-            ICore.ManagedPositionInfo memory managedPositionInfo
-        ) = poolManagedPositionInfo(pool);
-
-        if (managedPositionInfo.ammPositionIds.length == 0)
+    function necessarySwapAmountForMint(address pool, uint256 priceTargetX96)
+        external
+        view
+        returns (SwapQuoteParams memory swapQuoteParams)
+    {
+        if (!needRebalancePosition(pool)) {
             return swapQuoteParams;
+        }
 
-        (
-            bool isRebalanceRequired,
-            ICore.TargetPositionInfo memory target
-        ) = strategyModule.getTargets(
-                managedPositionInfo,
-                core.ammModule(),
-                core.oracle()
-            );
+        (, ICore.ManagedPositionInfo memory managedPositionInfo) = poolManagedPositionInfo(pool);
 
-        if (!isRebalanceRequired) return swapQuoteParams;
+        if (managedPositionInfo.ammPositionIds.length == 0) {
+            return swapQuoteParams;
+        }
+
+        (bool isRebalanceRequired, ICore.TargetPositionInfo memory target) =
+            strategyModule.getTargets(managedPositionInfo, core.ammModule(), core.oracle());
+
+        if (!isRebalanceRequired) {
+            return swapQuoteParams;
+        }
         require(target.lowerTicks.length == 1, "lowerTicks lenght");
         require(target.upperTicks.length == 1, "upperTicks lenght");
 
-        swapQuoteParams = _fitAmountInForTargetSwapPrice(
-            priceTargetX96,
-            managedPositionInfo,
-            target
-        );
+        swapQuoteParams =
+            _fitAmountInForTargetSwapPrice(priceTargetX96, managedPositionInfo, target);
     }
 
     /// @dev return current positionId for @param pool
-    function poolManagedPositionInfo(
-        address pool
-    )
+    function poolManagedPositionInfo(address pool)
         public
         view
-        returns (
-            uint256 positionId,
-            ICore.ManagedPositionInfo memory managedPositionInfo
-        )
+        returns (uint256 positionId, ICore.ManagedPositionInfo memory managedPositionInfo)
     {
-        IVeloDeployFactory.PoolAddresses memory poolAddresses = fatory
-            .poolToAddresses(pool);
+        IVeloDeployFactory.PoolAddresses memory poolAddresses = fatory.poolToAddresses(pool);
         ILpWrapper lpWrapper = ILpWrapper(payable(poolAddresses.lpWrapper));
 
         positionId = lpWrapper.positionId();
@@ -90,31 +79,18 @@ contract PulseVeloBotLazy is IPulseVeloBotLazy {
     }
 
     /// @dev returns flags, true if rebalance is necessery for @param pool
-    function needRebalancePosition(
-        address pool
-    ) public view returns (bool isRebalanceRequired) {
-        (
-            ,
-            ICore.ManagedPositionInfo memory managedPositionInfo
-        ) = poolManagedPositionInfo(pool);
+    function needRebalancePosition(address pool) public view returns (bool isRebalanceRequired) {
+        (, ICore.ManagedPositionInfo memory managedPositionInfo) = poolManagedPositionInfo(pool);
 
         uint256 tokenId = managedPositionInfo.ammPositionIds[0];
-        (, , , , , int24 tickLower, int24 tickUpper, , , , , ) = positionManager
-            .positions(tokenId);
-        (uint160 sqrtPriceX96, int24 tick, , , , ) = ICLPool(pool).slot0();
+        (,,,,, int24 tickLower, int24 tickUpper,,,,,) = positionManager.positions(tokenId);
+        (uint160 sqrtPriceX96, int24 tick,,,,) = ICLPool(pool).slot0();
 
-        IPulseStrategyModule.StrategyParams memory params = abi.decode(
-            managedPositionInfo.strategyParams,
-            (IPulseStrategyModule.StrategyParams)
-        );
+        IPulseStrategyModule.StrategyParams memory params =
+            abi.decode(managedPositionInfo.strategyParams, (IPulseStrategyModule.StrategyParams));
 
-        (isRebalanceRequired, ) = strategyModule.calculateTargetPulse(
-            sqrtPriceX96,
-            tick,
-            tickLower,
-            tickUpper,
-            params
-        );
+        (isRebalanceRequired,) =
+            strategyModule.calculateTargetPulse(sqrtPriceX96, tick, tickLower, tickUpper, params);
     }
 
     /**
@@ -135,16 +111,14 @@ contract PulseVeloBotLazy is IPulseVeloBotLazy {
         ICLPool pool = ICLPool(managedPositionInfo.pool);
         tokens[0] = pool.token0();
         tokens[1] = pool.token1();
-        (uint160 sqrtPriceX96, , , , , ) = pool.slot0();
+        (uint160 sqrtPriceX96,,,,,) = pool.slot0();
 
-        (
-            amounts[0],
-            amounts[1],
-            tokenIdIn,
-            relationTargetX96
-        ) = _getTargetAmounts(sqrtPriceX96, managedPositionInfo, target);
+        (amounts[0], amounts[1], tokenIdIn, relationTargetX96) =
+            _getTargetAmounts(sqrtPriceX96, managedPositionInfo, target);
 
-        if (relationTargetX96 == 0) return swapQuoteParams;
+        if (relationTargetX96 == 0) {
+            return swapQuoteParams;
+        }
 
         uint256 tokenIdOut = tokenIdIn == 0 ? 1 : 0;
 
@@ -155,14 +129,8 @@ contract PulseVeloBotLazy is IPulseVeloBotLazy {
 
         /// @dev amountIn = (relationTarget * anountInTotal - anountOutTotal)/(priceTarget + relationTarget)
         uint256 priceDenominatorX96 = priceTargetX96 + relationTargetX96;
-        swapQuoteParams.amountIn = amounts[tokenIdIn].mulDiv(
-            relationTargetX96,
-            priceDenominatorX96
-        );
-        swapQuoteParams.amountIn -= amounts[tokenIdOut].mulDiv(
-            Q96,
-            priceDenominatorX96
-        );
+        swapQuoteParams.amountIn = amounts[tokenIdIn].mulDiv(relationTargetX96, priceDenominatorX96);
+        swapQuoteParams.amountIn -= amounts[tokenIdOut].mulDiv(Q96, priceDenominatorX96);
 
         swapQuoteParams.tokenIn = tokens[tokenIdIn];
         swapQuoteParams.tokenOut = tokens[tokenIdOut];
@@ -177,6 +145,7 @@ contract PulseVeloBotLazy is IPulseVeloBotLazy {
      * @return tokenIdIn index of input for swap token
      * @return relationTargetX96 relation between amount in target position: amountTargetOut/amountTargetIn
      */
+
     function _getTargetAmounts(
         uint160 sqrtPriceX96,
         ICore.ManagedPositionInfo memory managedPositionInfo,
@@ -184,19 +153,14 @@ contract PulseVeloBotLazy is IPulseVeloBotLazy {
     )
         internal
         view
-        returns (
-            uint256 amount0,
-            uint256 amount1,
-            uint256 tokenIdIn,
-            uint256 relationTargetX96
-        )
+        returns (uint256 amount0, uint256 amount1, uint256 tokenIdIn, uint256 relationTargetX96)
     {
         int24 tickLower;
         int24 tickUpper;
         uint128 liquidity;
 
-        (, , , , , tickLower, tickUpper, liquidity, , , , ) = positionManager
-            .positions(managedPositionInfo.ammPositionIds[0]);
+        (,,,,, tickLower, tickUpper, liquidity,,,,) =
+            positionManager.positions(managedPositionInfo.ammPositionIds[0]);
 
         {
             uint160 sqrtPricex96Lower = TickMath.getSqrtRatioAtTick(tickLower);
@@ -204,17 +168,11 @@ contract PulseVeloBotLazy is IPulseVeloBotLazy {
 
             /// @dev current amounts for current position
             (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
-                sqrtPriceX96,
-                sqrtPricex96Lower,
-                sqrtPricex96Upper,
-                liquidity
+                sqrtPriceX96, sqrtPricex96Lower, sqrtPricex96Upper, liquidity
             );
 
             /// @dev check if position is active
-            if (
-                sqrtPriceX96 <= sqrtPricex96Upper &&
-                sqrtPriceX96 >= sqrtPricex96Lower
-            ) {
+            if (sqrtPriceX96 <= sqrtPricex96Upper && sqrtPriceX96 >= sqrtPricex96Lower) {
                 return (amount0, amount1, 0, 0);
             }
 
@@ -223,13 +181,12 @@ contract PulseVeloBotLazy is IPulseVeloBotLazy {
         }
 
         /// @dev current amounts for target position
-        (uint256 amount0Target, uint256 amount1Target) = LiquidityAmounts
-            .getAmountsForLiquidity(
-                sqrtPriceX96,
-                TickMath.getSqrtRatioAtTick(target.lowerTicks[0]),
-                TickMath.getSqrtRatioAtTick(target.upperTicks[0]),
-                uint128(Q96)
-            );
+        (uint256 amount0Target, uint256 amount1Target) = LiquidityAmounts.getAmountsForLiquidity(
+            sqrtPriceX96,
+            TickMath.getSqrtRatioAtTick(target.lowerTicks[0]),
+            TickMath.getSqrtRatioAtTick(target.upperTicks[0]),
+            uint128(Q96)
+        );
 
         /// @dev relation between amountTargetOut/amountTargetIn
         if (tokenIdIn == 0) {
@@ -239,16 +196,15 @@ contract PulseVeloBotLazy is IPulseVeloBotLazy {
         }
     }
 
-    function call(
-        bytes memory data,
-        ICore.TargetPositionInfo[] memory targets
-    ) external returns (uint256[][] memory newTokenIds) {
+    function call(bytes memory data, ICore.TargetPositionInfo[] memory targets)
+        external
+        returns (uint256[][] memory newTokenIds)
+    {
         SwapParams[] memory swapParams = abi.decode(data, (SwapParams[]));
         // getting liquidity from all position
         for (uint256 i = 0; i < targets.length; i++) {
             uint256 tokenId = targets[i].info.ammPositionIds[0];
-            (, , , , , , , uint128 liquidity, , , , ) = positionManager
-                .positions(tokenId);
+            (,,,,,,, uint128 liquidity,,,,) = positionManager.positions(tokenId);
             positionManager.decreaseLiquidity(
                 INonfungiblePositionManager.DecreaseLiquidityParams({
                     tokenId: tokenId,
@@ -272,34 +228,23 @@ contract PulseVeloBotLazy is IPulseVeloBotLazy {
         // swapping to target ratio according result of function `necessarySwapAmountForMint`
         for (uint256 i = 0; i < swapParams.length; i++) {
             address tokenIn = swapParams[i].tokenIn;
-            uint256 balance = IERC20(swapParams[i].tokenIn).balanceOf(
-                address(this)
-            );
+            uint256 balance = IERC20(swapParams[i].tokenIn).balanceOf(address(this));
             if (balance < swapParams[i].amountIn) {
                 swapParams[i].amountIn = balance;
             }
-            if (swapParams[i].amountIn == 0) continue;
-            if (
-                IERC20(tokenIn).allowance(
-                    address(this),
-                    swapParams[i].router
-                ) == 0
-            ) {
-                IERC20(tokenIn).forceApprove(
-                    swapParams[i].router,
-                    type(uint256).max
-                );
+            if (swapParams[i].amountIn == 0) {
+                continue;
             }
-            uint256 tokenOutBalanceBefore = IERC20(swapParams[i].tokenOut)
-                .balanceOf(address(this));
-            (bool success, bytes memory returnData) = swapParams[i].router.call(
-                swapParams[i].callData
-            );
+            if (IERC20(tokenIn).allowance(address(this), swapParams[i].router) == 0) {
+                IERC20(tokenIn).forceApprove(swapParams[i].router, type(uint256).max);
+            }
+            uint256 tokenOutBalanceBefore = IERC20(swapParams[i].tokenOut).balanceOf(address(this));
+            (bool success, bytes memory returnData) =
+                swapParams[i].router.call(swapParams[i].callData);
             require(success, "Swap call failed");
 
-            uint256 amountOutDelta = IERC20(swapParams[i].tokenOut).balanceOf(
-                address(this)
-            ) - tokenOutBalanceBefore;
+            uint256 amountOutDelta =
+                IERC20(swapParams[i].tokenOut).balanceOf(address(this)) - tokenOutBalanceBefore;
 
             /// @dev 32 - just actual amount out
             if (returnData.length == 32) {
@@ -340,47 +285,30 @@ contract PulseVeloBotLazy is IPulseVeloBotLazy {
             ICLPool pool = ICLPool(targets[i].info.pool);
 
             address token0 = pool.token0();
-            if (
-                IERC20(token0).allowance(
-                    address(this),
-                    address(positionManager)
-                ) == 0
-            ) {
-                IERC20(token0).forceApprove(
-                    address(positionManager),
-                    type(uint256).max
-                );
+            if (IERC20(token0).allowance(address(this), address(positionManager)) == 0) {
+                IERC20(token0).forceApprove(address(positionManager), type(uint256).max);
             }
             address token1 = pool.token1();
-            if (
-                IERC20(token1).allowance(
-                    address(this),
-                    address(positionManager)
-                ) == 0
-            ) {
-                IERC20(token1).forceApprove(
-                    address(positionManager),
-                    type(uint256).max
-                );
+            if (IERC20(token1).allowance(address(this), address(positionManager)) == 0) {
+                IERC20(token1).forceApprove(address(positionManager), type(uint256).max);
             }
 
-            (uint256 tokenId, uint128 actualLiquidity, , ) = positionManager
-                .mint(
-                    INonfungiblePositionManager.MintParams({
-                        token0: token0,
-                        token1: token1,
-                        tickSpacing: pool.tickSpacing(),
-                        tickLower: targets[i].lowerTicks[0],
-                        tickUpper: targets[i].upperTicks[0],
-                        amount0Desired: IERC20(token0).balanceOf(address(this)),
-                        amount1Desired: IERC20(token1).balanceOf(address(this)),
-                        amount0Min: 0,
-                        amount1Min: 0,
-                        recipient: address(this),
-                        deadline: type(uint256).max,
-                        sqrtPriceX96: 0
-                    })
-                );
+            (uint256 tokenId, uint128 actualLiquidity,,) = positionManager.mint(
+                INonfungiblePositionManager.MintParams({
+                    token0: token0,
+                    token1: token1,
+                    tickSpacing: pool.tickSpacing(),
+                    tickLower: targets[i].lowerTicks[0],
+                    tickUpper: targets[i].upperTicks[0],
+                    amount0Desired: IERC20(token0).balanceOf(address(this)),
+                    amount1Desired: IERC20(token1).balanceOf(address(this)),
+                    amount0Min: 0,
+                    amount1Min: 0,
+                    recipient: address(this),
+                    deadline: type(uint256).max,
+                    sqrtPriceX96: 0
+                })
+            );
             require(
                 actualLiquidity >= targets[i].minLiquidities[0],
                 string(

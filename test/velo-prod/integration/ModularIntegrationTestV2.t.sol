@@ -10,13 +10,8 @@ contract Integration is Fixture {
     using SafeERC20 for IERC20;
 
     function _logFees(ILpWrapper wrapper) private view {
-        ICore.ManagedPositionInfo memory info = core.managedPositionAt(
-            wrapper.positionId()
-        );
-        (uint256 fee0, uint256 fee1) = PositionValue.fees(
-            positionManager,
-            info.ammPositionIds[0]
-        );
+        ICore.ManagedPositionInfo memory info = core.managedPositionAt(wrapper.positionId());
+        (uint256 fee0, uint256 fee1) = PositionValue.fees(positionManager, info.ammPositionIds[0]);
         console2.log("Fees:", fee0, fee1);
     }
 
@@ -51,30 +46,27 @@ contract Integration is Fixture {
             } else if (action == Actions.REVIVE_GAUGE) {
                 _reviveGauge(pool);
             } else {
-                uint256 amount0 = IERC20(pool.token0()).balanceOf(
-                    address(pool)
-                );
-                uint256 amount1 = IERC20(pool.token1()).balanceOf(
-                    address(pool)
-                ) / 100;
-                if (action == Actions.SWAP_DUST)
+                uint256 amount0 = IERC20(pool.token0()).balanceOf(address(pool));
+                uint256 amount1 = IERC20(pool.token1()).balanceOf(address(pool)) / 100;
+                if (action == Actions.SWAP_DUST) {
                     _swap(Constants.USER, pool, false, amount0 / 10000);
-                else if (action == Actions.SWAP_LEFT_5)
+                } else if (action == Actions.SWAP_LEFT_5) {
                     _swap(Constants.USER, pool, false, amount0 / 20);
-                else if (action == Actions.SWAP_LEFT_25)
+                } else if (action == Actions.SWAP_LEFT_25) {
                     _swap(Constants.USER, pool, false, amount0 / 4);
-                else if (action == Actions.SWAP_LEFT_50)
+                } else if (action == Actions.SWAP_LEFT_50) {
                     _swap(Constants.USER, pool, false, amount0 / 2);
-                else if (action == Actions.SWAP_LEFT_90)
+                } else if (action == Actions.SWAP_LEFT_90) {
                     _swap(Constants.USER, pool, false, (amount0 * 9) / 10);
-                else if (action == Actions.SWAP_RIGHT_5)
+                } else if (action == Actions.SWAP_RIGHT_5) {
                     _swap(Constants.USER, pool, true, amount1 / 20);
-                else if (action == Actions.SWAP_RIGHT_25)
+                } else if (action == Actions.SWAP_RIGHT_25) {
                     _swap(Constants.USER, pool, true, amount1 / 4);
-                else if (action == Actions.SWAP_RIGHT_50)
+                } else if (action == Actions.SWAP_RIGHT_50) {
                     _swap(Constants.USER, pool, true, amount1 / 2);
-                else if (action == Actions.SWAP_RIGHT_90)
+                } else if (action == Actions.SWAP_RIGHT_90) {
                     _swap(Constants.USER, pool, true, (amount1 * 9) / 10);
+                }
             }
         }
     }
@@ -84,103 +76,67 @@ contract Integration is Fixture {
     function _killGauge(ICLPool pool) private {
         ICLGauge gauge = ICLGauge(pool.gauge());
         IVoter voter = IVoter(gauge.voter());
-        stdstore
-            .target({_target: address(voter)})
-            .sig({_sig: voter.isAlive.selector})
-            .with_key({who: address(gauge)})
-            .checked_write({write: false});
+        stdstore.target({_target: address(voter)}).sig({_sig: voter.isAlive.selector}).with_key({
+            who: address(gauge)
+        }).checked_write({write: false});
     }
 
     function _reviveGauge(ICLPool pool) private {
         ICLGauge gauge = ICLGauge(pool.gauge());
         IVoter voter = IVoter(gauge.voter());
-        stdstore
-            .target({_target: address(voter)})
-            .sig({_sig: voter.isAlive.selector})
-            .with_key({who: address(gauge)})
-            .checked_write({write: true});
+        stdstore.target({_target: address(voter)}).sig({_sig: voter.isAlive.selector}).with_key({
+            who: address(gauge)
+        }).checked_write({write: true});
     }
 
-    function _deposit(
-        address user,
-        ILpWrapper wrapper,
-        StakingRewards farm,
-        uint256 ratioD2
-    ) private {
+    function _deposit(address user, ILpWrapper wrapper, StakingRewards farm, uint256 ratioD2)
+        private
+    {
         deal(address(positionManager), 1 ether);
         vm.startPrank(user);
-        ICore.ManagedPositionInfo memory info = core.managedPositionAt(
-            wrapper.positionId()
-        );
-        (uint160 sqrtPriceX96, , , , , ) = ICLPool(info.pool).slot0();
-        (uint256 amount0, uint256 amount1) = ammModule.tvl(
-            info.ammPositionIds[0],
-            sqrtPriceX96,
-            info.callbackParams,
-            new bytes(0)
-        );
+        ICore.ManagedPositionInfo memory info = core.managedPositionAt(wrapper.positionId());
+        (uint160 sqrtPriceX96,,,,,) = ICLPool(info.pool).slot0();
+        (uint256 amount0, uint256 amount1) =
+            ammModule.tvl(info.ammPositionIds[0], sqrtPriceX96, info.callbackParams, new bytes(0));
         ICLPool pool = ICLPool(info.pool);
 
         amount0 = (amount0 * ratioD2) / 1e2 + 1;
         amount1 = (amount1 * ratioD2) / 1e2 + 1;
 
-        uint256 lpAmount = (IERC20(address(wrapper)).totalSupply() * ratioD2) /
-            1e2;
+        uint256 lpAmount = (IERC20(address(wrapper)).totalSupply() * ratioD2) / 1e2;
 
         deal(pool.token0(), user, amount0);
         deal(pool.token1(), user, amount1);
         IERC20(pool.token0()).approve(address(wrapper), amount0);
         IERC20(pool.token1()).approve(address(wrapper), amount1);
-        (, , lpAmount) = wrapper.deposit(
-            amount0,
-            amount1,
-            (lpAmount * 95) / 100,
-            user,
-            type(uint256).max
-        );
+        (,, lpAmount) =
+            wrapper.deposit(amount0, amount1, (lpAmount * 95) / 100, user, type(uint256).max);
         IERC20(address(wrapper)).approve(address(farm), lpAmount);
         farm.stake(lpAmount);
         vm.stopPrank();
     }
 
-    function _withdraw(
-        address user,
-        uint256 d2,
-        ILpWrapper wrapper,
-        StakingRewards farm
-    ) private {
+    function _withdraw(address user, uint256 d2, ILpWrapper wrapper, StakingRewards farm) private {
         vm.startPrank(user);
-        ICore.ManagedPositionInfo memory info = core.managedPositionAt(
-            wrapper.positionId()
-        );
-        (uint160 sqrtPriceX96, , , , , ) = ICLPool(info.pool).slot0();
-        (uint256 amount0, uint256 amount1) = ammModule.tvl(
-            info.ammPositionIds[0],
-            sqrtPriceX96,
-            info.callbackParams,
-            new bytes(0)
-        );
+        ICore.ManagedPositionInfo memory info = core.managedPositionAt(wrapper.positionId());
+        (uint160 sqrtPriceX96,,,,,) = ICLPool(info.pool).slot0();
+        (uint256 amount0, uint256 amount1) =
+            ammModule.tvl(info.ammPositionIds[0], sqrtPriceX96, info.callbackParams, new bytes(0));
         uint256 totalSupply = IERC20(address(wrapper)).totalSupply();
         uint256 lpAmount = (totalSupply * d2) / 100;
         farm.withdraw(lpAmount);
         amount0 = (amount0 * lpAmount) / totalSupply;
         amount1 = (amount1 * lpAmount) / totalSupply;
         wrapper.withdraw(
-            lpAmount,
-            (amount0 * 95) / 100,
-            (amount1 * 95) / 100,
-            user,
-            type(uint256).max
+            lpAmount, (amount0 * 95) / 100, (amount1 * 95) / 100, user, type(uint256).max
         );
         vm.stopPrank();
     }
 
-    function _swap(
-        address user,
-        ICLPool pool,
-        bool dir,
-        uint256 amount
-    ) private returns (uint256) {
+    function _swap(address user, ICLPool pool, bool dir, uint256 amount)
+        private
+        returns (uint256)
+    {
         vm.startPrank(user);
         address tokenIn = dir ? pool.token0() : pool.token1();
         address tokenOut = dir ? pool.token1() : pool.token0();
@@ -213,21 +169,13 @@ contract Integration is Fixture {
         vm.stopPrank();
     }
 
-    function _pushRewards(
-        address user,
-        ILpWrapper wrapper,
-        StakingRewards farm
-    ) private {
+    function _pushRewards(address user, ILpWrapper wrapper, StakingRewards farm) private {
         vm.startPrank(user);
         wrapper.emptyRebalance();
 
-        ICore.ManagedPositionInfo memory info = core.managedPositionAt(
-            wrapper.positionId()
-        );
-        IVeloAmmModule.CallbackParams memory callbackParams = abi.decode(
-            info.callbackParams,
-            (IVeloAmmModule.CallbackParams)
-        );
+        ICore.ManagedPositionInfo memory info = core.managedPositionAt(wrapper.positionId());
+        IVeloAmmModule.CallbackParams memory callbackParams =
+            abi.decode(info.callbackParams, (IVeloAmmModule.CallbackParams));
         Counter counter = Counter(callbackParams.counter);
         if (counter.value() != 0 && block.timestamp >= farm.periodFinish()) {
             farm.notifyRewardAmount(counter.value());
@@ -239,17 +187,12 @@ contract Integration is Fixture {
     function _rebalance(address user, ILpWrapper wrapper) private {
         ICore.RebalanceParams memory rebalanceParams;
         {
-            ICore.ManagedPositionInfo memory info = core.managedPositionAt(
-                wrapper.positionId()
-            );
+            ICore.ManagedPositionInfo memory info = core.managedPositionAt(wrapper.positionId());
             ICore.TargetPositionInfo memory target;
             {
                 bool flag;
-                (flag, target) = core.strategyModule().getTargets(
-                    info,
-                    core.ammModule(),
-                    core.oracle()
-                );
+                (flag, target) =
+                    core.strategyModule().getTargets(info, core.ammModule(), core.oracle());
 
                 if (!flag) {
                     console2.log("Nothing to rebalance");
@@ -257,10 +200,10 @@ contract Integration is Fixture {
                 }
             }
 
-            (uint160 sqrtPriceX96, , , , , ) = ICLPool(info.pool).slot0();
+            (uint160 sqrtPriceX96,,,,,) = ICLPool(info.pool).slot0();
 
-            ISwapRouter.ExactInputSingleParams[]
-                memory params = new ISwapRouter.ExactInputSingleParams[](1);
+            ISwapRouter.ExactInputSingleParams[] memory params =
+                new ISwapRouter.ExactInputSingleParams[](1);
 
             {
                 (
@@ -275,49 +218,26 @@ contract Integration is Fixture {
                     ,
                     ,
                     ,
-
                 ) = positionManager.positions(info.ammPositionIds[0]);
-                (uint256 target0, uint256 target1) = LiquidityAmounts
-                    .getAmountsForLiquidity(
-                        sqrtPriceX96,
-                        TickMath.getSqrtRatioAtTick(target.lowerTicks[0]),
-                        TickMath.getSqrtRatioAtTick(target.upperTicks[0]),
-                        uint128(2 ** 96)
-                    );
+                (uint256 target0, uint256 target1) = LiquidityAmounts.getAmountsForLiquidity(
+                    sqrtPriceX96,
+                    TickMath.getSqrtRatioAtTick(target.lowerTicks[0]),
+                    TickMath.getSqrtRatioAtTick(target.upperTicks[0]),
+                    uint128(2 ** 96)
+                );
 
-                (uint256 current0, uint256 current1) = LiquidityAmounts
-                    .getAmountsForLiquidity(
-                        sqrtPriceX96,
-                        TickMath.getSqrtRatioAtTick(tickLower),
-                        TickMath.getSqrtRatioAtTick(tickUpper),
-                        liquidity
-                    );
+                (uint256 current0, uint256 current1) = LiquidityAmounts.getAmountsForLiquidity(
+                    sqrtPriceX96,
+                    TickMath.getSqrtRatioAtTick(tickLower),
+                    TickMath.getSqrtRatioAtTick(tickUpper),
+                    liquidity
+                );
                 {
-                    uint256 priceX96 = Math.mulDiv(
-                        sqrtPriceX96,
-                        sqrtPriceX96,
-                        2 ** 96
-                    );
-                    uint256 targetCapital = Math.mulDiv(
-                        target0,
-                        priceX96,
-                        2 ** 96
-                    ) + target1;
-                    uint256 currentCapital = Math.mulDiv(
-                        current0,
-                        priceX96,
-                        2 ** 96
-                    ) + current1;
-                    target0 = Math.mulDiv(
-                        target0,
-                        currentCapital,
-                        targetCapital
-                    );
-                    target1 = Math.mulDiv(
-                        target1,
-                        currentCapital,
-                        targetCapital
-                    );
+                    uint256 priceX96 = Math.mulDiv(sqrtPriceX96, sqrtPriceX96, 2 ** 96);
+                    uint256 targetCapital = Math.mulDiv(target0, priceX96, 2 ** 96) + target1;
+                    uint256 currentCapital = Math.mulDiv(current0, priceX96, 2 ** 96) + current1;
+                    target0 = Math.mulDiv(target0, currentCapital, targetCapital);
+                    target1 = Math.mulDiv(target1, currentCapital, targetCapital);
                 }
 
                 if (target0 > current0) {
@@ -364,15 +284,12 @@ contract Integration is Fixture {
         skip(seconds_);
     }
 
-    function build(
-        int24 tickSpacing
-    ) public returns (ILpWrapper wrapper, StakingRewards farm, ICLPool pool) {
-        pool = ICLPool(
-            factory.getPool(Constants.WETH, Constants.OP, tickSpacing)
-        );
-        IVeloDeployFactory.PoolAddresses memory addresses = createStrategy(
-            pool
-        );
+    function build(int24 tickSpacing)
+        public
+        returns (ILpWrapper wrapper, StakingRewards farm, ICLPool pool)
+    {
+        pool = ICLPool(factory.getPool(Constants.WETH, Constants.OP, tickSpacing));
+        IVeloDeployFactory.PoolAddresses memory addresses = createStrategy(pool);
         wrapper = ILpWrapper(addresses.lpWrapper);
         farm = StakingRewards(addresses.synthetixFarm);
     }
@@ -481,18 +398,12 @@ contract Integration is Fixture {
 
     function testChangeStrategyWidth() external {
         (ILpWrapper wrapper, StakingRewards farm, ICLPool pool) = build(200);
-        ICore.ManagedPositionInfo memory position = core.managedPositionAt(
-            wrapper.positionId()
-        );
-        IPulseStrategyModule.StrategyParams memory strategyParams = abi.decode(
-            position.strategyParams,
-            (IPulseStrategyModule.StrategyParams)
-        );
+        ICore.ManagedPositionInfo memory position = core.managedPositionAt(wrapper.positionId());
+        IPulseStrategyModule.StrategyParams memory strategyParams =
+            abi.decode(position.strategyParams, (IPulseStrategyModule.StrategyParams));
 
         strategyParams.width = pool.tickSpacing();
-        strategyParams.strategyType = IPulseStrategyModule
-            .StrategyType
-            .LazySyncing;
+        strategyParams.strategyType = IPulseStrategyModule.StrategyType.LazySyncing;
 
         vm.startPrank(Constants.OWNER);
         wrapper.setPositionParams(

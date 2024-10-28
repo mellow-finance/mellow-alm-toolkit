@@ -1,23 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import {ICLGaugeFactory} from "./ICLGaugeFactory.sol";
+import {ICLPool} from "./ICLPool.sol";
 import {INonfungiblePositionManager} from "./INonfungiblePositionManager.sol";
 import {IVoter} from "./IVoter.sol";
-import {ICLPool} from "./ICLPool.sol";
-import {ICLGaugeFactory} from "./ICLGaugeFactory.sol";
 
 interface ICLGauge {
     event NotifyReward(address indexed from, uint256 amount);
-    event Deposit(
-        address indexed user,
-        uint256 indexed tokenId,
-        uint128 indexed liquidityToStake
-    );
-    event Withdraw(
-        address indexed user,
-        uint256 indexed tokenId,
-        uint128 indexed liquidityToStake
-    );
+    event Deposit(address indexed user, uint256 indexed tokenId, uint128 indexed liquidityToStake);
+    event Withdraw(address indexed user, uint256 indexed tokenId, uint128 indexed liquidityToStake);
     event ClaimFees(address indexed from, uint256 claimed0, uint256 claimed1);
     event ClaimRewards(address indexed from, uint256 amount);
 
@@ -78,9 +70,7 @@ interface ICLGauge {
     /// @notice Returns the rewardGrowthInside of the position at the last user action (deposit, withdraw, getReward)
     /// @param tokenId The tokenId of the position
     /// @return The rewardGrowthInside for the position
-    function rewardGrowthInside(
-        uint256 tokenId
-    ) external view returns (uint256);
+    function rewardGrowthInside(uint256 tokenId) external view returns (uint256);
 
     /// @notice Called on gauge creation by CLGaugeFactory
     /// @param _pool The address of the pool
@@ -110,10 +100,7 @@ interface ICLGauge {
     /// @param account The address of the user
     /// @param tokenId The tokenId of the position
     /// @return The amount of claimable reward
-    function earned(
-        address account,
-        uint256 tokenId
-    ) external view returns (uint256);
+    function earned(address account, uint256 tokenId) external view returns (uint256);
 
     /// @notice Retrieve rewards for all tokens owned by an account
     /// @dev Throws if not called by the voter
@@ -184,27 +171,19 @@ interface ICLGauge {
     /// @notice Fetch all tokenIds staked by a given account
     /// @param depositor The address of the user
     /// @return The tokenIds of the staked positions
-    function stakedValues(
-        address depositor
-    ) external view returns (uint256[] memory);
+    function stakedValues(address depositor) external view returns (uint256[] memory);
 
     /// @notice Fetch a staked tokenId by index
     /// @param depositor The address of the user
     /// @param index The index of the staked tokenId
     /// @return The tokenId of the staked position
-    function stakedByIndex(
-        address depositor,
-        uint256 index
-    ) external view returns (uint256);
+    function stakedByIndex(address depositor, uint256 index) external view returns (uint256);
 
     /// @notice Check whether a position is staked in the gauge by a certain user
     /// @param depositor The address of the user
     /// @param tokenId The tokenId of the position
     /// @return Whether the position is staked in the gauge
-    function stakedContains(
-        address depositor,
-        uint256 tokenId
-    ) external view returns (bool);
+    function stakedContains(address depositor, uint256 tokenId) external view returns (bool);
 
     /// @notice The amount of positions staked in the gauge by a certain user
     /// @param depositor The address of the user

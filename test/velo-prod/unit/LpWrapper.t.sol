@@ -4,8 +4,9 @@ pragma solidity ^0.8.0;
 import "./Fixture.sol";
 
 import "../../../src/bots/EmptyBot.sol";
-import "src/utils/VeloDeployFactoryHelper.sol";
+
 import "src/utils/VeloDeployFactory.sol";
+import "src/utils/VeloDeployFactoryHelper.sol";
 
 contract Unit is Fixture {
     using SafeERC20 for IERC20;
@@ -15,13 +16,9 @@ contract Unit is Fixture {
     uint128 INITIAL_LIQUIDITY = 1 ether;
     LpWrapper public lpWrapper;
     StakingRewards public farm;
-    ICLPool public pool =
-        ICLPool(factory.getPool(Constants.OP, Constants.WETH, 200));
+    ICLPool public pool = ICLPool(factory.getPool(Constants.OP, Constants.WETH, 200));
 
-    function _depositToken(
-        uint256 tokenId_,
-        address owner
-    ) private returns (uint256 id) {
+    function _depositToken(uint256 tokenId_, address owner) private returns (uint256 id) {
         vm.startPrank(Constants.OWNER);
         core.setProtocolParams(
             abi.encode(
@@ -43,12 +40,7 @@ contract Unit is Fixture {
                 gauge: address(pool.gauge()),
                 farm: address(1),
                 counter: address(
-                    new Counter(
-                        Constants.OWNER,
-                        address(core),
-                        Constants.VELO,
-                        address(1)
-                    )
+                    new Counter(Constants.OWNER, address(core), Constants.VELO, address(1))
                 )
             })
         );
@@ -77,50 +69,40 @@ contract Unit is Fixture {
 
     function _createStrategy() private {
         vm.startPrank(Constants.OWNER);
-        if (
-            veloFactory.poolToAddresses(address(pool)).lpWrapper != address(0)
-        ) {
+        if (veloFactory.poolToAddresses(address(pool)).lpWrapper != address(0)) {
             veloFactory.removeAddressesForPool(address(pool));
         }
         vm.stopPrank();
 
         vm.startPrank(Constants.OWNER);
 
-        IVeloDeployFactory.DeployParams memory parameters = IVeloDeployFactory
-            .DeployParams({
-                pool: pool,
-                strategyType: IPulseStrategyModule.StrategyType.Original,
-                width: pool.tickSpacing() * 20,
-                tickNeighborhood: 0,
-                slippageD9: 5 * 1e5,
-                maxAmount0: 1 ether,
-                maxAmount1: 1 ether,
-                maxLiquidityRatioDeviationX96: 0,
-                totalSupplyLimit: 1000 ether,
-                securityParams: abi.encode(
-                    IVeloOracle.SecurityParams({
-                        lookback: 1,
-                        maxAllowedDelta: MAX_ALLOWED_DELTA,
-                        maxAge: MAX_AGE
-                    })
-                ),
-                tokenId: new uint256[](0)
-            });
+        IVeloDeployFactory.DeployParams memory parameters = IVeloDeployFactory.DeployParams({
+            pool: pool,
+            strategyType: IPulseStrategyModule.StrategyType.Original,
+            width: pool.tickSpacing() * 20,
+            tickNeighborhood: 0,
+            slippageD9: 5 * 1e5,
+            maxAmount0: 1 ether,
+            maxAmount1: 1 ether,
+            maxLiquidityRatioDeviationX96: 0,
+            totalSupplyLimit: 1000 ether,
+            securityParams: abi.encode(
+                IVeloOracle.SecurityParams({
+                    lookback: 1,
+                    maxAllowedDelta: MAX_ALLOWED_DELTA,
+                    maxAge: MAX_AGE
+                })
+            ),
+            tokenId: new uint256[](0)
+        });
 
         deal(pool.token0(), Constants.OWNER, 1000 ether);
         deal(pool.token1(), Constants.OWNER, 1000 ether);
 
-        IERC20(pool.token0()).approve(
-            address(factoryDeposit),
-            type(uint256).max
-        );
-        IERC20(pool.token1()).approve(
-            address(factoryDeposit),
-            type(uint256).max
-        );
+        IERC20(pool.token0()).approve(address(factoryDeposit), type(uint256).max);
+        IERC20(pool.token1()).approve(address(factoryDeposit), type(uint256).max);
 
-        IVeloDeployFactory.PoolAddresses memory addresses = veloFactory
-            .createStrategy(parameters);
+        IVeloDeployFactory.PoolAddresses memory addresses = veloFactory.createStrategy(parameters);
 
         lpWrapper = LpWrapper(payable(addresses.lpWrapper));
         farm = StakingRewards(addresses.synthetixFarm);
@@ -156,14 +138,7 @@ contract Unit is Fixture {
     function testConstructor() external {
         vm.expectRevert(abi.encodeWithSignature("AddressZero()"));
         lpWrapper = new LpWrapper(
-            core,
-            depositWithdrawModule,
-            "",
-            "",
-            address(0),
-            Constants.WETH,
-            address(0),
-            address(0)
+            core, depositWithdrawModule, "", "", address(0), Constants.WETH, address(0), address(0)
         );
 
         lpWrapper = new LpWrapper(
@@ -194,12 +169,7 @@ contract Unit is Fixture {
         );
 
         uint256 tokenId_ = mint(
-            pool.token0(),
-            pool.token1(),
-            pool.tickSpacing(),
-            pool.tickSpacing() * 2,
-            1 ether,
-            pool
+            pool.token0(), pool.token1(), pool.tickSpacing(), pool.tickSpacing() * 2, 1 ether, pool
         );
 
         uint256 positionId = _depositToken(tokenId_, Constants.OWNER);
@@ -243,12 +213,7 @@ contract Unit is Fixture {
         );
 
         uint256 tokenId_ = mint(
-            pool.token0(),
-            pool.token1(),
-            pool.tickSpacing(),
-            pool.tickSpacing() * 20,
-            10000,
-            pool
+            pool.token0(), pool.token1(), pool.tickSpacing(), pool.tickSpacing() * 20, 10000, pool
         );
         uint256 positionId = _depositToken(tokenId_, address(lpWrapper));
 
@@ -263,27 +228,13 @@ contract Unit is Fixture {
         IERC20(pool.token1()).approve(address(lpWrapper), 1 ether);
 
         vm.expectRevert(abi.encodeWithSignature("InsufficientLpAmount()"));
-        lpWrapper.deposit(
-            1 ether,
-            1 ether,
-            100 ether,
-            Constants.DEPOSITOR,
-            type(uint256).max
-        );
+        lpWrapper.deposit(1 ether, 1 ether, 100 ether, Constants.DEPOSITOR, type(uint256).max);
 
         uint256 totalSupplyBefore = lpWrapper.totalSupply();
-        IAmmModule.AmmPosition memory positionBefore = ammModule.getAmmPosition(
-            tokenId_
-        );
+        IAmmModule.AmmPosition memory positionBefore = ammModule.getAmmPosition(tokenId_);
 
-        (uint256 amount0, uint256 amount1, uint256 lpAmount) = lpWrapper
-            .deposit(
-                1 ether,
-                1 ether,
-                0.228 ether,
-                Constants.DEPOSITOR,
-                type(uint256).max
-            );
+        (uint256 amount0, uint256 amount1, uint256 lpAmount) =
+            lpWrapper.deposit(1 ether, 1 ether, 0.228 ether, Constants.DEPOSITOR, type(uint256).max);
 
         assertTrue(amount0 >= 4.736e14);
         assertTrue(amount1 >= 0.99 ether);
@@ -291,21 +242,15 @@ contract Unit is Fixture {
         assertEq(lpWrapper.balanceOf(Constants.DEPOSITOR), lpAmount);
 
         uint256 totalSupplyAfter = lpWrapper.totalSupply();
-        IAmmModule.AmmPosition memory positionAfter = ammModule.getAmmPosition(
-            tokenId_
-        );
+        IAmmModule.AmmPosition memory positionAfter = ammModule.getAmmPosition(tokenId_);
 
         {
             uint256 expectedLiquidityIncrease = Math.mulDiv(
-                positionBefore.liquidity,
-                totalSupplyAfter - totalSupplyBefore,
-                totalSupplyBefore
+                positionBefore.liquidity, totalSupplyAfter - totalSupplyBefore, totalSupplyBefore
             );
 
             assertApproxEqAbs(
-                expectedLiquidityIncrease,
-                positionAfter.liquidity - positionBefore.liquidity,
-                1 wei
+                expectedLiquidityIncrease, positionAfter.liquidity - positionBefore.liquidity, 1 wei
             );
 
             assertEq(
@@ -319,13 +264,7 @@ contract Unit is Fixture {
         }
 
         vm.expectRevert(abi.encodeWithSignature("DepositCallFailed()"));
-        lpWrapper.deposit(
-            1 ether,
-            1 ether,
-            100 ether,
-            Constants.DEPOSITOR,
-            type(uint256).max
-        );
+        lpWrapper.deposit(1 ether, 1 ether, 100 ether, Constants.DEPOSITOR, type(uint256).max);
 
         vm.stopPrank();
     }
@@ -408,13 +347,7 @@ contract Unit is Fixture {
         IERC20(pool.token0()).approve(address(lpWrapper), 100 wei);
         IERC20(pool.token1()).approve(address(lpWrapper), 100 wei);
         vm.expectRevert(abi.encodeWithSignature("TotalSupplyLimitReached()"));
-        lpWrapper.deposit(
-            100 wei,
-            100 wei,
-            0,
-            Constants.DEPOSITOR,
-            type(uint256).max
-        );
+        lpWrapper.deposit(100 wei, 100 wei, 0, Constants.DEPOSITOR, type(uint256).max);
         vm.stopPrank();
     }
 
@@ -429,21 +362,12 @@ contract Unit is Fixture {
         IERC20(pool.token0()).approve(address(lpWrapper), 1 ether);
         IERC20(pool.token1()).approve(address(lpWrapper), 1 ether);
 
-        lpWrapper.deposit(
-            1 ether,
-            1 ether,
-            0.1 ether,
-            Constants.DEPOSITOR,
-            type(uint256).max
-        );
+        lpWrapper.deposit(1 ether, 1 ether, 0.1 ether, Constants.DEPOSITOR, type(uint256).max);
 
-        ICore.ManagedPositionInfo memory position = core.managedPositionAt(
-            core.positionCount() - 1
-        );
+        ICore.ManagedPositionInfo memory position = core.managedPositionAt(core.positionCount() - 1);
         uint256 totalSupplyBefore = lpWrapper.totalSupply();
-        IAmmModule.AmmPosition memory positionBefore = ammModule.getAmmPosition(
-            position.ammPositionIds[0]
-        );
+        IAmmModule.AmmPosition memory positionBefore =
+            ammModule.getAmmPosition(position.ammPositionIds[0]);
 
         uint256 depositorBalance = lpWrapper.balanceOf(Constants.DEPOSITOR);
 
@@ -458,35 +382,22 @@ contract Unit is Fixture {
             type(uint256).max
         );
 
-        lpWrapper.withdraw(
-            balance / 2,
-            0,
-            0,
-            Constants.DEPOSITOR,
-            type(uint256).max
-        );
+        lpWrapper.withdraw(balance / 2, 0, 0, Constants.DEPOSITOR, type(uint256).max);
 
         assertApproxEqAbs(
-            depositorBalance - balance / 2,
-            lpWrapper.balanceOf(Constants.DEPOSITOR),
-            0 wei
+            depositorBalance - balance / 2, lpWrapper.balanceOf(Constants.DEPOSITOR), 0 wei
         );
 
         uint256 totalSupplyAfter = lpWrapper.totalSupply();
-        IAmmModule.AmmPosition memory positionAfter = ammModule.getAmmPosition(
-            position.ammPositionIds[0]
-        );
+        IAmmModule.AmmPosition memory positionAfter =
+            ammModule.getAmmPosition(position.ammPositionIds[0]);
 
         {
             uint256 expectedLiquidityDecrease = Math.mulDiv(
-                positionBefore.liquidity,
-                totalSupplyBefore - totalSupplyAfter,
-                totalSupplyBefore
+                positionBefore.liquidity, totalSupplyBefore - totalSupplyAfter, totalSupplyBefore
             );
             assertApproxEqAbs(
-                expectedLiquidityDecrease,
-                positionBefore.liquidity - positionAfter.liquidity,
-                1 wei
+                expectedLiquidityDecrease, positionBefore.liquidity - positionAfter.liquidity, 1 wei
             );
         }
 
@@ -506,30 +417,18 @@ contract Unit is Fixture {
 
         vm.expectRevert(abi.encodeWithSignature("InsufficientLpAmount()"));
         lpWrapper.depositAndStake(
-            1 ether,
-            1 ether,
-            100 ether,
-            Constants.DEPOSITOR,
-            type(uint256).max
+            1 ether, 1 ether, 100 ether, Constants.DEPOSITOR, type(uint256).max
         );
 
-        ICore.ManagedPositionInfo memory position = core.managedPositionAt(
-            core.positionCount() - 1
-        );
+        ICore.ManagedPositionInfo memory position = core.managedPositionAt(core.positionCount() - 1);
 
         uint256 totalSupplyBefore = lpWrapper.totalSupply();
-        IAmmModule.AmmPosition memory positionBefore = ammModule.getAmmPosition(
-            position.ammPositionIds[0]
-        );
+        IAmmModule.AmmPosition memory positionBefore =
+            ammModule.getAmmPosition(position.ammPositionIds[0]);
 
-        (uint256 amount0, uint256 amount1, uint256 lpAmount) = lpWrapper
-            .depositAndStake(
-                1 ether,
-                1 ether,
-                0.228 ether,
-                Constants.DEPOSITOR,
-                type(uint256).max
-            );
+        (uint256 amount0, uint256 amount1, uint256 lpAmount) = lpWrapper.depositAndStake(
+            1 ether, 1 ether, 0.228 ether, Constants.DEPOSITOR, type(uint256).max
+        );
 
         assertTrue(amount0 >= 6.459e14);
         assertTrue(amount1 >= 0.99 ether);
@@ -538,21 +437,16 @@ contract Unit is Fixture {
         assertEq(farm.balanceOf(Constants.DEPOSITOR), lpAmount); // because lpAmount was staked immediately
 
         uint256 totalSupplyAfter = lpWrapper.totalSupply();
-        IAmmModule.AmmPosition memory positionAfter = ammModule.getAmmPosition(
-            position.ammPositionIds[0]
-        );
+        IAmmModule.AmmPosition memory positionAfter =
+            ammModule.getAmmPosition(position.ammPositionIds[0]);
 
         {
             uint256 expectedLiquidityIncrease = Math.mulDiv(
-                positionBefore.liquidity,
-                totalSupplyAfter - totalSupplyBefore,
-                totalSupplyBefore
+                positionBefore.liquidity, totalSupplyAfter - totalSupplyBefore, totalSupplyBefore
             );
 
             assertApproxEqAbs(
-                expectedLiquidityIncrease,
-                positionAfter.liquidity - positionBefore.liquidity,
-                1 wei
+                expectedLiquidityIncrease, positionAfter.liquidity - positionBefore.liquidity, 1 wei
             );
 
             assertEq(
@@ -569,11 +463,7 @@ contract Unit is Fixture {
 
         vm.expectRevert(abi.encodeWithSignature("DepositCallFailed()"));
         lpWrapper.depositAndStake(
-            1 ether,
-            1 ether,
-            100 ether,
-            Constants.DEPOSITOR,
-            type(uint256).max
+            1 ether, 1 ether, 100 ether, Constants.DEPOSITOR, type(uint256).max
         );
 
         vm.stopPrank();
@@ -591,20 +481,13 @@ contract Unit is Fixture {
         IERC20(pool.token1()).approve(address(lpWrapper), 1 ether);
 
         lpWrapper.depositAndStake(
-            1 ether,
-            1 ether,
-            0.228 ether,
-            Constants.DEPOSITOR,
-            type(uint256).max
+            1 ether, 1 ether, 0.228 ether, Constants.DEPOSITOR, type(uint256).max
         );
 
-        ICore.ManagedPositionInfo memory position = core.managedPositionAt(
-            core.positionCount() - 1
-        );
+        ICore.ManagedPositionInfo memory position = core.managedPositionAt(core.positionCount() - 1);
         uint256 totalSupplyBefore = lpWrapper.totalSupply();
-        IAmmModule.AmmPosition memory positionBefore = ammModule.getAmmPosition(
-            position.ammPositionIds[0]
-        );
+        IAmmModule.AmmPosition memory positionBefore =
+            ammModule.getAmmPosition(position.ammPositionIds[0]);
 
         uint256 depositorBalance = farm.balanceOf(Constants.DEPOSITOR); // because all tokens were staked
         uint256 balance = farm.balanceOf(Constants.DEPOSITOR); // because all tokens were staked
@@ -618,42 +501,25 @@ contract Unit is Fixture {
             type(uint256).max
         );
 
-        lpWrapper.unstakeAndWithdraw(
-            balance / 2,
-            0,
-            0,
-            Constants.DEPOSITOR,
-            type(uint256).max
-        );
+        lpWrapper.unstakeAndWithdraw(balance / 2, 0, 0, Constants.DEPOSITOR, type(uint256).max);
 
         assertApproxEqAbs(
-            depositorBalance - balance / 2,
-            farm.balanceOf(Constants.DEPOSITOR),
-            0 wei
+            depositorBalance - balance / 2, farm.balanceOf(Constants.DEPOSITOR), 0 wei
         );
 
         lpWrapper.unstakeAndWithdraw(
-            type(uint256).max,
-            0,
-            0,
-            Constants.DEPOSITOR,
-            type(uint256).max
+            type(uint256).max, 0, 0, Constants.DEPOSITOR, type(uint256).max
         );
         uint256 totalSupplyAfter = lpWrapper.totalSupply();
-        IAmmModule.AmmPosition memory positionAfter = ammModule.getAmmPosition(
-            position.ammPositionIds[0]
-        );
+        IAmmModule.AmmPosition memory positionAfter =
+            ammModule.getAmmPosition(position.ammPositionIds[0]);
 
         {
             uint256 expectedLiquidityDecrease = Math.mulDiv(
-                positionBefore.liquidity,
-                totalSupplyBefore - totalSupplyAfter,
-                totalSupplyBefore
+                positionBefore.liquidity, totalSupplyBefore - totalSupplyAfter, totalSupplyBefore
             );
             assertApproxEqAbs(
-                expectedLiquidityDecrease,
-                positionBefore.liquidity - positionAfter.liquidity,
-                1 wei
+                expectedLiquidityDecrease, positionBefore.liquidity - positionAfter.liquidity, 1 wei
             );
 
             /* assertEq(
@@ -677,18 +543,14 @@ contract Unit is Fixture {
         IERC20(pool.token1()).approve(address(lpWrapper), 1 ether);
 
         lpWrapper.depositAndStake(
-            1 ether,
-            1 ether,
-            0.228 ether,
-            Constants.DEPOSITOR,
-            type(uint256).max
+            1 ether, 1 ether, 0.228 ether, Constants.DEPOSITOR, type(uint256).max
         );
         vm.stopPrank();
 
         address gauge = pool.gauge();
         address rewardToken = ICLGauge(gauge).rewardToken();
 
-        for (uint i = 0; i < 10; i++) {
+        for (uint256 i = 0; i < 10; i++) {
             skip(7 days);
             deal(rewardToken, Constants.FARM_OWNER, 1 ether);
 
@@ -706,9 +568,7 @@ contract Unit is Fixture {
         uint256 eranedAmount = lpWrapper.earned(Constants.DEPOSITOR);
 
         lpWrapper.getReward();
-        uint256 rewardedAmount = IERC20(rewardToken).balanceOf(
-            Constants.DEPOSITOR
-        );
+        uint256 rewardedAmount = IERC20(rewardToken).balanceOf(Constants.DEPOSITOR);
 
         console2.log("  earned:", eranedAmount);
         console2.log("rewarded:", rewardedAmount);

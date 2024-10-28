@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.0;
 
-import "./pool/ICLPoolConstants.sol";
-import "./pool/ICLPoolState.sol";
-import "./pool/ICLPoolDerivedState.sol";
 import "./pool/ICLPoolActions.sol";
-import "./pool/ICLPoolOwnerActions.sol";
+import "./pool/ICLPoolConstants.sol";
+import "./pool/ICLPoolDerivedState.sol";
+
 import "./pool/ICLPoolEvents.sol";
+import "./pool/ICLPoolOwnerActions.sol";
+import "./pool/ICLPoolState.sol";
 
 /// @title The interface for a CL Pool
 /// @notice A CL pool facilitates swapping and automated market making between any two assets that strictly conform

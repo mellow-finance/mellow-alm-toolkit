@@ -16,12 +16,7 @@ contract Counter is ICounter {
     /// @inheritdoc ICounter
     address public immutable farm;
 
-    constructor(
-        address owner_,
-        address operator_,
-        address token_,
-        address farm_
-    ) {
+    constructor(address owner_, address operator_, address token_, address farm_) {
         owner = owner_;
         operator = operator_;
         token = token_;
@@ -35,11 +30,7 @@ contract Counter is ICounter {
     }
 
     /// @inheritdoc ICounter
-    function add(
-        uint256 additionalValue,
-        address token_,
-        address farm_
-    ) external {
+    function add(uint256 additionalValue, address token_, address farm_) external {
         require(msg.sender == operator, "Counter: not operator");
         require(token_ == token, "Counter: invalid token");
         require(farm_ == farm, "Counter: invalid farm");

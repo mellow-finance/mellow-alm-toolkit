@@ -6,13 +6,8 @@
     "src/**/*.sol"
   ],
   "repository": "https://github.com/mellow-finance/mellow-alm-toolkit",
-  "devDependencies": {
-    "prettier": "^2.3.1",
-    "prettier-plugin-solidity": "^1.0.0-beta.13"
-  },
   "scripts": {
-    "prettier": "prettier --write ./src/** ./test/** --cache --loglevel warn -u",
-    "prettier:check": "prettier --check ./src/**",
+    "prettier": "forge fmt && forge fmt ./scripts/**",
     "test:mainnet": "forge test -vvv --fork-url $(grep MAINNET_RPC .env | cut -d '=' -f2,3,4,5) --match-path ./test/mainnet/\\*",
     "test:mantle": "forge test -vvv --fork-url $(grep MANTLE_RPC .env | cut -d '=' -f2,3,4,5) --match-path ./test/mantle/\\*",
     "test:velo": "forge test -vvv --fork-url $(grep OPTIMISM_SPECIAL_RPC .env | cut -d '=' -f2,3,4,5) --match-path ./test/velo/\\*",

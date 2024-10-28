@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BSL-1.1
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
 import "./utils/IRebalanceCallback.sol";
 
@@ -224,9 +224,7 @@ interface ICore is IERC721Receiver {
      * @param id The index of the ManagedPositionInfo struct to retrieve.
      * @return ManagedPositionInfo - struct at the specified index.
      */
-    function managedPositionAt(
-        uint256 id
-    ) external view returns (ManagedPositionInfo memory);
+    function managedPositionAt(uint256 id) external view returns (ManagedPositionInfo memory);
 
     /**
      * @dev Returns the count of managed positions within the contract.
@@ -239,9 +237,7 @@ interface ICore is IERC721Receiver {
      * @param user The address of the user.
      * @return ids array of user IDs.
      */
-    function getUserIds(
-        address user
-    ) external view returns (uint256[] memory ids);
+    function getUserIds(address user) external view returns (uint256[] memory ids);
 
     /**
      * @dev Returns the current protocol parameters.

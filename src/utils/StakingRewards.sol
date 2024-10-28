@@ -1,8 +1,8 @@
 pragma solidity ^0.8.9;
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 // Inheritance
 
@@ -23,8 +23,7 @@ contract Owned {
 
     function acceptOwnership() external {
         require(
-            msg.sender == nominatedOwner,
-            "You must be nominated before you can accept ownership"
+            msg.sender == nominatedOwner, "You must be nominated before you can accept ownership"
         );
         emit OwnerChanged(owner, nominatedOwner);
         owner = nominatedOwner;
@@ -37,10 +36,7 @@ contract Owned {
     }
 
     function _onlyOwner() private view {
-        require(
-            msg.sender == owner,
-            "Only the contract owner may perform this action"
-        );
+        require(msg.sender == owner, "Only the contract owner may perform this action");
     }
 
     event OwnerNominated(address newOwner);
@@ -49,7 +45,7 @@ contract Owned {
 
 // https://docs.synthetix.io/contracts/source/contracts/pausable
 abstract contract Pausable is Owned {
-    uint public lastPauseTime;
+    uint256 public lastPauseTime;
     bool public paused;
 
     constructor() {
@@ -83,10 +79,7 @@ abstract contract Pausable is Owned {
     event PauseChanged(bool isPaused);
 
     modifier notPaused() {
-        require(
-            !paused,
-            "This action cannot be performed while the contract is paused"
-        );
+        require(!paused, "This action cannot be performed while the contract is paused");
         _;
     }
 }
@@ -98,26 +91,17 @@ abstract contract RewardsDistributionRecipient is Owned {
     function notifyRewardAmount(uint256 reward) external virtual;
 
     modifier onlyRewardsDistribution() {
-        require(
-            msg.sender == rewardsDistribution,
-            "Caller is not RewardsDistribution contract"
-        );
+        require(msg.sender == rewardsDistribution, "Caller is not RewardsDistribution contract");
         _;
     }
 
-    function setRewardsDistribution(
-        address _rewardsDistribution
-    ) external virtual onlyOwner {
+    function setRewardsDistribution(address _rewardsDistribution) external virtual onlyOwner {
         rewardsDistribution = _rewardsDistribution;
     }
 }
 
 // https://docs.synthetix.io/contracts/source/contracts/stakingrewards
-contract StakingRewards is
-    RewardsDistributionRecipient,
-    ReentrancyGuard,
-    Pausable
-{
+contract StakingRewards is RewardsDistributionRecipient, ReentrancyGuard, Pausable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -168,22 +152,17 @@ contract StakingRewards is
         if (_totalSupply == 0) {
             return rewardPerTokenStored;
         }
-        return
-            rewardPerTokenStored.add(
-                lastTimeRewardApplicable()
-                    .sub(lastUpdateTime)
-                    .mul(rewardRate)
-                    .mul(1e18)
-                    .div(_totalSupply)
-            );
+        return rewardPerTokenStored.add(
+            lastTimeRewardApplicable().sub(lastUpdateTime).mul(rewardRate).mul(1e18).div(
+                _totalSupply
+            )
+        );
     }
 
     function earned(address account) public view returns (uint256) {
-        return
-            _balances[account]
-                .mul(rewardPerToken().sub(userRewardPerTokenPaid[account]))
-                .div(1e18)
-                .add(rewards[account]);
+        return _balances[account].mul(rewardPerToken().sub(userRewardPerTokenPaid[account])).div(
+            1e18
+        ).add(rewards[account]);
     }
 
     function getRewardForDuration() external view returns (uint256) {
@@ -192,39 +171,29 @@ contract StakingRewards is
 
     /* ========== MUTATIVE FUNCTIONS ========== */
 
-    function stake(
-        uint256 amount
-    ) external nonReentrant notPaused updateReward(msg.sender) {
+    function stake(uint256 amount) external nonReentrant notPaused updateReward(msg.sender) {
         require(amount > 0, "Cannot stake 0");
         _totalSupply = _totalSupply.add(amount);
         _balances[msg.sender] = _balances[msg.sender].add(amount);
-        IERC20(stakingToken).safeTransferFrom(
-            msg.sender,
-            address(this),
-            amount
-        );
+        IERC20(stakingToken).safeTransferFrom(msg.sender, address(this), amount);
         emit Staked(msg.sender, amount);
     }
 
-    function stakeOnBehalf(
-        uint256 amount,
-        address to
-    ) external nonReentrant notPaused updateReward(to) {
+    function stakeOnBehalf(uint256 amount, address to)
+        external
+        nonReentrant
+        notPaused
+        updateReward(to)
+    {
         require(msg.sender == stakingToken, "Forbidden");
         require(amount > 0, "Cannot stake 0");
         _totalSupply = _totalSupply.add(amount);
         _balances[to] = _balances[to].add(amount);
-        IERC20(stakingToken).safeTransferFrom(
-            stakingToken,
-            address(this),
-            amount
-        );
+        IERC20(stakingToken).safeTransferFrom(stakingToken, address(this), amount);
         emit Staked(to, amount);
     }
 
-    function withdraw(
-        uint256 amount
-    ) public nonReentrant updateReward(msg.sender) {
+    function withdraw(uint256 amount) public nonReentrant updateReward(msg.sender) {
         require(amount > 0, "Cannot withdraw 0");
         _totalSupply = _totalSupply.sub(amount);
         _balances[msg.sender] = _balances[msg.sender].sub(amount);
@@ -232,10 +201,7 @@ contract StakingRewards is
         emit Withdrawn(msg.sender, amount);
     }
 
-    function withdrawOnBehalf(
-        uint256 amount,
-        address to
-    ) public nonReentrant updateReward(to) {
+    function withdrawOnBehalf(uint256 amount, address to) public nonReentrant updateReward(to) {
         require(msg.sender == stakingToken, "Forbidden");
         require(amount > 0, "Cannot withdraw 0");
         _totalSupply = _totalSupply.sub(amount);
@@ -253,9 +219,7 @@ contract StakingRewards is
         }
     }
 
-    function getRewardOnBehalf(
-        address to
-    ) public nonReentrant updateReward(to) {
+    function getRewardOnBehalf(address to) public nonReentrant updateReward(to) {
         require(msg.sender == stakingToken, "Forbidden");
         uint256 reward = rewards[to];
         if (reward > 0) {
@@ -272,9 +236,12 @@ contract StakingRewards is
 
     /* ========== RESTRICTED FUNCTIONS ========== */
 
-    function notifyRewardAmount(
-        uint256 reward
-    ) external override onlyRewardsDistribution updateReward(address(0)) {
+    function notifyRewardAmount(uint256 reward)
+        external
+        override
+        onlyRewardsDistribution
+        updateReward(address(0))
+    {
         if (block.timestamp >= periodFinish) {
             rewardRate = reward.div(rewardsDuration);
         } else {
@@ -287,11 +254,8 @@ contract StakingRewards is
         // This keeps the reward rate in the right range, preventing overflows due to
         // very high values of rewardRate in the earned and rewardsPerToken functions;
         // Reward + leftover must be less than 2^256 / 10^18 to avoid overflow.
-        uint balance = IERC20(rewardsToken).balanceOf(address(this));
-        require(
-            rewardRate <= balance.div(rewardsDuration),
-            "Provided reward too high"
-        );
+        uint256 balance = IERC20(rewardsToken).balanceOf(address(this));
+        require(rewardRate <= balance.div(rewardsDuration), "Provided reward too high");
 
         lastUpdateTime = block.timestamp;
         periodFinish = block.timestamp.add(rewardsDuration);
@@ -299,14 +263,8 @@ contract StakingRewards is
     }
 
     // Added to support recovering LP Rewards from other systems such as BAL to be distributed to holders
-    function recoverERC20(
-        address tokenAddress,
-        uint256 tokenAmount
-    ) external onlyOwner {
-        require(
-            tokenAddress != address(stakingToken),
-            "Cannot withdraw the staking token"
-        );
+    function recoverERC20(address tokenAddress, uint256 tokenAmount) external onlyOwner {
+        require(tokenAddress != address(stakingToken), "Cannot withdraw the staking token");
         IERC20(tokenAddress).safeTransfer(owner, tokenAmount);
         emit Recovered(tokenAddress, tokenAmount);
     }

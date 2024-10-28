@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.0;
 
-import {TickMath} from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
-import {LiquidityAmounts} from "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {FixedPoint128} from "@uniswap/v3-core/contracts/libraries/FixedPoint128.sol";
+import {TickMath} from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
+import {LiquidityAmounts} from "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 
-import "../../../interfaces/external/velo/ICLPool.sol";
 import "../../../interfaces/external/velo/ICLFactory.sol";
+import "../../../interfaces/external/velo/ICLPool.sol";
 import "../../../interfaces/external/velo/INonfungiblePositionManager.sol";
 
 /// @title Returns information about the token value held in a Uniswap V3 NFT
@@ -24,15 +24,9 @@ library PositionValue {
         uint256 tokenId,
         uint160 sqrtRatioX96
     ) internal view returns (uint256 amount0, uint256 amount1) {
-        (uint256 amount0Principal, uint256 amount1Principal) = principal(
-            positionManager,
-            tokenId,
-            sqrtRatioX96
-        );
-        (uint256 amount0Fee, uint256 amount1Fee) = fees(
-            positionManager,
-            tokenId
-        );
+        (uint256 amount0Principal, uint256 amount1Principal) =
+            principal(positionManager, tokenId, sqrtRatioX96);
+        (uint256 amount0Fee, uint256 amount1Fee) = fees(positionManager, tokenId);
         return (amount0Principal + amount0Fee, amount1Principal + amount1Fee);
     }
 
@@ -48,28 +42,15 @@ library PositionValue {
         uint256 tokenId,
         uint160 sqrtRatioX96
     ) internal view returns (uint256 amount0, uint256 amount1) {
-        (
-            ,
-            ,
-            ,
-            ,
-            ,
-            int24 tickLower,
-            int24 tickUpper,
-            uint128 liquidity,
-            ,
-            ,
-            ,
+        (,,,,, int24 tickLower, int24 tickUpper, uint128 liquidity,,,,) =
+            positionManager.positions(tokenId);
 
-        ) = positionManager.positions(tokenId);
-
-        return
-            LiquidityAmounts.getAmountsForLiquidity(
-                sqrtRatioX96,
-                TickMath.getSqrtRatioAtTick(tickLower),
-                TickMath.getSqrtRatioAtTick(tickUpper),
-                liquidity
-            );
+        return LiquidityAmounts.getAmountsForLiquidity(
+            sqrtRatioX96,
+            TickMath.getSqrtRatioAtTick(tickLower),
+            TickMath.getSqrtRatioAtTick(tickUpper),
+            liquidity
+        );
     }
 
     struct FeeParams {
@@ -90,10 +71,11 @@ library PositionValue {
     /// @param tokenId The tokenId of the token for which to get the total fees owed
     /// @return amount0 The amount of fees owed in token0
     /// @return amount1 The amount of fees owed in token1
-    function fees(
-        INonfungiblePositionManager positionManager,
-        uint256 tokenId
-    ) internal view returns (uint256 amount0, uint256 amount1) {
+    function fees(INonfungiblePositionManager positionManager, uint256 tokenId)
+        internal
+        view
+        returns (uint256 amount0, uint256 amount1)
+    {
         (
             ,
             ,
@@ -109,124 +91,78 @@ library PositionValue {
             uint256 tokensOwed1
         ) = positionManager.positions(tokenId);
 
-        return
-            _fees(
-                positionManager,
-                FeeParams({
-                    token0: token0,
-                    token1: token1,
-                    tickSpacing: tickSpacing,
-                    tickLower: tickLower,
-                    tickUpper: tickUpper,
-                    liquidity: liquidity,
-                    positionFeeGrowthInside0LastX128: positionFeeGrowthInside0LastX128,
-                    positionFeeGrowthInside1LastX128: positionFeeGrowthInside1LastX128,
-                    tokensOwed0: tokensOwed0,
-                    tokensOwed1: tokensOwed1
-                })
-            );
+        return _fees(
+            positionManager,
+            FeeParams({
+                token0: token0,
+                token1: token1,
+                tickSpacing: tickSpacing,
+                tickLower: tickLower,
+                tickUpper: tickUpper,
+                liquidity: liquidity,
+                positionFeeGrowthInside0LastX128: positionFeeGrowthInside0LastX128,
+                positionFeeGrowthInside1LastX128: positionFeeGrowthInside1LastX128,
+                tokensOwed0: tokensOwed0,
+                tokensOwed1: tokensOwed1
+            })
+        );
     }
 
-    function _fees(
-        INonfungiblePositionManager positionManager,
-        FeeParams memory feeParams
-    ) private view returns (uint256 amount0, uint256 amount1) {
-        (
-            uint256 poolFeeGrowthInside0LastX128,
-            uint256 poolFeeGrowthInside1LastX128
-        ) = _getFeeGrowthInside(
-                ICLPool(
-                    ICLFactory(positionManager.factory()).getPool(
-                        feeParams.token0,
-                        feeParams.token1,
-                        feeParams.tickSpacing
-                    )
-                ),
-                feeParams.tickLower,
-                feeParams.tickUpper
-            );
+    function _fees(INonfungiblePositionManager positionManager, FeeParams memory feeParams)
+        private
+        view
+        returns (uint256 amount0, uint256 amount1)
+    {
+        (uint256 poolFeeGrowthInside0LastX128, uint256 poolFeeGrowthInside1LastX128) =
+        _getFeeGrowthInside(
+            ICLPool(
+                ICLFactory(positionManager.factory()).getPool(
+                    feeParams.token0, feeParams.token1, feeParams.tickSpacing
+                )
+            ),
+            feeParams.tickLower,
+            feeParams.tickUpper
+        );
         unchecked {
-            amount0 =
-                Math.mulDiv(
-                    poolFeeGrowthInside0LastX128 -
-                        feeParams.positionFeeGrowthInside0LastX128,
-                    feeParams.liquidity,
-                    FixedPoint128.Q128
-                ) +
-                feeParams.tokensOwed0;
+            amount0 = Math.mulDiv(
+                poolFeeGrowthInside0LastX128 - feeParams.positionFeeGrowthInside0LastX128,
+                feeParams.liquidity,
+                FixedPoint128.Q128
+            ) + feeParams.tokensOwed0;
 
-            amount1 =
-                Math.mulDiv(
-                    poolFeeGrowthInside1LastX128 -
-                        feeParams.positionFeeGrowthInside1LastX128,
-                    feeParams.liquidity,
-                    FixedPoint128.Q128
-                ) +
-                feeParams.tokensOwed1;
+            amount1 = Math.mulDiv(
+                poolFeeGrowthInside1LastX128 - feeParams.positionFeeGrowthInside1LastX128,
+                feeParams.liquidity,
+                FixedPoint128.Q128
+            ) + feeParams.tokensOwed1;
         }
     }
 
-    function _getFeeGrowthInside(
-        ICLPool pool,
-        int24 tickLower,
-        int24 tickUpper
-    )
+    function _getFeeGrowthInside(ICLPool pool, int24 tickLower, int24 tickUpper)
         private
         view
         returns (uint256 feeGrowthInside0X128, uint256 feeGrowthInside1X128)
     {
-        (, int24 tickCurrent, , , , ) = pool.slot0();
-        (
-            ,
-            ,
-            ,
-            uint256 lowerFeeGrowthOutside0X128,
-            uint256 lowerFeeGrowthOutside1X128,
-            ,
-            ,
-            ,
-            ,
-
-        ) = pool.ticks(tickLower);
-        (
-            ,
-            ,
-            ,
-            uint256 upperFeeGrowthOutside0X128,
-            uint256 upperFeeGrowthOutside1X128,
-            ,
-            ,
-            ,
-            ,
-
-        ) = pool.ticks(tickUpper);
+        (, int24 tickCurrent,,,,) = pool.slot0();
+        (,,, uint256 lowerFeeGrowthOutside0X128, uint256 lowerFeeGrowthOutside1X128,,,,,) =
+            pool.ticks(tickLower);
+        (,,, uint256 upperFeeGrowthOutside0X128, uint256 upperFeeGrowthOutside1X128,,,,,) =
+            pool.ticks(tickUpper);
 
         unchecked {
             if (tickCurrent < tickLower) {
-                feeGrowthInside0X128 =
-                    lowerFeeGrowthOutside0X128 -
-                    upperFeeGrowthOutside0X128;
-                feeGrowthInside1X128 =
-                    lowerFeeGrowthOutside1X128 -
-                    upperFeeGrowthOutside1X128;
+                feeGrowthInside0X128 = lowerFeeGrowthOutside0X128 - upperFeeGrowthOutside0X128;
+                feeGrowthInside1X128 = lowerFeeGrowthOutside1X128 - upperFeeGrowthOutside1X128;
             } else if (tickCurrent < tickUpper) {
                 uint256 feeGrowthGlobal0X128 = pool.feeGrowthGlobal0X128();
                 uint256 feeGrowthGlobal1X128 = pool.feeGrowthGlobal1X128();
                 feeGrowthInside0X128 =
-                    feeGrowthGlobal0X128 -
-                    lowerFeeGrowthOutside0X128 -
-                    upperFeeGrowthOutside0X128;
+                    feeGrowthGlobal0X128 - lowerFeeGrowthOutside0X128 - upperFeeGrowthOutside0X128;
                 feeGrowthInside1X128 =
-                    feeGrowthGlobal1X128 -
-                    lowerFeeGrowthOutside1X128 -
-                    upperFeeGrowthOutside1X128;
+                    feeGrowthGlobal1X128 - lowerFeeGrowthOutside1X128 - upperFeeGrowthOutside1X128;
             } else {
-                feeGrowthInside0X128 =
-                    upperFeeGrowthOutside0X128 -
-                    lowerFeeGrowthOutside0X128;
-                feeGrowthInside1X128 =
-                    upperFeeGrowthOutside1X128 -
-                    lowerFeeGrowthOutside1X128;
+                feeGrowthInside0X128 = upperFeeGrowthOutside0X128 - lowerFeeGrowthOutside0X128;
+                feeGrowthInside1X128 = upperFeeGrowthOutside1X128 - lowerFeeGrowthOutside1X128;
             }
         }
     }

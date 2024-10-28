@@ -69,9 +69,7 @@ interface IAmmModule {
      * @param tokenId Token ID.
      * @return AmmPosition struct with position details.
      */
-    function getAmmPosition(
-        uint256 tokenId
-    ) external view returns (AmmPosition memory);
+    function getAmmPosition(uint256 tokenId) external view returns (AmmPosition memory);
 
     /**
      * @dev Returns the pool address for given tokens and property.
@@ -80,11 +78,10 @@ interface IAmmModule {
      * @param property Pool property - fee or tickSpacing.
      * @return Pool address.
      */
-    function getPool(
-        address token0,
-        address token1,
-        uint24 property
-    ) external view returns (address);
+    function getPool(address token0, address token1, uint24 property)
+        external
+        view
+        returns (address);
 
     /**
      * @dev Returns whether the given pool address belongs to the factory.

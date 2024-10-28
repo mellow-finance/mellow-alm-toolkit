@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BSL-1.1
 pragma solidity ^0.8.0;
 
-import "../oracles/IOracle.sol";
 import "../ICore.sol";
+import "../oracles/IOracle.sol";
 
 import "./IAmmModule.sol";
 
@@ -23,15 +23,8 @@ interface IStrategyModule {
      * @return isRebalanceRequired A boolean indicating whether rebalancing is required.
      * @return target The target position information for rebalancing.
      */
-    function getTargets(
-        ICore.ManagedPositionInfo memory info,
-        IAmmModule ammModule,
-        IOracle oracle
-    )
+    function getTargets(ICore.ManagedPositionInfo memory info, IAmmModule ammModule, IOracle oracle)
         external
         view
-        returns (
-            bool isRebalanceRequired,
-            ICore.TargetPositionInfo memory target
-        );
+        returns (bool isRebalanceRequired, ICore.TargetPositionInfo memory target);
 }

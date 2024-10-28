@@ -10,9 +10,7 @@ contract Deploy is Script, Test, Addresses {
         vm.startBroadcast(deployerPrivateKey);
 
         PulseVeloBotLazy pulseVeloBotLazy = new PulseVeloBotLazy(
-            Constants.NONFUNGIBLE_POSITION_MANAGER,
-            address(core),
-            address(deployFactory)
+            Constants.NONFUNGIBLE_POSITION_MANAGER, address(core), address(deployFactory)
         );
         address pulseVeloBotLazyAddress = address(pulseVeloBotLazy);
         console2.log("pulseVeloBotLazyAddress", pulseVeloBotLazyAddress);

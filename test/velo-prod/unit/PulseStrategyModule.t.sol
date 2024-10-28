@@ -9,17 +9,23 @@ contract Unit is Fixture {
     PulseStrategyModule public pulseStrategyModule = new PulseStrategyModule();
 
     function _max(int24 a, int24 b) private pure returns (int24) {
-        if (a < b) return b;
+        if (a < b) {
+            return b;
+        }
         return a;
     }
 
     function _min(int24 a, int24 b) private pure returns (int24) {
-        if (a > b) return b;
+        if (a > b) {
+            return b;
+        }
         return a;
     }
 
     function _abs(int24 a) private pure returns (int24) {
-        if (a < 0) return -a;
+        if (a < 0) {
+            return -a;
+        }
         return a;
     }
 
@@ -32,9 +38,9 @@ contract Unit is Fixture {
         ICore.TargetPositionInfo memory target
     ) private {
         if (
-            tickLower + params.tickNeighborhood <= spotTick &&
-            tickUpper - params.tickNeighborhood >= spotTick &&
-            tickUpper - tickLower == params.width
+            tickLower + params.tickNeighborhood <= spotTick
+                && tickUpper - params.tickNeighborhood >= spotTick
+                && tickUpper - tickLower == params.width
         ) {
             assertFalse(flag);
             return;
@@ -48,10 +54,8 @@ contract Unit is Fixture {
         assertTrue(target.upperTicks[0] % params.tickSpacing == 0);
         assertTrue(target.lowerTicks[0] % params.tickSpacing == 0);
 
-        int24 currentPenalty = _max(
-            _abs(spotTick - target.lowerTicks[0]),
-            _abs(spotTick - target.upperTicks[0])
-        );
+        int24 currentPenalty =
+            _max(_abs(spotTick - target.lowerTicks[0]), _abs(spotTick - target.upperTicks[0]));
 
         int24 lowerPenalty = _max(
             _abs(spotTick - target.lowerTicks[0] + params.tickSpacing),
@@ -76,24 +80,13 @@ contract Unit is Fixture {
         ICore.TargetPositionInfo memory target
     ) private {
         if (
-            (params.width != tickUpper - tickLower && tickUpper == tickLower) ||
-            params.strategyType == IPulseStrategyModule.StrategyType.Original
+            (params.width != tickUpper - tickLower && tickUpper == tickLower)
+                || params.strategyType == IPulseStrategyModule.StrategyType.Original
         ) {
-            return
-                _validateOriginal(
-                    spotTick,
-                    tickLower,
-                    tickUpper,
-                    params,
-                    flag,
-                    target
-                );
+            return _validateOriginal(spotTick, tickLower, tickUpper, params, flag, target);
         }
 
-        if (
-            params.strategyType ==
-            IPulseStrategyModule.StrategyType.LazyAscending
-        ) {
+        if (params.strategyType == IPulseStrategyModule.StrategyType.LazyAscending) {
             if (tickUpper + params.tickSpacing > spotTick) {
                 assertFalse(flag);
                 return;
@@ -111,10 +104,7 @@ contract Unit is Fixture {
             return;
         }
 
-        if (
-            params.strategyType ==
-            IPulseStrategyModule.StrategyType.LazyDescending
-        ) {
+        if (params.strategyType == IPulseStrategyModule.StrategyType.LazyDescending) {
             if (tickLower - params.tickSpacing < spotTick) {
                 assertFalse(flag);
                 return;
@@ -133,12 +123,10 @@ contract Unit is Fixture {
             return;
         }
 
-        if (
-            params.strategyType == IPulseStrategyModule.StrategyType.LazySyncing
-        ) {
+        if (params.strategyType == IPulseStrategyModule.StrategyType.LazySyncing) {
             if (
-                tickLower - params.tickSpacing < spotTick &&
-                tickUpper + params.tickSpacing > spotTick
+                tickLower - params.tickSpacing < spotTick
+                    && tickUpper + params.tickSpacing > spotTick
             ) {
                 assertFalse(flag);
                 return;
@@ -156,10 +144,8 @@ contract Unit is Fixture {
             assertTrue(target.upperTicks[0] + params.tickSpacing > spotTick);
 
             assertTrue(
-                _min(
-                    _abs(spotTick - target.lowerTicks[0]),
-                    _abs(spotTick - target.upperTicks[0])
-                ) < params.tickSpacing
+                _min(_abs(spotTick - target.lowerTicks[0]), _abs(spotTick - target.upperTicks[0]))
+                    < params.tickSpacing
             );
             return;
         }
@@ -176,39 +162,23 @@ contract Unit is Fixture {
         int24 tickNeighborhood,
         int24 width
     ) private {
-        IPulseStrategyModule.StrategyParams memory params = IPulseStrategyModule
-            .StrategyParams({
-                strategyType: strategyType,
-                tickSpacing: tickSpacing,
-                tickNeighborhood: tickNeighborhood,
-                width: width,
-                maxLiquidityRatioDeviationX96: 0
-            });
-        (
-            bool isRebalanceRequired,
-            ICore.TargetPositionInfo memory target
-        ) = pulseStrategyModule.calculateTargetPulse(
-                TickMath.getSqrtRatioAtTick(spotTick),
-                spotTick,
-                tickLower,
-                tickUpper,
-                params
-            );
-
-        _validate(
-            spotTick,
-            tickLower,
-            tickUpper,
-            params,
-            isRebalanceRequired,
-            target
+        IPulseStrategyModule.StrategyParams memory params = IPulseStrategyModule.StrategyParams({
+            strategyType: strategyType,
+            tickSpacing: tickSpacing,
+            tickNeighborhood: tickNeighborhood,
+            width: width,
+            maxLiquidityRatioDeviationX96: 0
+        });
+        (bool isRebalanceRequired, ICore.TargetPositionInfo memory target) = pulseStrategyModule
+            .calculateTargetPulse(
+            TickMath.getSqrtRatioAtTick(spotTick), spotTick, tickLower, tickUpper, params
         );
+
+        _validate(spotTick, tickLower, tickUpper, params, isRebalanceRequired, target);
     }
 
     function testCalculateTargetOriginal() external {
-        IPulseStrategyModule.StrategyType t = IPulseStrategyModule
-            .StrategyType
-            .Original;
+        IPulseStrategyModule.StrategyType t = IPulseStrategyModule.StrategyType.Original;
         for (int24 spot = -200; spot <= 200; spot++) {
             _test(spot, -100, 200, t, 100, 50, 300);
         }
@@ -218,9 +188,7 @@ contract Unit is Fixture {
     }
 
     function testCalculateTargetLazyAscending() external {
-        IPulseStrategyModule.StrategyType t = IPulseStrategyModule
-            .StrategyType
-            .LazyAscending;
+        IPulseStrategyModule.StrategyType t = IPulseStrategyModule.StrategyType.LazyAscending;
         for (int24 spot = -200; spot <= 200; spot++) {
             _test(spot, -100, 200, t, 100, 0, 300);
         }
@@ -230,9 +198,7 @@ contract Unit is Fixture {
     }
 
     function testCalculateTargetLazyDescending() external {
-        IPulseStrategyModule.StrategyType t = IPulseStrategyModule
-            .StrategyType
-            .LazyDescending;
+        IPulseStrategyModule.StrategyType t = IPulseStrategyModule.StrategyType.LazyDescending;
         for (int24 spot = -200; spot <= 200; spot++) {
             _test(spot, -100, 200, t, 100, 0, 300);
         }
@@ -242,9 +208,7 @@ contract Unit is Fixture {
     }
 
     function testCalculateTargetLazySyncing() external {
-        IPulseStrategyModule.StrategyType t = IPulseStrategyModule
-            .StrategyType
-            .LazySyncing;
+        IPulseStrategyModule.StrategyType t = IPulseStrategyModule.StrategyType.LazySyncing;
         for (int24 spot = -200; spot <= 200; spot++) {
             _test(spot, -100, 200, t, 100, 0, 300);
         }
@@ -377,9 +341,7 @@ contract Unit is Fixture {
         ICore.ManagedPositionInfo memory info;
         //  info.ammPositionIds = new uint256[](3);
 
-        ICLPool pool = ICLPool(
-            factory.getPool(Constants.WETH, Constants.OP, 200)
-        );
+        ICLPool pool = ICLPool(factory.getPool(Constants.WETH, Constants.OP, 200));
         info.pool = address(pool);
         VeloOracle oracle = new VeloOracle();
         info.strategyParams = abi.encode(
@@ -397,12 +359,7 @@ contract Unit is Fixture {
 
         pool.increaseObservationCardinalityNext(2);
         uint256 tokenId = mint(
-            pool.token0(),
-            pool.token1(),
-            pool.tickSpacing(),
-            pool.tickSpacing() * 2,
-            10000,
-            pool
+            pool.token0(), pool.token1(), pool.tickSpacing(), pool.tickSpacing() * 2, 10000, pool
         );
 
         info.ammPositionIds = new uint256[](1);
@@ -413,10 +370,8 @@ contract Unit is Fixture {
             Constants.SELECTOR_IS_POOL
         );
 
-        (
-            bool isRebalanceRequired,
-            ICore.TargetPositionInfo memory target
-        ) = pulseStrategyModule.getTargets(info, ammModule, oracle);
+        (bool isRebalanceRequired, ICore.TargetPositionInfo memory target) =
+            pulseStrategyModule.getTargets(info, ammModule, oracle);
 
         assertTrue(isRebalanceRequired);
         assertEq(target.lowerTicks.length, 1);

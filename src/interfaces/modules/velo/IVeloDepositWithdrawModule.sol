@@ -5,8 +5,8 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "../IAmmDepositWithdrawModule.sol";
 
-import "../../external/velo/INonfungiblePositionManager.sol";
 import "../../external/velo/ICLPool.sol";
+import "../../external/velo/INonfungiblePositionManager.sol";
 
 /**
  * @title IVeloDepositWithdrawModule Interface
@@ -19,8 +19,5 @@ interface IVeloDepositWithdrawModule is IAmmDepositWithdrawModule {
      * @return INonfungiblePositionManager contract, facilitating interactions
      * with Velo protocol's liquidity positions.
      */
-    function positionManager()
-        external
-        view
-        returns (INonfungiblePositionManager);
+    function positionManager() external view returns (INonfungiblePositionManager);
 }

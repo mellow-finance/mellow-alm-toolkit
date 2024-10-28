@@ -8,11 +8,7 @@ interface IPoolFactory {
     event SetPauseState(bool state);
     event SetVoter(address voter);
     event PoolCreated(
-        address indexed token0,
-        address indexed token1,
-        bool indexed stable,
-        address pool,
-        uint256
+        address indexed token0, address indexed token1, bool indexed stable, address pool, uint256
     );
     event SetCustomFee(address indexed pool, uint256 fee);
 
@@ -27,22 +23,14 @@ interface IPoolFactory {
     /// @param tokenA .
     /// @param tokenB .
     /// @param stable True if stable, false if volatile
-    function getPool(
-        address tokenA,
-        address tokenB,
-        bool stable
-    ) external view returns (address);
+    function getPool(address tokenA, address tokenB, bool stable) external view returns (address);
 
     /// @notice Support for v3-style pools which wraps around getPool(tokenA,tokenB,stable)
     /// @dev fee is converted to stable boolean.
     /// @param tokenA .
     /// @param tokenB .
     /// @param fee  1 if stable, 0 if volatile, else returns address(0)
-    function getPool(
-        address tokenA,
-        address tokenB,
-        uint24 fee
-    ) external view returns (address);
+    function getPool(address tokenA, address tokenB, uint24 fee) external view returns (address);
 
     /// @dev Only called once to set to Voter.sol - Voter does not have a function
     ///      to call this contract method, so once set it's immutable.
@@ -68,21 +56,16 @@ interface IPoolFactory {
     function setCustomFee(address _pool, uint256 _fee) external;
 
     /// @notice Returns fee for a pool, as custom fees are possible.
-    function getFee(
-        address _pool,
-        bool _stable
-    ) external view returns (uint256);
+    function getFee(address _pool, bool _stable) external view returns (uint256);
 
     /// @notice Create a pool given two tokens and if they're stable/volatile
     /// @dev token order does not matter
     /// @param tokenA .
     /// @param tokenB .
     /// @param stable .
-    function createPool(
-        address tokenA,
-        address tokenB,
-        bool stable
-    ) external returns (address pool);
+    function createPool(address tokenA, address tokenB, bool stable)
+        external
+        returns (address pool);
 
     /// @notice Support for v3-style pools which wraps around createPool(tokena,tokenB,stable)
     /// @dev fee is converted to stable boolean
@@ -90,11 +73,9 @@ interface IPoolFactory {
     /// @param tokenA .
     /// @param tokenB .
     /// @param fee 1 if stable, 0 if volatile, else revert
-    function createPool(
-        address tokenA,
-        address tokenB,
-        uint24 fee
-    ) external returns (address pool);
+    function createPool(address tokenA, address tokenB, uint24 fee)
+        external
+        returns (address pool);
 
     function isPaused() external view returns (bool);
 

@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: BSL-1.1
 pragma solidity ^0.8.0;
 
-import "../utils/IRebalanceCallback.sol";
-import "../external/velo/ICLPool.sol";
 import "../external/velo/ICLFactory.sol";
+import "../external/velo/ICLPool.sol";
+
+import "../external/velo/INonfungiblePositionManager.sol";
 import "../external/velo/IQuoterV2.sol";
 import "../external/velo/ISwapRouter.sol";
-import "../external/velo/INonfungiblePositionManager.sol";
+import "../utils/IRebalanceCallback.sol";
 
 interface IPulseVeloBot is IRebalanceCallback {
     struct SwapParams {
@@ -42,21 +43,17 @@ interface IPulseVeloBot is IRebalanceCallback {
 
     function router() external view returns (ISwapRouter);
 
-    function positionManager()
+    function positionManager() external view returns (INonfungiblePositionManager);
+
+    function calculateSwapAmountsPreciselySingle(SingleIntervalData memory data)
         external
-        view
-        returns (INonfungiblePositionManager);
+        returns (SwapParams memory swapParams);
 
-    function calculateSwapAmountsPreciselySingle(
-        SingleIntervalData memory data
-    ) external returns (SwapParams memory swapParams);
+    function calculateSwapAmountsPreciselyMultiple(MultipleIntervalsData memory data)
+        external
+        returns (SwapParams memory swapParams);
 
-    function calculateSwapAmountsPreciselyMultiple(
-        MultipleIntervalsData memory data
-    ) external returns (SwapParams memory swapParams);
-
-    function call(
-        bytes memory data,
-        ICore.TargetPositionInfo[] memory targets
-    ) external returns (uint256[][] memory newTokenIds);
+    function call(bytes memory data, ICore.TargetPositionInfo[] memory targets)
+        external
+        returns (uint256[][] memory newTokenIds);
 }

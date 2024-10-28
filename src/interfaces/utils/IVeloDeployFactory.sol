@@ -5,9 +5,10 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
 import "../ICore.sol";
+
+import "../modules/strategies/IPulseStrategyModule.sol";
 import "../modules/velo/IVeloAmmModule.sol";
 import "../modules/velo/IVeloDepositWithdrawModule.sol";
-import "../modules/strategies/IPulseStrategyModule.sol";
 
 import "./IVeloDeployFactoryHelper.sol";
 import "./IVeloFactoryDeposit.sol";
@@ -89,27 +90,23 @@ interface IVeloDeployFactory {
      * Requirements:
      * - Caller must have the ADMIN_ROLE.
      */
-    function updateMutableParams(
-        MutableParams memory newMutableParams
-    ) external;
+    function updateMutableParams(MutableParams memory newMutableParams) external;
 
     /**
      * @dev Creates a strategy for the given deployParams
      * @param params DeployParams for the strategy
      * @return poolAddresses addresses related to the created pool
      */
-    function createStrategy(
-        DeployParams calldata params
-    ) external returns (PoolAddresses memory poolAddresses);
+    function createStrategy(DeployParams calldata params)
+        external
+        returns (PoolAddresses memory poolAddresses);
 
     /**
      * @dev Maps a pool address to its associated addresses.
      * @param pool Pool address
      * @return PoolAddresses addresses associated with the pool
      */
-    function poolToAddresses(
-        address pool
-    ) external view returns (PoolAddresses memory);
+    function poolToAddresses(address pool) external view returns (PoolAddresses memory);
 
     /**
      * @dev Removes the addresses associated with a specific pool from the contract's records. This action is irreversible
@@ -131,10 +128,7 @@ interface IVeloDeployFactory {
      * @dev Retrieves the immutable parameters for the VeloDeployFactory contract.
      * @return ImmutableParams Immutable parameters for the VeloDeployFactory
      */
-    function getImmutableParams()
-        external
-        view
-        returns (ImmutableParams memory);
+    function getImmutableParams() external view returns (ImmutableParams memory);
 
     /**
      * @dev Retrieves the mutable parameters for the VeloDeployFactory contract.

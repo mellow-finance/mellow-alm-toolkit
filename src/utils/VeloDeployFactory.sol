@@ -7,11 +7,7 @@ import "./Counter.sol";
 import "./DefaultAccessControl.sol";
 import "./StakingRewards.sol";
 
-contract VeloDeployFactory is
-    DefaultAccessControl,
-    IERC721Receiver,
-    IVeloDeployFactory
-{
+contract VeloDeployFactory is DefaultAccessControl, IERC721Receiver, IVeloDeployFactory {
     using SafeERC20 for IERC20;
 
     string public constant factoryName = "MellowVelodromeStrategy";
@@ -29,9 +25,7 @@ contract VeloDeployFactory is
     ) DefaultAccessControl(admin_) {
         _immutableParams = ImmutableParams({
             core: core_,
-            strategyModule: IPulseStrategyModule(
-                address(core_.strategyModule())
-            ),
+            strategyModule: IPulseStrategyModule(address(core_.strategyModule())),
             veloModule: IVeloAmmModule(address(core_.ammModule())),
             depositWithdrawModule: ammDepositWithdrawModule_,
             helper: helper_,
@@ -40,16 +34,15 @@ contract VeloDeployFactory is
     }
 
     /// @inheritdoc IVeloDeployFactory
-    function updateMutableParams(
-        MutableParams memory newMutableParams
-    ) external {
+    function updateMutableParams(MutableParams memory newMutableParams) external {
         _requireAdmin();
         if (
-            newMutableParams.farmOperator == address(0) ||
-            newMutableParams.farmOwner == address(0) ||
-            newMutableParams.lpWrapperAdmin == address(0) ||
-            newMutableParams.minInitialLiquidity == 0
-        ) revert InvalidParams();
+            newMutableParams.farmOperator == address(0) || newMutableParams.farmOwner == address(0)
+                || newMutableParams.lpWrapperAdmin == address(0)
+                || newMutableParams.minInitialLiquidity == 0
+        ) {
+            revert InvalidParams();
+        }
         _mutableParams = newMutableParams;
     }
 
@@ -92,19 +85,19 @@ contract VeloDeployFactory is
         );
     }
 
-    function createStrategy(
-        DeployParams calldata params
-    ) external returns (PoolAddresses memory poolAddresses) {
+    function createStrategy(DeployParams calldata params)
+        external
+        returns (PoolAddresses memory poolAddresses)
+    {
         _requireAtLeastOperator();
 
         if (
-            params.slippageD9 == 0 ||
-            params.securityParams.length == 0 ||
-            (params.tokenId.length == 0 &&
-                params.maxAmount0 == 0 &&
-                params.maxAmount1 == 0) ||
-            (params.strategyType == IPulseStrategyModule.StrategyType.Tamper &&
-                params.maxLiquidityRatioDeviationX96 == 0)
+            params.slippageD9 == 0 || params.securityParams.length == 0
+                || (params.tokenId.length == 0 && params.maxAmount0 == 0 && params.maxAmount1 == 0)
+                || (
+                    params.strategyType == IPulseStrategyModule.StrategyType.Tamper
+                        && params.maxLiquidityRatioDeviationX96 == 0
+                )
         ) {
             revert InvalidParams();
         }
@@ -125,8 +118,7 @@ contract VeloDeployFactory is
                 maxAmount0: params.maxAmount0,
                 maxAmount1: params.maxAmount1,
                 tickNeighborhood: params.tickNeighborhood,
-                maxLiquidityRatioDeviationX96: params
-                    .maxLiquidityRatioDeviationX96,
+                maxLiquidityRatioDeviationX96: params.maxLiquidityRatioDeviationX96,
                 securityParams: params.securityParams
             })
         );
@@ -135,9 +127,8 @@ contract VeloDeployFactory is
         bytes memory callbackParams;
 
         {
-            poolAddresses.lpWrapper = address(
-                createLpWrapper(params.pool, params.pool.tickSpacing())
-            );
+            poolAddresses.lpWrapper =
+                address(createLpWrapper(params.pool, params.pool.tickSpacing()));
 
             address gauge = params.pool.gauge();
             address rewardToken = ICLGauge(gauge).rewardToken();
@@ -166,17 +157,15 @@ contract VeloDeployFactory is
         }
 
         {
-            IAmmModule.AmmPosition memory ammPosition = immutableParams
-                .veloModule
-                .getAmmPosition(depositParams.ammPositionIds[0]);
+            IAmmModule.AmmPosition memory ammPosition =
+                immutableParams.veloModule.getAmmPosition(depositParams.ammPositionIds[0]);
 
             strategyParams = IPulseStrategyModule.StrategyParams({
                 tickNeighborhood: params.tickNeighborhood,
                 tickSpacing: int24(params.pool.tickSpacing()),
                 strategyType: params.strategyType,
                 width: ammPosition.tickUpper - ammPosition.tickLower,
-                maxLiquidityRatioDeviationX96: params
-                    .maxLiquidityRatioDeviationX96
+                maxLiquidityRatioDeviationX96: params.maxLiquidityRatioDeviationX96
             });
         }
 
@@ -186,24 +175,16 @@ contract VeloDeployFactory is
         depositParams.strategyParams = abi.encode(strategyParams);
         depositParams.securityParams = params.securityParams;
 
-        INonfungiblePositionManager positionManager = INonfungiblePositionManager(
-                immutableParams.veloModule.positionManager()
-            );
+        INonfungiblePositionManager positionManager =
+            INonfungiblePositionManager(immutableParams.veloModule.positionManager());
 
-        for (uint i = 0; i < depositParams.ammPositionIds.length; i++) {
-            positionManager.approve(
-                address(core),
-                depositParams.ammPositionIds[i]
-            );
+        for (uint256 i = 0; i < depositParams.ammPositionIds.length; i++) {
+            positionManager.approve(address(core), depositParams.ammPositionIds[i]);
         }
 
         uint256 positionId = core.deposit(depositParams);
 
-        ILpWrapper(poolAddresses.lpWrapper).initialize(
-            positionId,
-            1 ether,
-            params.totalSupplyLimit
-        );
+        ILpWrapper(poolAddresses.lpWrapper).initialize(positionId, 1 ether, params.totalSupplyLimit);
 
         _poolToAddresses[address(params.pool)] = poolAddresses;
 
@@ -215,24 +196,18 @@ contract VeloDeployFactory is
         uint256 positionId, //
         IPulseStrategyModule.StrategyParams memory strategyParams
     ) private {
-        ICore.ManagedPositionInfo memory position = core.managedPositionAt(
-            positionId
-        );
-        StrategyCreatedParams
-            memory strategyCreatedParams = StrategyCreatedParams({
-                pool: position.pool,
-                ammPosition: new IVeloAmmModule.AmmPosition[](
-                    position.ammPositionIds.length
-                ),
-                strategyParams: strategyParams,
-                lpWrapper: _poolToAddresses[position.pool].lpWrapper,
-                synthetixFarm: _poolToAddresses[position.pool].synthetixFarm,
-                caller: msg.sender
-            });
-        for (uint i = 0; i < position.ammPositionIds.length; i++) {
-            strategyCreatedParams.ammPosition[i] = core
-                .ammModule()
-                .getAmmPosition(position.ammPositionIds[i]);
+        ICore.ManagedPositionInfo memory position = core.managedPositionAt(positionId);
+        StrategyCreatedParams memory strategyCreatedParams = StrategyCreatedParams({
+            pool: position.pool,
+            ammPosition: new IVeloAmmModule.AmmPosition[](position.ammPositionIds.length),
+            strategyParams: strategyParams,
+            lpWrapper: _poolToAddresses[position.pool].lpWrapper,
+            synthetixFarm: _poolToAddresses[position.pool].synthetixFarm,
+            caller: msg.sender
+        });
+        for (uint256 i = 0; i < position.ammPositionIds.length; i++) {
+            strategyCreatedParams.ammPosition[i] =
+                core.ammModule().getAmmPosition(position.ammPositionIds[i]);
         }
         strategyCreatedParams.ammPosition;
 
@@ -240,28 +215,21 @@ contract VeloDeployFactory is
     }
 
     /// @inheritdoc IERC721Receiver
-    function onERC721Received(
-        address,
-        address,
-        uint256,
-        bytes calldata
-    ) external pure returns (bytes4) {
+    function onERC721Received(address, address, uint256, bytes calldata)
+        external
+        pure
+        returns (bytes4)
+    {
         return IERC721Receiver.onERC721Received.selector;
     }
 
     /// @inheritdoc IVeloDeployFactory
-    function poolToAddresses(
-        address pool
-    ) external view returns (PoolAddresses memory) {
+    function poolToAddresses(address pool) external view returns (PoolAddresses memory) {
         return _poolToAddresses[pool];
     }
 
     /// @inheritdoc IVeloDeployFactory
-    function getImmutableParams()
-        external
-        view
-        returns (ImmutableParams memory)
-    {
+    function getImmutableParams() external view returns (ImmutableParams memory) {
         return _immutableParams;
     }
 

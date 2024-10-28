@@ -19,35 +19,19 @@ contract DepositWithdraw is Script, PoolParameters, Addresses {
     function run() public {
         //vm.startBroadcast(userPrivateKey);
         vm.startPrank(userAddress);
-        IVeloDeployFactory.PoolAddresses memory addr = deployFactory
-            .poolToAddresses(address(pool));
+        IVeloDeployFactory.PoolAddresses memory addr = deployFactory.poolToAddresses(address(pool));
         uint256 posId = core.getUserIds(addr.lpWrapper)[0];
-        ICore.ManagedPositionInfo memory position = core.managedPositionAt(
-            posId
+        ICore.ManagedPositionInfo memory position = core.managedPositionAt(posId);
+        (,,,,, int24 tickLower, int24 tickUpper, uint128 liquidity,,,,) =
+            nft.positions(position.ammPositionIds[0]);
+        (uint160 sqrtPriceX96,,,,,) = pool.slot0();
+
+        (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(
+            sqrtPriceX96,
+            TickMath.getSqrtRatioAtTick(tickLower),
+            TickMath.getSqrtRatioAtTick(tickUpper),
+            liquidity
         );
-        (
-            ,
-            ,
-            ,
-            ,
-            ,
-            int24 tickLower,
-            int24 tickUpper,
-            uint128 liquidity,
-            ,
-            ,
-            ,
-
-        ) = nft.positions(position.ammPositionIds[0]);
-        (uint160 sqrtPriceX96, , , , , ) = pool.slot0();
-
-        (uint256 amount0, uint256 amount1) = LiquidityAmounts
-            .getAmountsForLiquidity(
-                sqrtPriceX96,
-                TickMath.getSqrtRatioAtTick(tickLower),
-                TickMath.getSqrtRatioAtTick(tickUpper),
-                liquidity
-            );
 
         console2.log(" LpWrapper: ", addr.lpWrapper);
         lpWrapper = LpWrapper(payable(addr.lpWrapper));
@@ -77,27 +61,21 @@ contract DepositWithdraw is Script, PoolParameters, Addresses {
     }
 
     function deposit() private {
-        uint256 anount0Desired = IERC20(pool.token0()).balanceOf(userAddress) /
-            2; // desired amount0
-        uint256 anount1Desired = IERC20(pool.token1()).balanceOf(userAddress) /
-            2; // desired amount1
+        uint256 anount0Desired = IERC20(pool.token0()).balanceOf(userAddress) / 2; // desired amount0
+        uint256 anount1Desired = IERC20(pool.token1()).balanceOf(userAddress) / 2; // desired amount1
 
         /// @dev give approves for actual amounts
         IERC20(pool.token0()).approve(address(lpWrapper), anount0Desired);
         IERC20(pool.token1()).approve(address(lpWrapper), anount1Desired);
 
         /// @dev deposit desired amounts
-        (
-            uint256 actualAmount0,
-            uint256 actualAmount1,
-            uint256 lpAmount
-        ) = lpWrapper.deposit(
-                anount0Desired,
-                anount1Desired,
-                0,
-                userAddress, // recipient of lpTokens
-                type(uint256).max
-            );
+        (uint256 actualAmount0, uint256 actualAmount1, uint256 lpAmount) = lpWrapper.deposit(
+            anount0Desired,
+            anount1Desired,
+            0,
+            userAddress, // recipient of lpTokens
+            type(uint256).max
+        );
 
         console2.log(" ================== deposit info ==================== ");
         console2.log(" depositor: ", userAddress);
@@ -108,14 +86,13 @@ contract DepositWithdraw is Script, PoolParameters, Addresses {
 
     function withdraw() private {
         /// @dev withdraw whole assets
-        (uint256 amount0, uint256 amount1, uint256 actualLpAmount) = lpWrapper
-            .withdraw(
-                type(uint256).max, // it will be truncated to the actual owned lpTokens
-                0,
-                0,
-                userAddress,
-                type(uint256).max
-            );
+        (uint256 amount0, uint256 amount1, uint256 actualLpAmount) = lpWrapper.withdraw(
+            type(uint256).max, // it will be truncated to the actual owned lpTokens
+            0,
+            0,
+            userAddress,
+            type(uint256).max
+        );
 
         console2.log(" ================== withdraw info ==================== ");
         console2.log("withdrawer: ", userAddress);

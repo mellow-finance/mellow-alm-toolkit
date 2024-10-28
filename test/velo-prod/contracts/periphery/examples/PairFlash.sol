@@ -5,12 +5,13 @@ pragma abicoder v2;
 import "test/velo-prod/contracts/core/interfaces/callback/ICLFlashCallback.sol";
 import "test/velo-prod/contracts/core/libraries/LowGasSafeMath.sol";
 
-import "../base/PeripheryPayments.sol";
 import "../base/PeripheryImmutableState.sol";
-import "../libraries/PoolAddress.sol";
-import "../libraries/CallbackValidation.sol";
-import "../libraries/TransferHelper.sol";
+import "../base/PeripheryPayments.sol";
+
 import "../interfaces/ISwapRouter.sol";
+import "../libraries/CallbackValidation.sol";
+import "../libraries/PoolAddress.sol";
+import "../libraries/TransferHelper.sol";
 
 /// @title Flash contract implementation
 /// @notice An example contract using the CL flash function
@@ -20,11 +21,9 @@ contract PairFlash is ICLFlashCallback, PeripheryPayments {
 
     ISwapRouter public immutable swapRouter;
 
-    constructor(
-        ISwapRouter _swapRouter,
-        address _factory,
-        address _WETH9
-    ) PeripheryImmutableState(_factory, _WETH9) {
+    constructor(ISwapRouter _swapRouter, address _factory, address _WETH9)
+        PeripheryImmutableState(_factory, _WETH9)
+    {
         swapRouter = _swapRouter;
     }
 
@@ -43,15 +42,11 @@ contract PairFlash is ICLFlashCallback, PeripheryPayments {
     /// @param data The data needed in the callback passed as FlashCallbackData from `initFlash`
     /// @notice implements the callback called from flash
     /// @dev fails if the flash is not profitable, meaning the amountOut from the flash is less than the amount borrowed
-    function uniswapV3FlashCallback(
-        uint256 fee0,
-        uint256 fee1,
-        bytes calldata data
-    ) external override {
-        FlashCallbackData memory decoded = abi.decode(
-            data,
-            (FlashCallbackData)
-        );
+    function uniswapV3FlashCallback(uint256 fee0, uint256 fee1, bytes calldata data)
+        external
+        override
+    {
+        FlashCallbackData memory decoded = abi.decode(data, (FlashCallbackData));
         CallbackValidation.verifyCallback(factory, decoded.poolKey);
 
         address token0 = decoded.poolKey.token0;
@@ -63,11 +58,7 @@ contract PairFlash is ICLFlashCallback, PeripheryPayments {
         uint256 amount1Min = LowGasSafeMath.add(decoded.amount1, fee1);
 
         // call exactInputSingle for swapping token1 for token0 in pool with tickSpacing2
-        TransferHelper.safeApprove(
-            token1,
-            address(swapRouter),
-            decoded.amount1
-        );
+        TransferHelper.safeApprove(token1, address(swapRouter), decoded.amount1);
         uint256 amountOut0 = swapRouter.exactInputSingle(
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: token1,
@@ -82,11 +73,7 @@ contract PairFlash is ICLFlashCallback, PeripheryPayments {
         );
 
         // call exactInputSingle for swapping token0 for token 1 in pool with tickSpacing3
-        TransferHelper.safeApprove(
-            token0,
-            address(swapRouter),
-            decoded.amount0
-        );
+        TransferHelper.safeApprove(token0, address(swapRouter), decoded.amount0);
         uint256 amountOut1 = swapRouter.exactInputSingle(
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: token0,
@@ -101,8 +88,12 @@ contract PairFlash is ICLFlashCallback, PeripheryPayments {
         );
 
         // pay the required amounts back to the pair
-        if (amount0Min > 0) pay(token0, address(this), msg.sender, amount0Min);
-        if (amount1Min > 0) pay(token1, address(this), msg.sender, amount1Min);
+        if (amount0Min > 0) {
+            pay(token0, address(this), msg.sender, amount0Min);
+        }
+        if (amount1Min > 0) {
+            pay(token1, address(this), msg.sender, amount1Min);
+        }
 
         // if profitable pay profits to payer
         if (amountOut0 > amount0Min) {

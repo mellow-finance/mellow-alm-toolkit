@@ -5,13 +5,13 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
-import "../modules/IAmmDepositWithdrawModule.sol";
 import "../external/IWETH9.sol";
+import "../modules/IAmmDepositWithdrawModule.sol";
 
 import "../ICore.sol";
 
-import "../modules/velo/IVeloAmmModule.sol";
 import "../modules/strategies/IPulseStrategyModule.sol";
+import "../modules/velo/IVeloAmmModule.sol";
 import "../oracles/IVeloOracle.sol";
 
 /**
@@ -57,9 +57,7 @@ interface ILpWrapper {
     );
 
     event TotalSupplyLimitUpdated(
-        uint256 totalSupplyLimitNew,
-        uint256 totalSupplyLimitOld,
-        uint256 totalSupplyCurrent
+        uint256 totalSupplyLimitNew, uint256 totalSupplyLimitOld, uint256 totalSupplyCurrent
     );
 
     // Position data structure
@@ -83,10 +81,7 @@ interface ILpWrapper {
      * @return tokenId - ID of the NFT representing the position
      * @return data - PositionData struct containing the position's data
      */
-    function getInfo()
-        external
-        view
-        returns (uint256 tokenId, PositionData memory data);
+    function getInfo() external view returns (uint256 tokenId, PositionData memory data);
 
     /**
      * @dev Returns the address of the synthetix farm contract.
@@ -111,13 +106,7 @@ interface ILpWrapper {
         uint256 minLpAmount,
         address to,
         uint256 deadline
-    )
-        external
-        returns (
-            uint256 actualAmount0,
-            uint256 actualAmount1,
-            uint256 lpAmount
-        );
+    ) external returns (uint256 actualAmount0, uint256 actualAmount1, uint256 lpAmount);
 
     /**
      * @dev Withdraws LP tokens from the farm, burns them, and transfers the underlying assets to the specified address.
@@ -136,9 +125,7 @@ interface ILpWrapper {
         uint256 minAmount1,
         address to,
         uint256 deadline
-    )
-        external
-        returns (uint256 amount0, uint256 amount1, uint256 actualLpAmount);
+    ) external returns (uint256 amount0, uint256 amount1, uint256 actualLpAmount);
 
     /**
      * @dev Harvests the reward tokens from the farm to msg.sender.
@@ -168,10 +155,7 @@ interface ILpWrapper {
      * @dev Returns the AMM Deposit Withdraw Module contract address.
      * @return Address of the IAmmDepositWithdrawModule contract.
      */
-    function ammDepositWithdrawModule()
-        external
-        view
-        returns (IAmmDepositWithdrawModule);
+    function ammDepositWithdrawModule() external view returns (IAmmDepositWithdrawModule);
 
     /**
      * @dev Returns the core contract address.
@@ -209,11 +193,8 @@ interface ILpWrapper {
      * @param initialTotalSupply Initial total supply of the LP wrapper contract.
      * @param totalSupplyLimit Initial total supply limit.
      */
-    function initialize(
-        uint256 positionId_,
-        uint256 initialTotalSupply,
-        uint256 totalSupplyLimit
-    ) external;
+    function initialize(uint256 positionId_, uint256 initialTotalSupply, uint256 totalSupplyLimit)
+        external;
 
     /**
      * @dev Deposits specified amounts of tokens into corresponding managed position and mints LP tokens to the specified address.
@@ -232,13 +213,7 @@ interface ILpWrapper {
         uint256 minLpAmount,
         address to,
         uint256 deadline
-    )
-        external
-        returns (
-            uint256 actualAmount0,
-            uint256 actualAmount1,
-            uint256 lpAmount
-        );
+    ) external returns (uint256 actualAmount0, uint256 actualAmount1, uint256 lpAmount);
 
     /**
      * @dev Burns LP tokens and transfers the underlying assets to the specified address.
@@ -257,9 +232,7 @@ interface ILpWrapper {
         uint256 minAmount1,
         address to,
         uint256 deadline
-    )
-        external
-        returns (uint256 amount0, uint256 amount1, uint256 actualLpAmount);
+    ) external returns (uint256 amount0, uint256 amount1, uint256 actualLpAmount);
 
     /**
      * @dev Sets the managed position parameters for a specified ID, including slippage, strategy, and security parameters.

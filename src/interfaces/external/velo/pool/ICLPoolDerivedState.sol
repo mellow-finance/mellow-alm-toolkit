@@ -15,9 +15,7 @@ interface ICLPoolDerivedState {
     /// @return tickCumulatives Cumulative tick values as of each `secondsAgos` from the current block timestamp
     /// @return secondsPerLiquidityCumulativeX128s Cumulative seconds per liquidity-in-range value as of each `secondsAgos` from the current block
     /// timestamp
-    function observe(
-        uint32[] calldata secondsAgos
-    )
+    function observe(uint32[] calldata secondsAgos)
         external
         view
         returns (

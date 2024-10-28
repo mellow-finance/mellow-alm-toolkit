@@ -9,13 +9,8 @@ contract Integration is Fixture {
     function testSynthetixFarm() external {
         ICore.DepositParams memory depositParams;
         depositParams.ammPositionIds = new uint256[](1);
-        depositParams.ammPositionIds[0] = mint(
-            Constants.OP,
-            Constants.WETH,
-            TICK_SPACING,
-            pool.tickSpacing() * 8,
-            1e9
-        );
+        depositParams.ammPositionIds[0] =
+            mint(Constants.OP, Constants.WETH, TICK_SPACING, pool.tickSpacing() * 8, 1e9);
         depositParams.owner = Constants.OWNER;
 
         depositParams.strategyParams = abi.encode(
@@ -28,12 +23,8 @@ contract Integration is Fixture {
             })
         );
 
-        Counter counter = new Counter(
-            Constants.OWNER,
-            address(core),
-            Constants.VELO,
-            address(stakingRewards)
-        );
+        Counter counter =
+            new Counter(Constants.OWNER, address(core), Constants.VELO, address(stakingRewards));
 
         depositParams.securityParams = new bytes(0);
         depositParams.slippageD9 = 100 * 1e5;
@@ -66,18 +57,10 @@ contract Integration is Fixture {
         deal(Constants.OP, Constants.DEPOSITOR, 1e6 * 1e6);
         deal(Constants.WETH, Constants.DEPOSITOR, 500 ether);
         IERC20(Constants.OP).safeApprove(address(lpWrapper), type(uint256).max);
-        IERC20(Constants.WETH).safeApprove(
-            address(lpWrapper),
-            type(uint256).max
-        );
+        IERC20(Constants.WETH).safeApprove(address(lpWrapper), type(uint256).max);
         {
-            (, , uint256 lpAmount) = lpWrapper.deposit(
-                500 ether,
-                1e6,
-                1e3,
-                Constants.DEPOSITOR,
-                type(uint256).max
-            );
+            (,, uint256 lpAmount) =
+                lpWrapper.deposit(500 ether, 1e6, 1e3, Constants.DEPOSITOR, type(uint256).max);
             require(lpAmount > 0, "Invalid lp amount");
             console2.log("Actual lp amount:", lpAmount);
             lpWrapper.approve(address(stakingRewards), type(uint256).max);
@@ -88,26 +71,12 @@ contract Integration is Fixture {
         for (uint256 i = 0; i < 2; i++) {
             {
                 vm.startPrank(Constants.DEPOSITOR);
-                stakingRewards.withdraw(
-                    stakingRewards.balanceOf(Constants.DEPOSITOR) / 2
-                );
-                (
-                    uint256 amount0,
-                    uint256 amount1,
-                    uint256 actualAmountLp
-                ) = lpWrapper.withdraw(
-                        1e6,
-                        0,
-                        0,
-                        Constants.DEPOSITOR,
-                        type(uint256).max
-                    );
+                stakingRewards.withdraw(stakingRewards.balanceOf(Constants.DEPOSITOR) / 2);
+                (uint256 amount0, uint256 amount1, uint256 actualAmountLp) =
+                    lpWrapper.withdraw(1e6, 0, 0, Constants.DEPOSITOR, type(uint256).max);
 
                 console2.log(
-                    "Actual withdrawal amounts for depositor:",
-                    amount0,
-                    amount1,
-                    actualAmountLp
+                    "Actual withdrawal amounts for depositor:", amount0, amount1, actualAmountLp
                 );
 
                 vm.stopPrank();
@@ -118,25 +87,25 @@ contract Integration is Fixture {
                 ids[0] = lpWrapper.positionId();
                 while (true) {
                     movePrice(uint256(20));
-                    (bool flag, ) = core.strategyModule().getTargets(
+                    (bool flag,) = core.strategyModule().getTargets(
                         core.managedPositionAt(lpWrapper.positionId()),
                         core.ammModule(),
                         core.oracle()
                     );
                     skip(5 * 60);
-                    if (flag) break;
+                    if (flag) {
+                        break;
+                    }
                 }
             }
-            PulseVeloBot.SwapParams memory swapParams = determineSwapAmounts(
-                lpWrapper.positionId()
-            );
+            PulseVeloBot.SwapParams memory swapParams = determineSwapAmounts(lpWrapper.positionId());
             ICore.RebalanceParams memory rebalanceParams;
 
             rebalanceParams.ids = new uint256[](1);
             rebalanceParams.ids[0] = lpWrapper.positionId();
             rebalanceParams.callback = address(bot);
-            ISwapRouter.ExactInputSingleParams[]
-                memory ammParams = new ISwapRouter.ExactInputSingleParams[](1);
+            ISwapRouter.ExactInputSingleParams[] memory ammParams =
+                new ISwapRouter.ExactInputSingleParams[](1);
             ammParams[0] = ISwapRouter.ExactInputSingleParams({
                 tokenIn: swapParams.tokenIn,
                 tokenOut: swapParams.tokenOut,
@@ -153,29 +122,17 @@ contract Integration is Fixture {
             core.rebalance(rebalanceParams);
 
             {
-                ICore.ManagedPositionInfo memory info = core.managedPositionAt(
-                    lpWrapper.positionId()
-                );
+                ICore.ManagedPositionInfo memory info =
+                    core.managedPositionAt(lpWrapper.positionId());
                 uint160 sqrtPriceX96;
-                (sqrtPriceX96, , , , , ) = pool.slot0();
+                (sqrtPriceX96,,,,,) = pool.slot0();
 
-                (uint256 amount0, uint256 amount1) = PositionValue.total(
-                    positionManager,
-                    info.ammPositionIds[0],
-                    sqrtPriceX96
-                );
-                uint256 priceX96 = Math.mulDiv(
-                    sqrtPriceX96,
-                    sqrtPriceX96,
-                    2 ** 96
-                );
-                uint256 capital = Math.mulDiv(amount0, priceX96, 2 ** 96) +
-                    amount1;
+                (uint256 amount0, uint256 amount1) =
+                    PositionValue.total(positionManager, info.ammPositionIds[0], sqrtPriceX96);
+                uint256 priceX96 = Math.mulDiv(sqrtPriceX96, sqrtPriceX96, 2 ** 96);
+                uint256 capital = Math.mulDiv(amount0, priceX96, 2 ** 96) + amount1;
                 console2.log("Capital usdc:", capital);
-                console2.log(
-                    "New position params:",
-                    vm.toString(info.ammPositionIds[0])
-                );
+                console2.log("New position params:", vm.toString(info.ammPositionIds[0]));
             }
         }
     }

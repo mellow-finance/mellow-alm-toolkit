@@ -5,9 +5,10 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "../IAmmModule.sol";
 
-import "../../external/velo/ICLPool.sol";
-import "../../external/velo/ICLGauge.sol";
 import "../../external/velo/ICLFactory.sol";
+import "../../external/velo/ICLGauge.sol";
+import "../../external/velo/ICLPool.sol";
+
 import "../../external/velo/INonfungiblePositionManager.sol";
 
 import "../../utils/ICounter.sol";

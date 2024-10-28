@@ -5,19 +5,19 @@ import "forge-std/Script.sol";
 import "forge-std/Test.sol";
 import "forge-std/Vm.sol";
 
-import "@openzeppelin/contracts/utils/Strings.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 
 import "src/Core.sol";
 
 import "src/bots/PulseVeloBot.sol";
 import "src/bots/PulseVeloBotLazy.sol";
 
+import "src/modules/strategies/PulseStrategyModule.sol";
+import "src/modules/strategies/PulseStrategyModule.sol";
 import "src/modules/velo/VeloAmmModule.sol";
 import "src/modules/velo/VeloDepositWithdrawModule.sol";
-import "src/modules/strategies/PulseStrategyModule.sol";
-import "src/modules/strategies/PulseStrategyModule.sol";
 import "src/oracles/VeloOracle.sol";
 
 import "src/interfaces/external/velo/ICLFactory.sol";

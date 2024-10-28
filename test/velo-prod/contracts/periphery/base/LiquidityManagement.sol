@@ -6,12 +6,12 @@ import "test/velo-prod/contracts/core/interfaces/ICLFactory.sol";
 import "test/velo-prod/contracts/core/interfaces/callback/ICLMintCallback.sol";
 import "test/velo-prod/contracts/core/libraries/TickMath.sol";
 
-import "../libraries/PoolAddress.sol";
 import "../libraries/CallbackValidation.sol";
 import "../libraries/LiquidityAmounts.sol";
+import "../libraries/PoolAddress.sol";
 
-import "./PeripheryPayments.sol";
 import "./PeripheryImmutableState.sol";
+import "./PeripheryPayments.sol";
 
 /// @title Liquidity management functions
 /// @notice Internal functions for safely managing liquidity in CL
@@ -26,18 +26,19 @@ abstract contract LiquidityManagement is
     }
 
     /// @inheritdoc ICLMintCallback
-    function uniswapV3MintCallback(
-        uint256 amount0Owed,
-        uint256 amount1Owed,
-        bytes calldata data
-    ) external override {
+    function uniswapV3MintCallback(uint256 amount0Owed, uint256 amount1Owed, bytes calldata data)
+        external
+        override
+    {
         MintCallbackData memory decoded = abi.decode(data, (MintCallbackData));
         CallbackValidation.verifyCallback(factory, decoded.poolKey);
 
-        if (amount0Owed > 0)
+        if (amount0Owed > 0) {
             pay(decoded.poolKey.token0, decoded.payer, msg.sender, amount0Owed);
-        if (amount1Owed > 0)
+        }
+        if (amount1Owed > 0) {
             pay(decoded.poolKey.token1, decoded.payer, msg.sender, amount1Owed);
+        }
     }
 
     struct AddLiquidityParams {
@@ -53,20 +54,17 @@ abstract contract LiquidityManagement is
     }
 
     /// @notice Add liquidity to an initialized pool
-    function addLiquidity(
-        AddLiquidityParams memory params
-    ) internal returns (uint128 liquidity, uint256 amount0, uint256 amount1) {
+    function addLiquidity(AddLiquidityParams memory params)
+        internal
+        returns (uint128 liquidity, uint256 amount0, uint256 amount1)
+    {
         ICLPool pool = ICLPool(params.poolAddress);
 
         // compute the liquidity amount
         {
-            (uint160 sqrtPriceX96, , , , , ) = pool.slot0();
-            uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(
-                params.tickLower
-            );
-            uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(
-                params.tickUpper
-            );
+            (uint160 sqrtPriceX96,,,,,) = pool.slot0();
+            uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(params.tickLower);
+            uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(params.tickUpper);
 
             liquidity = LiquidityAmounts.getLiquidityForAmounts(
                 sqrtPriceX96,
@@ -82,14 +80,11 @@ abstract contract LiquidityManagement is
             params.tickLower,
             params.tickUpper,
             liquidity,
-            abi.encode(
-                MintCallbackData({poolKey: params.poolKey, payer: msg.sender})
-            )
+            abi.encode(MintCallbackData({poolKey: params.poolKey, payer: msg.sender}))
         );
 
         require(
-            amount0 >= params.amount0Min && amount1 >= params.amount1Min,
-            "Price slippage check"
+            amount0 >= params.amount0Min && amount1 >= params.amount1Min, "Price slippage check"
         );
     }
 }

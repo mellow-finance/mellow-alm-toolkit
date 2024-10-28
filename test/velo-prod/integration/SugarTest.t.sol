@@ -91,18 +91,10 @@ contract Integration is Fixture {
         deal(Constants.OP, Constants.DEPOSITOR, 1e6 * 1e6);
         deal(Constants.WETH, Constants.DEPOSITOR, 500 ether);
         IERC20(Constants.OP).safeApprove(address(lpWrapper), type(uint256).max);
-        IERC20(Constants.WETH).safeApprove(
-            address(lpWrapper),
-            type(uint256).max
-        );
+        IERC20(Constants.WETH).safeApprove(address(lpWrapper), type(uint256).max);
         {
-            (, , uint256 lpAmount) = lpWrapper.deposit(
-                500 ether,
-                1e6,
-                1e3,
-                Constants.DEPOSITOR,
-                type(uint256).max
-            );
+            (,, uint256 lpAmount) =
+                lpWrapper.deposit(500 ether, 1e6, 1e3, Constants.DEPOSITOR, type(uint256).max);
             logLpInfo(Constants.DEPOSITOR);
 
             require(lpAmount > 0, "Invalid lp amount");
@@ -117,20 +109,15 @@ contract Integration is Fixture {
         skip(7 days);
 
         {
-            uint256 treasuryBalanceBefore = IERC20(Constants.VELO).balanceOf(
-                Constants.PROTOCOL_TREASURY
-            );
+            uint256 treasuryBalanceBefore =
+                IERC20(Constants.VELO).balanceOf(Constants.PROTOCOL_TREASURY);
 
-            uint256 depositorBalanceBefore = IERC20(Constants.VELO).balanceOf(
-                Constants.DEPOSITOR
-            );
+            uint256 depositorBalanceBefore = IERC20(Constants.VELO).balanceOf(Constants.DEPOSITOR);
 
             vm.prank(Constants.OWNER);
             lpWrapper.emptyRebalance();
 
-            uint256 addedRewards = IERC20(Constants.VELO).balanceOf(
-                address(stakingRewards)
-            );
+            uint256 addedRewards = IERC20(Constants.VELO).balanceOf(address(stakingRewards));
 
             vm.prank(Constants.FARM_OPERATOR);
             stakingRewards.notifyRewardAmount(addedRewards);
@@ -143,18 +130,13 @@ contract Integration is Fixture {
             logLpInfo(Constants.DEPOSITOR);
             stakingRewards.getReward();
 
-            uint256 depositorBalanceAfter = IERC20(Constants.VELO).balanceOf(
-                Constants.DEPOSITOR
-            );
+            uint256 depositorBalanceAfter = IERC20(Constants.VELO).balanceOf(Constants.DEPOSITOR);
 
-            uint256 treasuryBalanceAfter = IERC20(Constants.VELO).balanceOf(
-                Constants.PROTOCOL_TREASURY
-            );
+            uint256 treasuryBalanceAfter =
+                IERC20(Constants.VELO).balanceOf(Constants.PROTOCOL_TREASURY);
 
-            uint256 userRewards = depositorBalanceAfter -
-                depositorBalanceBefore;
-            uint256 protocolRewards = treasuryBalanceAfter -
-                treasuryBalanceBefore;
+            uint256 userRewards = depositorBalanceAfter - depositorBalanceBefore;
+            uint256 protocolRewards = treasuryBalanceAfter - treasuryBalanceBefore;
 
             uint256 totalRewards = userRewards + protocolRewards;
             console2.log(totalRewards, protocolRewards, userRewards);

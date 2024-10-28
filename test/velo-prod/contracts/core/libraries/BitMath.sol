@@ -41,7 +41,9 @@ library BitMath {
             x >>= 2;
             r += 2;
         }
-        if (x >= 0x2) r += 1;
+        if (x >= 0x2) {
+            r += 1;
+        }
     }
 
     /// @notice Returns the index of the least significant bit of the number,
@@ -89,6 +91,8 @@ library BitMath {
         } else {
             x >>= 2;
         }
-        if (x & 0x1 > 0) r -= 1;
+        if (x & 0x1 > 0) {
+            r -= 1;
+        }
     }
 }

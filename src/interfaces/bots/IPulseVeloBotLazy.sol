@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BSL-1.1
 pragma solidity ^0.8.0;
 
-import "../utils/IRebalanceCallback.sol";
 import "../external/velo/ICLPool.sol";
 import "../external/velo/INonfungiblePositionManager.sol";
+import "../utils/IRebalanceCallback.sol";
 
 interface IPulseVeloBotLazy is IRebalanceCallback {
     struct SwapQuoteParams {
@@ -26,13 +26,9 @@ interface IPulseVeloBotLazy is IRebalanceCallback {
 
     function D6() external view returns (uint256);
 
-    function positionManager()
-        external
-        view
-        returns (INonfungiblePositionManager);
+    function positionManager() external view returns (INonfungiblePositionManager);
 
-    function call(
-        bytes memory data,
-        ICore.TargetPositionInfo[] memory targets
-    ) external returns (uint256[][] memory newTokenIds);
+    function call(bytes memory data, ICore.TargetPositionInfo[] memory targets)
+        external
+        returns (uint256[][] memory newTokenIds);
 }

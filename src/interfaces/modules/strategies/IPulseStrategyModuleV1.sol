@@ -18,6 +18,7 @@ interface IPulseStrategyModuleV1 is IStrategyModule {
         LazySyncing, // Lazy syncing strategy
         LazyAscending, // Lazy ascending strategy
         LazyDescending // Lazy descending strategy
+
     }
 
     /**
@@ -79,11 +80,5 @@ interface IPulseStrategyModuleV1 is IStrategyModule {
         int24 tickLower,
         int24 tickUpper,
         StrategyParams memory params
-    )
-        external
-        pure
-        returns (
-            bool isRebalanceRequired,
-            ICore.TargetPositionInfo memory target
-        );
+    ) external pure returns (bool isRebalanceRequired, ICore.TargetPositionInfo memory target);
 }

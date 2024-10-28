@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BSL-1.1
 pragma solidity ^0.8.0;
 
+import "../IStrategyModule.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
-import "../IStrategyModule.sol";
 
 /**
  * @title PulseStrategyModule
@@ -22,6 +22,7 @@ interface IPulseStrategyModule is IStrategyModule {
         LazyAscending, // Lazy ascending strategy
         LazyDescending, // Lazy descending strategy
         Tamper // Tamper strategy
+
     }
 
     /**
@@ -89,13 +90,7 @@ interface IPulseStrategyModule is IStrategyModule {
         int24 tickLower,
         int24 tickUpper,
         StrategyParams memory params
-    )
-        external
-        pure
-        returns (
-            bool isRebalanceRequired,
-            ICore.TargetPositionInfo memory target
-        );
+    ) external pure returns (bool isRebalanceRequired, ICore.TargetPositionInfo memory target);
 
     /**
      * @dev Calculates the target position after rebalance based on the provided strategy parameters and the current market state.
@@ -126,11 +121,5 @@ interface IPulseStrategyModule is IStrategyModule {
         IAmmModule.AmmPosition memory lowerPosition,
         IAmmModule.AmmPosition memory upperPosition,
         StrategyParams memory params
-    )
-        external
-        pure
-        returns (
-            bool isRebalanceRequired,
-            ICore.TargetPositionInfo memory target
-        );
+    ) external pure returns (bool isRebalanceRequired, ICore.TargetPositionInfo memory target);
 }

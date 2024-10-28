@@ -26,11 +26,7 @@ interface ICounter {
     /**
      * @dev Adds a value to the counter. Can only be called by the operator.
      */
-    function add(
-        uint256 additionalValue,
-        address token_,
-        address farm_
-    ) external;
+    function add(uint256 additionalValue, address token_, address farm_) external;
 
     /**
      * @dev Resets the counter to zero. Can only be called by the current owner.

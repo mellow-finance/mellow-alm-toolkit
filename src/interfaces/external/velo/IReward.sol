@@ -2,11 +2,7 @@
 pragma solidity ^0.8.0;
 
 interface IReward {
-    event NotifyReward(
-        address indexed from,
-        address indexed reward,
-        uint256 amount
-    );
+    event NotifyReward(address indexed from, address indexed reward, uint256 amount);
 
     /// @notice Add rewards for stakers to earn
     /// @param token    Address of token to reward
@@ -17,10 +13,7 @@ interface IReward {
     /// @param token Address of token to fetch rewards of
     /// @param tokenId Unique identifier of the veNFT
     /// @return Amount of token earned in rewards
-    function earned(
-        address token,
-        uint256 tokenId
-    ) external view returns (uint256);
+    function earned(address token, uint256 tokenId) external view returns (uint256);
 
     /// @notice Claim the rewards earned by a veNFT staker
     /// @param tokenId  Unique identifier of the veNFT

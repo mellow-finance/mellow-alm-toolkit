@@ -14,34 +14,22 @@ interface ICLFactory {
     /// @notice Emitted when the swapFeeManager of the factory is changed
     /// @param oldFeeManager The swapFeeManager before the swapFeeManager was changed
     /// @param newFeeManager The swapFeeManager after the swapFeeManager was changed
-    event SwapFeeManagerChanged(
-        address indexed oldFeeManager,
-        address indexed newFeeManager
-    );
+    event SwapFeeManagerChanged(address indexed oldFeeManager, address indexed newFeeManager);
 
     /// @notice Emitted when the swapFeeModule of the factory is changed
     /// @param oldFeeModule The swapFeeModule before the swapFeeModule was changed
     /// @param newFeeModule The swapFeeModule after the swapFeeModule was changed
-    event SwapFeeModuleChanged(
-        address indexed oldFeeModule,
-        address indexed newFeeModule
-    );
+    event SwapFeeModuleChanged(address indexed oldFeeModule, address indexed newFeeModule);
 
     /// @notice Emitted when the unstakedFeeManager of the factory is changed
     /// @param oldFeeManager The unstakedFeeManager before the unstakedFeeManager was changed
     /// @param newFeeManager The unstakedFeeManager after the unstakedFeeManager was changed
-    event UnstakedFeeManagerChanged(
-        address indexed oldFeeManager,
-        address indexed newFeeManager
-    );
+    event UnstakedFeeManagerChanged(address indexed oldFeeManager, address indexed newFeeManager);
 
     /// @notice Emitted when the unstakedFeeModule of the factory is changed
     /// @param oldFeeModule The unstakedFeeModule before the unstakedFeeModule was changed
     /// @param newFeeModule The unstakedFeeModule after the unstakedFeeModule was changed
-    event UnstakedFeeModuleChanged(
-        address indexed oldFeeModule,
-        address indexed newFeeModule
-    );
+    event UnstakedFeeModuleChanged(address indexed oldFeeModule, address indexed newFeeModule);
 
     /// @notice Emitted when a pool is created
     /// @param token0 The first token of the pool by address sort order
@@ -49,10 +37,7 @@ interface ICLFactory {
     /// @param tickSpacing The minimum number of ticks between initialized ticks
     /// @param pool The address of the created pool
     event PoolCreated(
-        address indexed token0,
-        address indexed token1,
-        int24 indexed tickSpacing,
-        address pool
+        address indexed token0, address indexed token1, int24 indexed tickSpacing, address pool
     );
 
     /// @notice Emitted when a new tick spacing is enabled for pool creation via the factory
@@ -113,9 +98,7 @@ interface ICLFactory {
     /// A tick spacing can never be removed, so this value should be hard coded or cached in the calling context
     /// @param tickSpacing The enabled tick spacing. Returns 0 if not enabled
     /// @return fee The default fee for the given tick spacing
-    function tickSpacingToFee(
-        int24 tickSpacing
-    ) external view returns (uint24 fee);
+    function tickSpacingToFee(int24 tickSpacing) external view returns (uint24 fee);
 
     /// @notice Returns a list of enabled tick spacings. Used to iterate through pools created by the factory
     /// @dev Tick spacings cannot be removed. Tick spacings are not ordered
@@ -128,11 +111,10 @@ interface ICLFactory {
     /// @param tokenB The contract address of the other token
     /// @param tickSpacing The tick spacing of the pool
     /// @return pool The pool address
-    function getPool(
-        address tokenA,
-        address tokenB,
-        int24 tickSpacing
-    ) external view returns (address pool);
+    function getPool(address tokenA, address tokenB, int24 tickSpacing)
+        external
+        view
+        returns (address pool);
 
     /// @notice Used in VotingEscrow to determine if a contract is a valid pool of the factory
     /// @param pool The address of the pool to check
@@ -159,12 +141,9 @@ interface ICLFactory {
     /// @dev tokenA and tokenB may be passed in either order: token0/token1 or token1/token0. The call will
     /// revert if the pool already exists, the tick spacing is invalid, or the token arguments are invalid
     /// @return pool The address of the newly created pool
-    function createPool(
-        address tokenA,
-        address tokenB,
-        int24 tickSpacing,
-        uint160 sqrtPriceX96
-    ) external returns (address pool);
+    function createPool(address tokenA, address tokenB, int24 tickSpacing, uint160 sqrtPriceX96)
+        external
+        returns (address pool);
 
     /// @notice Updates the owner of the factory
     /// @dev Must be called by the current owner
@@ -201,10 +180,7 @@ interface ICLFactory {
     /// @dev Callable once only on initialize
     /// @param _gaugeFactory The gauge factory that creates gauges for the pools created by this factory
     /// @param _gaugeImplementation The gauge implementation from which gauges will be created
-    function setGaugeFactory(
-        address _gaugeFactory,
-        address _gaugeImplementation
-    ) external;
+    function setGaugeFactory(address _gaugeFactory, address _gaugeImplementation) external;
 
     /// @notice Set Nonfungible Position Manager
     /// @dev Callable once only on initialize

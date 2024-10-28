@@ -18,9 +18,10 @@ interface IOracle {
      * @return sqrtPriceX96 The square root of the current price in the pool, represented as a 96-bit fixed-point number.
      * @return tick The current tick value of the pool, which is an integral value representing the price level.
      */
-    function getOraclePrice(
-        address pool
-    ) external view returns (uint160 sqrtPriceX96, int24 tick);
+    function getOraclePrice(address pool)
+        external
+        view
+        returns (uint160 sqrtPriceX96, int24 tick);
 
     /**
      * @dev Ensures that there is no Miner Extractable Value (MEV) opportunity for the specified pool
