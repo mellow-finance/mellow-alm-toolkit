@@ -7,12 +7,12 @@ import "forge-std/Test.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
-import "src/interfaces/ICore.sol";
-import "src/interfaces/external/velo/ICLPool.sol";
-import "src/interfaces/external/velo/INonfungiblePositionManager.sol";
-import "src/interfaces/modules/strategies/IPulseStrategyModule.sol";
+import "../../interfaces/ICore.sol";
+import "../../interfaces/external/velo/ICLPool.sol";
+import "../../interfaces/external/velo/INonfungiblePositionManager.sol";
+import "../../interfaces/modules/strategies/IPulseStrategyModule.sol";
 
-import "src/bots/PulseVeloBotLazy.sol";
+import "../../bots/PulseVeloBotLazy.sol";
 
 contract PulseVeloBot is Script {
     using SafeERC20 for IERC20;

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.25;
 
-import "../../src.sol";
+import "../../Imports.sol";
 
 contract PoolParameters {
     uint256 MAX_USD_AMOUNT = 10 ** 6; // 1 USD

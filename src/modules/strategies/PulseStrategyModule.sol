@@ -170,7 +170,9 @@ library TamperStrategyLibrary {
             lowerLiquidityRatioX96 = Math.mulDiv(
                 Q96,
                 uint24(
-                    TickMath.getTickAtSqrtRatio(Math.mulDiv(sqrtPriceX96, Q96, sqrtPriceCenterX96))
+                    TickMath.getTickAtSqrtRatio(
+                        uint160(Math.mulDiv(sqrtPriceX96, Q96, sqrtPriceCenterX96))
+                    )
                 ),
                 uint24(half)
             );
