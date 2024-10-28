@@ -1,13 +1,10 @@
 {
   "name": "mellow-alm-toolkit",
-  "license": "BSL-1.1",
+  "license": "BUSL-1.1",
   "version": "1.0.0",
-  "files": [
-    "src/**/*.sol"
-  ],
   "repository": "https://github.com/mellow-finance/mellow-alm-toolkit",
   "scripts": {
-    "prettier": "forge fmt && forge fmt ./scripts/**",
+    "prettier": "forge fmt",
     "test:mainnet": "forge test -vvv --fork-url $(grep MAINNET_RPC .env | cut -d '=' -f2,3,4,5) --match-path ./test/mainnet/\\*",
     "test:mantle": "forge test -vvv --fork-url $(grep MANTLE_RPC .env | cut -d '=' -f2,3,4,5) --match-path ./test/mantle/\\*",
     "test:velo": "forge test -vvv --fork-url $(grep OPTIMISM_SPECIAL_RPC .env | cut -d '=' -f2,3,4,5) --match-path ./test/velo/\\*",

@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: BSL-1.1
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import "../IStrategyModule.sol";
-import "@openzeppelin/contracts/utils/math/Math.sol";
-import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
+import {IAmmModule, ICore, IOracle, IStrategyModule} from "../IStrategyModule.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {TickMath} from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 
 /**
  * @title PulseStrategyModule
@@ -36,13 +36,6 @@ interface IPulseStrategyModule is IStrategyModule {
         int24 width; // Width of the interval
         uint256 maxLiquidityRatioDeviationX96; // The maximum allowed deviation of the liquidity ratio for lower position.
     }
-
-    /**
-     * @dev Returns the constant value of Q96, representing 2 ** 96.
-     * Used for fixed-point arithmetic operations.
-     * @return Q96 The constant value 2 ** 96.
-     */
-    function Q96() external view returns (uint256);
 
     /**
      * @dev Calculates the target position after rebalance based on the provided strategy parameters and the current market state.

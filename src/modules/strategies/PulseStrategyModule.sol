@@ -1,13 +1,10 @@
-// SPDX-License-Identifier: BSL-1.1
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.25;
 
 import "../../interfaces/modules/strategies/IPulseStrategyModule.sol";
 
 contract PulseStrategyModule is IPulseStrategyModule {
-    using Math for uint256;
-    /// @inheritdoc IPulseStrategyModule
-
-    uint256 public constant Q96 = 2 ** 96;
+    uint256 private constant Q96 = 2 ** 96;
 
     /// @inheritdoc IStrategyModule
     function validateStrategyParams(bytes memory params_) external pure override {
@@ -19,10 +16,6 @@ contract PulseStrategyModule is IPulseStrategyModule {
             params.width == 0 || params.tickSpacing == 0 || params.width % params.tickSpacing != 0
                 || params.tickNeighborhood * 2 > params.width
                 || (params.strategyType != StrategyType.Original && params.tickNeighborhood != 0)
-                || (
-                    params.strategyType == StrategyType.Tamper
-                        && params.maxLiquidityRatioDeviationX96 == 0
-                )
         ) {
             revert InvalidParams();
         }
@@ -250,9 +243,9 @@ contract PulseStrategyModule is IPulseStrategyModule {
              * (1 - 2 * tickShifted/w) in ticks, where tickShifted belongs to [0, w/2]
              */
             uint256 sqrtPriceX96Half = TickMath.getSqrtRatioAtTick(half);
-            uint256 sqrtPriceX96Shifted = sqrtPriceX96.mulDiv(Q96, sqrtPriceX96LowerHalf);
+            uint256 sqrtPriceX96Shifted = Math.mulDiv(sqrtPriceX96, Q96, sqrtPriceX96LowerHalf);
             liquidityRatioX96 =
-                uint256(sqrtPriceX96Half - sqrtPriceX96Shifted).mulDiv(Q96, sqrtPriceX96Half - Q96);
+                Math.mulDiv(sqrtPriceX96Half - sqrtPriceX96Shifted, Q96, sqrtPriceX96Half - Q96);
         }
     }
 
@@ -341,13 +334,6 @@ contract PulseStrategyModule is IPulseStrategyModule {
         }
 
         return (false, target);
-    }
-
-    function _max(int24 a, int24 b) private pure returns (int24) {
-        if (a < b) {
-            return b;
-        }
-        return a;
     }
 
     /**
