@@ -9,8 +9,8 @@ import {TickMath} from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import {LiquidityAmounts} from "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 
 import "../interfaces/bots/IPulseVeloBotLazy.sol";
-import "src/interfaces/modules/strategies/IPulseStrategyModule.sol";
-import "src/interfaces/utils/IVeloDeployFactory.sol";
+import "../interfaces/utils/IVeloDeployFactory.sol";
+import "../modules/strategies/PulseStrategyModule.sol";
 
 contract PulseVeloBotLazy is IPulseVeloBotLazy {
     using SafeERC20 for IERC20;
@@ -89,8 +89,9 @@ contract PulseVeloBotLazy is IPulseVeloBotLazy {
         IPulseStrategyModule.StrategyParams memory params =
             abi.decode(managedPositionInfo.strategyParams, (IPulseStrategyModule.StrategyParams));
 
-        (isRebalanceRequired,) =
-            strategyModule.calculateTargetPulse(sqrtPriceX96, tick, tickLower, tickUpper, params);
+        (isRebalanceRequired,) = PulseStrategyLibrary.calculateTargetPulse(
+            sqrtPriceX96, tick, tickLower, tickUpper, params
+        );
     }
 
     /**

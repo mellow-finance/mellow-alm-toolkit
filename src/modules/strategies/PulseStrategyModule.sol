@@ -3,64 +3,17 @@ pragma solidity ^0.8.25;
 
 import "../../interfaces/modules/strategies/IPulseStrategyModule.sol";
 
-contract PulseStrategyModule is IPulseStrategyModule {
+library PulseStrategyLibrary {
     uint256 private constant Q96 = 2 ** 96;
 
-    /// @inheritdoc IStrategyModule
-    function validateStrategyParams(bytes memory params_) external pure override {
-        if (params_.length != 0xa0) {
-            revert InvalidLength();
-        }
-        StrategyParams memory params = abi.decode(params_, (StrategyParams));
-        if (
-            params.width == 0 || params.tickSpacing == 0 || params.width % params.tickSpacing != 0
-                || params.tickNeighborhood * 2 > params.width
-                || (params.strategyType != StrategyType.Original && params.tickNeighborhood != 0)
-        ) {
-            revert InvalidParams();
-        }
-    }
-
-    /// @inheritdoc IStrategyModule
-    function getTargets(ICore.ManagedPositionInfo memory info, IAmmModule ammModule, IOracle oracle)
-        external
-        view
-        override
-        returns (bool isRebalanceRequired, ICore.TargetPositionInfo memory target)
-    {
-        StrategyParams memory strategyParams = abi.decode(info.strategyParams, (StrategyParams));
-        (uint160 sqrtPriceX96, int24 tick) = oracle.getOraclePrice(info.pool);
-        if (strategyParams.strategyType == StrategyType.Tamper) {
-            if (info.ammPositionIds.length != 2) {
-                revert InvalidLength();
-            }
-            return calculateTargetTamper(
-                sqrtPriceX96,
-                tick,
-                ammModule.getAmmPosition(info.ammPositionIds[0]),
-                ammModule.getAmmPosition(info.ammPositionIds[1]),
-                strategyParams
-            );
-        } else {
-            if (info.ammPositionIds.length != 1) {
-                revert InvalidLength();
-            }
-            IAmmModule.AmmPosition memory position =
-                ammModule.getAmmPosition(info.ammPositionIds[0]);
-            return calculateTargetPulse(
-                sqrtPriceX96, tick, position.tickLower, position.tickUpper, strategyParams
-            );
-        }
-    }
-
-    function _calculatePenalty(
+    function calculatePenalty(
         uint160 sqrtPriceX96,
         uint160 sqrtPriceX96Lower,
         uint160 sqrtPriceX96Upper
-    ) private pure returns (uint256) {
+    ) internal pure returns (uint256) {
         if (sqrtPriceX96 < sqrtPriceX96Lower || sqrtPriceX96 > sqrtPriceX96Upper) {
             return type(uint256).max;
-        } // inf
+        }
 
         return Math.max(
             Math.mulDiv(sqrtPriceX96, Q96, sqrtPriceX96Lower),
@@ -68,30 +21,12 @@ contract PulseStrategyModule is IPulseStrategyModule {
         );
     }
 
-    /*
-        width = 2
-        tickSpacing = 1
-        spotTick = 1.9999 
-        tick = 1
-        sqrtPrice = getSqrtRatioAtTick(1.9999)
-
-        prev result:
-        [0, 2]
-
-        new result:
-        [1, 3]
-
-        // Max(spotTick - tickLower, tickUpper - spotTick)
-        //  |
-        //  V
-        // Max(sqrtPrice / sqrtPriceLower, sqrtPriceUpper / sqrtPrice)
-    */
-    function _centeredPosition(
+    function centeredPosition(
         uint160 sqrtPriceX96,
         int24 tick,
         int24 positionWidth,
         int24 tickSpacing
-    ) private pure returns (int24 targetTickLower, int24 targetTickUpper) {
+    ) internal pure returns (int24 targetTickLower, int24 targetTickUpper) {
         targetTickLower = tick - positionWidth / 2;
         int24 remainder = targetTickLower % tickSpacing;
         if (remainder < 0) {
@@ -100,17 +35,17 @@ contract PulseStrategyModule is IPulseStrategyModule {
         targetTickLower -= remainder;
         targetTickUpper = targetTickLower + positionWidth;
 
-        uint256 penalty = _calculatePenalty(
+        uint256 penalty = calculatePenalty(
             sqrtPriceX96,
             TickMath.getSqrtRatioAtTick(targetTickLower),
             TickMath.getSqrtRatioAtTick(targetTickUpper)
         );
-        uint256 leftPenalty = _calculatePenalty(
+        uint256 leftPenalty = calculatePenalty(
             sqrtPriceX96,
             TickMath.getSqrtRatioAtTick(targetTickLower - tickSpacing),
             TickMath.getSqrtRatioAtTick(targetTickUpper - tickSpacing)
         );
-        uint256 rightPenalty = _calculatePenalty(
+        uint256 rightPenalty = calculatePenalty(
             sqrtPriceX96,
             TickMath.getSqrtRatioAtTick(targetTickLower + tickSpacing),
             TickMath.getSqrtRatioAtTick(targetTickUpper + tickSpacing)
@@ -129,13 +64,13 @@ contract PulseStrategyModule is IPulseStrategyModule {
         }
     }
 
-    function _calculatePosition(
+    function calculatePosition(
         uint160 sqrtPriceX96,
         int24 tick,
         int24 tickLower,
         int24 tickUpper,
-        StrategyParams memory params
-    ) private pure returns (int24 targetTickLower, int24 targetTickUpper) {
+        IPulseStrategyModule.StrategyParams memory params
+    ) internal pure returns (int24 targetTickLower, int24 targetTickUpper) {
         if (
             sqrtPriceX96 >= TickMath.getSqrtRatioAtTick(tickLower + params.tickNeighborhood)
                 && sqrtPriceX96 <= TickMath.getSqrtRatioAtTick(tickUpper - params.tickNeighborhood)
@@ -146,21 +81,25 @@ contract PulseStrategyModule is IPulseStrategyModule {
 
         if (
             (params.width != tickUpper - tickLower && tickUpper == tickLower)
-                || (params.strategyType == StrategyType.Original)
+                || (params.strategyType == IPulseStrategyModule.StrategyType.Original)
         ) {
-            return _centeredPosition(sqrtPriceX96, tick, params.width, params.tickSpacing);
+            return centeredPosition(sqrtPriceX96, tick, params.width, params.tickSpacing);
         }
 
         uint160 sqrtPriceX96Lower = TickMath.getSqrtRatioAtTick(tickLower);
         uint160 sqrtPriceX96Upper = TickMath.getSqrtRatioAtTick(tickUpper);
 
-        if (params.strategyType == StrategyType.LazyDescending && sqrtPriceX96 >= sqrtPriceX96Lower)
-        {
+        if (
+            params.strategyType == IPulseStrategyModule.StrategyType.LazyDescending
+                && sqrtPriceX96 >= sqrtPriceX96Lower
+        ) {
             return (tickLower, tickUpper);
         }
 
-        if (params.strategyType == StrategyType.LazyAscending && sqrtPriceX96 <= sqrtPriceX96Upper)
-        {
+        if (
+            params.strategyType == IPulseStrategyModule.StrategyType.LazyAscending
+                && sqrtPriceX96 <= sqrtPriceX96Upper
+        ) {
             return (tickLower, tickUpper);
         }
         /*  
@@ -192,10 +131,10 @@ contract PulseStrategyModule is IPulseStrategyModule {
         int24 tick,
         int24 tickLower,
         int24 tickUpper,
-        StrategyParams memory params
-    ) public pure returns (bool isRebalanceRequired, ICore.TargetPositionInfo memory target) {
+        IPulseStrategyModule.StrategyParams memory params
+    ) internal pure returns (bool isRebalanceRequired, ICore.TargetPositionInfo memory target) {
         (int24 targetTickLower, int24 targetTickUpper) =
-            _calculatePosition(sqrtPriceX96, tick, tickLower, tickUpper, params);
+            calculatePosition(sqrtPriceX96, tick, tickLower, tickUpper, params);
         if (targetTickLower == tickLower && targetTickUpper == tickUpper) {
             return (false, target);
         }
@@ -207,45 +146,34 @@ contract PulseStrategyModule is IPulseStrategyModule {
         target.liquidityRatiosX96[0] = Q96;
         isRebalanceRequired = true;
     }
+}
 
-    /**
-     * @dev Calculates the target lower tick and liquidity ratio of the lower position based on the given parameters.
-     * @param sqrtPriceX96 The current sqrtPriceX96 of the market, indicating the instantaneous price level.
-     * @param tickLower The lower tick value.
-     * @param half Half of the width of each position.
-     * @return targetLower The calculated target lower tick.
-     * @return liquidityRatioX96 The calculated liquidity ratio.
-     */
-    function _getCrossedPositions(uint256 sqrtPriceX96, int24 tickLower, int24 half)
-        private
+library TamperStrategyLibrary {
+    uint256 private constant Q96 = 2 ** 96;
+
+    function calculateInitialPosition(uint160 sqrtPriceX96, int24 tick, int24 width)
+        internal
         pure
-        returns (int24 targetLower, uint256 liquidityRatioX96)
+        returns (int24 targetLower, uint256 lowerLiquidityRatioX96)
     {
-        int24 width = half * 2;
-        uint256 sqrtPriceX96LowerHalf = TickMath.getSqrtRatioAtTick(tickLower + half);
-        uint256 sqrtPriceX96LowerWidth = TickMath.getSqrtRatioAtTick(tickLower + width);
-        if (sqrtPriceX96 < sqrtPriceX96LowerHalf) {
-            targetLower = tickLower - half;
-        } else if (sqrtPriceX96 > sqrtPriceX96LowerWidth) {
-            targetLower = tickLower + half;
+        int24 half = width / 2;
+        (targetLower,) =
+            PulseStrategyLibrary.centeredPosition(sqrtPriceX96, tick, width + half, half);
+        uint160 sqrtPriceCenterX96 = TickMath.getSqrtRatioAtTick(targetLower + half);
+        if (sqrtPriceX96 <= sqrtPriceCenterX96) {
+            lowerLiquidityRatioX96 = 0;
+        } else if (sqrtPriceX96 >= TickMath.getSqrtRatioAtTick(targetLower + width)) {
+            lowerLiquidityRatioX96 = Q96;
         } else {
-            targetLower = tickLower;
-        }
-        if (sqrtPriceX96LowerHalf >= sqrtPriceX96) {
-            liquidityRatioX96 = Q96;
-        } else if (sqrtPriceX96LowerWidth <= sqrtPriceX96) {
-            liquidityRatioX96 = 0;
-        } else {
-            /**
-             * @dev shift sqrtPrices for (x+w/2), in ticks [x + w/2, x + w] -> [0, w/2]
-             * so sqrtPriceX96Shifted belongs to [Q96, sqrtPriceX96Half]
-             * liquidityRatioX96 can be calculated as (sqrtPriceX96Half - sqrtPriceX96Shifted)/(sqrtPriceX96Half - Q96) that is equivalent to
-             * (1 - 2 * tickShifted/w) in ticks, where tickShifted belongs to [0, w/2]
-             */
-            uint256 sqrtPriceX96Half = TickMath.getSqrtRatioAtTick(half);
-            uint256 sqrtPriceX96Shifted = Math.mulDiv(sqrtPriceX96, Q96, sqrtPriceX96LowerHalf);
-            liquidityRatioX96 =
-                Math.mulDiv(sqrtPriceX96Half - sqrtPriceX96Shifted, Q96, sqrtPriceX96Half - Q96);
+            // NOTE: Calculations below are performed with ~19-bit precision, while the lowerLiquidityRatioX96 parameter supports up to 96 bits.
+            // Though this function does not yield highly precise results, the precision is sufficient for the strategy logic.
+            lowerLiquidityRatioX96 = Math.mulDiv(
+                Q96,
+                uint24(
+                    TickMath.getTickAtSqrtRatio(Math.mulDiv(sqrtPriceX96, Q96, sqrtPriceCenterX96))
+                ),
+                uint24(half)
+            );
         }
     }
 
@@ -254,103 +182,147 @@ contract PulseStrategyModule is IPulseStrategyModule {
         int24 tick,
         IAmmModule.AmmPosition memory lowerPosition,
         IAmmModule.AmmPosition memory upperPosition,
+        IPulseStrategyModule.StrategyParams memory params
+    ) internal pure returns (bool isRebalanceRequired, ICore.TargetPositionInfo memory target) {
+        int24 width = params.width;
+        int24 half = width / 2;
+        (int24 targetLower, uint256 targetLowerRatioX96) =
+            calculateInitialPosition(sqrtPriceX96, tick, width);
+        isRebalanceRequired = lowerPosition.tickUpper - lowerPosition.tickLower != width
+            || upperPosition.tickUpper - upperPosition.tickLower != width
+            || lowerPosition.tickUpper != upperPosition.tickLower + half
+            || lowerPosition.tickUpper % half != 0;
+
+        if (!isRebalanceRequired) {
+            uint256 ratioDiffX96 = 0;
+            uint256 totalLiquidity = lowerPosition.liquidity + upperPosition.liquidity;
+            uint256 lowerRatioX96 = Math.mulDiv(Q96, lowerPosition.liquidity, totalLiquidity);
+            uint256 upperRatioX96 = Q96 - lowerRatioX96;
+            uint256 targetUpperRatioX96 = Q96 - targetLowerRatioX96;
+            if (targetLower == lowerPosition.tickLower) {
+                ratioDiffX96 += Q96 - Math.min(targetLowerRatioX96, lowerRatioX96)
+                    - Math.min(targetUpperRatioX96, upperRatioX96);
+            } else if (targetLower + half == lowerPosition.tickLower) {
+                ratioDiffX96 += Q96 - Math.min(targetUpperRatioX96, lowerRatioX96);
+            } else if (targetLower - half == lowerPosition.tickLower) {
+                ratioDiffX96 += Q96 - Math.min(targetLowerRatioX96, upperRatioX96);
+            } else {
+                // NOTE: Position adjustments are restricted to a maximum of half the interval width.
+                // This is intentional in the LStrategy (Tamper) logic to prevent large-volume liquidity shifts in the pool during rebalancing.
+                ratioDiffX96 = Q96;
+                if (targetLower < lowerPosition.tickLower) {
+                    targetLower = lowerPosition.tickLower - half;
+                    targetLowerRatioX96 = Q96;
+                } else {
+                    targetLower = lowerPosition.tickLower + half;
+                    targetLowerRatioX96 = 0;
+                }
+            }
+            isRebalanceRequired = ratioDiffX96 > params.maxLiquidityRatioDeviationX96;
+        }
+
+        if (isRebalanceRequired) {
+            target.lowerTicks = new int24[](2);
+            target.upperTicks = new int24[](2);
+            target.liquidityRatiosX96 = new uint256[](2);
+            target.lowerTicks[0] = targetLower;
+            target.lowerTicks[1] = targetLower + half;
+            target.upperTicks[0] = targetLower + width;
+            target.upperTicks[1] = targetLower + half + width;
+            target.liquidityRatiosX96[0] = targetLowerRatioX96;
+            target.liquidityRatiosX96[1] = Q96 - targetLowerRatioX96;
+        }
+    }
+}
+
+contract PulseStrategyModule is IPulseStrategyModule {
+    uint256 private constant Q96 = 2 ** 96;
+
+    /// @inheritdoc IStrategyModule
+    function validateStrategyParams(bytes memory params_) external pure override {
+        if (params_.length != 0xa0) {
+            revert InvalidLength();
+        }
+        StrategyParams memory params = abi.decode(params_, (StrategyParams));
+        if (
+            params.width == 0 || params.tickSpacing == 0 || params.width % params.tickSpacing != 0
+                || params.tickNeighborhood * 2 > params.width
+                || (params.strategyType != StrategyType.Original && params.tickNeighborhood != 0)
+                || (
+                    params.strategyType == StrategyType.Tamper && params.width % 2 != 0
+                        && params.width / 2 >= params.tickSpacing
+                        || params.maxLiquidityRatioDeviationX96 >= Q96
+                )
+        ) {
+            revert InvalidParams();
+        }
+    }
+
+    /// @inheritdoc IStrategyModule
+    function getTargets(ICore.ManagedPositionInfo memory info, IAmmModule ammModule, IOracle oracle)
+        external
+        view
+        override
+        returns (bool isRebalanceRequired, ICore.TargetPositionInfo memory target)
+    {
+        StrategyParams memory strategyParams = abi.decode(info.strategyParams, (StrategyParams));
+        (uint160 sqrtPriceX96, int24 tick) = oracle.getOraclePrice(info.pool);
+        if (strategyParams.strategyType == StrategyType.Tamper) {
+            if (info.ammPositionIds.length != 2) {
+                revert InvalidLength();
+            }
+            return TamperStrategyLibrary.calculateTargetTamper(
+                sqrtPriceX96,
+                tick,
+                ammModule.getAmmPosition(info.ammPositionIds[0]),
+                ammModule.getAmmPosition(info.ammPositionIds[1]),
+                strategyParams
+            );
+        } else {
+            if (info.ammPositionIds.length != 1) {
+                revert InvalidLength();
+            }
+            IAmmModule.AmmPosition memory position =
+                ammModule.getAmmPosition(info.ammPositionIds[0]);
+            return PulseStrategyLibrary.calculateTargetPulse(
+                sqrtPriceX96, tick, position.tickLower, position.tickUpper, strategyParams
+            );
+        }
+    }
+
+    /// @inheritdoc IPulseStrategyModule
+    function calculateTargetPulse(
+        uint160 sqrtPriceX96,
+        int24 tick,
+        int24 tickLower,
+        int24 tickUpper,
         StrategyParams memory params
     )
-        public
+        external
         pure
         override
         returns (bool isRebalanceRequired, ICore.TargetPositionInfo memory target)
     {
-        if (
-            sqrtPriceX96
-                >= TickMath.getSqrtRatioAtTick(lowerPosition.tickLower + params.tickNeighborhood)
-                && sqrtPriceX96
-                    <= TickMath.getSqrtRatioAtTick(upperPosition.tickUpper - params.tickNeighborhood)
-        ) {
-            return (false, target);
-        }
-
-        int24 width = lowerPosition.tickUpper - lowerPosition.tickLower;
-        int24 half = width / 2;
-        int24 tickLower = lowerPosition.tickLower;
-        if (params.maxLiquidityRatioDeviationX96 == 0) {
-            revert InvalidPosition();
-        }
-
-        if (width != params.width && lowerPosition.tickUpper == lowerPosition.tickLower) {
-            (tickLower,) = _centeredPosition(sqrtPriceX96, tick, params.width, params.tickSpacing);
-            width = params.width;
-            half = width / 2;
-        } else {
-            if (
-                width % 2 != 0 || upperPosition.tickLower != lowerPosition.tickLower + half
-                    || upperPosition.tickUpper != lowerPosition.tickUpper + half
-                    || width != upperPosition.tickUpper - upperPosition.tickLower
-            ) {
-                revert InvalidPosition();
-            }
-        }
-
-        (int24 targetLower, uint256 liquidityRatioX96) =
-            _getCrossedPositions(sqrtPriceX96, tickLower, half);
-        /// @dev default value in case of empty positions
-        uint256 ratioX96 = Q96;
-        uint256 totalLiquidity = lowerPosition.liquidity + upperPosition.liquidity;
-        if (totalLiquidity > 0) {
-            ratioX96 = Math.mulDiv(lowerPosition.liquidity, Q96, totalLiquidity);
-        }
-
-        target.lowerTicks = new int24[](2);
-        target.upperTicks = new int24[](2);
-        target.liquidityRatiosX96 = new uint256[](2);
-        target.lowerTicks[0] = targetLower;
-        target.upperTicks[0] = targetLower + width;
-        target.liquidityRatiosX96[0] = ratioX96;
-        target.lowerTicks[1] = targetLower + half;
-        target.upperTicks[1] = targetLower + half + width;
-        target.liquidityRatiosX96[1] = Q96 - ratioX96;
-
-        if (
-            targetLower == lowerPosition.tickLower
-                && _checkDeviation(ratioX96, liquidityRatioX96, params.maxLiquidityRatioDeviationX96)
-        ) {
-            return (true, target);
-        }
-        if (
-            targetLower + half == lowerPosition.tickLower
-                && _checkDeviation(
-                    Q96 - ratioX96, liquidityRatioX96, params.maxLiquidityRatioDeviationX96
-                )
-        ) {
-            return (true, target);
-        }
-        if (
-            targetLower - half == lowerPosition.tickLower
-                && _checkDeviation(
-                    ratioX96, Q96 - liquidityRatioX96, params.maxLiquidityRatioDeviationX96
-                )
-        ) {
-            return (true, target);
-        }
-
-        return (false, target);
+        return PulseStrategyLibrary.calculateTargetPulse(
+            sqrtPriceX96, tick, tickLower, tickUpper, params
+        );
     }
 
-    /**
-     * @dev Checks if the difference between two numbers exceeds a specified deviation.
-     * @param a The first number.
-     * @param b The second number.
-     * @param deviation The maximum allowed difference between the two numbers.
-     * @return bool true if the difference between `a` and `b` exceeds `deviation`, false otherwise.
-     */
-    function _checkDeviation(uint256 a, uint256 b, uint256 deviation)
-        internal
+    /// @inheritdoc IPulseStrategyModule
+    function calculateTargetTamper(
+        uint160 sqrtPriceX96,
+        int24 tick,
+        IAmmModule.AmmPosition memory lowerPosition,
+        IAmmModule.AmmPosition memory upperPosition,
+        StrategyParams memory params
+    )
+        external
         pure
-        returns (bool)
+        override
+        returns (bool isRebalanceRequired, ICore.TargetPositionInfo memory target)
     {
-        if (a + deviation > b || b + deviation > a) {
-            return true;
-        }
-        return false;
+        return TamperStrategyLibrary.calculateTargetTamper(
+            sqrtPriceX96, tick, lowerPosition, upperPosition, params
+        );
     }
 }

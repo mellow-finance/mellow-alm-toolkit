@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "../interfaces/utils/IVeloFactoryDeposit.sol";
 
+import "../modules/strategies/PulseStrategyModule.sol";
 import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import {LiquidityAmounts} from "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 
@@ -197,7 +198,7 @@ contract VeloFactoryDeposit is IVeloFactoryDeposit {
             maxLiquidityRatioDeviationX96: poolParameter.maxLiquidityRatioDeviationX96
         });
 
-        (, ICore.TargetPositionInfo memory target) = strategyModule.calculateTargetTamper(
+        (, ICore.TargetPositionInfo memory target) = TamperStrategyLibrary.calculateTargetTamper(
             sqrtPriceX96, tick, emptyPosition, emptyPosition, strategyParams
         );
 
@@ -235,7 +236,7 @@ contract VeloFactoryDeposit is IVeloFactoryDeposit {
         });
 
         (bool isRebalanceRequired, ICore.TargetPositionInfo memory target) =
-            strategyModule.calculateTargetPulse(sqrtPriceX96, tick, 0, 0, strategyParams);
+            PulseStrategyLibrary.calculateTargetPulse(sqrtPriceX96, tick, 0, 0, strategyParams);
 
         assert(isRebalanceRequired);
 
