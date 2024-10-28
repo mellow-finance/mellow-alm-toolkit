@@ -3,13 +3,13 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
+import {LiquidityAmounts} from "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {TickMath} from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 
 import "../interfaces/bots/IPulseVeloBotLazy.sol";
 import "src/interfaces/modules/strategies/IPulseStrategyModule.sol";
 import "src/interfaces/utils/IVeloDeployFactory.sol";
-
-import "../libraries/external/LiquidityAmounts.sol";
-import "@uniswap/libraries/TickMath.sol";
 
 contract PulseVeloBotLazy is IPulseVeloBotLazy {
     using SafeERC20 for IERC20;

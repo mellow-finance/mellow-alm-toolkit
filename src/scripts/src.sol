@@ -23,11 +23,9 @@ import "src/oracles/VeloOracle.sol";
 import "src/interfaces/external/velo/ICLFactory.sol";
 import "src/interfaces/external/velo/ICLPool.sol";
 
-import {IUniswapV3Pool} from "src/interfaces/external/univ3/IUniswapV3Pool.sol";
-
 import "src/interfaces/external/velo/INonfungiblePositionManager.sol";
 
-import "src/libraries/external/LiquidityAmounts.sol";
+import {LiquidityAmounts} from "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 import "src/libraries/external/velo/PositionValue.sol";
 
 import "src/utils/Compounder.sol";

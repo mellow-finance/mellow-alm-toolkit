@@ -3,8 +3,8 @@ pragma solidity ^0.8.0;
 
 import "../../interfaces/modules/velo/IVeloAmmModule.sol";
 
-import "@uniswap/libraries/TickMath.sol";
-import "../../libraries/external/LiquidityAmounts.sol";
+import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
+import {LiquidityAmounts} from "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 import "../../libraries/external/velo/PositionValue.sol";
 
 contract VeloAmmModule is IVeloAmmModule {

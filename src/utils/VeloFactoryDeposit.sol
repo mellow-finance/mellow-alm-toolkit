@@ -2,8 +2,8 @@
 pragma solidity ^0.8.0;
 
 import "../interfaces/utils/IVeloFactoryDeposit.sol";
-import "src/libraries/external/LiquidityAmounts.sol";
-import "@uniswap/libraries/TickMath.sol";
+import {LiquidityAmounts} from "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
+import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 
 contract VeloFactoryDeposit is IVeloFactoryDeposit {
     using SafeERC20 for IERC20;

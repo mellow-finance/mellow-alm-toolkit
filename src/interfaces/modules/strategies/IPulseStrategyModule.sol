@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "@uniswap/libraries/TickMath.sol";
+import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import "../IStrategyModule.sol";
 
 /**

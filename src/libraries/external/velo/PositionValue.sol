@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.0;
 
+import {TickMath} from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
+import {LiquidityAmounts} from "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {FixedPoint128} from "@uniswap/v3-core/contracts/libraries/FixedPoint128.sol";
+
 import "../../../interfaces/external/velo/ICLPool.sol";
 import "../../../interfaces/external/velo/ICLFactory.sol";
 import "../../../interfaces/external/velo/INonfungiblePositionManager.sol";
-import "../FixedPoint128.sol";
-
-import "@uniswap/libraries/TickMath.sol";
-import "../LiquidityAmounts.sol";
 
 /// @title Returns information about the token value held in a Uniswap V3 NFT
 library PositionValue {
