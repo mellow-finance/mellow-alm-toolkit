@@ -198,7 +198,7 @@ contract VeloFactoryDeposit is IVeloFactoryDeposit {
             maxLiquidityRatioDeviationX96: poolParameter.maxLiquidityRatioDeviationX96
         });
 
-        (, ICore.TargetPositionInfo memory target) = TamperStrategyLibrary.calculateTargetTamper(
+        (, ICore.TargetPositionInfo memory target) = TamperStrategyLibrary.calculateTarget(
             sqrtPriceX96, tick, emptyPosition, emptyPosition, strategyParams
         );
 
@@ -236,7 +236,7 @@ contract VeloFactoryDeposit is IVeloFactoryDeposit {
         });
 
         (bool isRebalanceRequired, ICore.TargetPositionInfo memory target) =
-            PulseStrategyLibrary.calculateTargetPulse(sqrtPriceX96, tick, 0, 0, strategyParams);
+            PulseStrategyLibrary.calculateTarget(sqrtPriceX96, tick, 0, 0, strategyParams);
 
         assert(isRebalanceRequired);
 

@@ -4,8 +4,16 @@ pragma solidity ^0.8.25;
 import "../../interfaces/modules/strategies/IPulseStrategyModule.sol";
 
 library PulseStrategyLibrary {
+    /// @dev A constant representing the Q96 fixed-point format.
     uint256 private constant Q96 = 2 ** 96;
 
+    /**
+     * @notice Calculates a penalty based on the price position within a given range.
+     * @param sqrtPriceX96 Current square root price in Q96 format.
+     * @param sqrtPriceX96Lower Lower bound of the price range in Q96 format.
+     * @param sqrtPriceX96Upper Upper bound of the price range in Q96 format.
+     * @return The calculated penalty, with a maximum value if outside the range.
+     */
     function calculatePenalty(
         uint160 sqrtPriceX96,
         uint160 sqrtPriceX96Lower,
@@ -21,6 +29,15 @@ library PulseStrategyLibrary {
         );
     }
 
+    /**
+     * @notice Calculates the centered tick position for a given tick and range.
+     * @param sqrtPriceX96 Current square root price in Q96 format.
+     * @param tick Current tick of the position.
+     * @param positionWidth Width of the position.
+     * @param tickSpacing Spacing between each tick.
+     * @return targetTickLower Lower tick of the centered position.
+     * @return targetTickUpper Upper tick of the centered position.
+     */
     function centeredPosition(
         uint160 sqrtPriceX96,
         int24 tick,
@@ -64,6 +81,16 @@ library PulseStrategyLibrary {
         }
     }
 
+    /**
+     * @notice Calculates the optimal tick position based on given parameters.
+     * @param sqrtPriceX96 Current square root price in Q96 format.
+     * @param tick Current tick of the position.
+     * @param tickLower Lower bound of the existing position.
+     * @param tickUpper Upper bound of the existing position.
+     * @param params Strategy parameters.
+     * @return targetTickLower Lower tick of the calculated position.
+     * @return targetTickUpper Upper tick of the calculated position.
+     */
     function calculatePosition(
         uint160 sqrtPriceX96,
         int24 tick,
@@ -126,7 +153,17 @@ library PulseStrategyLibrary {
         targetTickUpper = targetTickLower + params.width;
     }
 
-    function calculateTargetPulse(
+    /**
+     * @notice Determines if rebalancing is needed and calculates the target position if so.
+     * @param sqrtPriceX96 Current square root price in Q96 format.
+     * @param tick Current tick.
+     * @param tickLower Lower tick of the existing position.
+     * @param tickUpper Upper tick of the existing position.
+     * @param params Strategy parameters.
+     * @return isRebalanceRequired Boolean indicating if rebalancing is required.
+     * @return target Target position information for rebalancing.
+     */
+    function calculateTarget(
         uint160 sqrtPriceX96,
         int24 tick,
         int24 tickLower,
@@ -149,8 +186,17 @@ library PulseStrategyLibrary {
 }
 
 library TamperStrategyLibrary {
+    /// @dev A constant representing the Q96 fixed-point format.
     uint256 private constant Q96 = 2 ** 96;
 
+    /**
+     * @notice Calculates the initial position's lower tick and liquidity ratio.
+     * @param sqrtPriceX96 Current square root price in Q96 format.
+     * @param tick Current tick of the position.
+     * @param width Width of the position.
+     * @return targetLower The lower tick of the target position.
+     * @return lowerLiquidityRatioX96 Liquidity ratio for the lower range in Q96 format.
+     */
     function calculateInitialPosition(uint160 sqrtPriceX96, int24 tick, int24 width)
         internal
         pure
@@ -183,7 +229,17 @@ library TamperStrategyLibrary {
         }
     }
 
-    function calculateTargetTamper(
+    /**
+     * @notice Determines if rebalancing is needed and calculates the target position if so.
+     * @param sqrtPriceX96 Current square root price in Q96 format.
+     * @param tick Current tick.
+     * @param lowerPosition Position data of the lower range.
+     * @param upperPosition Position data of the upper range.
+     * @param params Strategy parameters.
+     * @return isRebalanceRequired Boolean indicating if rebalancing is required.
+     * @return target Target position information for rebalancing.
+     */
+    function calculateTarget(
         uint160 sqrtPriceX96,
         int24 tick,
         IAmmModule.AmmPosition memory lowerPosition,
@@ -277,7 +333,7 @@ contract PulseStrategyModule is IPulseStrategyModule {
             if (info.ammPositionIds.length != 2) {
                 revert InvalidLength();
             }
-            return TamperStrategyLibrary.calculateTargetTamper(
+            return TamperStrategyLibrary.calculateTarget(
                 sqrtPriceX96,
                 tick,
                 ammModule.getAmmPosition(info.ammPositionIds[0]),
@@ -290,7 +346,7 @@ contract PulseStrategyModule is IPulseStrategyModule {
             }
             IAmmModule.AmmPosition memory position =
                 ammModule.getAmmPosition(info.ammPositionIds[0]);
-            return PulseStrategyLibrary.calculateTargetPulse(
+            return PulseStrategyLibrary.calculateTarget(
                 sqrtPriceX96, tick, position.tickLower, position.tickUpper, strategyParams
             );
         }
@@ -309,9 +365,8 @@ contract PulseStrategyModule is IPulseStrategyModule {
         override
         returns (bool isRebalanceRequired, ICore.TargetPositionInfo memory target)
     {
-        return PulseStrategyLibrary.calculateTargetPulse(
-            sqrtPriceX96, tick, tickLower, tickUpper, params
-        );
+        return
+            PulseStrategyLibrary.calculateTarget(sqrtPriceX96, tick, tickLower, tickUpper, params);
     }
 
     /// @inheritdoc IPulseStrategyModule
@@ -327,7 +382,7 @@ contract PulseStrategyModule is IPulseStrategyModule {
         override
         returns (bool isRebalanceRequired, ICore.TargetPositionInfo memory target)
     {
-        return TamperStrategyLibrary.calculateTargetTamper(
+        return TamperStrategyLibrary.calculateTarget(
             sqrtPriceX96, tick, lowerPosition, upperPosition, params
         );
     }

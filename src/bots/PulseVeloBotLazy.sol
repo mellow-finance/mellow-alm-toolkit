@@ -89,9 +89,8 @@ contract PulseVeloBotLazy is IPulseVeloBotLazy {
         IPulseStrategyModule.StrategyParams memory params =
             abi.decode(managedPositionInfo.strategyParams, (IPulseStrategyModule.StrategyParams));
 
-        (isRebalanceRequired,) = PulseStrategyLibrary.calculateTargetPulse(
-            sqrtPriceX96, tick, tickLower, tickUpper, params
-        );
+        (isRebalanceRequired,) =
+            PulseStrategyLibrary.calculateTarget(sqrtPriceX96, tick, tickLower, tickUpper, params);
     }
 
     /**
