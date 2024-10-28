@@ -165,17 +165,21 @@ library TamperStrategyLibrary {
         } else if (sqrtPriceX96 >= TickMath.getSqrtRatioAtTick(targetLower + width)) {
             lowerLiquidityRatioX96 = Q96;
         } else {
-            // NOTE: Calculations below are performed with ~19-bit precision, while the lowerLiquidityRatioX96 parameter supports up to 96 bits.
-            // Though this function does not yield highly precise results, the precision is sufficient for the strategy logic.
-            lowerLiquidityRatioX96 = Math.mulDiv(
-                Q96,
-                uint24(
-                    TickMath.getTickAtSqrtRatio(
-                        uint160(Math.mulDiv(sqrtPriceX96, Q96, sqrtPriceCenterX96))
+            uint160 sqrtRatioAtTick = TickMath.getSqrtRatioAtTick(tick);
+            uint160 sqrtRatioAtNextTick = TickMath.getSqrtRatioAtTick(tick + 1);
+            int256 preciseTickX96 = int256(tick) * int256(Q96)
+                + int256(
+                    Math.mulDiv(
+                        Q96,
+                        sqrtPriceX96 - sqrtRatioAtTick,
+                        sqrtRatioAtNextTick - sqrtRatioAtTick,
+                        Math.Rounding.Up
                     )
-                ),
-                uint24(half)
-            );
+                );
+            uint256 deduction = Math.ceilDiv(
+                uint256(preciseTickX96 - targetLower * int256(Q96)), uint24(half)
+            ) - Q96;
+            lowerLiquidityRatioX96 = Q96 - Math.min(Q96, deduction);
         }
     }
 
