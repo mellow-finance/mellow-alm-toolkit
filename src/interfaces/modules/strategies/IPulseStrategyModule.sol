@@ -42,7 +42,7 @@ interface IPulseStrategyModule is IStrategyModule {
      * This function's behavior varies with the chosen strategy type, adapting to market movements and strategic requirements:
      *
      * Always calculate centered position if provided tickLower and tickUpper are equal,
-     * else gets ttargets align strategy type. It should be used only at initial setup.
+     * else gets targets align strategy type. It should be used only at initial setup.
      *
      * StrategyType.Original (Pulse V1):
      * This is the classic strategy where the position is actively managed within an interval [tickLower, tickUpper].
@@ -90,7 +90,7 @@ interface IPulseStrategyModule is IStrategyModule {
      * This function's behavior varies with the chosen strategy type, adapting to market movements and strategic requirements:
      *
      * Always calculate centered position if provided position(s) has equal lower and upper ticks,
-     * else gets ttargets align strategy type. It should be used only at initial setup.
+     * else gets targets align strategy type. It should be used only at initial setup.
      *
      * StrategyType.Tamper:
      * Handles two crossed positions upper position [tickLower, tickLower+width] and lower [tickLower+width/2, tickLower+width+width/2]

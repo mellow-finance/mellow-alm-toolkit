@@ -271,6 +271,7 @@ library TamperStrategyLibrary {
             } else {
                 // NOTE: Position adjustments are restricted to a maximum of half the interval width.
                 // This is intentional in the LStrategy (Tamper) logic to prevent large-volume liquidity shifts in the pool during rebalancing.
+                // Precision of below calculations is not worse than 1e-5.
                 ratioDiffX96 = Q96;
                 if (targetLower < lowerPosition.tickLower) {
                     targetLower = lowerPosition.tickLower - half;
