@@ -33,4 +33,5 @@ import "src/utils/LpWrapper.sol";
 import "src/utils/StakingRewards.sol";
 import "src/utils/VeloDeployFactory.sol";
 import "src/utils/VeloDeployFactoryHelper.sol";
+import "src/utils/VeloFactoryDeposit.sol";
 import "src/utils/VeloSugarHelper.sol";

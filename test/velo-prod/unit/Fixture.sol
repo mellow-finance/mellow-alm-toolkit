@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import "./Constants.sol";
+import "../Constants.sol";
 
 import {SwapRouter} from "../contracts/periphery/SwapRouter.sol";
 import {QuoterV2} from "../contracts/periphery/lens/QuoterV2.sol";

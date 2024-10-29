@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.25;
 
-import "./base/Constants.sol";
+import "./optimism/Constants.sol";
 
 contract DeployVeloLazy is Script, Test, PoolParameters, Addresses {
     address immutable VELO_DEPLOY_FACTORY_ADMIN = CORE_ADMIN;
@@ -13,10 +13,7 @@ contract DeployVeloLazy is Script, Test, PoolParameters, Addresses {
         deployCore();
     }
 
-    function deployCore()
-        internal
-        returns (address veloDeployFactoryAddress, address createStrategyHelperAddress)
-    {
+    function deployCore() internal returns (VeloDeployFactory deployFactory) {
         console.log("Deployer", DEPLOYER);
         console.log("Core/deloy factory/wrapper admin and farm owner", CORE_ADMIN);
         console.log("Protocol treasuty", PROTOCOL_TREASURY);
@@ -30,11 +27,11 @@ contract DeployVeloLazy is Script, Test, PoolParameters, Addresses {
         console2.log("VeloOracle", address(oracle));
 
         //-------------------------------------------------------------------------------
-        strategyModule = new PulseStrategyModule();
+        IPulseStrategyModule strategyModule = new PulseStrategyModule();
         console2.log("PulseStrategyModule", address(strategyModule));
 
         //-------------------------------------------------------------------------------
-        velotrDeployFactoryHelper = new VeloDeployFactoryHelper(Constants.WETH);
+        VeloDeployFactoryHelper velotrDeployFactoryHelper = new VeloDeployFactoryHelper(Constants.WETH);
         console2.log("VeloDeployFactoryHelper", address(velotrDeployFactoryHelper));
 
         //-------------------------------------------------------------------------------
@@ -51,7 +48,7 @@ contract DeployVeloLazy is Script, Test, PoolParameters, Addresses {
         console2.log("VeloDepositWithdrawModule", address(veloDepositWithdrawModule));
 
         //-------------------------------------------------------------------------------
-        core = new Core(ammModule, strategyModule, oracle, DEPLOYER);
+        Core core = new Core(ammModule, strategyModule, oracle, DEPLOYER);
         console2.log("Core", address(core));
 
         core.setProtocolParams(
@@ -70,15 +67,15 @@ contract DeployVeloLazy is Script, Test, PoolParameters, Addresses {
         console2.log("Compounder", address(compounder));
 
         //-------------------------------------------------------------------------------
+        VeloFactoryDeposit factoryDeposit = new VeloFactoryDeposit(core, strategyModule);
+        console2.log("VeloFactoryDeposit", address(factoryDeposit));
+
+        //-------------------------------------------------------------------------------
         deployFactory = new VeloDeployFactory(
-            DEPLOYER,
-            core,
-            veloDepositWithdrawModule,
-            velotrDeployFactoryHelper,
-            IVeloFactoryDeposit(address(0))
+            DEPLOYER, core, veloDepositWithdrawModule, velotrDeployFactoryHelper, factoryDeposit
         );
+
         console2.log("VeloDeployFactory", address(deployFactory));
-        veloDeployFactoryAddress = address(deployFactory);
 
         deployFactory.updateMutableParams(
             IVeloDeployFactory.MutableParams({
@@ -97,24 +94,16 @@ contract DeployVeloLazy is Script, Test, PoolParameters, Addresses {
         console2.log("PulseVeloBotLazy", address(pulseVeloBot));
 
         //-------------------------------------------------------------------------------
-        /* createStrategyHelper = new CreateStrategyHelper(
-            address(deployFactory),
-            VELO_DEPLOY_FACTORY_OPERATOR
-        );
-        console2.log("CreateStrategyHelper", address(createStrategyHelper));
-        createStrategyHelperAddress = address(createStrategyHelper); */
-
-        //-------------------------------------------------------------------------------
         veloSugarHelper = new VeloSugarHelper(address(deployFactory));
 
         console2.log("VeloSugarHelper", address(veloSugarHelper));
 
-        _setRoles();
+        _setRoles(core);
 
         // vm.stopBroadcast();
     }
 
-    function _setRoles() private {
+    function _setRoles(Core core) private {
         compounder.grantRole(compounder.ADMIN_DELEGATE_ROLE(), DEPLOYER);
         compounder.grantRole(compounder.OPERATOR(), CORE_OPERATOR);
         compounder.grantRole(compounder.ADMIN_ROLE(), CORE_ADMIN);
@@ -132,12 +121,6 @@ contract DeployVeloLazy is Script, Test, PoolParameters, Addresses {
 
         deployFactory.grantRole(deployFactory.ADMIN_ROLE(), VELO_DEPLOY_FACTORY_ADMIN);
 
-        // grant rights to deploy strategies for new pools
-        /*         deployFactory.grantRole(
-            deployFactory.OPERATOR(),
-            address(createStrategyHelper)
-        );
-        */
         deployFactory.revokeRole(deployFactory.ADMIN_DELEGATE_ROLE(), DEPLOYER);
 
         core.revokeRole(core.ADMIN_DELEGATE_ROLE(), DEPLOYER);
@@ -150,8 +133,6 @@ contract DeployVeloLazy is Script, Test, PoolParameters, Addresses {
         require(core.isOperator(CORE_OPERATOR));
 
         require(!deployFactory.isAdmin(DEPLOYER));
-        //    require(!deployFactory.isAdmin(address(createStrategyHelper)));
-        //    require(deployFactory.isOperator(address(createStrategyHelper)));
 
         require(deployFactory.isAdmin(CORE_ADMIN));
         require(deployFactory.isOperator(VELO_DEPLOY_FACTORY_OPERATOR));

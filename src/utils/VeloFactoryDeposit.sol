@@ -38,12 +38,6 @@ contract VeloFactoryDeposit is IVeloFactoryDeposit {
         int24 tickUpper,
         uint128 liquidity
     ) public returns (uint256 tokenId) {
-        (,,,, uint16 observationCardinalityNext,) = pool.slot0();
-
-        if (observationCardinalityNext < MIN_OBSERVATION_CARDINALITY) {
-            pool.increaseObservationCardinalityNext(MIN_OBSERVATION_CARDINALITY);
-        }
-
         (uint160 sqrtPriceX96,,,,,) = pool.slot0();
         IERC20 token0 = IERC20(pool.token0());
         IERC20 token1 = IERC20(pool.token1());
@@ -112,6 +106,8 @@ contract VeloFactoryDeposit is IVeloFactoryDeposit {
             address(creationParameters.pool), creationParameters.securityParams
         );
 
+        _checkPoolObservationCardinality(creationParameters.pool);
+
         int24[] memory tickLower;
         int24[] memory tickUpper;
         uint128[] memory liquidity;
@@ -166,6 +162,13 @@ contract VeloFactoryDeposit is IVeloFactoryDeposit {
         uint256 balance = token.balanceOf(address(this));
         if (balance > 0) {
             token.transfer(depositor, balance);
+        }
+    }
+
+    function _checkPoolObservationCardinality(ICLPool pool) internal {
+        (,,,, uint16 observationCardinalityNext,) = pool.slot0();
+        if (observationCardinalityNext < MIN_OBSERVATION_CARDINALITY) {
+            pool.increaseObservationCardinalityNext(MIN_OBSERVATION_CARDINALITY);
         }
     }
 

@@ -15,12 +15,9 @@ contract Addresses is Script {
 
     // ================================================================================
     /// @dev deployed addresses
-    Core core = Core(0x71D022eBA6F2607Ab8EC32Cb894075D94e10CEb8);
     VeloDeployFactory deployFactory = VeloDeployFactory(0xeD8b81E3fF6c54951621715F5992CA52007D88bA);
     Compounder compounder;
     VeloOracle oracle;
-    PulseStrategyModule strategyModule;
-    VeloDeployFactoryHelper velotrDeployFactoryHelper;
     VeloAmmModule ammModule;
     VeloDepositWithdrawModule veloDepositWithdrawModule;
     PulseVeloBotLazy pulseVeloBot;
