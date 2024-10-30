@@ -27,10 +27,13 @@ contract Fixture is Test {
         new VeloAmmModule(INonfungiblePositionManager(positionManager), Constants.SELECTOR_IS_POOL);
     PulseStrategyModule strategyModule = new PulseStrategyModule();
     VeloOracle oracle = new VeloOracle();
-    Core core = new Core(ammModule, strategyModule, oracle, Constants.OWNER);
 
     VeloDepositWithdrawModule depositWithdrawModule =
         new VeloDepositWithdrawModule(INonfungiblePositionManager(positionManager));
+
+    Core core = new Core(
+        ammModule, depositWithdrawModule, strategyModule, oracle, Constants.OWNER, Constants.WETH
+    );
 
     VeloFactoryDeposit factoryDeposit = new VeloFactoryDeposit(core, strategyModule);
 

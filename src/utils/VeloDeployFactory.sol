@@ -56,7 +56,6 @@ contract VeloDeployFactory is DefaultAccessControl, IERC721Receiver, IVeloDeploy
 
         lpWrapper = _immutableParams.helper.createLpWrapper(
             _immutableParams.core,
-            _immutableParams.depositWithdrawModule,
             string(
                 abi.encodePacked(
                     factoryName,

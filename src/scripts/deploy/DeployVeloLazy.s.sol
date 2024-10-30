@@ -51,7 +51,11 @@ contract DeployVeloLazy is Script, Test, PoolParameters, Addresses {
         console2.log("VeloDepositWithdrawModule", address(veloDepositWithdrawModule));
 
         //-------------------------------------------------------------------------------
-        core = new Core(ammModule, strategyModule, oracle, DEPLOYER);
+
+        core = new Core(
+            ammModule, veloDepositWithdrawModule, strategyModule, oracle, CORE_ADMIN, Constants.WETH
+        );
+
         console2.log("Core", address(core));
 
         core.setProtocolParams(

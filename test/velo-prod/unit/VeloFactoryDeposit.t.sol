@@ -139,7 +139,7 @@ contract Unit is Fixture {
 
         params = params0;
         params.strategyType = IPulseStrategyModule.StrategyType.Tamper;
-        vm.expectRevert(abi.encodeWithSignature("InvalidPosition()"));
+        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
         factoryDeposit.create(Constants.DEPOSITOR, Constants.DEPOSITOR, params);
     }
 

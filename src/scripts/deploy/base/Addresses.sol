@@ -15,7 +15,7 @@ contract Addresses is Script {
 
     // ================================================================================
     /// @dev deployed addresses
-    Core core = Core(0xd17613D91150a2345eCe9598D055C7197A1f5A71);
+    Core core = Core(payable(0xd17613D91150a2345eCe9598D055C7197A1f5A71));
     VeloDeployFactory deployFactory = VeloDeployFactory(0x5B1b1aaC71bDca9Ed1dCb2AA357f678584db4029);
     Compounder compounder;
     VeloOracle oracle;

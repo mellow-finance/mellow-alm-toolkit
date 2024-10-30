@@ -316,14 +316,17 @@ contract Fixture is Test {
         );
         strategyModule = new PulseStrategyModule();
         oracle = new VeloOracle();
-        core = new Core(ammModule, strategyModule, oracle, Constants.OWNER);
+        dwModule = new VeloDepositWithdrawModule(INonfungiblePositionManager(positionManager));
+
+        core =
+            new Core(ammModule, dwModule, strategyModule, oracle, Constants.OWNER, Constants.WETH);
+
         core.setProtocolParams(
             abi.encode(
                 IVeloAmmModule.ProtocolParams({feeD9: 1e8, treasury: Constants.PROTOCOL_TREASURY})
             )
         );
 
-        dwModule = new VeloDepositWithdrawModule(INonfungiblePositionManager(positionManager));
         factoryDeposit = new VeloFactoryDeposit(core, strategyModule);
 
         helper = new VeloDeployFactoryHelper(Constants.WETH);

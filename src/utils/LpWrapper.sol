@@ -17,9 +17,6 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
     address public immutable positionManager;
 
     /// @inheritdoc ILpWrapper
-    IAmmDepositWithdrawModule public immutable ammDepositWithdrawModule;
-
-    /// @inheritdoc ILpWrapper
     ICore public immutable core;
 
     /// @inheritdoc ILpWrapper
@@ -36,6 +33,8 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
 
     address private immutable _weth;
     address private immutable _pool;
+    IERC20 private immutable _token0;
+    IERC20 private immutable _token1;
     VeloDeployFactory private immutable _factory;
 
     uint56 immutable D9 = 10 ** 9;
@@ -43,7 +42,6 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
     /**
      * @dev Constructor function for the LpWrapper contract.
      * @param core_ The address of the ICore contract.
-     * @param ammDepositWithdrawModule_ The address of the IAmmDepositWithdrawModule contract.
      * @param name_ The name of the ERC20 token.
      * @param symbol_ The symbol of the ERC20 token.
      * @param admin The address of the admin.
@@ -53,7 +51,6 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
      */
     constructor(
         ICore core_,
-        IAmmDepositWithdrawModule ammDepositWithdrawModule_,
         string memory name_,
         string memory symbol_,
         address admin,
@@ -61,14 +58,28 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         address factory_,
         address pool_
     ) ERC20(name_, symbol_) DefaultAccessControl(admin) {
+        if (address(core_) == address(0)) {
+            revert AddressZero();
+        }
+        if (address(weth_) == address(0)) {
+            revert AddressZero();
+        }
+        if (address(factory_) == address(0)) {
+            revert AddressZero();
+        }
+        if (address(pool_) == address(0)) {
+            revert AddressZero();
+        }
+
         core = core_;
         ammModule = core.ammModule();
         positionManager = ammModule.positionManager();
         oracle = core.oracle();
-        ammDepositWithdrawModule = ammDepositWithdrawModule_;
         _weth = weth_;
         _factory = VeloDeployFactory(factory_);
         _pool = pool_;
+        _token0 = IERC20(ICLPool(_pool).token0());
+        _token1 = IERC20(ICLPool(_pool).token1());
     }
 
     /// @inheritdoc ILpWrapper
@@ -88,6 +99,11 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         _mintLiquidity(address(this), initialTotalSupply);
 
         emit TotalSupplyLimitUpdated(totalSupplyLimit, 0, totalSupply());
+    }
+
+    /// @inheritdoc ILpWrapper
+    function ammDepositWithdrawModule() external view returns (IAmmDepositWithdrawModule) {
+        return core.ammDepositWithdrawModule();
     }
 
     /// @inheritdoc ILpWrapper
@@ -142,7 +158,6 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
             revert Deadline();
         }
         ICore.ManagedPositionInfo memory info = core.managedPositionAt(positionId);
-        core.withdraw(positionId, address(this));
 
         uint256 n = info.ammPositionIds.length;
         IAmmModule.AmmPosition[] memory positionsBefore = new IAmmModule.AmmPosition[](n);
@@ -182,47 +197,21 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
             actualAmount1 = 0;
         }
         if (amount0 > 0 || amount1 > 0) {
-            for (uint256 i = 0; i < n; i++) {
-                if (positionsBefore[i].liquidity == 0) {
-                    continue;
-                }
-                (bool success, bytes memory response) = address(ammDepositWithdrawModule)
-                    .delegatecall(
-                    abi.encodeWithSelector(
-                        IAmmDepositWithdrawModule.deposit.selector,
-                        info.ammPositionIds[i],
-                        amounts0[i],
-                        amounts1[i],
-                        msg.sender
-                    )
-                );
-                if (!success) {
-                    revert DepositCallFailed();
-                }
-                (uint256 amount0_, uint256 amount1_) = abi.decode(response, (uint256, uint256));
-
-                actualAmount0 += amount0_;
-                actualAmount1 += amount1_;
-            }
-        }
-
-        IAmmModule.AmmPosition[] memory positionsAfter = new IAmmModule.AmmPosition[](n);
-        for (uint256 i = 0; i < n; i++) {
-            positionsAfter[i] = ammModule.getAmmPosition(info.ammPositionIds[i]);
+            (actualAmount0, actualAmount1) =
+                _directDeposit(amount0, amount1, amounts0, amounts1, positionsBefore, info);
         }
 
         uint256 totalSupply_ = totalSupply();
-        for (uint256 i = 0; i < n; i++) {
-            IERC721(positionManager).approve(address(core), info.ammPositionIds[i]);
-        }
+        IAmmModule.AmmPosition memory positionsAfter;
 
         lpAmount = type(uint256).max;
         for (uint256 i = 0; i < n; i++) {
+            positionsAfter = ammModule.getAmmPosition(info.ammPositionIds[i]);
             if (positionsBefore[i].liquidity == 0) {
                 continue;
             }
             uint256 currentLpAmount = Math.mulDiv(
-                positionsAfter[i].liquidity - positionsBefore[i].liquidity,
+                positionsAfter.liquidity - positionsBefore[i].liquidity,
                 totalSupply_,
                 positionsBefore[i].liquidity
             );
@@ -234,20 +223,61 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         if (lpAmount < minLpAmount) {
             revert InsufficientLpAmount();
         }
-        positionId = core.deposit(
-            ICore.DepositParams({
-                ammPositionIds: info.ammPositionIds,
-                owner: info.owner,
-                slippageD9: info.slippageD9,
-                callbackParams: info.callbackParams,
-                strategyParams: info.strategyParams,
-                securityParams: info.securityParams
-            })
-        );
 
         _mintLiquidity(lpRecipient, lpAmount);
 
         emit Deposit(msg.sender, to, _pool, actualAmount0, actualAmount1, lpAmount, totalSupply());
+    }
+
+    function _directDeposit(
+        uint256 amount0,
+        uint256 amount1,
+        uint256[] memory amounts0,
+        uint256[] memory amounts1,
+        IAmmModule.AmmPosition[] memory positionsBefore,
+        ICore.ManagedPositionInfo memory info
+    ) private returns (uint256 actualAmount0, uint256 actualAmount1) {
+        address sender = msg.sender;
+
+        if (amount0 > 0) {
+            if (_token0.balanceOf(sender) < amount0) {
+                revert InsufficientAmounts();
+            }
+            if (_token0.allowance(sender, address(this)) < amount0) {
+                revert InsufficientAllowance();
+            }
+            _token0.safeTransferFrom(sender, address(this), amount0);
+            _token0.safeIncreaseAllowance(address(core), amount0);
+        }
+        if (amount1 > 0) {
+            if (_token1.balanceOf(sender) < amount1) {
+                revert InsufficientAmounts();
+            }
+            if (_token1.allowance(sender, address(this)) < amount1) {
+                revert InsufficientAllowance();
+            }
+            _token1.safeTransferFrom(sender, address(this), amount1);
+            _token1.safeIncreaseAllowance(address(core), amount1);
+        }
+
+        for (uint256 i = 0; i < positionsBefore.length; i++) {
+            if (positionsBefore[i].liquidity == 0) {
+                continue;
+            }
+            (uint256 amount0_, uint256 amount1_) = core.directDeposit(
+                positionId, info.ammPositionIds[i], amounts0[i], amounts1[i], true
+            );
+            actualAmount0 += amount0_;
+            actualAmount1 += amount1_;
+        }
+
+        if (actualAmount0 != amount0) {
+            _token0.safeTransfer(sender, amount0 - actualAmount0);
+        }
+
+        if (actualAmount1 != amount1) {
+            _token1.safeTransfer(sender, amount1 - actualAmount1);
+        }
     }
 
     /// @inheritdoc ILpWrapper
@@ -291,7 +321,6 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
             revert Deadline();
         }
         ICore.ManagedPositionInfo memory info = core.managedPositionAt(positionId);
-        core.withdraw(positionId, address(this));
 
         actualLpAmount = balanceOf(msg.sender);
         if (actualLpAmount > lpAmount) {
@@ -301,53 +330,36 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         uint256 totalSupply_ = totalSupply();
         _burn(msg.sender, actualLpAmount);
 
-        {
-            for (uint256 i = 0; i < info.ammPositionIds.length; i++) {
-                IERC721(positionManager).approve(address(core), info.ammPositionIds[i]);
-                IAmmModule.AmmPosition memory position =
-                    ammModule.getAmmPosition(info.ammPositionIds[i]);
-                uint256 liquidity = Math.mulDiv(position.liquidity, actualLpAmount, totalSupply_);
-                if (liquidity == 0) {
-                    continue;
-                }
-                (bool success, bytes memory response) = address(ammDepositWithdrawModule)
-                    .delegatecall(
-                    abi.encodeWithSelector(
-                        IAmmDepositWithdrawModule.withdraw.selector,
-                        info.ammPositionIds[i],
-                        liquidity,
-                        to
-                    )
-                );
-                if (!success) {
-                    revert WithdrawCallFailed();
-                }
-                (uint256 actualAmount0, uint256 actualAmount1) =
-                    abi.decode(response, (uint256, uint256));
-
-                amount0 += actualAmount0;
-                amount1 += actualAmount1;
-            }
-        }
+        (amount0, amount1) = _directWithdraw(actualLpAmount, totalSupply_, to, info.ammPositionIds);
 
         if (amount0 < minAmount0 || amount1 < minAmount1) {
             revert InsufficientAmounts();
         }
 
-        positionId = core.deposit(
-            ICore.DepositParams({
-                ammPositionIds: info.ammPositionIds,
-                owner: info.owner,
-                slippageD9: info.slippageD9,
-                callbackParams: info.callbackParams,
-                strategyParams: info.strategyParams,
-                securityParams: info.securityParams
-            })
-        );
-
         _getReward();
 
         emit Withdraw(msg.sender, to, _pool, amount0, amount1, lpAmount, totalSupply());
+    }
+
+    function _directWithdraw(
+        uint256 actualLpAmount,
+        uint256 totalSupply,
+        address to,
+        uint256[] memory ammPositionIds
+    ) private returns (uint256 amount0, uint256 amount1) {
+        for (uint256 i = 0; i < ammPositionIds.length; i++) {
+            IAmmModule.AmmPosition memory position = ammModule.getAmmPosition(ammPositionIds[i]);
+            uint256 liquidity = Math.mulDiv(position.liquidity, actualLpAmount, totalSupply);
+            if (liquidity == 0) {
+                continue;
+            }
+
+            (uint256 actualAmount0, uint256 actualAmount1) =
+                core.directWithdraw(positionId, ammPositionIds[i], liquidity, to, true);
+
+            amount0 += actualAmount0;
+            amount1 += actualAmount1;
+        }
     }
 
     /// @inheritdoc ILpWrapper

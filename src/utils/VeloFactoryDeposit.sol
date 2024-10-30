@@ -104,6 +104,10 @@ contract VeloFactoryDeposit is IVeloFactoryDeposit {
             creationParameters.width % creationParameters.pool.tickSpacing() != 0
                 || creationParameters.width <= 0 || creationParameters.tickNeighborhood < 0
                 || (creationParameters.maxAmount0 == 0 && creationParameters.maxAmount1 == 0)
+                || (
+                    creationParameters.strategyType == IPulseStrategyModule.StrategyType.Tamper
+                        && creationParameters.maxLiquidityRatioDeviationX96 == 0
+                )
         ) {
             revert InvalidParams();
         }

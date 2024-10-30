@@ -21,6 +21,7 @@ import "../oracles/IVeloOracle.sol";
 interface ILpWrapper {
     // Custom errors for handling operation failures
     error InsufficientAmounts(); // Thrown when provided amounts are insufficient for operation execution
+    error InsufficientAllowance(); // Thrown when provided allowance are insufficient for operation execution
     error InsufficientLpAmount(); // Thrown when the LP amount for withdrawal is insufficient
     error AlreadyInitialized(); // Thrown if the wrapper is already initialized
     error DepositCallFailed(); // Thrown when a deposit operation fails due to deletage call to the AmmDepositWithdrawModule

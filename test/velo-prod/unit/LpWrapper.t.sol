@@ -110,46 +110,22 @@ contract Unit is Fixture {
         vm.stopPrank();
     }
 
-    /*     function setUp() external {
-        vm.startPrank(Constants.OWNER);
-
-        core.setProtocolParams(
-            abi.encode(
-                IVeloAmmModule.ProtocolParams({
-                    feeD9: 1e8,
-                    treasury: Constants.PROTOCOL_TREASURY
-                })
-            )
-        );
-
-        veloFactory.updateMutableParams(
-            IVeloDeployFactory.MutableParams({
-                lpWrapperAdmin: Constants.OWNER,
-                lpWrapperManager: address(0),
-                farmOwner: Constants.OWNER,
-                farmOperator: Constants.FARM_OPERATOR,
-                minInitialLiquidity: 1000
-            })
-        );
-
-        vm.stopPrank();
-    } */
-
     function testConstructor() external {
         vm.expectRevert(abi.encodeWithSignature("AddressZero()"));
-        lpWrapper = new LpWrapper(
-            core, depositWithdrawModule, "", "", address(0), Constants.WETH, address(0), address(0)
-        );
+        lpWrapper =
+            new LpWrapper(core, "", "", address(0), Constants.WETH, address(factory), address(pool));
+        vm.expectRevert(abi.encodeWithSignature("AddressZero()"));
+        lpWrapper =
+            new LpWrapper(core, "", "", address(1), address(0), address(factory), address(pool));
+        vm.expectRevert(abi.encodeWithSignature("AddressZero()"));
+        lpWrapper =
+            new LpWrapper(core, "", "", address(1), Constants.WETH, address(0), address(pool));
+        vm.expectRevert(abi.encodeWithSignature("AddressZero()"));
+        lpWrapper =
+            new LpWrapper(core, "", "", address(1), Constants.WETH, address(factory), address(0));
 
         lpWrapper = new LpWrapper(
-            core,
-            depositWithdrawModule,
-            "Name",
-            "Symbol",
-            address(1),
-            Constants.WETH,
-            address(0),
-            address(0)
+            core, "Name", "Symbol", address(1), Constants.WETH, address(factory), address(pool)
         );
 
         assertEq(lpWrapper.name(), "Name");
@@ -159,13 +135,12 @@ contract Unit is Fixture {
     function testInitialize() external {
         lpWrapper = new LpWrapper(
             core,
-            depositWithdrawModule,
             "Wrapper LP Token",
             "WLP",
             Constants.OWNER,
             Constants.WETH,
-            address(0),
-            address(0)
+            address(factory),
+            address(pool)
         );
 
         uint256 tokenId_ = mint(
@@ -203,7 +178,6 @@ contract Unit is Fixture {
 
         lpWrapper = new LpWrapper(
             core,
-            depositWithdrawModule,
             "Wrapper LP Token",
             "WLP",
             Constants.OWNER,
@@ -263,8 +237,14 @@ contract Unit is Fixture {
             );
         }
 
-        vm.expectRevert(abi.encodeWithSignature("DepositCallFailed()"));
-        lpWrapper.deposit(1 ether, 1 ether, 100 ether, Constants.DEPOSITOR, type(uint256).max);
+        vm.expectRevert(abi.encodeWithSignature("InsufficientAmounts()"));
+        lpWrapper.deposit(1 ether, 1 ether, 0 ether, Constants.DEPOSITOR, type(uint256).max);
+
+        deal(pool.token0(), Constants.DEPOSITOR, 1 ether);
+        deal(pool.token1(), Constants.DEPOSITOR, 1 ether);
+
+        vm.expectRevert(abi.encodeWithSignature("InsufficientAllowance()"));
+        lpWrapper.deposit(1 ether, 1 ether, 0 ether, Constants.DEPOSITOR, type(uint256).max);
 
         vm.stopPrank();
     }
@@ -272,13 +252,12 @@ contract Unit is Fixture {
     function testTotalSupplyLimitUpdate() external {
         lpWrapper = new LpWrapper(
             core,
-            depositWithdrawModule,
             "Wrapper LP Token",
             "WLP",
             Constants.OWNER,
             Constants.WETH,
-            address(0),
-            address(0)
+            address(factory),
+            address(pool)
         );
 
         uint256 positionId = _depositToken(
@@ -311,13 +290,12 @@ contract Unit is Fixture {
     function testTotalSupplyLimit() external {
         lpWrapper = new LpWrapper(
             core,
-            depositWithdrawModule,
             "Wrapper LP Token",
             "WLP",
             Constants.OWNER,
             Constants.WETH,
-            address(0),
-            address(0)
+            address(factory),
+            address(pool)
         );
 
         uint256 positionId0 = _depositToken(
@@ -461,10 +439,14 @@ contract Unit is Fixture {
             assertEq(totalSupplyAfter - totalSupplyBefore, farm.totalSupply());
         }
 
-        vm.expectRevert(abi.encodeWithSignature("DepositCallFailed()"));
-        lpWrapper.depositAndStake(
-            1 ether, 1 ether, 100 ether, Constants.DEPOSITOR, type(uint256).max
-        );
+        vm.expectRevert(abi.encodeWithSignature("InsufficientAmounts()"));
+        lpWrapper.depositAndStake(1 ether, 1 ether, 0 ether, Constants.DEPOSITOR, type(uint256).max);
+
+        deal(pool.token0(), Constants.DEPOSITOR, 1 ether);
+        deal(pool.token1(), Constants.DEPOSITOR, 1 ether);
+
+        vm.expectRevert(abi.encodeWithSignature("InsufficientAllowance()"));
+        lpWrapper.depositAndStake(1 ether, 1 ether, 0 ether, Constants.DEPOSITOR, type(uint256).max);
 
         vm.stopPrank();
     }
@@ -484,28 +466,27 @@ contract Unit is Fixture {
             1 ether, 1 ether, 0.228 ether, Constants.DEPOSITOR, type(uint256).max
         );
 
-        ICore.ManagedPositionInfo memory position = core.managedPositionAt(core.positionCount() - 1);
-        uint256 totalSupplyBefore = lpWrapper.totalSupply();
-        IAmmModule.AmmPosition memory positionBefore =
-            ammModule.getAmmPosition(position.ammPositionIds[0]);
-
         uint256 depositorBalance = farm.balanceOf(Constants.DEPOSITOR); // because all tokens were staked
-        uint256 balance = farm.balanceOf(Constants.DEPOSITOR); // because all tokens were staked
 
         vm.expectRevert(abi.encodeWithSignature("InsufficientAmounts()"));
         lpWrapper.unstakeAndWithdraw(
-            balance / 2,
+            depositorBalance / 2,
             type(uint256).max,
             type(uint256).max,
             Constants.DEPOSITOR,
             type(uint256).max
         );
 
-        lpWrapper.unstakeAndWithdraw(balance / 2, 0, 0, Constants.DEPOSITOR, type(uint256).max);
+        ICore.ManagedPositionInfo memory position = core.managedPositionAt(lpWrapper.positionId());
+        uint256 totalSupplyBefore = lpWrapper.totalSupply();
+        IAmmModule.AmmPosition memory positionBefore =
+            ammModule.getAmmPosition(position.ammPositionIds[0]);
 
-        assertApproxEqAbs(
-            depositorBalance - balance / 2, farm.balanceOf(Constants.DEPOSITOR), 0 wei
+        lpWrapper.unstakeAndWithdraw(
+            depositorBalance / 2, 0, 0, Constants.DEPOSITOR, type(uint256).max
         );
+
+        assertApproxEqAbs(depositorBalance / 2, farm.balanceOf(Constants.DEPOSITOR), 1 wei);
 
         lpWrapper.unstakeAndWithdraw(
             type(uint256).max, 0, 0, Constants.DEPOSITOR, type(uint256).max

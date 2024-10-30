@@ -8,12 +8,19 @@ import "./utils/DefaultAccessControl.sol";
 
 contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     using EnumerableSet for EnumerableSet.UintSet;
+    using SafeERC20 for IERC20;
 
     uint256 public constant D9 = 1e9;
     uint256 public constant Q96 = 2 ** 96;
 
+    address private immutable _weth;
+
     /// @inheritdoc ICore
     IAmmModule public immutable ammModule;
+
+    /// @inheritdoc ICore
+    IAmmDepositWithdrawModule public immutable ammDepositWithdrawModule;
+
     /// @inheritdoc ICore
     IOracle public immutable oracle;
     /// @inheritdoc ICore
@@ -34,13 +41,32 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
      */
     constructor(
         IAmmModule ammModule_,
+        IAmmDepositWithdrawModule ammDepositWithdrawModule_,
         IStrategyModule strategyModule_,
         IOracle oracle_,
-        address admin_
+        address admin_,
+        address weth_
     ) DefaultAccessControl(admin_) {
+        if (address(ammModule_) == address(0)) {
+            revert AddressZero();
+        }
+        if (address(ammDepositWithdrawModule_) == address(0)) {
+            revert AddressZero();
+        }
+        if (address(strategyModule_) == address(0)) {
+            revert AddressZero();
+        }
+        if (address(oracle_) == address(0)) {
+            revert AddressZero();
+        }
+        if (address(weth_) == address(0)) {
+            revert AddressZero();
+        }
         ammModule = ammModule_;
+        ammDepositWithdrawModule = ammDepositWithdrawModule_;
         strategyModule = strategyModule_;
         oracle = oracle_;
+        _weth = weth_;
     }
 
     /// @inheritdoc ICore
@@ -178,6 +204,82 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
             _beforeRebalance(tokenId, info.callbackParams, protocolParams_);
             _transferFrom(address(this), to, tokenId);
         }
+    }
+
+    /// @inheritdoc ICore
+    function directDeposit(
+        uint256 id,
+        uint256 tokenId,
+        uint256 amount0,
+        uint256 amount1,
+        bool requireSuccess
+    ) external returns (uint256, uint256) {
+        ManagedPositionInfo memory info = _positions[id];
+        if (info.owner != msg.sender) {
+            revert Forbidden();
+        }
+        bool hasTokenId = false;
+        for (uint256 i = 0; i < info.ammPositionIds.length; i++) {
+            if (info.ammPositionIds[i] == tokenId) {
+                hasTokenId = true;
+                break;
+            }
+        }
+        if (!hasTokenId) {
+            revert InvalidParams();
+        }
+
+        bytes memory protocolParams_ = _protocolParams;
+        _beforeRebalance(tokenId, info.callbackParams, protocolParams_);
+        (bool success, bytes memory response) = address(ammDepositWithdrawModule).delegatecall(
+            abi.encodeWithSelector(
+                IAmmDepositWithdrawModule.deposit.selector, tokenId, amount0, amount1, info.owner
+            )
+        );
+        if (requireSuccess && (!success || response.length != 0x40)) {
+            revert DelegateCallFailed();
+        }
+        _afterRebalance(tokenId, info.callbackParams, protocolParams_);
+
+        return abi.decode(response, (uint256, uint256));
+    }
+
+    /// @inheritdoc ICore
+    function directWithdraw(
+        uint256 id,
+        uint256 tokenId,
+        uint256 liquidity,
+        address to,
+        bool requireSuccess
+    ) external returns (uint256, uint256) {
+        ManagedPositionInfo memory info = _positions[id];
+        if (info.owner != msg.sender) {
+            revert Forbidden();
+        }
+        bool hasTokenId = false;
+        for (uint256 i = 0; i < info.ammPositionIds.length; i++) {
+            if (info.ammPositionIds[i] == tokenId) {
+                hasTokenId = true;
+                break;
+            }
+        }
+        if (!hasTokenId) {
+            revert InvalidParams();
+        }
+
+        bytes memory protocolParams_ = _protocolParams;
+        _beforeRebalance(tokenId, info.callbackParams, protocolParams_);
+        (bool success, bytes memory response) = address(ammDepositWithdrawModule).delegatecall(
+            abi.encodeWithSelector(
+                IAmmDepositWithdrawModule.withdraw.selector, tokenId, liquidity, to
+            )
+        );
+        if (requireSuccess && !success) {
+            revert DelegateCallFailed();
+        }
+        _afterRebalance(tokenId, info.callbackParams, protocolParams_);
+
+        return abi.decode(response, (uint256, uint256));
     }
 
     /// @inheritdoc ICore
@@ -392,5 +494,11 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         if (!success) {
             revert DelegateCallFailed();
         }
+    }
+
+    receive() external payable {
+        uint256 amount = msg.value;
+        IWETH9(_weth).deposit{value: amount}();
+        IERC20(_weth).safeTransfer(tx.origin, amount);
     }
 }

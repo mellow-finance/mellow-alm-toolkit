@@ -76,7 +76,14 @@ contract HistoryTest is Test {
         velotrDeployFactoryHelper = IVeloDeployFactoryHelper(velotrDeployFactoryHelper_);
         ammModule = IVeloAmmModule(ammModule_);
         veloDepositWithdrawModule = IVeloDepositWithdrawModule(veloDepositWithdrawModule_);
-        core = new Core(ammModule, strategyModule, oracle, address(this));
+        core = new Core(
+            ammModule,
+            veloDepositWithdrawModule,
+            strategyModule,
+            oracle,
+            Constants.OWNER,
+            Constants.WETH
+        );
         core.setProtocolParams(
             abi.encode(
                 IVeloAmmModule.ProtocolParams({feeD9: 1e8, treasury: Constants.PROTOCOL_TREASURY})

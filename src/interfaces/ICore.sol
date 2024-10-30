@@ -2,10 +2,13 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
 import "./utils/IRebalanceCallback.sol";
 
+import "./external/IWETH9.sol";
+import "./modules/IAmmDepositWithdrawModule.sol";
 import "./modules/IStrategyModule.sol";
 
 interface ICore is IERC721Receiver {
@@ -202,6 +205,12 @@ interface ICore is IERC721Receiver {
     function ammModule() external view returns (IAmmModule);
 
     /**
+     * @dev Returns the address of the AMM deposit/withdraw module.
+     * @return address of the AMM deposit/withdraw module.
+     */
+    function ammDepositWithdrawModule() external view returns (IAmmDepositWithdrawModule);
+
+    /**
      * @dev Returns the address of the oracle contract.
      * @return address of the oracle contract.
      */
@@ -319,6 +328,40 @@ interface ICore is IERC721Receiver {
         bytes memory strategyParams,
         bytes memory securityParams
     ) external;
+
+    /**
+     * @notice Deposits specified amounts of tokens into a position directly.
+     * @param id The identifier of the position.
+     * @param tokenId The token ID associated with the position.
+     * @param amount0 The amount of token0 to deposit.
+     * @param amount1 The amount of token1 to deposit.
+     * @param requireSuccess A flag indicating whether the function should revert if the deposit fails.
+     * @return The actual amounts of token0 and token1 deposited.
+     */
+    function directDeposit(
+        uint256 id,
+        uint256 tokenId,
+        uint256 amount0,
+        uint256 amount1,
+        bool requireSuccess
+    ) external returns (uint256, uint256);
+
+    /**
+     * @notice Withdraws a specified amount of liquidity from a position directly.
+     * @param id The identifier of the position.
+     * @param tokenId The token ID associated with the position.
+     * @param liquidity The amount of liquidity to withdraw from the position.
+     * @param to The address to which the withdrawn tokens should be sent.
+     * @param requireSuccess A flag indicating whether the function should revert if the withdrawal fails.
+     * @return The actual amounts of token0 and token1 withdrawn.
+     */
+    function directWithdraw(
+        uint256 id,
+        uint256 tokenId,
+        uint256 liquidity,
+        address to,
+        bool requireSuccess
+    ) external returns (uint256, uint256);
 
     /**
      * @dev Deposits multiple tokens into the contract and creates new ManagedPosition.
