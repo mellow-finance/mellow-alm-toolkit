@@ -6,7 +6,6 @@ import "./ILpWrapper.sol";
 interface IVeloDeployFactoryHelper {
     /**
      * @dev Creates a new LP wrapper contract.
-     * @param core The address of the core contract.
      * @param name The name of the LP wrapper contract.
      * @param symbol The symbol of the LP wrapper contract.
      * @param admin The address of the admin for the LP wrapper contract.
@@ -14,7 +13,6 @@ interface IVeloDeployFactoryHelper {
      * @return ILpWrapper The newly created LP wrapper contract.
      */
     function createLpWrapper(
-        ICore core,
         string memory name,
         string memory symbol,
         address admin,

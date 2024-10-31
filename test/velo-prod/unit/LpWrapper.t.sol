@@ -113,19 +113,18 @@ contract Unit is Fixture {
     function testConstructor() external {
         vm.expectRevert(abi.encodeWithSignature("AddressZero()"));
         lpWrapper =
-            new LpWrapper(core, "", "", address(0), Constants.WETH, address(factory), address(pool));
+            new LpWrapper("", "", address(0), Constants.WETH, address(veloFactory), address(pool));
         vm.expectRevert(abi.encodeWithSignature("AddressZero()"));
         lpWrapper =
-            new LpWrapper(core, "", "", address(1), address(0), address(factory), address(pool));
+            new LpWrapper("", "", address(1), address(0), address(veloFactory), address(pool));
+        vm.expectRevert(abi.encodeWithSignature("AddressZero()"));
+        lpWrapper = new LpWrapper("", "", address(1), Constants.WETH, address(0), address(pool));
         vm.expectRevert(abi.encodeWithSignature("AddressZero()"));
         lpWrapper =
-            new LpWrapper(core, "", "", address(1), Constants.WETH, address(0), address(pool));
-        vm.expectRevert(abi.encodeWithSignature("AddressZero()"));
-        lpWrapper =
-            new LpWrapper(core, "", "", address(1), Constants.WETH, address(factory), address(0));
+            new LpWrapper("", "", address(1), Constants.WETH, address(veloFactory), address(0));
 
         lpWrapper = new LpWrapper(
-            core, "Name", "Symbol", address(1), Constants.WETH, address(factory), address(pool)
+            "Name", "Symbol", address(1), Constants.WETH, address(veloFactory), address(pool)
         );
 
         assertEq(lpWrapper.name(), "Name");
@@ -134,12 +133,11 @@ contract Unit is Fixture {
 
     function testInitialize() external {
         lpWrapper = new LpWrapper(
-            core,
             "Wrapper LP Token",
             "WLP",
             Constants.OWNER,
             Constants.WETH,
-            address(factory),
+            address(veloFactory),
             address(pool)
         );
 
@@ -177,12 +175,11 @@ contract Unit is Fixture {
         pool.increaseObservationCardinalityNext(2);
 
         lpWrapper = new LpWrapper(
-            core,
             "Wrapper LP Token",
             "WLP",
             Constants.OWNER,
             Constants.WETH,
-            address(factory),
+            address(veloFactory),
             address(pool)
         );
 
@@ -251,12 +248,11 @@ contract Unit is Fixture {
 
     function testTotalSupplyLimitUpdate() external {
         lpWrapper = new LpWrapper(
-            core,
             "Wrapper LP Token",
             "WLP",
             Constants.OWNER,
             Constants.WETH,
-            address(factory),
+            address(veloFactory),
             address(pool)
         );
 
@@ -289,12 +285,11 @@ contract Unit is Fixture {
 
     function testTotalSupplyLimit() external {
         lpWrapper = new LpWrapper(
-            core,
             "Wrapper LP Token",
             "WLP",
             Constants.OWNER,
             Constants.WETH,
-            address(factory),
+            address(veloFactory),
             address(pool)
         );
 

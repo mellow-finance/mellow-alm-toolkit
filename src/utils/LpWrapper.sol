@@ -31,17 +31,16 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
     /// @inheritdoc ILpWrapper
     uint256 public totalSupplyLimit;
 
-    address private immutable _weth;
-    address private immutable _pool;
-    IERC20 private immutable _token0;
-    IERC20 private immutable _token1;
-    VeloDeployFactory private immutable _factory;
+    address public immutable weth;
+    address public immutable pool;
+    IERC20 public immutable token0;
+    IERC20 public immutable token1;
+    VeloDeployFactory public immutable factory;
 
     uint56 immutable D9 = 10 ** 9;
 
     /**
      * @dev Constructor function for the LpWrapper contract.
-     * @param core_ The address of the ICore contract.
      * @param name_ The name of the ERC20 token.
      * @param symbol_ The symbol of the ERC20 token.
      * @param admin The address of the admin.
@@ -50,7 +49,6 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
      * @param pool_ The address of the Pool.
      */
     constructor(
-        ICore core_,
         string memory name_,
         string memory symbol_,
         address admin,
@@ -58,28 +56,20 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         address factory_,
         address pool_
     ) ERC20(name_, symbol_) DefaultAccessControl(admin) {
-        if (address(core_) == address(0)) {
-            revert AddressZero();
-        }
-        if (address(weth_) == address(0)) {
-            revert AddressZero();
-        }
-        if (address(factory_) == address(0)) {
-            revert AddressZero();
-        }
-        if (address(pool_) == address(0)) {
+        if (weth_ == address(0) || factory_ == address(0) || pool_ == address(0)) {
             revert AddressZero();
         }
 
-        core = core_;
+        factory = VeloDeployFactory(factory_);
+        VeloDeployFactory.ImmutableParams memory immutableParams = factory.getImmutableParams();
+        core = immutableParams.core;
         ammModule = core.ammModule();
         positionManager = ammModule.positionManager();
         oracle = core.oracle();
-        _weth = weth_;
-        _factory = VeloDeployFactory(factory_);
-        _pool = pool_;
-        _token0 = IERC20(ICLPool(_pool).token0());
-        _token1 = IERC20(ICLPool(_pool).token1());
+        weth = weth_;
+        pool = pool_;
+        token0 = IERC20(ICLPool(pool).token0());
+        token1 = IERC20(ICLPool(pool).token1());
     }
 
     /// @inheritdoc ILpWrapper
@@ -119,7 +109,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
 
     /// @inheritdoc ILpWrapper
     function getFarm() public view returns (address) {
-        IVeloDeployFactory.PoolAddresses memory addresses = _factory.poolToAddresses(_pool);
+        IVeloDeployFactory.PoolAddresses memory addresses = factory.poolToAddresses(pool);
         require(address(addresses.lpWrapper) == address(this));
         return addresses.synthetixFarm;
     }
@@ -226,7 +216,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
 
         _mintLiquidity(lpRecipient, lpAmount);
 
-        emit Deposit(msg.sender, to, _pool, actualAmount0, actualAmount1, lpAmount, totalSupply());
+        emit Deposit(msg.sender, to, pool, actualAmount0, actualAmount1, lpAmount, totalSupply());
     }
 
     function _directDeposit(
@@ -240,24 +230,24 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         address sender = msg.sender;
 
         if (amount0 > 0) {
-            if (_token0.balanceOf(sender) < amount0) {
+            if (token0.balanceOf(sender) < amount0) {
                 revert InsufficientAmounts();
             }
-            if (_token0.allowance(sender, address(this)) < amount0) {
+            if (token0.allowance(sender, address(this)) < amount0) {
                 revert InsufficientAllowance();
             }
-            _token0.safeTransferFrom(sender, address(this), amount0);
-            _token0.safeIncreaseAllowance(address(core), amount0);
+            token0.safeTransferFrom(sender, address(this), amount0);
+            token0.safeIncreaseAllowance(address(core), amount0);
         }
         if (amount1 > 0) {
-            if (_token1.balanceOf(sender) < amount1) {
+            if (token1.balanceOf(sender) < amount1) {
                 revert InsufficientAmounts();
             }
-            if (_token1.allowance(sender, address(this)) < amount1) {
+            if (token1.allowance(sender, address(this)) < amount1) {
                 revert InsufficientAllowance();
             }
-            _token1.safeTransferFrom(sender, address(this), amount1);
-            _token1.safeIncreaseAllowance(address(core), amount1);
+            token1.safeTransferFrom(sender, address(this), amount1);
+            token1.safeIncreaseAllowance(address(core), amount1);
         }
 
         for (uint256 i = 0; i < positionsBefore.length; i++) {
@@ -272,11 +262,11 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         }
 
         if (actualAmount0 != amount0) {
-            _token0.safeTransfer(sender, amount0 - actualAmount0);
+            token0.safeTransfer(sender, amount0 - actualAmount0);
         }
 
         if (actualAmount1 != amount1) {
-            _token1.safeTransfer(sender, amount1 - actualAmount1);
+            token1.safeTransfer(sender, amount1 - actualAmount1);
         }
     }
 
@@ -338,7 +328,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
 
         _getReward();
 
-        emit Withdraw(msg.sender, to, _pool, amount0, amount1, lpAmount, totalSupply());
+        emit Withdraw(msg.sender, to, pool, amount0, amount1, lpAmount, totalSupply());
     }
 
     function _directWithdraw(
@@ -399,8 +389,8 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         (
             uint96 nonce,
             address operator,
-            address token0,
-            address token1,
+            ,
+            ,
             int24 tickSpacing,
             int24 tickLower,
             int24 tickUpper,
@@ -412,8 +402,8 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         ) = INonfungiblePositionManager(positionManager).positions(tokenId);
         data.nonce = nonce;
         data.operator = operator;
-        data.token0 = token0;
-        data.token1 = token1;
+        data.token0 = address(token0);
+        data.token1 = address(token1);
         data.tickSpacing = tickSpacing;
         data.tickLower = tickLower;
         data.tickUpper = tickUpper;
@@ -480,7 +470,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
 
     receive() external payable {
         uint256 amount = msg.value;
-        IWETH9(_weth).deposit{value: amount}();
-        IERC20(_weth).safeTransfer(tx.origin, amount);
+        IWETH9(weth).deposit{value: amount}();
+        IERC20(weth).safeTransfer(tx.origin, amount);
     }
 }

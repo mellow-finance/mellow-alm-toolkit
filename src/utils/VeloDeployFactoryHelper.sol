@@ -14,15 +14,13 @@ contract VeloDeployFactoryHelper is IVeloDeployFactoryHelper {
 
     /// @inheritdoc IVeloDeployFactoryHelper
     function createLpWrapper(
-        ICore core,
         string memory name,
         string memory symbol,
         address admin,
         address manager,
         address pool
     ) external returns (ILpWrapper) {
-        LpWrapper wrapper =
-            new LpWrapper(core, name, symbol, address(this), _weth, msg.sender, pool);
+        LpWrapper wrapper = new LpWrapper(name, symbol, address(this), _weth, msg.sender, pool);
         wrapper.grantRole(wrapper.ADMIN_ROLE(), admin);
         if (manager != address(0)) {
             wrapper.grantRole(wrapper.ADMIN_ROLE(), manager);
