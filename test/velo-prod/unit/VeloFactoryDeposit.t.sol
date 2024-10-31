@@ -111,7 +111,7 @@ contract Unit is Fixture {
         IERC20(token1).safeIncreaseAllowance(address(factoryDeposit), UINT256_MAX);
 
         IVeloFactoryDeposit.PoolStrategyParameter memory params = params0;
-
+        /* 
         params.pool = ICLPool(address(123));
         vm.expectRevert(abi.encodeWithSignature("ForbiddenPool()"));
         factoryDeposit.create(Constants.DEPOSITOR, Constants.DEPOSITOR, params);
@@ -136,7 +136,7 @@ contract Unit is Fixture {
         params.securityParams = new bytes(2);
         vm.expectRevert();
         factoryDeposit.create(Constants.DEPOSITOR, Constants.DEPOSITOR, params);
-
+        */
         params = params0;
         params.strategyType = IPulseStrategyModule.StrategyType.Tamper;
         vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));

@@ -13,24 +13,19 @@ contract DeployCoreAndStrategyTest is Test, DeployStrategy, DeployVeloLazy {
     function testDeploy() public {
         vm.startPrank(DEPLOYER);
 
-        (address veloDeployFactoryAddress, address createStrategyHelperAddress) = deployCore();
-
+        VeloDeployFactory veloDeployFactoryAddress = deployCore();
         IVeloDeployFactory.MutableParams memory params =
             IVeloDeployFactory(veloDeployFactoryAddress).getMutableParams();
 
         Compounder farmOperator = Compounder(params.farmOperator);
 
-        /*         address[] memory poolAddresses = new address[](parameters.length);
+        address[] memory poolAddresses = new address[](parameters.length);
 
-        for (uint i = 0; i < parameters.length; i++) {
+        for (uint256 i = 0; i < 1; i++) {
             poolAddresses[i] = address(parameters[i].pool);
-            deployStrategy(
-                veloDeployFactoryAddress,
-                createStrategyHelperAddress,
-                i
-            );
+            deployStrategy(veloDeployFactoryAddress, parameters[i]);
         }
-        */
+
         vm.stopPrank();
 
         skip(7 days + 1);

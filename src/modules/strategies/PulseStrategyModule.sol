@@ -312,9 +312,12 @@ contract PulseStrategyModule is IPulseStrategyModule {
                 || params.tickNeighborhood * 2 > params.width
                 || (params.strategyType != StrategyType.Original && params.tickNeighborhood != 0)
                 || (
-                    params.strategyType == StrategyType.Tamper && params.width % 2 != 0
-                        && params.width / 2 >= params.tickSpacing
-                        || params.maxLiquidityRatioDeviationX96 >= Q96
+                    params.strategyType == StrategyType.Tamper
+                        && (
+                            params.width % 2 != 0 || params.width / 2 <= params.tickSpacing
+                                || params.maxLiquidityRatioDeviationX96 == 0
+                                || params.maxLiquidityRatioDeviationX96 >= Q96
+                        )
                 )
         ) {
             revert InvalidParams();

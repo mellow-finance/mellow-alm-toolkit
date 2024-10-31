@@ -15,6 +15,7 @@ contract VeloFactoryDeposit is IVeloFactoryDeposit {
     INonfungiblePositionManager public immutable positionManager;
 
     uint16 constant MIN_OBSERVATION_CARDINALITY = 100;
+    uint256 private constant Q96 = 2 ** 96;
 
     constructor(ICore core_, IPulseStrategyModule strategyModule_) {
         if (address(core_) == address(0)) {
@@ -38,12 +39,6 @@ contract VeloFactoryDeposit is IVeloFactoryDeposit {
         int24 tickUpper,
         uint128 liquidity
     ) public returns (uint256 tokenId) {
-        (,,,, uint16 observationCardinalityNext,) = pool.slot0();
-
-        if (observationCardinalityNext < MIN_OBSERVATION_CARDINALITY) {
-            pool.increaseObservationCardinalityNext(MIN_OBSERVATION_CARDINALITY);
-        }
-
         (uint160 sqrtPriceX96,,,,,) = pool.slot0();
         IERC20 token0 = IERC20(pool.token0());
         IERC20 token1 = IERC20(pool.token1());
@@ -106,7 +101,10 @@ contract VeloFactoryDeposit is IVeloFactoryDeposit {
                 || (creationParameters.maxAmount0 == 0 && creationParameters.maxAmount1 == 0)
                 || (
                     creationParameters.strategyType == IPulseStrategyModule.StrategyType.Tamper
-                        && creationParameters.maxLiquidityRatioDeviationX96 == 0
+                        && (
+                            creationParameters.maxLiquidityRatioDeviationX96 == 0
+                                || creationParameters.maxLiquidityRatioDeviationX96 >= Q96
+                        )
                 )
         ) {
             revert InvalidParams();
@@ -115,6 +113,8 @@ contract VeloFactoryDeposit is IVeloFactoryDeposit {
         core.oracle().ensureNoMEV(
             address(creationParameters.pool), creationParameters.securityParams
         );
+
+        _checkPoolObservationCardinality(creationParameters.pool);
 
         int24[] memory tickLower;
         int24[] memory tickUpper;
@@ -170,6 +170,13 @@ contract VeloFactoryDeposit is IVeloFactoryDeposit {
         uint256 balance = token.balanceOf(address(this));
         if (balance > 0) {
             token.transfer(depositor, balance);
+        }
+    }
+
+    function _checkPoolObservationCardinality(ICLPool pool) internal {
+        (,,,, uint16 observationCardinalityNext,) = pool.slot0();
+        if (observationCardinalityNext < MIN_OBSERVATION_CARDINALITY) {
+            pool.increaseObservationCardinalityNext(MIN_OBSERVATION_CARDINALITY);
         }
     }
 
