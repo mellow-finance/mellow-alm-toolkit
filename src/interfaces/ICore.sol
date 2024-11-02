@@ -335,16 +335,11 @@ interface ICore is IERC721Receiver {
      * @param tokenId The token ID associated with the position.
      * @param amount0 The amount of token0 to deposit.
      * @param amount1 The amount of token1 to deposit.
-     * @param requireSuccess A flag indicating whether the function should revert if the deposit fails.
      * @return The actual amounts of token0 and token1 deposited.
      */
-    function directDeposit(
-        uint256 id,
-        uint256 tokenId,
-        uint256 amount0,
-        uint256 amount1,
-        bool requireSuccess
-    ) external returns (uint256, uint256);
+    function directDeposit(uint256 id, uint256 tokenId, uint256 amount0, uint256 amount1)
+        external
+        returns (uint256, uint256);
 
     /**
      * @notice Withdraws a specified amount of liquidity from a position directly.
@@ -352,16 +347,11 @@ interface ICore is IERC721Receiver {
      * @param tokenId The token ID associated with the position.
      * @param liquidity The amount of liquidity to withdraw from the position.
      * @param to The address to which the withdrawn tokens should be sent.
-     * @param requireSuccess A flag indicating whether the function should revert if the withdrawal fails.
      * @return The actual amounts of token0 and token1 withdrawn.
      */
-    function directWithdraw(
-        uint256 id,
-        uint256 tokenId,
-        uint256 liquidity,
-        address to,
-        bool requireSuccess
-    ) external returns (uint256, uint256);
+    function directWithdraw(uint256 id, uint256 tokenId, uint256 liquidity, address to)
+        external
+        returns (uint256, uint256);
 
     /**
      * @dev Deposits multiple tokens into the contract and creates new ManagedPosition.

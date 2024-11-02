@@ -4,12 +4,6 @@ pragma solidity ^0.8.0;
 import "../../interfaces/modules/velo/IVeloAmmModule.sol";
 
 import "../../libraries/external/velo/PositionValue.sol";
-import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
-import {LiquidityAmounts} from "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
-
-interface IVeloFarm {
-    function distribute(uint256 amount) external;
-}
 
 contract VeloAmmModule is IVeloAmmModule {
     using SafeERC20 for IERC20;
@@ -30,7 +24,9 @@ contract VeloAmmModule is IVeloAmmModule {
         positionManager = address(positionManager_);
         factory = ICLFactory(positionManager_.factory());
         selectorIsPool = selectorIsPool_;
-        _validateSelectorIsPool();
+        /// @dev expect the next call to succeed without reverting. This logic is added
+        // to support velodrome and aerodrome protocols using the same codebase
+        assert(!isPool(address(0)));
     }
 
     /// @inheritdoc IAmmModule
@@ -55,18 +51,11 @@ contract VeloAmmModule is IVeloAmmModule {
         }
         IVeloAmmModule.CallbackParams memory params_ =
             abi.decode(params, (IVeloAmmModule.CallbackParams));
-
-        if (params_.farm == address(0)) {
-            revert AddressZero();
-        }
-        if (params_.gauge == address(0)) {
+        if (params_.farm == address(0) || params_.gauge == address(0)) {
             revert AddressZero();
         }
         ICLPool pool = ICLGauge(params_.gauge).pool();
-        if (!isPool(address(pool))) {
-            revert InvalidGauge();
-        }
-        if (pool.gauge() != params_.gauge) {
+        if (!isPool(address(pool)) || pool.gauge() != params_.gauge) {
             revert InvalidGauge();
         }
     }
@@ -97,7 +86,7 @@ contract VeloAmmModule is IVeloAmmModule {
             INonfungiblePositionManager(positionManager), tokenId, sqrtRatioX96
         );
         address gauge = abi.decode(callbackParams, (CallbackParams)).gauge;
-        if (IERC721(positionManager).ownerOf(tokenId) != gauge) {
+        if (!_isStaked(gauge, tokenId)) {
             (uint256 fees0, uint256 fees1) =
                 PositionValue.fees(INonfungiblePositionManager(positionManager), tokenId);
             amount0 += fees0;
@@ -141,11 +130,9 @@ contract VeloAmmModule is IVeloAmmModule {
 
     /// @inheritdoc IAmmModule
     function isPool(address pool) public view override returns (bool) {
-        (bool success, bytes memory returnData) =
-            address(factory).staticcall(abi.encodeWithSelector(selectorIsPool, pool));
-        if (!success) {
-            revert IsPool();
-        }
+        bytes memory returnData = Address.functionStaticCall(
+            address(factory), abi.encodeWithSelector(selectorIsPool, pool)
+        );
         return abi.decode(returnData, (bool));
     }
 
@@ -160,8 +147,8 @@ contract VeloAmmModule is IVeloAmmModule {
         bytes memory callbackParams,
         bytes memory protocolParams
     ) external virtual override {
-        address gauge = abi.decode(callbackParams, (IVeloAmmModule.CallbackParams)).gauge;
-        if (IERC721(positionManager).ownerOf(tokenId) != gauge) {
+        address gauge = abi.decode(callbackParams, (CallbackParams)).gauge;
+        if (!_isStaked(gauge, tokenId)) {
             return;
         }
         collectRewards(tokenId, callbackParams, protocolParams);
@@ -173,17 +160,11 @@ contract VeloAmmModule is IVeloAmmModule {
         uint256 tokenId,
         bytes memory callbackParams,
         bytes memory protocolParams
-    ) public {
+    ) public virtual override {
         CallbackParams memory callbackParams_ = abi.decode(callbackParams, (CallbackParams));
-        if (callbackParams_.farm == address(0)) {
-            revert AddressZero();
-        }
         ProtocolParams memory protocolParams_ = abi.decode(protocolParams, (ProtocolParams));
-        if (protocolParams_.feeD9 > MAX_PROTOCOL_FEE) {
-            revert InvalidFee();
-        }
         address gauge = callbackParams_.gauge;
-        if (IERC721(positionManager).ownerOf(tokenId) != gauge) {
+        if (!_isStaked(gauge, tokenId)) {
             return;
         }
         ICLGauge(gauge).getReward(tokenId);
@@ -235,12 +216,7 @@ contract VeloAmmModule is IVeloAmmModule {
         }
     }
 
-    /**
-     * @dev makes a call to the ICLFactory and checks that address(0) does not belong to
-     *  if selectorIsPool is wrong then reverts with IsPool() reason
-     *
-     */
-    function _validateSelectorIsPool() internal view {
-        require(isPool(address(0)) == false);
+    function _isStaked(address gauge, uint256 tokenId) internal view returns (bool) {
+        return IERC721(positionManager).ownerOf(tokenId) == gauge;
     }
 }

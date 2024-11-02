@@ -46,20 +46,13 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         IOracle oracle_,
         address admin_,
         address weth_
-    ) DefaultAccessControl(admin_) {
-        if (address(ammModule_) == address(0)) {
-            revert AddressZero();
-        }
-        if (address(ammDepositWithdrawModule_) == address(0)) {
-            revert AddressZero();
-        }
-        if (address(strategyModule_) == address(0)) {
-            revert AddressZero();
-        }
-        if (address(oracle_) == address(0)) {
-            revert AddressZero();
-        }
-        if (address(weth_) == address(0)) {
+    ) {
+        __DefaultAccessControl_init(admin_);
+        if (
+            address(ammModule_) == address(0) || address(ammDepositWithdrawModule_) == address(0)
+                || address(strategyModule_) == address(0) || address(oracle_) == address(0)
+                || weth_ == address(0)
+        ) {
             revert AddressZero();
         }
         ammModule = ammModule_;
@@ -207,13 +200,10 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     }
 
     /// @inheritdoc ICore
-    function directDeposit(
-        uint256 id,
-        uint256 tokenId,
-        uint256 amount0,
-        uint256 amount1,
-        bool requireSuccess
-    ) external returns (uint256, uint256) {
+    function directDeposit(uint256 id, uint256 tokenId, uint256 amount0, uint256 amount1)
+        external
+        returns (uint256, uint256)
+    {
         ManagedPositionInfo memory info = _positions[id];
         if (info.owner != msg.sender) {
             revert Forbidden();
@@ -231,27 +221,24 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
 
         bytes memory protocolParams_ = _protocolParams;
         _beforeRebalance(tokenId, info.callbackParams, protocolParams_);
-        (bool success, bytes memory response) = address(ammDepositWithdrawModule).delegatecall(
+        bytes memory response = Address.functionDelegateCall(
+            address(ammDepositWithdrawModule),
             abi.encodeWithSelector(
                 IAmmDepositWithdrawModule.deposit.selector, tokenId, amount0, amount1, info.owner
             )
         );
-        if (requireSuccess && (!success || response.length != 0x40)) {
-            revert DelegateCallFailed();
+        if (response.length != 0x40) {
+            revert InvalidParams();
         }
         _afterRebalance(tokenId, info.callbackParams, protocolParams_);
-
         return abi.decode(response, (uint256, uint256));
     }
 
     /// @inheritdoc ICore
-    function directWithdraw(
-        uint256 id,
-        uint256 tokenId,
-        uint256 liquidity,
-        address to,
-        bool requireSuccess
-    ) external returns (uint256, uint256) {
+    function directWithdraw(uint256 id, uint256 tokenId, uint256 liquidity, address to)
+        external
+        returns (uint256, uint256)
+    {
         ManagedPositionInfo memory info = _positions[id];
         if (info.owner != msg.sender) {
             revert Forbidden();
@@ -269,14 +256,16 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
 
         bytes memory protocolParams_ = _protocolParams;
         _beforeRebalance(tokenId, info.callbackParams, protocolParams_);
-        (bool success, bytes memory response) = address(ammDepositWithdrawModule).delegatecall(
+        bytes memory response = Address.functionDelegateCall(
+            address(ammDepositWithdrawModule),
             abi.encodeWithSelector(
                 IAmmDepositWithdrawModule.withdraw.selector, tokenId, liquidity, to
             )
         );
-        if (requireSuccess && !success) {
+        if (response.length != 0x40) {
             revert DelegateCallFailed();
         }
+
         _afterRebalance(tokenId, info.callbackParams, protocolParams_);
 
         return abi.decode(response, (uint256, uint256));
@@ -470,12 +459,10 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     }
 
     function _transferFrom(address from, address to, uint256 tokenId) private {
-        (bool success,) = address(ammModule).delegatecall(
+        Address.functionDelegateCall(
+            address(ammModule),
             abi.encodeWithSelector(IAmmModule.transferFrom.selector, from, to, tokenId)
         );
-        if (!success) {
-            revert DelegateCallFailed();
-        }
     }
 
     function _collectRewards(
@@ -483,14 +470,12 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         bytes memory callbackParams_,
         bytes memory protocolParams_
     ) private {
-        (bool success,) = address(ammModule).delegatecall(
+        Address.functionDelegateCall(
+            address(ammModule),
             abi.encodeWithSelector(
                 IAmmModule.collectRewards.selector, tokenId, callbackParams_, protocolParams_
             )
         );
-        if (!success) {
-            revert DelegateCallFailed();
-        }
     }
 
     function _beforeRebalance(
@@ -498,14 +483,12 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         bytes memory callbackParams_,
         bytes memory protocolParams_
     ) private {
-        (bool success,) = address(ammModule).delegatecall(
+        Address.functionDelegateCall(
+            address(ammModule),
             abi.encodeWithSelector(
                 IAmmModule.beforeRebalance.selector, tokenId, callbackParams_, protocolParams_
             )
         );
-        if (!success) {
-            revert DelegateCallFailed();
-        }
     }
 
     function _afterRebalance(
@@ -513,14 +496,12 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         bytes memory callbackParams_,
         bytes memory protocolParams_
     ) private {
-        (bool success,) = address(ammModule).delegatecall(
+        Address.functionDelegateCall(
+            address(ammModule),
             abi.encodeWithSelector(
                 IAmmModule.afterRebalance.selector, tokenId, callbackParams_, protocolParams_
             )
         );
-        if (!success) {
-            revert DelegateCallFailed();
-        }
     }
 
     receive() external payable {

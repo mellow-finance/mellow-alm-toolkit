@@ -107,8 +107,8 @@ library PulseStrategyLibrary {
         }
 
         if (
-            (params.width != tickUpper - tickLower && tickUpper == tickLower)
-                || (params.strategyType == IPulseStrategyModule.StrategyType.Original)
+            params.width != tickUpper - tickLower
+                || params.strategyType == IPulseStrategyModule.StrategyType.Original
         ) {
             return centeredPosition(sqrtPriceX96, tick, params.width, params.tickSpacing);
         }
@@ -144,7 +144,7 @@ library PulseStrategyLibrary {
         if (sqrtPriceX96 > sqrtPriceX96Upper) {
             targetTickLower -= params.width;
         } else if (sqrtPriceX96 < sqrtPriceX96Lower) {
-            if (TickMath.getSqrtRatioAtTick(tick) != sqrtPriceX96 || remainder != 0) {
+            if (remainder != 0 || TickMath.getSqrtRatioAtTick(tick) != sqrtPriceX96) {
                 targetTickLower += params.tickSpacing;
             }
         } else {
@@ -207,19 +207,19 @@ library TamperStrategyLibrary {
             PulseStrategyLibrary.centeredPosition(sqrtPriceX96, tick, width + half, half);
         uint160 sqrtPriceCenterX96 = TickMath.getSqrtRatioAtTick(targetLower + half);
         if (sqrtPriceX96 <= sqrtPriceCenterX96) {
-            lowerLiquidityRatioX96 = 0;
-        } else if (sqrtPriceX96 >= TickMath.getSqrtRatioAtTick(targetLower + width)) {
             lowerLiquidityRatioX96 = Q96;
+        } else if (sqrtPriceX96 >= TickMath.getSqrtRatioAtTick(targetLower + width)) {
+            lowerLiquidityRatioX96 = 0;
         } else {
+            // tick in [targetLower + half, targetLower + width]
+            // The relative accuracy of the calculations below is no worse than 1e-5, which means:
+            // max(|lowerLiquidityRatioX96(calculated) - lowerLiquidityRatioX96(theoretical)|) < Q96 / 1e5
             uint160 sqrtRatioAtTick = TickMath.getSqrtRatioAtTick(tick);
             uint160 sqrtRatioAtNextTick = TickMath.getSqrtRatioAtTick(tick + 1);
             int256 preciseTickX96 = int256(tick) * int256(Q96)
                 + int256(
                     Math.mulDiv(
-                        Q96,
-                        sqrtPriceX96 - sqrtRatioAtTick,
-                        sqrtRatioAtNextTick - sqrtRatioAtTick,
-                        Math.Rounding.Ceil
+                        Q96, sqrtPriceX96 - sqrtRatioAtTick, sqrtRatioAtNextTick - sqrtRatioAtTick
                     )
                 );
             uint256 deduction = Math.ceilDiv(
@@ -253,7 +253,7 @@ library TamperStrategyLibrary {
         isRebalanceRequired = lowerPosition.tickUpper - lowerPosition.tickLower != width
             || upperPosition.tickUpper - upperPosition.tickLower != width
             || lowerPosition.tickUpper != upperPosition.tickLower + half
-            || lowerPosition.tickUpper % half != 0;
+            || lowerPosition.tickLower % half != 0;
 
         if (!isRebalanceRequired) {
             uint256 ratioDiffX96 = 0;
@@ -271,7 +271,6 @@ library TamperStrategyLibrary {
             } else {
                 // NOTE: Position adjustments are restricted to a maximum of half the interval width.
                 // This is intentional in the LStrategy (Tamper) logic to prevent large-volume liquidity shifts in the pool during rebalancing.
-                // Precision of below calculations is not worse than 1e-5.
                 ratioDiffX96 = Q96;
                 if (targetLower < lowerPosition.tickLower) {
                     targetLower = lowerPosition.tickLower - half;
@@ -309,18 +308,33 @@ contract PulseStrategyModule is IPulseStrategyModule {
         StrategyParams memory params = abi.decode(params_, (StrategyParams));
         if (
             params.width == 0 || params.tickSpacing == 0 || params.width % params.tickSpacing != 0
-                || params.tickNeighborhood * 2 > params.width
-                || (params.strategyType != StrategyType.Original && params.tickNeighborhood != 0)
-                || (
-                    params.strategyType == StrategyType.Tamper
-                        && (
-                            params.width % 2 != 0 || params.width / 2 <= params.tickSpacing
-                                || params.maxLiquidityRatioDeviationX96 == 0
-                                || params.maxLiquidityRatioDeviationX96 >= Q96
-                        )
-                )
+                || params.strategyType > StrategyType.Tamper
         ) {
             revert InvalidParams();
+        }
+
+        if (params.strategyType == StrategyType.Original) {
+            // can be negative
+            if (params.tickNeighborhood * 2 > params.width) {
+                revert InvalidParams();
+            }
+        } else {
+            if (params.tickNeighborhood != 0) {
+                revert InvalidParams();
+            }
+        }
+        if (params.strategyType == StrategyType.Tamper) {
+            if (
+                params.width % 2 != 0 || params.width / 2 <= params.tickSpacing
+                    || params.maxLiquidityRatioDeviationX96 == 0
+                    || params.maxLiquidityRatioDeviationX96 >= Q96
+            ) {
+                revert InvalidParams();
+            }
+        } else {
+            if (params.maxLiquidityRatioDeviationX96 != 0) {
+                revert InvalidParams();
+            }
         }
     }
 
@@ -333,6 +347,10 @@ contract PulseStrategyModule is IPulseStrategyModule {
     {
         StrategyParams memory strategyParams = abi.decode(info.strategyParams, (StrategyParams));
         (uint160 sqrtPriceX96, int24 tick) = oracle.getOraclePrice(info.pool);
+        // Reasoning for using sqrtPriceX96 to get actual tick:
+        // uniswap V3: https://github.com/Uniswap/v3-core/blob/main/contracts/interfaces/pool/IUniswapV3PoolState.sol#L12
+        // velodrome slipstream: https://github.com/velodrome-finance/slipstream/blob/main/contracts/core/interfaces/pool/ICLPoolState.sol#L12
+        tick = TickMath.getTickAtSqrtRatio(sqrtPriceX96);
         if (strategyParams.strategyType == StrategyType.Tamper) {
             if (info.ammPositionIds.length != 2) {
                 revert InvalidLength();

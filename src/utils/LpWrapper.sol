@@ -9,76 +9,78 @@ import "../interfaces/utils/ILpWrapper.sol";
 import "./DefaultAccessControl.sol";
 import "./VeloDeployFactory.sol";
 
-contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
+contract LpWrapper is ILpWrapper, ERC20Upgradeable, DefaultAccessControl, ReentrancyGuard {
     using SafeERC20 for IERC20;
     using Math for uint256;
 
+    uint256 public constant D9 = 1e9;
+    uint256 public constant D18 = 1e18;
+
     /// @inheritdoc ILpWrapper
     address public immutable positionManager;
-
     /// @inheritdoc ILpWrapper
     ICore public immutable core;
-
     /// @inheritdoc ILpWrapper
     IAmmModule public immutable ammModule;
-
     /// @inheritdoc ILpWrapper
     IOracle public immutable oracle;
 
     /// @inheritdoc ILpWrapper
     uint256 public positionId;
+    /// @inheritdoc ILpWrapper
+    address public pool;
+    /// @inheritdoc ILpWrapper
+    IERC20 public token0;
+    /// @inheritdoc ILpWrapper
+    IERC20 public token1;
+    /// @inheritdoc IVeloFarm
+    address public rewardToken;
+    /// @inheritdoc IVeloFarm
+    uint256 public initializationTimestamp;
 
     /// @inheritdoc ILpWrapper
     uint256 public totalSupplyLimit;
+    /// @inheritdoc IVeloFarm
+    mapping(address account => uint256) public lastClaimTimestamp;
+    /// @inheritdoc IVeloFarm
+    mapping(address => uint256) public claimable;
 
-    address public immutable pool;
-    IERC20 public immutable token0;
-    IERC20 public immutable token1;
-    VeloDeployFactory public immutable factory;
+    mapping(address account => CumulativeValue[]) private _cumulativeBalance;
+    mapping(address account => mapping(uint256 timestamp => uint256)) private
+        _cumulativeBalanceTimestampToIndex;
+    CumulativeValue[] private _cumulativeRewardRate;
+    mapping(uint256 timestamp => uint256) private _cumulativeRewardRateTimestampToIndex;
 
-    uint56 private constant D9 = 1e9;
-    uint256 private constant D18 = 1e18;
-
-    /**
-     * @dev Constructor function for the LpWrapper contract.
-     * @param name_ The name of the ERC20 token.
-     * @param symbol_ The symbol of the ERC20 token.
-     * @param admin The address of the admin.
-     * @param factory_ The address of the ALM deploy factory.
-     * @param pool_ The address of the Pool.
-     */
-    constructor(
-        string memory name_,
-        string memory symbol_,
-        address admin,
-        address, /* weth_ */
-        address factory_,
-        address pool_
-    ) ERC20(name_, symbol_) DefaultAccessControl(admin) {
-        if (factory_ == address(0) || pool_ == address(0)) {
+    constructor(address core_) {
+        if (core_ == address(0)) {
             revert AddressZero();
         }
-
-        factory = VeloDeployFactory(factory_);
-        VeloDeployFactory.ImmutableParams memory immutableParams = factory.getImmutableParams();
-        core = immutableParams.core;
+        core = ICore(core_);
+        oracle = core.oracle();
         ammModule = core.ammModule();
         positionManager = ammModule.positionManager();
-        oracle = core.oracle();
-        pool = pool_;
-        token0 = IERC20(ICLPool(pool).token0());
-        token1 = IERC20(ICLPool(pool).token1());
     }
 
     /// @inheritdoc ILpWrapper
-    function initialize(uint256 positionId_, uint256 initialTotalSupply, uint256 totalSupplyLimit_)
-        external
-    {
-        if (positionId != 0) {
-            revert AlreadyInitialized();
+    function initialize(
+        uint256 positionId_,
+        uint256 initialTotalSupply,
+        uint256 totalSupplyLimit_,
+        address admin_,
+        address manager_,
+        string memory name_,
+        string memory symbol_
+    ) external initializer {
+        __ERC20_init(name_, symbol_);
+        __Context_init();
+        __DefaultAccessControl_init(admin_);
+        if (manager_ != address(0)) {
+            _grantRole(ADMIN_ROLE, manager_);
         }
+
+        address this_ = address(this);
         ICore.ManagedPositionInfo memory info = core.managedPositionAt(positionId_);
-        if (info.owner != address(this)) {
+        if (info.owner != this_) {
             revert Forbidden();
         }
 
@@ -86,14 +88,13 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         totalSupplyLimit = totalSupplyLimit_;
         rewardToken = ICLGauge(ICLPool(info.pool).gauge()).rewardToken();
 
-        _mint(address(this), initialTotalSupply);
+        _mint(this_, initialTotalSupply);
+
+        initializationTimestamp = block.timestamp;
+        collectRewards();
+        _logBalances(address(0));
 
         emit TotalSupplyLimitUpdated(totalSupplyLimit, 0, totalSupply());
-    }
-
-    /// @inheritdoc ILpWrapper
-    function ammDepositWithdrawModule() external view returns (IAmmDepositWithdrawModule) {
-        return core.ammDepositWithdrawModule();
     }
 
     /// @inheritdoc ILpWrapper
@@ -103,30 +104,11 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         uint256 minLpAmount,
         address to,
         uint256 deadline
-    ) external returns (uint256 actualAmount0, uint256 actualAmount1, uint256 lpAmount) {
-        return _deposit(amount0, amount1, minLpAmount, to, to, deadline);
-    }
-
-    /// @inheritdoc ILpWrapper
-    function depositAndStake(
-        uint256 amount0,
-        uint256 amount1,
-        uint256 minLpAmount,
-        address to,
-        uint256 deadline
-    ) external returns (uint256 actualAmount0, uint256 actualAmount1, uint256 lpAmount) {
-        // TODO: remove
-        return _deposit(amount0, amount1, minLpAmount, to, to, deadline);
-    }
-
-    function _deposit(
-        uint256 amount0,
-        uint256 amount1,
-        uint256 minLpAmount,
-        address lpRecipient,
-        address to,
-        uint256 deadline
-    ) private returns (uint256 actualAmount0, uint256 actualAmount1, uint256 lpAmount) {
+    )
+        external
+        nonReentrant
+        returns (uint256 actualAmount0, uint256 actualAmount1, uint256 lpAmount)
+    {
         if (block.timestamp > deadline) {
             revert Deadline();
         }
@@ -169,39 +151,37 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
             actualAmount0 = 0;
             actualAmount1 = 0;
         }
-        if (amount0 > 0 || amount1 > 0) {
-            (actualAmount0, actualAmount1) =
-                _directDeposit(amount0, amount1, amounts0, amounts1, positionsBefore, info);
+        if (amount0 == 0 && amount1 == 0) {
+            revert InsufficientAmounts();
         }
+        (actualAmount0, actualAmount1) =
+            _directDeposit(amount0, amount1, amounts0, amounts1, positionsBefore, info);
 
         uint256 totalSupply_ = totalSupply();
         IAmmModule.AmmPosition memory positionsAfter;
-
         lpAmount = type(uint256).max;
         for (uint256 i = 0; i < n; i++) {
             positionsAfter = ammModule.getAmmPosition(info.ammPositionIds[i]);
             if (positionsBefore[i].liquidity == 0) {
                 continue;
             }
-            uint256 currentLpAmount = Math.mulDiv(
+            uint256 lpAmount_ = Math.mulDiv(
                 positionsAfter.liquidity - positionsBefore[i].liquidity,
                 totalSupply_,
                 positionsBefore[i].liquidity
             );
-            if (lpAmount > currentLpAmount) {
-                lpAmount = currentLpAmount;
-            }
+            lpAmount = lpAmount < lpAmount_ ? lpAmount : lpAmount_;
         }
 
-        if (lpAmount < minLpAmount) {
+        if (lpAmount == 0 || lpAmount < minLpAmount) {
             revert InsufficientLpAmount();
         }
         if (totalSupply_ + lpAmount > totalSupplyLimit) {
             revert TotalSupplyLimitReached();
         }
-        _mint(lpRecipient, lpAmount);
+        _mint(to, lpAmount);
 
-        emit Deposit(msg.sender, to, pool, actualAmount0, actualAmount1, lpAmount, totalSupply());
+        emit Deposit(_msgSender(), to, pool, actualAmount0, actualAmount1, lpAmount, totalSupply());
     }
 
     function _directDeposit(
@@ -212,7 +192,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         IAmmModule.AmmPosition[] memory positionsBefore,
         ICore.ManagedPositionInfo memory info
     ) private returns (uint256 actualAmount0, uint256 actualAmount1) {
-        address sender = msg.sender;
+        address sender = _msgSender();
         if (amount0 > 0) {
             token0.safeTransferFrom(sender, address(this), amount0);
             token0.safeIncreaseAllowance(address(core), amount0);
@@ -226,9 +206,8 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
             if (positionsBefore[i].liquidity == 0) {
                 continue;
             }
-            (uint256 amount0_, uint256 amount1_) = core.directDeposit(
-                positionId, info.ammPositionIds[i], amounts0[i], amounts1[i], true
-            );
+            (uint256 amount0_, uint256 amount1_) =
+                core.directDeposit(positionId, info.ammPositionIds[i], amounts0[i], amounts1[i]);
             actualAmount0 += amount0_;
             actualAmount1 += amount1_;
         }
@@ -249,51 +228,27 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         uint256 minAmount1,
         address to,
         uint256 deadline
-    ) external returns (uint256 amount0, uint256 amount1, uint256 actualLpAmount) {
-        return _withdraw(lpAmount, minAmount0, minAmount1, to, deadline);
-    }
-
-    /// @inheritdoc ILpWrapper
-    function unstakeAndWithdraw(
-        uint256 lpAmount,
-        uint256 minAmount0,
-        uint256 minAmount1,
-        address to,
-        uint256 deadline
-    ) external returns (uint256 amount0, uint256 amount1, uint256 actualLpAmount) {
-        // TODO: remove
-        return _withdraw(lpAmount, minAmount0, minAmount1, to, deadline);
-    }
-
-    function _withdraw(
-        uint256 lpAmount,
-        uint256 minAmount0,
-        uint256 minAmount1,
-        address to,
-        uint256 deadline
-    ) private returns (uint256 amount0, uint256 amount1, uint256 actualLpAmount) {
+    ) external nonReentrant returns (uint256 amount0, uint256 amount1, uint256 actualLpAmount) {
         if (block.timestamp > deadline) {
             revert Deadline();
         }
-        ICore.ManagedPositionInfo memory info = core.managedPositionAt(positionId);
 
-        actualLpAmount = balanceOf(msg.sender);
-        if (actualLpAmount > lpAmount) {
-            actualLpAmount = lpAmount;
+        address sender = _msgSender();
+        actualLpAmount = Math.min(lpAmount, balanceOf(sender));
+        if (actualLpAmount == 0) {
+            revert InsufficientLpAmount();
         }
 
         uint256 totalSupply_ = totalSupply();
-        _burn(msg.sender, actualLpAmount);
-
-        (amount0, amount1) = _directWithdraw(actualLpAmount, totalSupply_, to, info.ammPositionIds);
-
+        _burn(sender, actualLpAmount);
+        (amount0, amount1) = _directWithdraw(
+            actualLpAmount, totalSupply_, to, core.managedPositionAt(positionId).ammPositionIds
+        );
         if (amount0 < minAmount0 || amount1 < minAmount1) {
             revert InsufficientAmounts();
         }
-
-        _getReward();
-
-        emit Withdraw(msg.sender, to, pool, amount0, amount1, lpAmount, totalSupply());
+        getRewards(to);
+        emit Withdraw(sender, to, pool, amount0, amount1, lpAmount, totalSupply());
     }
 
     function _directWithdraw(
@@ -310,25 +265,11 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
             }
 
             (uint256 actualAmount0, uint256 actualAmount1) =
-                core.directWithdraw(positionId, ammPositionIds[i], liquidity, to, true);
+                core.directWithdraw(positionId, ammPositionIds[i], liquidity, to);
 
             amount0 += actualAmount0;
             amount1 += actualAmount1;
         }
-    }
-
-    /// @inheritdoc ILpWrapper
-    function getReward() external {
-        claimRewards(msg.sender);
-    }
-
-    function _getReward() internal {
-        claimRewards(msg.sender);
-    }
-
-    /// @inheritdoc ILpWrapper
-    function earned(address user) external view returns (uint256 amount) {
-        return claimable[user];
     }
 
     /// @inheritdoc ILpWrapper
@@ -341,19 +282,20 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
     }
 
     /// @inheritdoc ILpWrapper
-    function getInfo() external view returns (uint256 tokenId, PositionData memory data) {
-        {
-            ICore.ManagedPositionInfo memory info = core.managedPositionAt(positionId);
-            if (info.ammPositionIds.length != 1) {
-                revert InvalidPositionsCount();
-            }
-            tokenId = info.ammPositionIds[0];
+    function getInfo() external view returns (PositionData[] memory data) {
+        ICore.ManagedPositionInfo memory info = core.managedPositionAt(positionId);
+        data = new PositionData[](info.ammPositionIds.length);
+        for (uint256 i = 0; i < info.ammPositionIds.length; i++) {
+            data[i] = _getInfo(info.ammPositionIds[i]);
         }
+    }
+
+    function _getInfo(uint256 tokenId) internal view returns (PositionData memory data) {
         (
             uint96 nonce,
             address operator,
-            ,
-            ,
+            address token0_,
+            address token1_,
             int24 tickSpacing,
             int24 tickLower,
             int24 tickUpper,
@@ -363,10 +305,11 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
             uint128 tokensOwed0,
             uint128 tokensOwed1
         ) = INonfungiblePositionManager(positionManager).positions(tokenId);
+        data.tokenId = tokenId;
         data.nonce = nonce;
         data.operator = operator;
-        data.token0 = address(token0);
-        data.token1 = address(token1);
+        data.token0 = token0_;
+        data.token1 = token1_;
         data.tickSpacing = tickSpacing;
         data.tickLower = tickLower;
         data.tickUpper = tickUpper;
@@ -380,20 +323,16 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
     /// @inheritdoc ILpWrapper
     function setPositionParams(
         uint32 slippageD9,
-        IVeloAmmModule.CallbackParams memory callbackParams,
-        IPulseStrategyModule.StrategyParams memory strategyParams,
-        IVeloOracle.SecurityParams memory securityParams
+        IVeloAmmModule.CallbackParams calldata callbackParams,
+        IPulseStrategyModule.StrategyParams calldata strategyParams,
+        IVeloOracle.SecurityParams calldata securityParams
     ) external {
-        _requireAdmin();
-        core.setPositionParams(
-            positionId,
+        setPositionParams(
             slippageD9,
             abi.encode(callbackParams),
             abi.encode(strategyParams),
             abi.encode(securityParams)
         );
-
-        emit PositionParamsSet(slippageD9, callbackParams, strategyParams, securityParams);
     }
 
     /// @inheritdoc ILpWrapper
@@ -402,7 +341,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         bytes memory callbackParams,
         bytes memory strategyParams,
         bytes memory securityParams
-    ) external {
+    ) public {
         _requireAdmin();
         core.setPositionParams(
             positionId, slippageD9, callbackParams, strategyParams, securityParams
@@ -417,13 +356,10 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
     }
 
     /// @inheritdoc ILpWrapper
-    function setTotalSupplyLimit(uint256 totalSupplyLimitNew) external {
+    function setTotalSupplyLimit(uint256 newTotalSupplyLimit) external {
         _requireAdmin();
-
-        uint256 totalSupplyLimitOld = totalSupplyLimit;
-        totalSupplyLimit = totalSupplyLimitNew;
-
-        emit TotalSupplyLimitUpdated(totalSupplyLimitNew, totalSupplyLimitOld, totalSupply());
+        emit TotalSupplyLimitUpdated(newTotalSupplyLimit, totalSupplyLimit, totalSupply());
+        totalSupplyLimit = newTotalSupplyLimit;
     }
 
     /// @inheritdoc ILpWrapper
@@ -431,24 +367,11 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         core.emptyRebalance(positionId);
     }
 
-    struct CumulativeValue {
-        uint256 timestamp;
-        uint256 value;
-    }
-
-    uint256 public initializationTimestamp;
-    mapping(address account => uint256) public lastClaimTimestamp;
-
-    mapping(address account => CumulativeValue[]) private _cumulativeBalance;
-    mapping(address account => mapping(uint256 timestamp => uint256)) private
-        _cumulativeBalanceTimestampToIndex;
-
-    CumulativeValue[] private _cumulativeRewardRate;
-    mapping(uint256 timestamp => uint256) private _cumulativeRewardRateTimestampToIndex;
-    address public rewardToken;
-    mapping(address => uint256) public claimable;
-
     // assumption: lpWrapper == farm
+
+    function collectRewards() public {
+        core.collectRewards(positionId);
+    }
 
     function getAccountCumulativeBalance(
         address account,
@@ -476,7 +399,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
     }
 
     function distribute(uint256 amount) external {
-        require(msg.sender == address(core), "LpWrapper: Forbidden");
+        require(_msgSender() == address(core), "LpWrapper: Forbidden");
         _logBalances(address(0));
         CumulativeValue[] storage rewardRate = _cumulativeRewardRate;
         uint256 n = rewardRate.length;
@@ -516,9 +439,6 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
     }
 
     function _logBalances(address account) private {
-        if (account != address(0)) {
-            _logBalances(address(0));
-        }
         CumulativeValue[] storage balances = _cumulativeBalance[account];
         uint256 n = balances.length;
         uint256 timestamp = block.timestamp;
@@ -534,25 +454,33 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         _cumulativeBalanceTimestampToIndex[account][timestamp] = n;
     }
 
-    function claimRewards(address recipient) public returns (uint256 amount) {
-        address sender = msg.sender;
+    function earned(address account) external view returns (uint256) {
+        return claimable[account]; // change logic to include rewards that are not yet collected
+    }
+
+    /// @inheritdoc IVeloFarm
+    function getRewards(address recipient) public returns (uint256 amount) {
+        address sender = _msgSender();
         collectRewards();
+        _logBalances(address(0));
         _logBalances(sender);
         _modifyRewards(sender);
         amount = claimable[sender];
         IERC20(rewardToken).safeTransfer(recipient, amount);
-    }
-
-    function collectRewards() public {
-        core.collectRewards(positionId);
+        delete claimable[sender];
     }
 
     function _update(address from, address to, uint256 amount) internal virtual override {
         collectRewards();
-        _logBalances(from);
-        _logBalances(to);
-        _modifyRewards(from);
-        _modifyRewards(to);
+        _logBalances(address(0));
+        if (from != address(0)) {
+            _logBalances(from);
+            _modifyRewards(from);
+        }
+        if (to != address(0)) {
+            _logBalances(to);
+            _modifyRewards(to);
+        }
         super._update(from, to, amount);
     }
 }

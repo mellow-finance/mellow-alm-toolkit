@@ -20,8 +20,9 @@ contract VeloDepositWithdrawModule is IVeloDepositWithdrawModule {
         returns (uint256 actualAmount0, uint256 actualAmount1)
     {
         (,, address token0, address token1,,,,,,,,) = positionManager.positions(tokenId);
-        IERC20(token0).safeTransferFrom(from, address(this), amount0);
-        IERC20(token1).safeTransferFrom(from, address(this), amount1);
+        address this_ = address(this);
+        IERC20(token0).safeTransferFrom(from, this_, amount0);
+        IERC20(token1).safeTransferFrom(from, this_, amount1);
         IERC20(token0).safeIncreaseAllowance(address(positionManager), amount0);
         IERC20(token1).safeIncreaseAllowance(address(positionManager), amount1);
         (, actualAmount0, actualAmount1) = positionManager.increaseLiquidity(

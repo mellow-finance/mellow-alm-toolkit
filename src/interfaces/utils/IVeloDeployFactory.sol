@@ -1,16 +1,15 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts/proxy/Clones.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
 import "../ICore.sol";
-
 import "../modules/strategies/IPulseStrategyModule.sol";
 import "../modules/velo/IVeloAmmModule.sol";
 import "../modules/velo/IVeloDepositWithdrawModule.sol";
-
-import "./IVeloDeployFactoryHelper.sol";
+import "./ILpWrapper.sol";
 import "./IVeloFactoryDeposit.sol";
 
 /**
@@ -34,40 +33,24 @@ interface IVeloDeployFactory {
     event StrategyCreated(StrategyCreatedParams params);
 
     /**
-     * @dev Represents the immutable parameters for the VeloDeployFactory contract.
-     */
-    struct ImmutableParams {
-        ICore core; // Core contract interface
-        IPulseStrategyModule strategyModule; // Pulse strategy module contract interface
-        IVeloAmmModule veloModule; // Velo AMM module contract interface
-        IVeloDepositWithdrawModule depositWithdrawModule; // Velo deposit/withdraw module contract interface
-        IVeloDeployFactoryHelper helper; // Helper contract interface for the VeloDeployFactory
-        IVeloFactoryDeposit factoryDeposit; // Contract for creating NFT postion with specific parameters.
-    }
-
-    /**
      * @dev Represents the mutable parameters for the VeloDeployFactory contract.
      */
     struct MutableParams {
         address lpWrapperAdmin; // Admin address for the LP wrapper
         address lpWrapperManager; // Manager address for the LP wrapper
-        address farmOwner; // Owner address for the farm
-        address farmOperator; // Operator address for the farm (compounder)
-        uint256 minInitialLiquidity; // Minimum initial liquidity for the LP wrapper
+        uint256 minInitialTotalSupply; // Minimum initial liquidity for the LP wrapper
     }
 
     /**
      * @dev Represents the parameters for configuring a strategy.
      */
     struct DeployParams {
+        IPulseStrategyModule.StrategyParams strategyParams;
         ICLPool pool;
-        IPulseStrategyModule.StrategyType strategyType;
-        int24 width;
-        int24 tickNeighborhood;
         uint32 slippageD9;
         uint256 maxAmount0;
         uint256 maxAmount1;
-        uint256 maxLiquidityRatioDeviationX96; // The maximum allowed deviation of the liquidity ratio for lower position.
+        uint256 initialTotalSupply;
         uint256 totalSupplyLimit;
         bytes securityParams;
         uint256[] tokenId;
@@ -88,7 +71,7 @@ interface IVeloDeployFactory {
      * @param params DeployParams for the strategy
      * @return lpWrapper lp wrapper address - ERC20 representation of the LP token
      */
-    function createStrategy(DeployParams calldata params) external returns (address lpWrapper);
+    function createStrategy(DeployParams calldata params) external returns (ILpWrapper lpWrapper);
 
     /**
      * @dev Maps a pool address to its associated addresses.
@@ -110,13 +93,7 @@ interface IVeloDeployFactory {
      * Requirements:
      * - Caller must have the ADMIN role, ensuring that only authorized personnel can alter the protocol's configuration in this manner.
      */
-    function removeAddressesForPool(address pool) external;
-
-    /**
-     * @dev Retrieves the immutable parameters for the VeloDeployFactory contract.
-     * @return ImmutableParams Immutable parameters for the VeloDeployFactory
-     */
-    function getImmutableParams() external view returns (ImmutableParams memory);
+    function removeWrapperForPool(address pool) external;
 
     /**
      * @dev Retrieves the mutable parameters for the VeloDeployFactory contract.

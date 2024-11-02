@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
@@ -13,12 +14,13 @@ import "../ICore.sol";
 import "../modules/strategies/IPulseStrategyModule.sol";
 import "../modules/velo/IVeloAmmModule.sol";
 import "../oracles/IVeloOracle.sol";
+import "./IVeloFarm.sol";
 
 /**
  * @title ILpWrapper Interface
  * @dev Interface for a liquidity pool wrapper, facilitating interactions between LP tokens, AMM modules, and core contract functionalities.
  */
-interface ILpWrapper {
+interface ILpWrapper is IVeloFarm {
     // Custom errors for handling operation failures
     error InsufficientAmounts(); // Thrown when provided amounts are insufficient for operation execution
     error InsufficientAllowance(); // Thrown when provided allowance are insufficient for operation execution
@@ -58,11 +60,12 @@ interface ILpWrapper {
     );
 
     event TotalSupplyLimitUpdated(
-        uint256 totalSupplyLimitNew, uint256 totalSupplyLimitOld, uint256 totalSupplyCurrent
+        uint256 newTotalSupplyLimit, uint256 totalSupplyLimitOld, uint256 totalSupplyCurrent
     );
 
     // Position data structure
     struct PositionData {
+        uint256 tokenId;
         uint96 nonce;
         address operator;
         address token0;
@@ -79,58 +82,9 @@ interface ILpWrapper {
 
     /**
      * @dev Returns corresponding position info
-     * @return tokenId - ID of the NFT representing the position
      * @return data - PositionData struct containing the position's data
      */
-    function getInfo() external view returns (uint256 tokenId, PositionData memory data);
-
-    /**
-     * @dev Deposits specified amounts of tokens into corresponding managed position, mints LP tokens and stakes them in the farm on behalf of `to`.
-     * @param amount0 Amount of token0 to deposit.
-     * @param amount1 Amount of token1 to deposit.
-     * @param minLpAmount Minimum amount of LP tokens required to be minted.
-     * @param to Address to receive the minted LP tokens.
-     * @param deadline Timestamp by which the deposit operation must be executed.
-     * @return actualAmount0 Actual amount of token0 deposited.
-     * @return actualAmount1 Actual amount of token1 deposited.
-     * @return lpAmount Amount of LP tokens minted.
-     */
-    function depositAndStake(
-        uint256 amount0,
-        uint256 amount1,
-        uint256 minLpAmount,
-        address to,
-        uint256 deadline
-    ) external returns (uint256 actualAmount0, uint256 actualAmount1, uint256 lpAmount);
-
-    /**
-     * @dev Withdraws LP tokens from the farm, burns them, and transfers the underlying assets to the specified address.
-     * @param lpAmount Amount of LP tokens to withdraw.
-     * @param minAmount0 Minimum amount of asset 0 to receive.
-     * @param minAmount1 Minimum amount of asset 1 to receive.
-     * @param to Address to transfer the underlying assets to.
-     * @param deadline Timestamp by which the withdrawal operation must be executed.
-     * @return amount0 Actual amount of asset 0 received.
-     * @return amount1 Actual amount of asset 1 received.
-     * @return actualLpAmount Actual amount of LP tokens withdrawn.
-     */
-    function unstakeAndWithdraw(
-        uint256 lpAmount,
-        uint256 minAmount0,
-        uint256 minAmount1,
-        address to,
-        uint256 deadline
-    ) external returns (uint256 amount0, uint256 amount1, uint256 actualLpAmount);
-
-    /**
-     * @dev Harvests the reward tokens from the farm to msg.sender.
-     */
-    function getReward() external;
-
-    /**
-     * @dev Returns the amount of reward tokens earned by the specified user.
-     */
-    function earned(address user) external view returns (uint256 amount);
+    function getInfo() external view returns (PositionData[] memory data);
 
     /**
      * @dev Returns protocol params of the corresponding Core.sol
@@ -145,12 +99,6 @@ interface ILpWrapper {
      * @return Address of the position manager.
      */
     function positionManager() external view returns (address);
-
-    /**
-     * @dev Returns the AMM Deposit Withdraw Module contract address.
-     * @return Address of the IAmmDepositWithdrawModule contract.
-     */
-    function ammDepositWithdrawModule() external view returns (IAmmDepositWithdrawModule);
 
     /**
      * @dev Returns the core contract address.
@@ -182,14 +130,15 @@ interface ILpWrapper {
      */
     function totalSupplyLimit() external view returns (uint256);
 
-    /**
-     * @dev Initializes the LP wrapper contract with the specified token ID and initial total supply.
-     * @param positionId_ Managed position ID to be associated with the LP wrapper contract.
-     * @param initialTotalSupply Initial total supply of the LP wrapper contract.
-     * @param totalSupplyLimit Initial total supply limit.
-     */
-    function initialize(uint256 positionId_, uint256 initialTotalSupply, uint256 totalSupplyLimit)
-        external;
+    function initialize(
+        uint256 positionId_,
+        uint256 initialTotalSupply,
+        uint256 totalSupplyLimit_,
+        address admin_,
+        address manager_,
+        string memory name_,
+        string memory symbol_
+    ) external;
 
     /**
      * @dev Deposits specified amounts of tokens into corresponding managed position and mints LP tokens to the specified address.
@@ -277,4 +226,8 @@ interface ILpWrapper {
      * - Caller must have the OPERATOR role.
      */
     function emptyRebalance() external;
+
+    function pool() external view returns (address);
+    function token0() external view returns (IERC20);
+    function token1() external view returns (IERC20);
 }

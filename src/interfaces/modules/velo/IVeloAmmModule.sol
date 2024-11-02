@@ -1,17 +1,15 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-
-import "../IAmmModule.sol";
-
 import "../../external/velo/ICLFactory.sol";
 import "../../external/velo/ICLGauge.sol";
 import "../../external/velo/ICLPool.sol";
-
 import "../../external/velo/INonfungiblePositionManager.sol";
-
-import "../../utils/ICounter.sol";
+import "../../utils/IVeloFarm.sol";
+import "../IAmmModule.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
+import {LiquidityAmounts} from "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 
 /**
  * @title IVeloAmmModule Interface
@@ -25,7 +23,6 @@ interface IVeloAmmModule is IAmmModule {
     error InvalidParams(); // Thrown when input parameters are invalid
     error InvalidLength(); // Thrown when array lengths are mismatched or invalid
     error InvalidGauge(); // Thrown when the gauge is invalid
-    error IsPool(); // Thrown when call isPool/isPair is failed
 
     /**
      * @dev Struct representing callback parameters for operations associated with the Velo protocol.

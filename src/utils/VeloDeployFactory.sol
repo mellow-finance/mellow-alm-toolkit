@@ -10,161 +10,110 @@ contract VeloDeployFactory is DefaultAccessControl, IERC721Receiver, IVeloDeploy
     string public constant factoryName = "MellowVelodromeStrategy";
     string public constant factorySymbol = "MVS";
     mapping(address => address) public poolToWrapper;
-    ImmutableParams private _immutableParams;
+    ICore public immutable core; // Core contract interface
+    IPulseStrategyModule public immutable strategyModule; // Pulse strategy module contract interface
+    IVeloAmmModule public immutable veloModule; // Velo AMM module contract interface
+    IVeloDepositWithdrawModule public immutable depositWithdrawModule; // Velo deposit/withdraw module contract interface
+    IVeloFactoryDeposit public immutable factoryDeposit; // Contract for creating NFT postion with specific parameters.
+    address public immutable lpWrapperImplementation;
+
     MutableParams private _mutableParams;
 
     constructor(
         address admin_,
         ICore core_,
         IVeloDepositWithdrawModule ammDepositWithdrawModule_,
-        IVeloDeployFactoryHelper helper_,
-        IVeloFactoryDeposit factoryDeposit_
-    ) DefaultAccessControl(admin_) {
-        _immutableParams = ImmutableParams({
-            core: core_,
-            strategyModule: IPulseStrategyModule(address(core_.strategyModule())),
-            veloModule: IVeloAmmModule(address(core_.ammModule())),
-            depositWithdrawModule: ammDepositWithdrawModule_,
-            helper: helper_,
-            factoryDeposit: factoryDeposit_
-        });
+        IVeloFactoryDeposit factoryDeposit_,
+        address lpWrapperImplementation_
+    ) {
+        __DefaultAccessControl_init(admin_);
+        core = core_;
+        strategyModule = IPulseStrategyModule(address(core_.strategyModule()));
+        veloModule = IVeloAmmModule(address(core_.ammModule()));
+        depositWithdrawModule = ammDepositWithdrawModule_;
+        factoryDeposit = factoryDeposit_;
+        lpWrapperImplementation = lpWrapperImplementation_;
     }
 
     /// @inheritdoc IVeloDeployFactory
     function updateMutableParams(MutableParams memory newMutableParams) external {
         _requireAdmin();
         if (
-            newMutableParams.farmOperator == address(0) || newMutableParams.farmOwner == address(0)
-                || newMutableParams.lpWrapperAdmin == address(0)
-                || newMutableParams.minInitialLiquidity == 0
+            newMutableParams.lpWrapperAdmin == address(0)
+                || newMutableParams.minInitialTotalSupply == 0
         ) {
             revert InvalidParams();
         }
         _mutableParams = newMutableParams;
     }
 
-    function createLpWrapper(
-        ICLPool pool,
-        int24 property //tICore.ManagedPositionInfo memory position
-    ) internal returns (ILpWrapper lpWrapper) {
-        if (poolToWrapper[address(pool)] != address(0)) {
-            revert LpWrapperAlreadyCreated();
-        }
-
-        lpWrapper = _immutableParams.helper.createLpWrapper(
-            string(
-                abi.encodePacked(
-                    factoryName,
-                    "-",
-                    IERC20Metadata(pool.token0()).symbol(),
-                    "-",
-                    IERC20Metadata(pool.token1()).symbol(),
-                    "-",
-                    Strings.toString(uint256(int256(property)))
-                )
-            ),
-            string(
-                abi.encodePacked(
-                    factorySymbol,
-                    "-",
-                    IERC20Metadata(pool.token0()).symbol(),
-                    "-",
-                    IERC20Metadata(pool.token1()).symbol(),
-                    "-",
-                    Strings.toString(uint256(int256(property)))
-                )
-            ),
-            _mutableParams.lpWrapperAdmin,
-            _mutableParams.lpWrapperManager,
-            address(pool)
-        );
-    }
-
-    function createStrategy(DeployParams calldata params) external returns (address lpWrapper) {
+    function createStrategy(DeployParams calldata params) external returns (ILpWrapper lpWrapper) {
         _requireAtLeastOperator();
 
+        core.strategyModule().validateStrategyParams(abi.encode(params.strategyParams));
+        MutableParams memory mutableParams = _mutableParams;
         if (
-            params.slippageD9 == 0 || params.securityParams.length == 0
-                || (params.tokenId.length == 0 && params.maxAmount0 == 0 && params.maxAmount1 == 0)
-                || (
-                    params.strategyType == IPulseStrategyModule.StrategyType.Tamper
-                        && params.maxLiquidityRatioDeviationX96 == 0
-                )
+            params.pool.tickSpacing() != params.strategyParams.tickSpacing
+                || mutableParams.minInitialTotalSupply > params.initialTotalSupply
         ) {
             revert InvalidParams();
         }
 
-        ImmutableParams memory immutableParams = _immutableParams;
-        MutableParams memory mutableParams = _mutableParams;
-        ICore core = immutableParams.core;
+        lpWrapper = ILpWrapper(Clones.clone(lpWrapperImplementation));
 
         ICore.DepositParams memory depositParams;
-        depositParams.ammPositionIds = immutableParams.factoryDeposit.create(
+        depositParams.ammPositionIds = factoryDeposit.create(
             msg.sender,
             address(this),
             IVeloFactoryDeposit.PoolStrategyParameter({
                 tokenId: params.tokenId,
                 pool: params.pool,
-                strategyType: params.strategyType,
-                width: params.width,
+                strategyType: params.strategyParams.strategyType,
+                width: params.strategyParams.width,
                 maxAmount0: params.maxAmount0,
                 maxAmount1: params.maxAmount1,
-                tickNeighborhood: params.tickNeighborhood,
-                maxLiquidityRatioDeviationX96: params.maxLiquidityRatioDeviationX96,
+                tickNeighborhood: params.strategyParams.tickNeighborhood,
+                maxLiquidityRatioDeviationX96: params.strategyParams.maxLiquidityRatioDeviationX96,
                 securityParams: params.securityParams
             })
         );
 
-        IPulseStrategyModule.StrategyParams memory strategyParams;
-        bytes memory callbackParams;
-
-        {
-            lpWrapper = address(createLpWrapper(params.pool, params.pool.tickSpacing()));
-
-            address gauge = params.pool.gauge();
-            address rewardToken = ICLGauge(gauge).rewardToken();
-            callbackParams =
-                abi.encode(IVeloAmmModule.CallbackParams({farm: lpWrapper, gauge: address(gauge)}));
-        }
-
-        {
-            IAmmModule.AmmPosition memory ammPosition =
-                immutableParams.veloModule.getAmmPosition(depositParams.ammPositionIds[0]);
-
-            strategyParams = IPulseStrategyModule.StrategyParams({
-                tickNeighborhood: params.tickNeighborhood,
-                tickSpacing: int24(params.pool.tickSpacing()),
-                strategyType: params.strategyType,
-                width: ammPosition.tickUpper - ammPosition.tickLower,
-                maxLiquidityRatioDeviationX96: params.maxLiquidityRatioDeviationX96
-            });
-        }
-
         depositParams.slippageD9 = params.slippageD9;
-        depositParams.owner = lpWrapper;
-        depositParams.callbackParams = callbackParams;
-        depositParams.strategyParams = abi.encode(strategyParams);
+        depositParams.owner = address(lpWrapper);
+        depositParams.callbackParams = abi.encode(
+            IVeloAmmModule.CallbackParams({
+                farm: address(lpWrapper),
+                gauge: address(params.pool.gauge())
+            })
+        );
+        depositParams.strategyParams = abi.encode(params.strategyParams);
         depositParams.securityParams = params.securityParams;
 
         INonfungiblePositionManager positionManager =
-            INonfungiblePositionManager(immutableParams.veloModule.positionManager());
+            INonfungiblePositionManager(veloModule.positionManager());
 
         for (uint256 i = 0; i < depositParams.ammPositionIds.length; i++) {
             positionManager.approve(address(core), depositParams.ammPositionIds[i]);
         }
 
         uint256 positionId = core.deposit(depositParams);
+        (string memory name, string memory symbol) = configureNameAndSymbol(params.pool);
+        ILpWrapper(lpWrapper).initialize(
+            positionId,
+            params.initialTotalSupply,
+            params.totalSupplyLimit,
+            mutableParams.lpWrapperAdmin,
+            mutableParams.lpWrapperManager,
+            name,
+            symbol
+        );
+        poolToWrapper[address(params.pool)] = address(lpWrapper);
 
-        ILpWrapper(lpWrapper).initialize(positionId, 1 ether, params.totalSupplyLimit);
-
-        poolToWrapper[address(params.pool)] = lpWrapper;
-
-        _emitStrategyCreated(core, positionId, strategyParams);
+        _emitStrategyCreated(positionId, params.strategyParams);
     }
 
     function _emitStrategyCreated(
-        ICore core,
-        uint256 positionId, //
+        uint256 positionId,
         IPulseStrategyModule.StrategyParams memory strategyParams
     ) private {
         ICore.ManagedPositionInfo memory position = core.managedPositionAt(positionId);
@@ -194,18 +143,33 @@ contract VeloDeployFactory is DefaultAccessControl, IERC721Receiver, IVeloDeploy
     }
 
     /// @inheritdoc IVeloDeployFactory
-    function getImmutableParams() external view returns (ImmutableParams memory) {
-        return _immutableParams;
-    }
-
-    /// @inheritdoc IVeloDeployFactory
     function getMutableParams() external view returns (MutableParams memory) {
         return _mutableParams;
     }
 
     /// @inheritdoc IVeloDeployFactory
-    function removeAddressesForPool(address pool) external {
+    function removeWrapperForPool(address pool) external {
         _requireAdmin();
         delete poolToWrapper[pool];
+    }
+
+    function configureNameAndSymbol(ICLPool pool)
+        public
+        view
+        returns (string memory name, string memory symbol)
+    {
+        string memory suffix = string(
+            abi.encodePacked(
+                " ",
+                IERC20Metadata(pool.token0()).symbol(),
+                "-",
+                IERC20Metadata(pool.token1()).symbol(),
+                "-",
+                Strings.toString(uint256(int256(ICLPool(pool).tickSpacing())))
+            )
+        );
+
+        name = string(abi.encodePacked(factoryName, suffix));
+        symbol = string(abi.encodePacked(factorySymbol, suffix));
     }
 }
