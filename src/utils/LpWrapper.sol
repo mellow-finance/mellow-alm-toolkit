@@ -81,12 +81,14 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         if (positionId != 0) {
             revert AlreadyInitialized();
         }
-        if (core.managedPositionAt(positionId_).owner != address(this)) {
+        ICore.ManagedPositionInfo memory info = core.managedPositionAt(positionId_);
+        if (info.owner != address(this)) {
             revert Forbidden();
         }
 
         positionId = positionId_;
         totalSupplyLimit = totalSupplyLimit_;
+        rewardToken = ICLGauge(ICLPool(info.pool).gauge()).rewardToken();
 
         _mint(address(this), initialTotalSupply);
 
@@ -125,6 +127,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         uint256 deadline
     ) external returns (uint256 actualAmount0, uint256 actualAmount1, uint256 lpAmount) {
         // TODO: remove
+        return _deposit(amount0, amount1, minLpAmount, to, to, deadline);
     }
 
     function _deposit(
@@ -221,24 +224,11 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         ICore.ManagedPositionInfo memory info
     ) private returns (uint256 actualAmount0, uint256 actualAmount1) {
         address sender = msg.sender;
-
         if (amount0 > 0) {
-            if (token0.balanceOf(sender) < amount0) {
-                revert InsufficientAmounts();
-            }
-            if (token0.allowance(sender, address(this)) < amount0) {
-                revert InsufficientAllowance();
-            }
             token0.safeTransferFrom(sender, address(this), amount0);
             token0.safeIncreaseAllowance(address(core), amount0);
         }
         if (amount1 > 0) {
-            if (token1.balanceOf(sender) < amount1) {
-                revert InsufficientAmounts();
-            }
-            if (token1.allowance(sender, address(this)) < amount1) {
-                revert InsufficientAllowance();
-            }
             token1.safeTransferFrom(sender, address(this), amount1);
             token1.safeIncreaseAllowance(address(core), amount1);
         }
@@ -283,6 +273,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         uint256 deadline
     ) external returns (uint256 amount0, uint256 amount1, uint256 actualLpAmount) {
         // TODO: remove
+        return _withdraw(lpAmount, minAmount0, minAmount1, to, deadline);
     }
 
     function _withdraw(
@@ -465,7 +456,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
 
     CumulativeValue[] private _cumulativeRewardRate;
     mapping(uint256 timestamp => uint256) private _cumulativeRewardRateTimestampToIndex;
-    address public rewardToken = address(bytes20(keccak256("VELO-TOKEN-ADDRESS"))); // TODO: VELO or AERO -> move to constructor
+    address public rewardToken;
     mapping(address => uint256) public claimable;
 
     // assumption: lpWrapper == farm

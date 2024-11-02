@@ -163,8 +163,11 @@ contract VeloAmmModule is IVeloAmmModule {
         bytes memory callbackParams,
         bytes memory protocolParams
     ) external virtual override {
-        collectRewards(tokenId, callbackParams, protocolParams);
         address gauge = abi.decode(callbackParams, (IVeloAmmModule.CallbackParams)).gauge;
+        if (IERC721(positionManager).ownerOf(tokenId) != gauge) {
+            return;
+        }
+        collectRewards(tokenId, callbackParams, protocolParams);
         ICLGauge(gauge).withdraw(tokenId);
     }
 

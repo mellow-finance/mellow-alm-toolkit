@@ -186,53 +186,53 @@ contract StakingRewards is RewardsDistributionRecipient, ReentrancyGuard, Pausab
         notPaused
         updateReward(to)
     {
-        require(msg.sender == stakingToken, "Forbidden");
-        require(amount > 0, "Cannot stake 0");
-        _totalSupply = _totalSupply.add(amount);
-        _balances[to] = _balances[to].add(amount);
-        IERC20(stakingToken).safeTransferFrom(stakingToken, address(this), amount);
-        emit Staked(to, amount);
+        // require(msg.sender == stakingToken, "Forbidden");
+        // require(amount > 0, "Cannot stake 0");
+        // _totalSupply = _totalSupply.add(amount);
+        // _balances[to] = _balances[to].add(amount);
+        // IERC20(stakingToken).safeTransferFrom(stakingToken, address(this), amount);
+        // emit Staked(to, amount);
     }
 
     function withdraw(uint256 amount) public nonReentrant updateReward(msg.sender) {
-        require(amount > 0, "Cannot withdraw 0");
-        _totalSupply = _totalSupply.sub(amount);
-        _balances[msg.sender] = _balances[msg.sender].sub(amount);
-        IERC20(stakingToken).safeTransfer(msg.sender, amount);
-        emit Withdrawn(msg.sender, amount);
+        // require(amount > 0, "Cannot withdraw 0");
+        // _totalSupply = _totalSupply.sub(amount);
+        // _balances[msg.sender] = _balances[msg.sender].sub(amount);
+        // IERC20(stakingToken).safeTransfer(msg.sender, amount);
+        // emit Withdrawn(msg.sender, amount);
     }
 
     function withdrawOnBehalf(uint256 amount, address to) public nonReentrant updateReward(to) {
-        require(msg.sender == stakingToken, "Forbidden");
-        require(amount > 0, "Cannot withdraw 0");
-        _totalSupply = _totalSupply.sub(amount);
-        _balances[to] = _balances[to].sub(amount);
-        IERC20(stakingToken).safeTransfer(to, amount);
-        emit Withdrawn(to, amount);
+        // require(msg.sender == stakingToken, "Forbidden");
+        // require(amount > 0, "Cannot withdraw 0");
+        // _totalSupply = _totalSupply.sub(amount);
+        // _balances[to] = _balances[to].sub(amount);
+        // IERC20(stakingToken).safeTransfer(to, amount);
+        // emit Withdrawn(to, amount);
     }
 
     function getReward() public nonReentrant updateReward(msg.sender) {
-        uint256 reward = rewards[msg.sender];
-        if (reward > 0) {
-            rewards[msg.sender] = 0;
-            IERC20(rewardsToken).safeTransfer(msg.sender, reward);
-            emit RewardPaid(msg.sender, reward);
-        }
+        // uint256 reward = rewards[msg.sender];
+        // if (reward > 0) {
+        //     rewards[msg.sender] = 0;
+        //     IERC20(rewardsToken).safeTransfer(msg.sender, reward);
+        //     emit RewardPaid(msg.sender, reward);
+        // }
     }
 
     function getRewardOnBehalf(address to) public nonReentrant updateReward(to) {
-        require(msg.sender == stakingToken, "Forbidden");
-        uint256 reward = rewards[to];
-        if (reward > 0) {
-            rewards[to] = 0;
-            IERC20(rewardsToken).safeTransfer(to, reward);
-            emit RewardPaid(to, reward);
-        }
+        // require(msg.sender == stakingToken, "Forbidden");
+        // uint256 reward = rewards[to];
+        // if (reward > 0) {
+        //     rewards[to] = 0;
+        //     IERC20(rewardsToken).safeTransfer(to, reward);
+        //     emit RewardPaid(to, reward);
+        // }
     }
 
     function exit() external {
-        withdraw(_balances[msg.sender]);
-        getReward();
+        // withdraw(_balances[msg.sender]);
+        // getReward();
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */
