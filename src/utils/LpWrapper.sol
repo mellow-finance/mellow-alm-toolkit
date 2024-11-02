@@ -12,6 +12,7 @@ import "./VeloDeployFactory.sol";
 
 contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
     using SafeERC20 for IERC20;
+    using Math for uint256;
 
     /// @inheritdoc ILpWrapper
     address public immutable positionManager;
@@ -87,7 +88,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         positionId = positionId_;
         totalSupplyLimit = totalSupplyLimit_;
 
-        _mintLiquidity(address(this), initialTotalSupply);
+        _mint(address(this), initialTotalSupply);
 
         emit TotalSupplyLimitUpdated(totalSupplyLimit, 0, totalSupply());
     }
@@ -123,18 +124,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         address to,
         uint256 deadline
     ) external returns (uint256 actualAmount0, uint256 actualAmount1, uint256 lpAmount) {
-        (actualAmount0, actualAmount1, lpAmount) =
-            _deposit(amount0, amount1, minLpAmount, address(this), to, deadline);
-        address farm = getFarm();
-        _approve(address(this), farm, lpAmount);
-        StakingRewards(farm).stakeOnBehalf(lpAmount, to);
-    }
-
-    function _mintLiquidity(address account, uint256 amount) private {
-        if (totalSupply() + amount > totalSupplyLimit) {
-            revert TotalSupplyLimitReached();
-        }
-        _mint(account, amount);
+        // TODO: remove
     }
 
     function _deposit(
@@ -214,8 +204,10 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         if (lpAmount < minLpAmount) {
             revert InsufficientLpAmount();
         }
-
-        _mintLiquidity(lpRecipient, lpAmount);
+        if (totalSupply_ + lpAmount > totalSupplyLimit) {
+            revert TotalSupplyLimitReached();
+        }
+        _mint(lpRecipient, lpAmount);
 
         emit Deposit(msg.sender, to, pool, actualAmount0, actualAmount1, lpAmount, totalSupply());
     }
@@ -290,15 +282,7 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         address to,
         uint256 deadline
     ) external returns (uint256 amount0, uint256 amount1, uint256 actualLpAmount) {
-        address farm = getFarm();
-        actualLpAmount = StakingRewards(farm).balanceOf(msg.sender);
-        if (actualLpAmount > lpAmount) {
-            actualLpAmount = lpAmount;
-        }
-        StakingRewards(farm).withdrawOnBehalf(actualLpAmount, msg.sender);
-
-        (amount0, amount1, actualLpAmount) =
-            _withdraw(actualLpAmount, minAmount0, minAmount1, to, deadline);
+        // TODO: remove
     }
 
     function _withdraw(
@@ -355,18 +339,16 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
 
     /// @inheritdoc ILpWrapper
     function getReward() external {
-        _getReward();
+        claimRewards(msg.sender);
     }
 
     function _getReward() internal {
-        address farm = getFarm();
-        StakingRewards(farm).getRewardOnBehalf(msg.sender);
+        claimRewards(msg.sender);
     }
 
     /// @inheritdoc ILpWrapper
     function earned(address user) external view returns (uint256 amount) {
-        address farm = getFarm();
-        return StakingRewards(farm).earned(user);
+        return claimable[user];
     }
 
     /// @inheritdoc ILpWrapper
@@ -477,38 +459,16 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
     uint256 public initializationTimestamp;
     mapping(address account => uint256) public lastClaimTimestamp;
 
-    mapping(address => CumulativeValue[]) private _cumulativeBalance;
+    mapping(address account => CumulativeValue[]) private _cumulativeBalance;
+    mapping(address account => mapping(uint256 timestamp => uint256)) private
+        _cumulativeBalanceTimestampToIndex;
+
     CumulativeValue[] private _cumulativeRewardRate;
+    mapping(uint256 timestamp => uint256) private _cumulativeRewardRateTimestampToIndex;
+    address public rewardToken = address(bytes20(keccak256("VELO-TOKEN-ADDRESS"))); // TODO: VELO or AERO -> move to constructor
+    mapping(address => uint256) public claimable;
 
-    address public rewardToken = address(1234124123); // VELO or AERO -> move to constructor
-
-    function _binarySearch(CumulativeValue[] storage array_, uint256 timestamp)
-        private
-        view
-        returns (CumulativeValue memory)
-    {
-        uint256 n = array_.length;
-        if (n == 0) {
-            return CumulativeValue(0, 0);
-        }
-        if (timestamp <= array_[0].timestamp) {
-            return array_[0];
-        }
-        if (timestamp >= array_[n - 1].timestamp) {
-            return array_[n - 1];
-        }
-        uint256 left = 0;
-        uint256 right = n - 1;
-        while (left < right) {
-            uint256 mid = (left + right) / 2;
-            if (array_[mid].timestamp < timestamp) {
-                left = mid + 1;
-            } else {
-                right = mid;
-            }
-        }
-        return array_[left];
-    }
+    // assumption: lpWrapper == farm
 
     function getAccountCumulativeBalance(
         address account,
@@ -516,29 +476,11 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         uint256 toTimestamp
     ) public view returns (uint256) {
         CumulativeValue[] storage balances = _cumulativeBalance[account];
-        CumulativeValue memory from = _binarySearch(balances, fromTimestamp);
-        CumulativeValue memory to = _binarySearch(balances, toTimestamp);
+        mapping(uint256 => uint256) storage timestampToIndex =
+            _cumulativeBalanceTimestampToIndex[account];
+        CumulativeValue memory from = balances[timestampToIndex[fromTimestamp]];
+        CumulativeValue memory to = balances[timestampToIndex[toTimestamp]];
         return to.value - from.value;
-    }
-
-    function distribute(uint256 amount) external logBalances(address(0)) {
-        require(msg.sender == address(core), "LpWrapper: Forbidden");
-        CumulativeValue[] storage rewardRate = _cumulativeRewardRate;
-        uint256 n = rewardRate.length;
-        CumulativeValue memory last = rewardRate[n - 1];
-        uint256 timestamp = block.timestamp;
-        if (timestamp == last.timestamp) {
-            return;
-        }
-        uint256 cumulativeTotalSupply =
-            getAccountCumulativeBalance(address(0), last.timestamp, timestamp);
-        uint256 cumulativeRewardRateD18 = last.value
-            + Math.mulDiv(
-                D18,
-                amount,
-                cumulativeTotalSupply + 1 // to avoid division by zero (?)
-            ) * (timestamp - last.timestamp);
-        rewardRate.push(CumulativeValue(timestamp, cumulativeRewardRateD18));
     }
 
     function getCumulativeRateD18(uint256 fromTimestamp, uint256 toTimestamp)
@@ -546,60 +488,92 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         view
         returns (uint256)
     {
-        CumulativeValue memory from = _binarySearch(_cumulativeRewardRate, fromTimestamp);
-        CumulativeValue memory to = _binarySearch(_cumulativeRewardRate, toTimestamp);
+        CumulativeValue[] storage rewardRate = _cumulativeRewardRate;
+        CumulativeValue memory from =
+            rewardRate[_cumulativeRewardRateTimestampToIndex[fromTimestamp]];
+        CumulativeValue memory to = rewardRate[_cumulativeRewardRateTimestampToIndex[toTimestamp]];
         return to.value - from.value;
     }
 
-    function claimRewards(address recipient)
-        external
-        logBalances(msg.sender)
-        collectRewardsModifier
-        returns (uint256 amount)
-    {
-        address sender = msg.sender;
-        uint256 lastClaimTimestamp_ = lastClaimTimestamp[sender];
+    function distribute(uint256 amount) external {
+        require(msg.sender == address(core), "LpWrapper: Forbidden");
+        _logBalances(address(0));
+        CumulativeValue[] storage rewardRate = _cumulativeRewardRate;
+        uint256 n = rewardRate.length;
+        CumulativeValue memory last =
+            n == 0 ? CumulativeValue(initializationTimestamp, 0) : rewardRate[n - 1];
         uint256 timestamp = block.timestamp;
-        lastClaimTimestamp[sender] = timestamp;
-        amount = getAccountCumulativeBalance(sender, lastClaimTimestamp_, timestamp);
-        if (amount == 0) {
-            return 0;
+        if (timestamp == last.timestamp) {
+            return;
         }
-        uint256 cumulativeRateD18 = getCumulativeRateD18(lastClaimTimestamp_, timestamp);
-        amount = Math.mulDiv(amount, cumulativeRateD18, D18);
-        IERC20(rewardToken).safeTransfer(recipient, amount);
+        uint256 cumulativeTotalSupply =
+            getAccountCumulativeBalance(address(0), last.timestamp, timestamp);
+        uint256 cumulativeRewardRateD18 = last.value
+            + amount.mulDiv(
+                D18,
+                cumulativeTotalSupply + 1 // to avoid division by zero (?)
+            );
+        rewardRate.push(CumulativeValue(timestamp, cumulativeRewardRateD18));
+        _cumulativeRewardRateTimestampToIndex[timestamp] = n;
     }
 
-    function collectRewards() external collectRewardsModifier {}
+    function _modifyRewards(address account) private {
+        if (account == address(0)) {
+            return;
+        }
+        uint256 lastClaimTimestamp_ = lastClaimTimestamp[account];
+        uint256 timestamp = block.timestamp;
+        if (lastClaimTimestamp_ == timestamp) {
+            return;
+        }
+        lastClaimTimestamp[account] = timestamp;
+        uint256 amount = getAccountCumulativeBalance(account, lastClaimTimestamp_, timestamp);
+        if (amount == 0) {
+            return;
+        }
+        uint256 cumulativeRateD18 = getCumulativeRateD18(lastClaimTimestamp_, timestamp);
+        claimable[account] += amount.mulDiv(cumulativeRateD18, D18);
+    }
 
-    modifier logBalances(address account) {
+    function _logBalances(address account) private {
         CumulativeValue[] storage balances = _cumulativeBalance[account];
         uint256 n = balances.length;
         uint256 timestamp = block.timestamp;
-        CumulativeValue memory last = balances[n - 1];
+        CumulativeValue memory last =
+            n == 0 ? CumulativeValue(initializationTimestamp, 0) : balances[n - 1];
         if (n != 0 && last.timestamp == timestamp) {
             return;
         }
-        uint256 balance;
-        if (account == address(0)) {
-            balance = totalSupply();
-        } else {
-            balance = balanceOf(account);
-        }
+        uint256 balance = account == address(0) ? totalSupply() : balanceOf(account);
         balances.push(
             CumulativeValue(timestamp, last.value + balance * (timestamp - last.timestamp))
         );
-        _;
+        _cumulativeBalanceTimestampToIndex[account][timestamp] = n;
+    }
+
+    function claimRewards(address recipient) public returns (uint256 amount) {
+        address sender = msg.sender;
+        collectRewards();
+        _logBalances(sender);
+        _modifyRewards(sender);
+        amount = claimable[sender];
+        IERC20(rewardToken).safeTransfer(recipient, amount);
+    }
+
+    function collectRewards() public {
+        core.collectRewards(positionId);
     }
 
     function _beforeTokenTransfer(address from, address to, uint256 amount)
         internal
         virtual
         override
-        collectRewardsModifier
-        logBalances(from < to ? from : to)
-        logBalances(from < to ? to : from)
     {
+        collectRewards();
+        _logBalances(from);
+        _logBalances(to);
+        _modifyRewards(from);
+        _modifyRewards(to);
         super._beforeTokenTransfer(from, to, amount);
     }
 

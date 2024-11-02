@@ -7,6 +7,10 @@ import "../../libraries/external/velo/PositionValue.sol";
 import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import {LiquidityAmounts} from "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 
+interface IVeloFarm {
+    function distribute(uint256 amount) external;
+}
+
 contract VeloAmmModule is IVeloAmmModule {
     using SafeERC20 for IERC20;
 
@@ -198,7 +202,7 @@ contract VeloAmmModule is IVeloAmmModule {
                 ICounter(callbackParams_.counter).add(balance, token, callbackParams_.farm);
             }
             // we want to provide that info into farm in any case, even if we do not have any rewards to distribute
-            // IVeloFarm(callbackParams_.farm).distribute(balance);
+            IVeloFarm(callbackParams_.farm).distribute(balance);
         }
     }
 
