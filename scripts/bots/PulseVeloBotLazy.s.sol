@@ -1,18 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import "forge-std/Script.sol";
-import "forge-std/Test.sol";
-
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/Strings.sol";
-
-import "../../interfaces/ICore.sol";
-import "../../interfaces/external/velo/ICLPool.sol";
-import "../../interfaces/external/velo/INonfungiblePositionManager.sol";
-import "../../interfaces/modules/strategies/IPulseStrategyModule.sol";
-
-import "../../bots/PulseVeloBotLazy.sol";
+import "../test/Imports.sol";
 
 contract PulseVeloBot is Script {
     using SafeERC20 for IERC20;

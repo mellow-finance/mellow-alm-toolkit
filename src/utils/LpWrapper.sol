@@ -7,7 +7,6 @@ import "../interfaces/external/velo/INonfungiblePositionManager.sol";
 import "../interfaces/utils/ILpWrapper.sol";
 
 import "./DefaultAccessControl.sol";
-import "./StakingRewards.sol";
 import "./VeloDeployFactory.sol";
 
 contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
@@ -106,13 +105,6 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         uint256 deadline
     ) external returns (uint256 actualAmount0, uint256 actualAmount1, uint256 lpAmount) {
         return _deposit(amount0, amount1, minLpAmount, to, to, deadline);
-    }
-
-    /// @inheritdoc ILpWrapper
-    function getFarm() public view returns (address) {
-        IVeloDeployFactory.PoolAddresses memory addresses = factory.poolToAddresses(pool);
-        require(address(addresses.lpWrapper) == address(this));
-        return addresses.synthetixFarm;
     }
 
     /// @inheritdoc ILpWrapper
@@ -555,16 +547,12 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         core.collectRewards(positionId);
     }
 
-    function _beforeTokenTransfer(address from, address to, uint256 amount)
-        internal
-        virtual
-        override
-    {
+    function _update(address from, address to, uint256 amount) internal virtual override {
         collectRewards();
         _logBalances(from);
         _logBalances(to);
         _modifyRewards(from);
         _modifyRewards(to);
-        super._beforeTokenTransfer(from, to, amount);
+        super._update(from, to, amount);
     }
 }

@@ -85,12 +85,6 @@ interface ILpWrapper {
     function getInfo() external view returns (uint256 tokenId, PositionData memory data);
 
     /**
-     * @dev Returns the address of the synthetix farm contract.
-     * @return Address of the farm contract.
-     */
-    function getFarm() external view returns (address);
-
-    /**
      * @dev Deposits specified amounts of tokens into corresponding managed position, mints LP tokens and stakes them in the farm on behalf of `to`.
      * @param amount0 Amount of token0 to deposit.
      * @param amount1 Amount of token1 to deposit.

@@ -62,9 +62,6 @@ contract VeloAmmModule is IVeloAmmModule {
         if (params_.gauge == address(0)) {
             revert AddressZero();
         }
-        if (params_.counter == address(0)) {
-            revert AddressZero();
-        }
         ICLPool pool = ICLGauge(params_.gauge).pool();
         if (!isPool(address(pool))) {
             revert InvalidGauge();
@@ -202,7 +199,6 @@ contract VeloAmmModule is IVeloAmmModule {
             balance -= protocolReward;
             if (balance > 0) {
                 IERC20(token).safeTransfer(callbackParams_.farm, balance);
-                ICounter(callbackParams_.counter).add(balance, token, callbackParams_.farm);
             }
             // we want to provide that info into farm in any case, even if we do not have any rewards to distribute
             IVeloFarm(callbackParams_.farm).distribute(balance);

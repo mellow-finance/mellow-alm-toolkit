@@ -219,7 +219,7 @@ library TamperStrategyLibrary {
                         Q96,
                         sqrtPriceX96 - sqrtRatioAtTick,
                         sqrtRatioAtNextTick - sqrtRatioAtTick,
-                        Math.Rounding.Up
+                        Math.Rounding.Ceil
                     )
                 );
             uint256 deduction = Math.ceilDiv(

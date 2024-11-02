@@ -71,9 +71,7 @@ contract PulseVeloBotLazy is IPulseVeloBotLazy {
         view
         returns (uint256 positionId, ICore.ManagedPositionInfo memory managedPositionInfo)
     {
-        IVeloDeployFactory.PoolAddresses memory poolAddresses = fatory.poolToAddresses(pool);
-        ILpWrapper lpWrapper = ILpWrapper(payable(poolAddresses.lpWrapper));
-
+        ILpWrapper lpWrapper = ILpWrapper(fatory.poolToWrapper(pool));
         positionId = lpWrapper.positionId();
         managedPositionInfo = core.managedPositionAt(positionId);
     }

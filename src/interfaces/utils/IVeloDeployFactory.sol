@@ -28,7 +28,6 @@ interface IVeloDeployFactory {
         IVeloAmmModule.AmmPosition[] ammPosition;
         IPulseStrategyModule.StrategyParams strategyParams;
         address lpWrapper;
-        address synthetixFarm;
         address caller;
     }
 
@@ -55,14 +54,6 @@ interface IVeloDeployFactory {
         address farmOwner; // Owner address for the farm
         address farmOperator; // Operator address for the farm (compounder)
         uint256 minInitialLiquidity; // Minimum initial liquidity for the LP wrapper
-    }
-
-    /**
-     * @dev Stores addresses related to a specific pool.
-     */
-    struct PoolAddresses {
-        address synthetixFarm; // Synthetix farm contract address
-        address lpWrapper; // LP wrapper contract address
     }
 
     /**
@@ -95,18 +86,15 @@ interface IVeloDeployFactory {
     /**
      * @dev Creates a strategy for the given deployParams
      * @param params DeployParams for the strategy
-     * @return poolAddresses addresses related to the created pool
+     * @return lpWrapper lp wrapper address - ERC20 representation of the LP token
      */
-    function createStrategy(DeployParams calldata params)
-        external
-        returns (PoolAddresses memory poolAddresses);
+    function createStrategy(DeployParams calldata params) external returns (address lpWrapper);
 
     /**
      * @dev Maps a pool address to its associated addresses.
      * @param pool Pool address
-     * @return PoolAddresses addresses associated with the pool
      */
-    function poolToAddresses(address pool) external view returns (PoolAddresses memory);
+    function poolToWrapper(address pool) external view returns (address lpWrapper);
 
     /**
      * @dev Removes the addresses associated with a specific pool from the contract's records. This action is irreversible

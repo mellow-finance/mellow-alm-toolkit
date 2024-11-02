@@ -2,17 +2,14 @@
 pragma solidity ^0.8.0;
 
 import "../interfaces/utils/IVeloDeployFactory.sol";
-
-import "./Counter.sol";
 import "./DefaultAccessControl.sol";
-import "./StakingRewards.sol";
 
 contract VeloDeployFactory is DefaultAccessControl, IERC721Receiver, IVeloDeployFactory {
     using SafeERC20 for IERC20;
 
     string public constant factoryName = "MellowVelodromeStrategy";
     string public constant factorySymbol = "MVS";
-    mapping(address => PoolAddresses) private _poolToAddresses;
+    mapping(address => address) public poolToWrapper;
     ImmutableParams private _immutableParams;
     MutableParams private _mutableParams;
 
@@ -50,7 +47,7 @@ contract VeloDeployFactory is DefaultAccessControl, IERC721Receiver, IVeloDeploy
         ICLPool pool,
         int24 property //tICore.ManagedPositionInfo memory position
     ) internal returns (ILpWrapper lpWrapper) {
-        if (_poolToAddresses[address(pool)].lpWrapper != address(0)) {
+        if (poolToWrapper[address(pool)] != address(0)) {
             revert LpWrapperAlreadyCreated();
         }
 
@@ -63,7 +60,7 @@ contract VeloDeployFactory is DefaultAccessControl, IERC721Receiver, IVeloDeploy
                     "-",
                     IERC20Metadata(pool.token1()).symbol(),
                     "-",
-                    Strings.toString(property)
+                    Strings.toString(uint256(int256(property)))
                 )
             ),
             string(
@@ -74,7 +71,7 @@ contract VeloDeployFactory is DefaultAccessControl, IERC721Receiver, IVeloDeploy
                     "-",
                     IERC20Metadata(pool.token1()).symbol(),
                     "-",
-                    Strings.toString(property)
+                    Strings.toString(uint256(int256(property)))
                 )
             ),
             _mutableParams.lpWrapperAdmin,
@@ -83,10 +80,7 @@ contract VeloDeployFactory is DefaultAccessControl, IERC721Receiver, IVeloDeploy
         );
     }
 
-    function createStrategy(DeployParams calldata params)
-        external
-        returns (PoolAddresses memory poolAddresses)
-    {
+    function createStrategy(DeployParams calldata params) external returns (address lpWrapper) {
         _requireAtLeastOperator();
 
         if (
@@ -125,33 +119,12 @@ contract VeloDeployFactory is DefaultAccessControl, IERC721Receiver, IVeloDeploy
         bytes memory callbackParams;
 
         {
-            poolAddresses.lpWrapper =
-                address(createLpWrapper(params.pool, params.pool.tickSpacing()));
+            lpWrapper = address(createLpWrapper(params.pool, params.pool.tickSpacing()));
 
             address gauge = params.pool.gauge();
             address rewardToken = ICLGauge(gauge).rewardToken();
-            poolAddresses.synthetixFarm = address(
-                new StakingRewards(
-                    mutableParams.farmOwner,
-                    mutableParams.farmOperator,
-                    rewardToken,
-                    poolAddresses.lpWrapper
-                )
-            );
-            callbackParams = abi.encode(
-                IVeloAmmModule.CallbackParams({
-                    farm: poolAddresses.synthetixFarm,
-                    gauge: address(gauge),
-                    counter: address(
-                        new Counter(
-                            mutableParams.farmOperator,
-                            address(core),
-                            rewardToken,
-                            poolAddresses.synthetixFarm
-                        )
-                    )
-                })
-            );
+            callbackParams =
+                abi.encode(IVeloAmmModule.CallbackParams({farm: lpWrapper, gauge: address(gauge)}));
         }
 
         {
@@ -168,7 +141,7 @@ contract VeloDeployFactory is DefaultAccessControl, IERC721Receiver, IVeloDeploy
         }
 
         depositParams.slippageD9 = params.slippageD9;
-        depositParams.owner = poolAddresses.lpWrapper;
+        depositParams.owner = lpWrapper;
         depositParams.callbackParams = callbackParams;
         depositParams.strategyParams = abi.encode(strategyParams);
         depositParams.securityParams = params.securityParams;
@@ -182,9 +155,9 @@ contract VeloDeployFactory is DefaultAccessControl, IERC721Receiver, IVeloDeploy
 
         uint256 positionId = core.deposit(depositParams);
 
-        ILpWrapper(poolAddresses.lpWrapper).initialize(positionId, 1 ether, params.totalSupplyLimit);
+        ILpWrapper(lpWrapper).initialize(positionId, 1 ether, params.totalSupplyLimit);
 
-        _poolToAddresses[address(params.pool)] = poolAddresses;
+        poolToWrapper[address(params.pool)] = lpWrapper;
 
         _emitStrategyCreated(core, positionId, strategyParams);
     }
@@ -199,8 +172,7 @@ contract VeloDeployFactory is DefaultAccessControl, IERC721Receiver, IVeloDeploy
             pool: position.pool,
             ammPosition: new IVeloAmmModule.AmmPosition[](position.ammPositionIds.length),
             strategyParams: strategyParams,
-            lpWrapper: _poolToAddresses[position.pool].lpWrapper,
-            synthetixFarm: _poolToAddresses[position.pool].synthetixFarm,
+            lpWrapper: poolToWrapper[position.pool],
             caller: msg.sender
         });
         for (uint256 i = 0; i < position.ammPositionIds.length; i++) {
@@ -222,11 +194,6 @@ contract VeloDeployFactory is DefaultAccessControl, IERC721Receiver, IVeloDeploy
     }
 
     /// @inheritdoc IVeloDeployFactory
-    function poolToAddresses(address pool) external view returns (PoolAddresses memory) {
-        return _poolToAddresses[pool];
-    }
-
-    /// @inheritdoc IVeloDeployFactory
     function getImmutableParams() external view returns (ImmutableParams memory) {
         return _immutableParams;
     }
@@ -239,6 +206,6 @@ contract VeloDeployFactory is DefaultAccessControl, IERC721Receiver, IVeloDeploy
     /// @inheritdoc IVeloDeployFactory
     function removeAddressesForPool(address pool) external {
         _requireAdmin();
-        delete _poolToAddresses[pool];
+        delete poolToWrapper[pool];
     }
 }

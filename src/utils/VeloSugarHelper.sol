@@ -3,8 +3,6 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/math/Math.sol";
 
-import "./StakingRewards.sol";
-
 import "./VeloDeployFactory.sol";
 
 contract VeloSugarHelper {
@@ -39,22 +37,21 @@ contract VeloSugarHelper {
 
     function getData(address user, uint256 id, ICore core) public view returns (Lp memory lp) {
         ICore.ManagedPositionInfo memory position = core.managedPositionAt(id);
-        IVeloDeployFactory.PoolAddresses memory addresses = factory.poolToAddresses(position.pool);
-        if (addresses.lpWrapper == address(0) || position.owner != addresses.lpWrapper) {
+        address lpWrapper = factory.poolToWrapper(position.pool);
+        if (lpWrapper == address(0) || position.owner != lpWrapper) {
             return lp;
         } // empty response
         if (position.ammPositionIds.length != 1) {
             return lp;
         } // empty response
-        StakingRewards farm = StakingRewards(addresses.synthetixFarm);
-        lp.lpAmount = IERC20(addresses.lpWrapper).balanceOf(user);
-        lp.stakedLpAmount = farm.balanceOf(user);
-        lp.rewards = farm.earned(user);
+        // StakingRewards farm = StakingRewards(addresses.synthetixFarm);
+        lp.lpAmount = IERC20(lpWrapper).balanceOf(user);
+        lp.rewards = ILpWrapper(lpWrapper).earned(user);
         if (lp.rewards == 0 && lp.stakedLpAmount == 0 && lp.lpAmount == 0) {
             return lp;
         } // empty response
-        lp.almFarm = addresses.synthetixFarm;
-        lp.almVault = addresses.lpWrapper;
+        lp.almFarm = lpWrapper;
+        lp.almVault = lpWrapper;
         ICLGauge gauge = ICLGauge(ICLPool(position.pool).gauge());
         lp.rewardToken = gauge.rewardToken();
         lp.nft = position.ammPositionIds[0];
@@ -72,7 +69,7 @@ contract VeloSugarHelper {
             (lp.reserve0, lp.reserve1) =
                 ammModule.tvl(lp.nft, lp.price, position.callbackParams, protocolParams);
         }
-        uint256 totalSupply = IERC20(addresses.lpWrapper).totalSupply();
+        uint256 totalSupply = IERC20(lpWrapper).totalSupply();
         lp.amount0 = Math.mulDiv(lp.reserve0, lp.lpAmount + lp.stakedLpAmount, totalSupply);
         lp.amount1 = Math.mulDiv(lp.reserve1, lp.lpAmount + lp.stakedLpAmount, totalSupply);
     }

@@ -34,15 +34,10 @@ interface IVeloAmmModule is IAmmModule {
      * @param farm Address of the Synthetix farm contract. It acts as a central hub for yield farming activities, interfacing directly
      * with users and other contracts to manage and allocate yield farming rewards based on defined criteria.
      * @param gauge Address of the Velo gauge contract.
-     * @param counter Address of a counter contract. This contract is designed for tracking and aggregating
-     * specific numerical data, such as the total amount of rewards added to the farm. It serves as a
-     * specialized tool for monitoring and reporting on key metrics that inform decisions and actions within
-     * the protocol, ensuring transparency and accuracy in reward distribution and other quantifiable activities.
      */
     struct CallbackParams {
         address farm; // Synthetix farm contract address for yield farming operations
         address gauge; // Velo gauge contract address
-        address counter; // Counter contract address for aggregating and tracking numerical data, such as reward amounts
     }
 
     /**
