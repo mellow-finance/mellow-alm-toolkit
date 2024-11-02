@@ -390,6 +390,18 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         }
     }
 
+    function collectRewards(uint256 id) external override nonReentrant {
+        ManagedPositionInfo memory params = _positions[id];
+        if (params.owner != msg.sender) {
+            revert Forbidden();
+        }
+        bytes memory protocolParams_ = _protocolParams;
+        for (uint256 i = 0; i < params.ammPositionIds.length; i++) {
+            uint256 tokenId = params.ammPositionIds[i];
+            _collectRewards(tokenId, params.callbackParams, protocolParams_);
+        }
+    }
+
     /// @inheritdoc IERC721Receiver
     function onERC721Received(address, address, uint256, bytes calldata)
         external
@@ -460,6 +472,21 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     function _transferFrom(address from, address to, uint256 tokenId) private {
         (bool success,) = address(ammModule).delegatecall(
             abi.encodeWithSelector(IAmmModule.transferFrom.selector, from, to, tokenId)
+        );
+        if (!success) {
+            revert DelegateCallFailed();
+        }
+    }
+
+    function _collectRewards(
+        uint256 tokenId,
+        bytes memory callbackParams_,
+        bytes memory protocolParams_
+    ) private {
+        (bool success,) = address(ammModule).delegatecall(
+            abi.encodeWithSelector(
+                IAmmModule.collectRewards.selector, tokenId, callbackParams_, protocolParams_
+            )
         );
         if (!success) {
             revert DelegateCallFailed();

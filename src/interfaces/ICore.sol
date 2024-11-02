@@ -398,4 +398,6 @@ interface ICore is IERC721Receiver {
      * @notice This function is only callable by the owner of the position.
      */
     function emptyRebalance(uint256 id) external;
+
+    function collectRewards(uint256 id) external;
 }

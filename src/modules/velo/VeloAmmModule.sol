@@ -159,6 +159,17 @@ contract VeloAmmModule is IVeloAmmModule {
         bytes memory callbackParams,
         bytes memory protocolParams
     ) external virtual override {
+        collectRewards(tokenId, callbackParams, protocolParams);
+        address gauge = abi.decode(callbackParams, (IVeloAmmModule.CallbackParams)).gauge;
+        ICLGauge(gauge).withdraw(tokenId);
+    }
+
+    /// @inheritdoc IAmmModule
+    function collectRewards(
+        uint256 tokenId,
+        bytes memory callbackParams,
+        bytes memory protocolParams
+    ) public {
         CallbackParams memory callbackParams_ = abi.decode(callbackParams, (CallbackParams));
         if (callbackParams_.farm == address(0)) {
             revert AddressZero();
@@ -186,8 +197,9 @@ contract VeloAmmModule is IVeloAmmModule {
                 IERC20(token).safeTransfer(callbackParams_.farm, balance);
                 ICounter(callbackParams_.counter).add(balance, token, callbackParams_.farm);
             }
+            // we want to provide that info into farm in any case, even if we do not have any rewards to distribute
+            // IVeloFarm(callbackParams_.farm).distribute(balance);
         }
-        ICLGauge(gauge).withdraw(tokenId);
     }
 
     /// @inheritdoc IAmmModule

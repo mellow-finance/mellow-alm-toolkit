@@ -96,6 +96,13 @@ interface IAmmModule {
      */
     function getProperty(address pool) external view returns (uint24);
 
+    // TODO
+    function collectRewards(
+        uint256 tokenId,
+        bytes memory callbackParams,
+        bytes memory protocolParams
+    ) external;
+
     /**
      * @dev Hook called before rebalancing a token or before any deposit/withdraw actions.
      * @param tokenId Token ID being rebalanced.
