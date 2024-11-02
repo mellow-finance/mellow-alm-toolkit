@@ -32,7 +32,6 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
     /// @inheritdoc ILpWrapper
     uint256 public totalSupplyLimit;
 
-    address public immutable weth;
     address public immutable pool;
     IERC20 public immutable token0;
     IERC20 public immutable token1;
@@ -46,7 +45,6 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
      * @param name_ The name of the ERC20 token.
      * @param symbol_ The symbol of the ERC20 token.
      * @param admin The address of the admin.
-     * @param weth_ The address of the WETH contract.
      * @param factory_ The address of the ALM deploy factory.
      * @param pool_ The address of the Pool.
      */
@@ -54,11 +52,11 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         string memory name_,
         string memory symbol_,
         address admin,
-        address weth_,
+        address, /* weth_ */
         address factory_,
         address pool_
     ) ERC20(name_, symbol_) DefaultAccessControl(admin) {
-        if (weth_ == address(0) || factory_ == address(0) || pool_ == address(0)) {
+        if (factory_ == address(0) || pool_ == address(0)) {
             revert AddressZero();
         }
 
@@ -68,7 +66,6 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         ammModule = core.ammModule();
         positionManager = ammModule.positionManager();
         oracle = core.oracle();
-        weth = weth_;
         pool = pool_;
         token0 = IERC20(ICLPool(pool).token0());
         token1 = IERC20(ICLPool(pool).token1());
@@ -527,12 +524,15 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
     }
 
     function _logBalances(address account) private {
+        if (account != address(0)) {
+            _logBalances(address(0));
+        }
         CumulativeValue[] storage balances = _cumulativeBalance[account];
         uint256 n = balances.length;
         uint256 timestamp = block.timestamp;
         CumulativeValue memory last =
             n == 0 ? CumulativeValue(initializationTimestamp, 0) : balances[n - 1];
-        if (n != 0 && last.timestamp == timestamp) {
+        if (last.timestamp == timestamp) {
             return;
         }
         uint256 balance = account == address(0) ? totalSupply() : balanceOf(account);
@@ -566,11 +566,5 @@ contract LpWrapper is ILpWrapper, ERC20, DefaultAccessControl {
         _modifyRewards(from);
         _modifyRewards(to);
         super._beforeTokenTransfer(from, to, amount);
-    }
-
-    receive() external payable {
-        uint256 amount = msg.value;
-        IWETH9(weth).deposit{value: amount}();
-        IERC20(weth).safeTransfer(tx.origin, amount);
     }
 }
