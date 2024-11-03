@@ -1,11 +1,11 @@
 {
   "name": "mellow-alm-toolkit",
-  "license": "BUSL-1.1",
-  "version": "1.0.0",
+  "license": "UNLICENSED",
+  "version": "2.0.0",
   "repository": "https://github.com/mellow-finance/mellow-alm-toolkit",
   "scripts": {
-    "prettier": "forge fmt",
-    "test": "forge test -vv --fork-url $(grep OPTIMISM_RPC .env | cut -d '=' -f2,3,4,5) --match-path ./test/\\* --fork-block-number 126785000",
+    "prettier": "forge fmt && forge fmt ./scripts/**",
+    "test": "forge test -vvvv --fork-url $(grep OPTIMISM_RPC .env | cut -d '=' -f2,3,4,5) --match-path ./test/\\* --fork-block-number 126785000",
     "sizes": "forge build --sizes --force",
     "compile": "forge build"
   }
