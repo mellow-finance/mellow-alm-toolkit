@@ -46,7 +46,7 @@ contract VeloAmmModule is IVeloAmmModule {
 
     /// @inheritdoc IAmmModule
     function validateCallbackParams(bytes memory params) external view {
-        if (params.length != 0x60) {
+        if (params.length != 0x40) {
             revert InvalidLength();
         }
         IVeloAmmModule.CallbackParams memory params_ =

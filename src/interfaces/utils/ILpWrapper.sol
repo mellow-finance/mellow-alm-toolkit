@@ -7,12 +7,13 @@ import "../oracles/IVeloOracle.sol";
 import "./IVeloFarm.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts/access/extensions/IAccessControlEnumerable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /**
  * @title ILpWrapper Interface
  * @dev Interface for a liquidity pool wrapper, facilitating interactions between LP tokens, AMM modules, and core contract functionalities.
  */
-interface ILpWrapper is IVeloFarm, IAccessControlEnumerable {
+interface ILpWrapper is IVeloFarm, IAccessControlEnumerable, IERC20 {
     // Custom errors for handling operation failures
     error InsufficientAmounts(); // Thrown when provided amounts are insufficient for operation execution
     error InsufficientAllowance(); // Thrown when provided allowance are insufficient for operation execution

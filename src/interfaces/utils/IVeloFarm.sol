@@ -21,4 +21,6 @@ interface IVeloFarm {
     function lastClaimTimestamp(address account) external view returns (uint256);
 
     function claimable(address account) external view returns (uint256);
+
+    function collectRewards() external;
 }

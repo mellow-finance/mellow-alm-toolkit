@@ -28,7 +28,6 @@ abstract contract DeployScript {
         IVeloDepositWithdrawModule depositWithdrawModule;
         IVeloOracle oracle;
         IPulseStrategyModule strategyModule;
-        IVeloFactoryHelper factoryHelper;
         IVeloDeployFactory deployFactory;
         ILpWrapper lpWrapperImplementation;
     }
@@ -56,12 +55,11 @@ abstract contract DeployScript {
             params.deployer,
             params.weth
         );
-        contracts.factoryHelper = new VeloFactoryHelper(contracts.core, contracts.strategyModule);
         contracts.lpWrapperImplementation = new LpWrapper(address(contracts.core));
         contracts.deployFactory = new VeloDeployFactory(
             params.deployer,
             contracts.core,
-            contracts.factoryHelper,
+            contracts.strategyModule,
             address(contracts.lpWrapperImplementation)
         );
 
@@ -84,7 +82,7 @@ abstract contract DeployScript {
         contracts.deployFactory.renounceRole(ADMIN_ROLE, params.deployer);
     }
 
-    function deployPool(
+    function deployStrategy(
         CoreDeployment memory contracts,
         IVeloDeployFactory.DeployParams memory params
     ) internal returns (ILpWrapper) {

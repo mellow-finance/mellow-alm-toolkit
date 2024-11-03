@@ -2,10 +2,12 @@
 pragma solidity 0.8.25;
 
 import "./ILpWrapper.sol";
-import "./IVeloFactoryHelper.sol";
+
 import "@openzeppelin/contracts/access/extensions/IAccessControlEnumerable.sol";
+import "@openzeppelin/contracts/interfaces/IERC721Receiver.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
+import "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 
 /**
  * @title IVeloDeployFactory Interface
@@ -39,6 +41,23 @@ interface IVeloDeployFactory is IAccessControlEnumerable {
         uint256 maxAmount1;
         uint256 initialTotalSupply;
         uint256 totalSupplyLimit;
+    }
+
+    error ForbiddenPool();
+
+    struct PoolStrategyParameter {
+        ICLPool pool;
+        IPulseStrategyModule.StrategyParams strategyParams;
+        uint256 maxAmount0;
+        uint256 maxAmount1;
+        bytes securityParams;
+    }
+
+    struct MintInfo {
+        uint256 amount0;
+        uint256 amount1;
+        int24 tickLower;
+        int24 tickUpper;
     }
 
     /**

@@ -2,9 +2,7 @@
 pragma solidity 0.8.25;
 
 import "../interfaces/utils/ILpWrapper.sol";
-
 import "./DefaultAccessControl.sol";
-import "./VeloDeployFactory.sol";
 
 contract LpWrapper is ILpWrapper, ERC20Upgradeable, DefaultAccessControl, ReentrancyGuard {
     using SafeERC20 for IERC20;
@@ -85,11 +83,14 @@ contract LpWrapper is ILpWrapper, ERC20Upgradeable, DefaultAccessControl, Reentr
         totalSupplyLimit = totalSupplyLimit_;
         rewardToken = ICLGauge(ICLPool(info.pool).gauge()).rewardToken();
 
+        pool = info.pool;
+        token0 = IERC20(ICLPool(info.pool).token0());
+        token1 = IERC20(ICLPool(info.pool).token1());
+
         _mint(this_, initialTotalSupply);
 
         initializationTimestamp = block.timestamp;
         collectRewards();
-        _logBalances(address(0));
 
         emit TotalSupplyLimitUpdated(totalSupplyLimit, 0, totalSupply());
     }
@@ -400,6 +401,7 @@ contract LpWrapper is ILpWrapper, ERC20Upgradeable, DefaultAccessControl, Reentr
 
     function collectRewards() public {
         core.collectRewards(positionId);
+        _logBalances(address(0));
     }
 
     function getAccountCumulativeBalance(
@@ -408,6 +410,9 @@ contract LpWrapper is ILpWrapper, ERC20Upgradeable, DefaultAccessControl, Reentr
         uint256 toTimestamp
     ) public view returns (uint256) {
         CumulativeValue[] storage balances = _cumulativeBalance[account];
+        if (balances.length == 0) {
+            return 0;
+        }
         mapping(uint256 => uint256) storage timestampToIndex =
             _cumulativeBalanceTimestampToIndex[account];
         CumulativeValue memory from = balances[timestampToIndex[fromTimestamp]];
@@ -491,7 +496,6 @@ contract LpWrapper is ILpWrapper, ERC20Upgradeable, DefaultAccessControl, Reentr
     function getRewards(address recipient) public returns (uint256 amount) {
         address sender = _msgSender();
         collectRewards();
-        _logBalances(address(0));
         _logBalances(sender);
         _modifyRewards(sender);
         amount = claimable[sender];
@@ -501,7 +505,6 @@ contract LpWrapper is ILpWrapper, ERC20Upgradeable, DefaultAccessControl, Reentr
 
     function _update(address from, address to, uint256 amount) internal virtual override {
         collectRewards();
-        _logBalances(address(0));
         if (from != address(0)) {
             _logBalances(from);
             _modifyRewards(from);
