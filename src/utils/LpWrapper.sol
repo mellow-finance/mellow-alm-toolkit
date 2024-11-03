@@ -335,6 +335,38 @@ contract LpWrapper is ILpWrapper, ERC20Upgradeable, DefaultAccessControl, Reentr
         );
     }
 
+    function setPositionSlippageD9(uint32 slippageD9) external {
+        ICore.ManagedPositionInfo memory info = core.managedPositionAt(positionId);
+        setPositionParams(slippageD9, info.callbackParams, info.strategyParams, info.securityParams);
+    }
+
+    function setPositionCallbackParams(IVeloAmmModule.CallbackParams calldata callbackParams)
+        external
+    {
+        ICore.ManagedPositionInfo memory info = core.managedPositionAt(positionId);
+        setPositionParams(
+            info.slippageD9, abi.encode(callbackParams), info.strategyParams, info.securityParams
+        );
+    }
+
+    function setPositionStrategyParams(IPulseStrategyModule.StrategyParams calldata strategyParams)
+        external
+    {
+        ICore.ManagedPositionInfo memory info = core.managedPositionAt(positionId);
+        setPositionParams(
+            info.slippageD9, info.callbackParams, abi.encode(strategyParams), info.securityParams
+        );
+    }
+
+    function setPositionSecurityParams(IVeloOracle.SecurityParams calldata securityParams)
+        external
+    {
+        ICore.ManagedPositionInfo memory info = core.managedPositionAt(positionId);
+        setPositionParams(
+            info.slippageD9, info.callbackParams, info.strategyParams, abi.encode(securityParams)
+        );
+    }
+
     /// @inheritdoc ILpWrapper
     function setPositionParams(
         uint32 slippageD9,

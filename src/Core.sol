@@ -46,7 +46,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         IOracle oracle_,
         address admin_,
         address weth_
-    ) {
+    ) initializer {
         __DefaultAccessControl_init(admin_);
         if (
             address(ammModule_) == address(0) || address(ammDepositWithdrawModule_) == address(0)

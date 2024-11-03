@@ -12,7 +12,7 @@ contract VeloDeployFactory is DefaultAccessControl, IERC721Receiver, IVeloDeploy
     mapping(address => address) public poolToWrapper;
     ICore public immutable core; // Core contract interface
     IERC721 public immutable positionManager; // NFT position manager contract interface
-    IVeloFactoryDeposit public immutable factoryDeposit; // Contract for creating NFT postion with specific parameters.
+    IVeloFactoryHelper public immutable factoryHelper; // Contract for creating NFT postion with specific parameters.
     address public immutable lpWrapperImplementation;
 
     address public lpWrapperAdmin;
@@ -22,13 +22,13 @@ contract VeloDeployFactory is DefaultAccessControl, IERC721Receiver, IVeloDeploy
     constructor(
         address admin_,
         ICore core_,
-        IVeloFactoryDeposit factoryDeposit_,
+        IVeloFactoryHelper factoryHelper_,
         address lpWrapperImplementation_
-    ) {
+    ) initializer {
         __DefaultAccessControl_init(admin_);
         core = core_;
         positionManager = IERC721(core.ammModule().positionManager());
-        factoryDeposit = factoryDeposit_;
+        factoryHelper = factoryHelper_;
         lpWrapperImplementation = lpWrapperImplementation_;
     }
 
@@ -67,14 +67,14 @@ contract VeloDeployFactory is DefaultAccessControl, IERC721Receiver, IVeloDeploy
         lpWrapper = ILpWrapper(Clones.clone(lpWrapperImplementation));
 
         ICore.DepositParams memory depositParams;
-        depositParams.ammPositionIds = factoryDeposit.create(
+        depositParams.ammPositionIds = factoryHelper.create(
             msg.sender,
-            IVeloFactoryDeposit.PoolStrategyParameter({
+            IVeloFactoryHelper.PoolStrategyParameter({
                 pool: params.pool,
                 strategyParams: params.strategyParams,
                 maxAmount0: params.maxAmount0,
                 maxAmount1: params.maxAmount1,
-                securityParams: params.securityParams
+                securityParams: abi.encode(params.securityParams)
             })
         );
 
@@ -87,7 +87,7 @@ contract VeloDeployFactory is DefaultAccessControl, IERC721Receiver, IVeloDeploy
             })
         );
         depositParams.strategyParams = abi.encode(params.strategyParams);
-        depositParams.securityParams = params.securityParams;
+        depositParams.securityParams = abi.encode(params.securityParams);
 
         for (uint256 i = 0; i < depositParams.ammPositionIds.length; i++) {
             positionManager.approve(address(core), depositParams.ammPositionIds[i]);

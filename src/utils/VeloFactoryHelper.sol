@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.25;
 
-import "../interfaces/utils/IVeloFactoryDeposit.sol";
+import "../interfaces/utils/IVeloFactoryHelper.sol";
 import "../modules/strategies/PulseStrategyModule.sol";
 
-contract VeloFactoryDeposit is IVeloFactoryDeposit {
+contract VeloFactoryHelper is IVeloFactoryHelper {
     using SafeERC20 for IERC20;
 
     ICore public immutable core;
@@ -15,10 +15,7 @@ contract VeloFactoryDeposit is IVeloFactoryDeposit {
     uint256 public constant Q96 = 2 ** 96;
 
     constructor(ICore core_, IPulseStrategyModule strategyModule_) {
-        if (address(core_) == address(0)) {
-            revert AddressZero();
-        }
-        if (address(strategyModule_) == address(0)) {
+        if (address(core_) == address(0) || address(strategyModule_) == address(0)) {
             revert AddressZero();
         }
 
@@ -27,7 +24,7 @@ contract VeloFactoryDeposit is IVeloFactoryDeposit {
         positionManager = INonfungiblePositionManager(core.ammModule().positionManager());
     }
 
-    /// @inheritdoc IVeloFactoryDeposit
+    /// @inheritdoc IVeloFactoryHelper
     function create(address depositor, PoolStrategyParameter calldata params)
         external
         returns (uint256[] memory tokenIds)
@@ -76,6 +73,16 @@ contract VeloFactoryDeposit is IVeloFactoryDeposit {
         }
     }
 
+    function collect(address depositor, IERC20 token) external {
+        if (!core.hasRole(keccak256("operator"), msg.sender)) {
+            revert Forbidden();
+        }
+        uint256 balance = token.balanceOf(address(this));
+        if (balance > 0) {
+            token.transfer(depositor, balance);
+        }
+    }
+
     function _handleToken(address depositor, IERC20 token, uint256 amount) private {
         address this_ = address(this);
         uint256 balance = token.balanceOf(this_);
@@ -84,17 +91,6 @@ contract VeloFactoryDeposit is IVeloFactoryDeposit {
         }
         if (token.allowance(this_, address(positionManager)) == 0) {
             token.forceApprove(address(positionManager), type(uint256).max);
-        }
-    }
-
-    function collect(address depositor, IERC20 token) private {
-        IAccessControl accessControl = IAccessControl(address(core));
-        if (!accessControl.hasRole(keccak256("operator"), msg.sender)) {
-            revert Forbidden();
-        }
-        uint256 balance = token.balanceOf(address(this));
-        if (balance > 0) {
-            token.transfer(depositor, balance);
         }
     }
 

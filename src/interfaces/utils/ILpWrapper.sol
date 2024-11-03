@@ -2,6 +2,7 @@
 pragma solidity 0.8.25;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import "@openzeppelin/contracts/access/extensions/IAccessControlEnumerable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
@@ -20,7 +21,7 @@ import "./IVeloFarm.sol";
  * @title ILpWrapper Interface
  * @dev Interface for a liquidity pool wrapper, facilitating interactions between LP tokens, AMM modules, and core contract functionalities.
  */
-interface ILpWrapper is IVeloFarm {
+interface ILpWrapper is IVeloFarm, IAccessControlEnumerable {
     // Custom errors for handling operation failures
     error InsufficientAmounts(); // Thrown when provided amounts are insufficient for operation execution
     error InsufficientAllowance(); // Thrown when provided allowance are insufficient for operation execution
