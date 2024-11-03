@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.25;
 
-import {IAmmModule, ICore, IOracle, IStrategyModule} from "../IStrategyModule.sol";
-import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {TickMath} from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
+import "../IStrategyModule.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
+import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 
 /**
  * @title PulseStrategyModule

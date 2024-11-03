@@ -3,13 +3,9 @@ pragma solidity 0.8.25;
 
 import "../../external/velo/ICLFactory.sol";
 import "../../external/velo/ICLGauge.sol";
-import "../../external/velo/ICLPool.sol";
-import "../../external/velo/INonfungiblePositionManager.sol";
 import "../../utils/IVeloFarm.sol";
 import "../IAmmModule.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
-import {LiquidityAmounts} from "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 
 /**
  * @title IVeloAmmModule Interface

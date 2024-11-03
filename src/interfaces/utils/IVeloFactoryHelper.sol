@@ -2,27 +2,19 @@
 pragma solidity 0.8.25;
 
 import "../ICore.sol";
-
 import "../modules/strategies/IPulseStrategyModule.sol";
 import "../modules/velo/IVeloDepositWithdrawModule.sol";
 import "../utils/IVeloDeployFactory.sol";
-import "@openzeppelin/contracts/access/IAccessControl.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
-import {LiquidityAmounts} from "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
+import "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 
 /**
- * @title IVeloDeployFactory Interface
- * @dev Interface for the VeloDeployFactory contract, facilitating the creation of strategies,
- * LP wrappers, and managing their configurations for Velo pools.
+ * @title IVeloFactoryHelper Interface
+ * @dev Interface for the VeloFactoryHelper contract, facilitating the creation of Velo slipstream nfts
  */
 interface IVeloFactoryHelper {
     error Forbidden();
     error AddressZero();
-    error ZeroLiquidity();
-    error ZeroNFT();
     error ForbiddenPool();
-    error InvalidParams();
 
     struct PoolStrategyParameter {
         ICLPool pool;

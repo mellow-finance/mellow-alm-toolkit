@@ -3,7 +3,6 @@ pragma solidity 0.8.25;
 
 import "../external/velo/ICLFactory.sol";
 import "../external/velo/ICLPool.sol";
-
 import "../external/velo/INonfungiblePositionManager.sol";
 import "../external/velo/IQuoterV2.sol";
 import "../external/velo/ISwapRouter.sol";

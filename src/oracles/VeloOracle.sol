@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.25;
 
-import "@openzeppelin/contracts/utils/math/Math.sol";
-import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
-
 import "../interfaces/oracles/IVeloOracle.sol";
 
 contract VeloOracle is IVeloOracle {
