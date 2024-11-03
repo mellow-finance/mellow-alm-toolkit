@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.0;
+pragma solidity 0.8.25;
 
 import "../interfaces/utils/IVeloFactoryDeposit.sol";
-
 import "../modules/strategies/PulseStrategyModule.sol";
-import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
-import {LiquidityAmounts} from "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 
 contract VeloFactoryDeposit is IVeloFactoryDeposit {
     using SafeERC20 for IERC20;
@@ -14,8 +11,8 @@ contract VeloFactoryDeposit is IVeloFactoryDeposit {
     IPulseStrategyModule public immutable strategyModule;
     INonfungiblePositionManager public immutable positionManager;
 
-    uint16 constant MIN_OBSERVATION_CARDINALITY = 100;
-    uint256 private constant Q96 = 2 ** 96;
+    uint16 public constant MIN_OBSERVATION_CARDINALITY = 100;
+    uint256 public constant Q96 = 2 ** 96;
 
     constructor(ICore core_, IPulseStrategyModule strategyModule_) {
         if (address(core_) == address(0)) {
@@ -31,248 +28,135 @@ contract VeloFactoryDeposit is IVeloFactoryDeposit {
     }
 
     /// @inheritdoc IVeloFactoryDeposit
-    function mint(
-        address depositor,
-        address to,
-        ICLPool pool,
-        int24 tickLower,
-        int24 tickUpper,
-        uint128 liquidity
-    ) public returns (uint256 tokenId) {
-        (uint160 sqrtPriceX96,,,,,) = pool.slot0();
-        IERC20 token0 = IERC20(pool.token0());
-        IERC20 token1 = IERC20(pool.token1());
-        (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(
-            sqrtPriceX96,
-            TickMath.getSqrtRatioAtTick(tickLower),
-            TickMath.getSqrtRatioAtTick(tickUpper),
-            liquidity
-        );
-
-        {
-            token0.safeTransferFrom(depositor, address(this), amount0);
-            token1.safeTransferFrom(depositor, address(this), amount1);
-            token0.safeIncreaseAllowance(address(positionManager), amount0);
-            token1.safeIncreaseAllowance(address(positionManager), amount1);
+    function create(address depositor, PoolStrategyParameter calldata params)
+        external
+        returns (uint256[] memory tokenIds)
+    {
+        if (msg.sender != address(core)) {
+            revert Forbidden();
         }
-
-        (tokenId, liquidity,,) = positionManager.mint(
-            INonfungiblePositionManager.MintParams({
-                token0: address(token0),
-                token1: address(token1),
-                tickLower: tickLower,
-                tickUpper: tickUpper,
-                tickSpacing: pool.tickSpacing(),
-                amount0Desired: amount0,
-                amount1Desired: amount1,
-                amount0Min: 0,
-                amount1Min: 0,
-                recipient: to,
-                deadline: block.timestamp + 1,
-                sqrtPriceX96: 0
-            })
-        );
-
-        if (tokenId == 0) {
-            revert ZeroNFT();
-        }
-        if (liquidity == 0) {
-            revert ZeroLiquidity();
-        }
-
-        _collect(depositor, token0);
-        _collect(depositor, token1);
-
-        return tokenId;
-    }
-
-    /// @inheritdoc IVeloFactoryDeposit
-    function create(
-        address depositor,
-        address owner,
-        PoolStrategyParameter calldata creationParameters
-    ) external returns (uint256[] memory tokenIds) {
-        if (!core.ammModule().isPool(address(creationParameters.pool))) {
+        ICLPool pool = params.pool;
+        if (!core.ammModule().isPool(address(pool))) {
             revert ForbiddenPool();
         }
-        if (
-            creationParameters.width % creationParameters.pool.tickSpacing() != 0
-                || creationParameters.width <= 0 || creationParameters.tickNeighborhood < 0
-                || (creationParameters.maxAmount0 == 0 && creationParameters.maxAmount1 == 0)
-                || (
-                    creationParameters.strategyType == IPulseStrategyModule.StrategyType.Tamper
-                        && (
-                            creationParameters.maxLiquidityRatioDeviationX96 == 0
-                                || creationParameters.maxLiquidityRatioDeviationX96 >= Q96
-                        )
-                )
-        ) {
-            revert InvalidParams();
-        }
 
-        core.oracle().ensureNoMEV(
-            address(creationParameters.pool), creationParameters.securityParams
-        );
+        core.oracle().ensureNoMEV(address(pool), params.securityParams);
+        pool.increaseObservationCardinalityNext(MIN_OBSERVATION_CARDINALITY);
 
-        _checkPoolObservationCardinality(creationParameters.pool);
+        bool isTamper =
+            params.strategyParams.strategyType == IPulseStrategyModule.StrategyType.Tamper;
+        tokenIds = new uint256[](isTamper ? 2 : 1);
+        MintInfo[] memory mintInfo =
+            (isTamper ? _getPositionParamTamper : _getPositionParamPulse)(params);
 
-        int24[] memory tickLower;
-        int24[] memory tickUpper;
-        uint128[] memory liquidity;
+        IERC20 token0 = IERC20(pool.token0());
+        IERC20 token1 = IERC20(pool.token1());
+        int24 tickSpacing = pool.tickSpacing();
 
-        /// @dev get position property for provided parameters
-        if (creationParameters.strategyType != IPulseStrategyModule.StrategyType.Tamper) {
-            tokenIds = new uint256[](1);
-            (tickLower, tickUpper, liquidity) = _getPositionParamPulse(creationParameters);
-        } else {
-            tokenIds = new uint256[](2);
-            (tickLower, tickUpper, liquidity) = _getPositionParamTamper(creationParameters);
-        }
+        _handleToken(depositor, token0, params.maxAmount0);
+        _handleToken(depositor, token1, params.maxAmount0);
 
-        /// @dev check whether tokenId's are provided as parameters, if yes - check them, else mint
-        if (
-            creationParameters.tokenId.length > 0
-                && creationParameters.tokenId.length != tokenIds.length
-        ) {
-            revert InvalidParams();
-        } else if (creationParameters.tokenId.length != 0) {
-            /// @dev check given tokenId's
-            for (uint256 i = 0; i < creationParameters.tokenId.length; i++) {
-                uint256 tokenId = creationParameters.tokenId[i];
-                IAmmModule.AmmPosition memory position = core.ammModule().getAmmPosition(tokenId);
-
-                if (
-                    position.tickUpper - position.tickLower != tickUpper[i] - tickLower[i]
-                        || int24(position.property) != creationParameters.pool.tickSpacing()
-                        || position.token0 != creationParameters.pool.token0()
-                        || position.token1 != creationParameters.pool.token1()
-                ) {
-                    revert InvalidParams();
-                }
-                tokenIds[i] = tokenId;
-            }
-        } else {
-            /// @dev mint positions in favor of depositor
-            for (uint256 i = 0; i < tokenIds.length; i++) {
-                tokenIds[i] = mint(
-                    depositor,
-                    owner,
-                    creationParameters.pool,
-                    tickLower[i],
-                    tickUpper[i],
-                    liquidity[i]
-                );
-            }
+        for (uint256 i = 0; i < mintInfo.length; i++) {
+            (tokenIds[i],,,) = positionManager.mint(
+                INonfungiblePositionManager.MintParams({
+                    token0: address(token0),
+                    token1: address(token1),
+                    tickLower: mintInfo[i].tickLower,
+                    tickUpper: mintInfo[i].tickUpper,
+                    tickSpacing: tickSpacing,
+                    amount0Desired: mintInfo[i].amount0,
+                    amount1Desired: mintInfo[i].amount1,
+                    amount0Min: 0,
+                    amount1Min: 0,
+                    recipient: address(core),
+                    deadline: type(uint256).max,
+                    sqrtPriceX96: 0
+                })
+            );
         }
     }
 
-    function _collect(address depositor, IERC20 token) internal {
+    function _handleToken(address depositor, IERC20 token, uint256 amount) private {
+        address this_ = address(this);
+        uint256 balance = token.balanceOf(this_);
+        if (balance < amount) {
+            token.safeTransferFrom(depositor, this_, amount - balance);
+        }
+        if (token.allowance(this_, address(positionManager)) == 0) {
+            token.forceApprove(address(positionManager), type(uint256).max);
+        }
+    }
+
+    function collect(address depositor, IERC20 token) private {
+        IAccessControl accessControl = IAccessControl(address(core));
+        if (!accessControl.hasRole(keccak256("operator"), msg.sender)) {
+            revert Forbidden();
+        }
         uint256 balance = token.balanceOf(address(this));
         if (balance > 0) {
             token.transfer(depositor, balance);
         }
     }
 
-    function _checkPoolObservationCardinality(ICLPool pool) internal {
-        (,,,, uint16 observationCardinalityNext,) = pool.slot0();
-        if (observationCardinalityNext < MIN_OBSERVATION_CARDINALITY) {
-            pool.increaseObservationCardinalityNext(MIN_OBSERVATION_CARDINALITY);
-        }
-    }
-
-    function _getPositionParamTamper(PoolStrategyParameter calldata poolParameter)
+    function _getPositionParamTamper(PoolStrategyParameter calldata params)
         private
         view
-        returns (int24[] memory tickLower, int24[] memory tickUpper, uint128[] memory liquidity)
+        returns (MintInfo[] memory mintInfo)
     {
-        tickLower = new int24[](2);
-        tickUpper = new int24[](2);
-        liquidity = new uint128[](2);
-
-        (uint160 sqrtPriceX96, int24 tick,,,,) = poolParameter.pool.slot0();
-
-        IAmmModule.AmmPosition memory emptyPosition = IAmmModule.AmmPosition({
-            token0: poolParameter.pool.token0(),
-            token1: poolParameter.pool.token1(),
-            property: uint24(poolParameter.pool.tickSpacing()),
-            tickLower: 0,
-            tickUpper: 0,
-            liquidity: 0
-        });
-
-        IPulseStrategyModule.StrategyParams memory strategyParams = IPulseStrategyModule
-            .StrategyParams({
-            tickNeighborhood: poolParameter.tickNeighborhood,
-            tickSpacing: poolParameter.pool.tickSpacing(),
-            strategyType: poolParameter.strategyType,
-            width: poolParameter.width,
-            maxLiquidityRatioDeviationX96: poolParameter.maxLiquidityRatioDeviationX96
-        });
-
-        (, ICore.TargetPositionInfo memory target) = TamperStrategyLibrary.calculateTarget(
-            sqrtPriceX96, tick, emptyPosition, emptyPosition, strategyParams
-        );
-
-        for (uint256 i = 0; i < 2; i++) {
-            tickLower[i] = target.lowerTicks[i];
-            tickUpper[i] = target.upperTicks[i];
-            liquidity[i] = _getLiquidity(
-                poolParameter.maxAmount0 / 2,
-                poolParameter.maxAmount1 / 2,
-                sqrtPriceX96,
-                tickLower[i],
-                tickUpper[i]
+        (uint160 sqrtPriceX96, int24 tick,,,,) = params.pool.slot0();
+        ICore.TargetPositionInfo memory target;
+        {
+            IAmmModule.AmmPosition memory position;
+            (, target) = TamperStrategyLibrary.calculateTarget(
+                sqrtPriceX96, tick, position, position, params.strategyParams
             );
         }
+        (uint256 lowerAmount0X96, uint256 lowerAmount1X96) = LiquidityAmounts.getAmountsForLiquidity(
+            sqrtPriceX96,
+            TickMath.getSqrtRatioAtTick(target.lowerTicks[0]),
+            TickMath.getSqrtRatioAtTick(target.upperTicks[0]),
+            uint128(target.liquidityRatiosX96[0])
+        );
+        (uint256 upperAmount0X96, uint256 upperAmount1X96) = LiquidityAmounts.getAmountsForLiquidity(
+            sqrtPriceX96,
+            TickMath.getSqrtRatioAtTick(target.lowerTicks[1]),
+            TickMath.getSqrtRatioAtTick(target.upperTicks[1]),
+            uint128(Q96 - target.liquidityRatiosX96[0])
+        );
+        uint256 coefficient = Math.max(
+            Math.ceilDiv(lowerAmount0X96 + upperAmount0X96, params.maxAmount0),
+            Math.ceilDiv(lowerAmount1X96 + upperAmount1X96, params.maxAmount1)
+        );
+
+        mintInfo = new MintInfo[](2);
+        mintInfo[0] = MintInfo({
+            tickLower: target.lowerTicks[0],
+            tickUpper: target.upperTicks[0],
+            amount0: lowerAmount0X96 / coefficient,
+            amount1: lowerAmount1X96 / coefficient
+        });
+        mintInfo[1] = MintInfo({
+            tickLower: target.lowerTicks[1],
+            tickUpper: target.upperTicks[1],
+            amount0: upperAmount0X96 / coefficient,
+            amount1: upperAmount1X96 / coefficient
+        });
     }
 
-    function _getPositionParamPulse(PoolStrategyParameter calldata poolParameter)
+    function _getPositionParamPulse(PoolStrategyParameter calldata params)
         private
         view
-        returns (int24[] memory tickLower, int24[] memory tickUpper, uint128[] memory liquidity)
+        returns (MintInfo[] memory mintInfo)
     {
-        tickLower = new int24[](1);
-        tickUpper = new int24[](1);
-        liquidity = new uint128[](1);
-
-        (uint160 sqrtPriceX96, int24 tick,,,,) = poolParameter.pool.slot0();
-
-        IPulseStrategyModule.StrategyParams memory strategyParams = IPulseStrategyModule
-            .StrategyParams({
-            tickNeighborhood: poolParameter.tickNeighborhood,
-            tickSpacing: poolParameter.pool.tickSpacing(),
-            strategyType: poolParameter.strategyType,
-            width: poolParameter.width,
-            maxLiquidityRatioDeviationX96: 0
+        (uint160 sqrtPriceX96, int24 tick,,,,) = params.pool.slot0();
+        (, ICore.TargetPositionInfo memory target) =
+            PulseStrategyLibrary.calculateTarget(sqrtPriceX96, tick, 0, 0, params.strategyParams);
+        mintInfo = new MintInfo[](1);
+        mintInfo[0] = MintInfo({
+            tickLower: target.lowerTicks[0],
+            tickUpper: target.upperTicks[0],
+            amount0: params.maxAmount0,
+            amount1: params.maxAmount1
         });
-
-        (bool isRebalanceRequired, ICore.TargetPositionInfo memory target) =
-            PulseStrategyLibrary.calculateTarget(sqrtPriceX96, tick, 0, 0, strategyParams);
-
-        assert(isRebalanceRequired);
-
-        (tickLower[0], tickUpper[0]) = (target.lowerTicks[0], target.upperTicks[0]);
-        liquidity[0] = _getLiquidity(
-            poolParameter.maxAmount0,
-            poolParameter.maxAmount1,
-            sqrtPriceX96,
-            tickLower[0],
-            tickUpper[0]
-        );
-    }
-
-    function _getLiquidity(
-        uint256 maxAmount0,
-        uint256 maxAmount1,
-        uint160 sqrtPriceX96,
-        int24 tickLower,
-        int24 tickUpper
-    ) private pure returns (uint128 liqudity) {
-        uint160 sqrtPriceLowerX96 = TickMath.getSqrtRatioAtTick(tickLower);
-        uint160 sqrtPriceUpperX96 = TickMath.getSqrtRatioAtTick(tickUpper);
-
-        liqudity = LiquidityAmounts.getLiquidityForAmounts(
-            sqrtPriceX96, sqrtPriceLowerX96, sqrtPriceUpperX96, maxAmount0, maxAmount1
-        );
     }
 }

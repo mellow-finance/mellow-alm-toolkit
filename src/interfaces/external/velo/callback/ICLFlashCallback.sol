@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity ^0.8.0;
+pragma solidity 0.8.25;
 
 /// @title Callback for ICLPoolActions#flash
 /// @notice Any contract that calls ICLPoolActions#flash must implement this interface

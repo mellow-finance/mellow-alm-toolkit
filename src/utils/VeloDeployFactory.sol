@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.0;
+pragma solidity 0.8.25;
 
 import "../interfaces/utils/IVeloDeployFactory.sol";
 import "./DefaultAccessControl.sol";
@@ -11,50 +11,55 @@ contract VeloDeployFactory is DefaultAccessControl, IERC721Receiver, IVeloDeploy
     string public constant factorySymbol = "MVS";
     mapping(address => address) public poolToWrapper;
     ICore public immutable core; // Core contract interface
-    IPulseStrategyModule public immutable strategyModule; // Pulse strategy module contract interface
-    IVeloAmmModule public immutable veloModule; // Velo AMM module contract interface
-    IVeloDepositWithdrawModule public immutable depositWithdrawModule; // Velo deposit/withdraw module contract interface
+    IERC721 public immutable positionManager; // NFT position manager contract interface
     IVeloFactoryDeposit public immutable factoryDeposit; // Contract for creating NFT postion with specific parameters.
     address public immutable lpWrapperImplementation;
 
-    MutableParams private _mutableParams;
+    address public lpWrapperAdmin;
+    address public lpWrapperManager;
+    uint256 public minInitialTotalSupply;
 
     constructor(
         address admin_,
         ICore core_,
-        IVeloDepositWithdrawModule ammDepositWithdrawModule_,
         IVeloFactoryDeposit factoryDeposit_,
         address lpWrapperImplementation_
     ) {
         __DefaultAccessControl_init(admin_);
         core = core_;
-        strategyModule = IPulseStrategyModule(address(core_.strategyModule()));
-        veloModule = IVeloAmmModule(address(core_.ammModule()));
-        depositWithdrawModule = ammDepositWithdrawModule_;
+        positionManager = IERC721(core.ammModule().positionManager());
         factoryDeposit = factoryDeposit_;
         lpWrapperImplementation = lpWrapperImplementation_;
     }
 
-    /// @inheritdoc IVeloDeployFactory
-    function updateMutableParams(MutableParams memory newMutableParams) external {
+    function setLpWrapperAdmin(address lpWrapperAdmin_) external {
         _requireAdmin();
-        if (
-            newMutableParams.lpWrapperAdmin == address(0)
-                || newMutableParams.minInitialTotalSupply == 0
-        ) {
+        if (lpWrapperAdmin_ == address(0)) {
+            revert AddressZero();
+        }
+        lpWrapperAdmin = lpWrapperAdmin_;
+    }
+
+    function setLpWrapperManager(address lpWrapperManager_) external {
+        _requireAdmin();
+        lpWrapperAdmin = lpWrapperManager_;
+    }
+
+    function setMinInitialTotalSupply(uint256 minInitialTotalSupply_) external {
+        _requireAdmin();
+        if (minInitialTotalSupply_ == 0) {
             revert InvalidParams();
         }
-        _mutableParams = newMutableParams;
+        minInitialTotalSupply = minInitialTotalSupply_;
     }
 
     function createStrategy(DeployParams calldata params) external returns (ILpWrapper lpWrapper) {
         _requireAtLeastOperator();
 
         core.strategyModule().validateStrategyParams(abi.encode(params.strategyParams));
-        MutableParams memory mutableParams = _mutableParams;
         if (
             params.pool.tickSpacing() != params.strategyParams.tickSpacing
-                || mutableParams.minInitialTotalSupply > params.initialTotalSupply
+                || minInitialTotalSupply > params.initialTotalSupply
         ) {
             revert InvalidParams();
         }
@@ -64,16 +69,11 @@ contract VeloDeployFactory is DefaultAccessControl, IERC721Receiver, IVeloDeploy
         ICore.DepositParams memory depositParams;
         depositParams.ammPositionIds = factoryDeposit.create(
             msg.sender,
-            address(this),
             IVeloFactoryDeposit.PoolStrategyParameter({
-                tokenId: params.tokenId,
                 pool: params.pool,
-                strategyType: params.strategyParams.strategyType,
-                width: params.strategyParams.width,
+                strategyParams: params.strategyParams,
                 maxAmount0: params.maxAmount0,
                 maxAmount1: params.maxAmount1,
-                tickNeighborhood: params.strategyParams.tickNeighborhood,
-                maxLiquidityRatioDeviationX96: params.strategyParams.maxLiquidityRatioDeviationX96,
                 securityParams: params.securityParams
             })
         );
@@ -89,9 +89,6 @@ contract VeloDeployFactory is DefaultAccessControl, IERC721Receiver, IVeloDeploy
         depositParams.strategyParams = abi.encode(params.strategyParams);
         depositParams.securityParams = params.securityParams;
 
-        INonfungiblePositionManager positionManager =
-            INonfungiblePositionManager(veloModule.positionManager());
-
         for (uint256 i = 0; i < depositParams.ammPositionIds.length; i++) {
             positionManager.approve(address(core), depositParams.ammPositionIds[i]);
         }
@@ -102,8 +99,8 @@ contract VeloDeployFactory is DefaultAccessControl, IERC721Receiver, IVeloDeploy
             positionId,
             params.initialTotalSupply,
             params.totalSupplyLimit,
-            mutableParams.lpWrapperAdmin,
-            mutableParams.lpWrapperManager,
+            lpWrapperAdmin,
+            lpWrapperManager,
             name,
             symbol
         );
@@ -143,11 +140,6 @@ contract VeloDeployFactory is DefaultAccessControl, IERC721Receiver, IVeloDeploy
     }
 
     /// @inheritdoc IVeloDeployFactory
-    function getMutableParams() external view returns (MutableParams memory) {
-        return _mutableParams;
-    }
-
-    /// @inheritdoc IVeloDeployFactory
     function removeWrapperForPool(address pool) external {
         _requireAdmin();
         delete poolToWrapper[pool];
@@ -160,7 +152,7 @@ contract VeloDeployFactory is DefaultAccessControl, IERC721Receiver, IVeloDeploy
     {
         string memory suffix = string(
             abi.encodePacked(
-                " ",
+                ":",
                 IERC20Metadata(pool.token0()).symbol(),
                 "-",
                 IERC20Metadata(pool.token1()).symbol(),

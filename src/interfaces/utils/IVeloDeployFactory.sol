@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.0;
+pragma solidity 0.8.25;
 
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -33,15 +33,6 @@ interface IVeloDeployFactory {
     event StrategyCreated(StrategyCreatedParams params);
 
     /**
-     * @dev Represents the mutable parameters for the VeloDeployFactory contract.
-     */
-    struct MutableParams {
-        address lpWrapperAdmin; // Admin address for the LP wrapper
-        address lpWrapperManager; // Manager address for the LP wrapper
-        uint256 minInitialTotalSupply; // Minimum initial liquidity for the LP wrapper
-    }
-
-    /**
      * @dev Represents the parameters for configuring a strategy.
      */
     struct DeployParams {
@@ -55,16 +46,6 @@ interface IVeloDeployFactory {
         bytes securityParams;
         uint256[] tokenId;
     }
-
-    /**
-     * @dev Updates the mutable parameters of the contract, accessible only to users with the ADMIN_ROLE. This function enables post-deployment
-     * adjustments to key operational settings, reflecting the evolving nature of protocol management and governance.
-     *
-     * @param newMutableParams The new mutable parameters to be applied, including administrative and operational settings crucial for protocol functionality.
-     * Requirements:
-     * - Caller must have the ADMIN_ROLE.
-     */
-    function updateMutableParams(MutableParams memory newMutableParams) external;
 
     /**
      * @dev Creates a strategy for the given deployParams
@@ -94,10 +75,4 @@ interface IVeloDeployFactory {
      * - Caller must have the ADMIN role, ensuring that only authorized personnel can alter the protocol's configuration in this manner.
      */
     function removeWrapperForPool(address pool) external;
-
-    /**
-     * @dev Retrieves the mutable parameters for the VeloDeployFactory contract.
-     * @return MutableParams Mutable parameters for the VeloDeployFactory
-     */
-    function getMutableParams() external view returns (MutableParams memory);
 }

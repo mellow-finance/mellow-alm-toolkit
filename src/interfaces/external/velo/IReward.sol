@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity ^0.8.0;
+pragma solidity 0.8.25;
 
 interface IReward {
     event NotifyReward(address indexed from, address indexed reward, uint256 amount);

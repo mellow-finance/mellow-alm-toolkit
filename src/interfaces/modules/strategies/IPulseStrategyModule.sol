@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.0;
+pragma solidity 0.8.25;
 
 import {IAmmModule, ICore, IOracle, IStrategyModule} from "../IStrategyModule.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
