@@ -241,7 +241,7 @@ contract VeloDeployFactory is DefaultAccessControl, IERC721Receiver, IVeloDeploy
         ICore.TargetPositionInfo memory target;
         {
             IAmmModule.AmmPosition memory position;
-            (, target) = TamperStrategyLibrary.calculateTarget(
+            (, target) = strategyModule.calculateTargetTamper(
                 sqrtPriceX96, tick, position, position, params.strategyParams
             );
         }
@@ -284,7 +284,7 @@ contract VeloDeployFactory is DefaultAccessControl, IERC721Receiver, IVeloDeploy
     {
         (uint160 sqrtPriceX96, int24 tick,,,,) = params.pool.slot0();
         (, ICore.TargetPositionInfo memory target) =
-            PulseStrategyLibrary.calculateTarget(sqrtPriceX96, tick, 0, 0, params.strategyParams);
+            strategyModule.calculateTargetPulse(sqrtPriceX96, tick, 0, 0, params.strategyParams);
         mintInfo = new MintInfo[](1);
         mintInfo[0] = MintInfo({
             tickLower: target.lowerTicks[0],
