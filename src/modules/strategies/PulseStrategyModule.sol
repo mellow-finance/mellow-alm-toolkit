@@ -38,7 +38,7 @@ contract PulseStrategyModule is IPulseStrategyModule {
      * @return targetTickLower Lower tick of the centered position.
      * @return targetTickUpper Upper tick of the centered position.
      */
-    function centeredPosition(
+    function calculateCenteredPosition(
         uint160 sqrtPriceX96,
         int24 tick,
         int24 positionWidth,
@@ -91,7 +91,7 @@ contract PulseStrategyModule is IPulseStrategyModule {
      * @return targetTickLower Lower tick of the calculated position.
      * @return targetTickUpper Upper tick of the calculated position.
      */
-    function calculatePosition(
+    function calculatePulsePosition(
         uint160 sqrtPriceX96,
         int24 tick,
         int24 tickLower,
@@ -110,7 +110,7 @@ contract PulseStrategyModule is IPulseStrategyModule {
             params.width != tickUpper - tickLower
                 || params.strategyType == IPulseStrategyModule.StrategyType.Original
         ) {
-            return centeredPosition(sqrtPriceX96, tick, params.width, params.tickSpacing);
+            return calculateCenteredPosition(sqrtPriceX96, tick, params.width, params.tickSpacing);
         }
 
         uint160 sqrtPriceX96Lower = TickMath.getSqrtRatioAtTick(tickLower);
@@ -163,7 +163,7 @@ contract PulseStrategyModule is IPulseStrategyModule {
      * @return isRebalanceRequired Boolean indicating if rebalancing is required.
      * @return target Target position information for rebalancing.
      */
-    function calculateTarget(
+    function calculateTargetPulse(
         uint160 sqrtPriceX96,
         int24 tick,
         int24 tickLower,
@@ -171,7 +171,7 @@ contract PulseStrategyModule is IPulseStrategyModule {
         IPulseStrategyModule.StrategyParams memory params
     ) public pure returns (bool isRebalanceRequired, ICore.TargetPositionInfo memory target) {
         (int24 targetTickLower, int24 targetTickUpper) =
-            calculatePosition(sqrtPriceX96, tick, tickLower, tickUpper, params);
+            calculatePulsePosition(sqrtPriceX96, tick, tickLower, tickUpper, params);
         if (targetTickLower == tickLower && targetTickUpper == tickUpper) {
             return (false, target);
         }
@@ -192,13 +192,13 @@ contract PulseStrategyModule is IPulseStrategyModule {
      * @return targetLower The lower tick of the target position.
      * @return lowerLiquidityRatioX96 Liquidity ratio for the lower range in Q96 format.
      */
-    function calculateInitialPosition(uint160 sqrtPriceX96, int24 tick, int24 width)
+    function calculateTamperPosition(uint160 sqrtPriceX96, int24 tick, int24 width)
         public
         pure
         returns (int24 targetLower, uint256 lowerLiquidityRatioX96)
     {
         int24 half = width / 2;
-        (targetLower,) = centeredPosition(sqrtPriceX96, tick, width + half, half);
+        (targetLower,) = calculateCenteredPosition(sqrtPriceX96, tick, width + half, half);
         uint160 sqrtPriceCenterX96 = TickMath.getSqrtRatioAtTick(targetLower + half);
         if (sqrtPriceX96 <= sqrtPriceCenterX96) {
             lowerLiquidityRatioX96 = Q96;
@@ -233,7 +233,7 @@ contract PulseStrategyModule is IPulseStrategyModule {
      * @return isRebalanceRequired Boolean indicating if rebalancing is required.
      * @return target Target position information for rebalancing.
      */
-    function calculateTarget(
+    function calculateTargetTamper(
         uint160 sqrtPriceX96,
         int24 tick,
         IAmmModule.AmmPosition memory lowerPosition,
@@ -243,7 +243,7 @@ contract PulseStrategyModule is IPulseStrategyModule {
         int24 width = params.width;
         int24 half = width / 2;
         (int24 targetLower, uint256 targetLowerRatioX96) =
-            calculateInitialPosition(sqrtPriceX96, tick, width);
+            calculateTamperPosition(sqrtPriceX96, tick, width);
         isRebalanceRequired = lowerPosition.tickUpper - lowerPosition.tickLower != width
             || upperPosition.tickUpper - upperPosition.tickLower != width
             || lowerPosition.tickUpper != upperPosition.tickLower + half
@@ -345,7 +345,7 @@ contract PulseStrategyModule is IPulseStrategyModule {
             if (info.ammPositionIds.length != 2) {
                 revert InvalidLength();
             }
-            return calculateTarget(
+            return calculateTargetTamper(
                 sqrtPriceX96,
                 tick,
                 ammModule.getAmmPosition(info.ammPositionIds[0]),
@@ -358,41 +358,9 @@ contract PulseStrategyModule is IPulseStrategyModule {
             }
             IAmmModule.AmmPosition memory position =
                 ammModule.getAmmPosition(info.ammPositionIds[0]);
-            return calculateTarget(
+            return calculateTargetPulse(
                 sqrtPriceX96, tick, position.tickLower, position.tickUpper, strategyParams
             );
         }
-    }
-
-    /// @inheritdoc IPulseStrategyModule
-    function calculateTargetPulse(
-        uint160 sqrtPriceX96,
-        int24 tick,
-        int24 tickLower,
-        int24 tickUpper,
-        StrategyParams memory params
-    )
-        external
-        pure
-        override
-        returns (bool isRebalanceRequired, ICore.TargetPositionInfo memory target)
-    {
-        return calculateTarget(sqrtPriceX96, tick, tickLower, tickUpper, params);
-    }
-
-    /// @inheritdoc IPulseStrategyModule
-    function calculateTargetTamper(
-        uint160 sqrtPriceX96,
-        int24 tick,
-        IAmmModule.AmmPosition memory lowerPosition,
-        IAmmModule.AmmPosition memory upperPosition,
-        StrategyParams memory params
-    )
-        external
-        pure
-        override
-        returns (bool isRebalanceRequired, ICore.TargetPositionInfo memory target)
-    {
-        return calculateTarget(sqrtPriceX96, tick, lowerPosition, upperPosition, params);
     }
 }
