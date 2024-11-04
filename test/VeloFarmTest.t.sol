@@ -45,7 +45,7 @@ contract MockVeloFarm is VeloFarm {
     }
 
     function logEarned(address account) external {
-        try MockVeloFarm(address(this)).doAndDone(account) returns (uint256 earned_) {}
+        try MockVeloFarm(address(this)).doAndDone(account) returns (uint256 /* earned */ ) {}
         catch (bytes memory reason) {
             console2.log(string(reason));
         }

@@ -50,7 +50,7 @@ abstract contract VeloFarm is IVeloFarm, ERC20Upgradeable {
         if (_msgSender() != rewardDistributor) {
             revert InvalidDistributor();
         }
-        _logBalances(address(0));
+        _updateBalances(address(0));
         uint256 length = rewardRate.length;
         TimestampValue memory prevRate = rewardRate[length - 1];
         uint256 timestamp = block.timestamp;
@@ -98,7 +98,7 @@ abstract contract VeloFarm is IVeloFarm, ERC20Upgradeable {
     function getRewards(address recipient) public returns (uint256 amount) {
         address sender = _msgSender();
         collectRewards();
-        _logBalances(sender);
+        _updateBalances(sender);
         amount = claimable[sender];
         if (amount != 0) {
             IERC20(rewardToken).safeTransfer(recipient, amount);
@@ -106,7 +106,7 @@ abstract contract VeloFarm is IVeloFarm, ERC20Upgradeable {
         }
     }
 
-    function _logBalances(address account) private {
+    function _updateBalances(address account) private {
         uint256 prevTimestamp = weightedBalance[account].timestamp;
         if (prevTimestamp == 0) {
             prevTimestamp = initializationTimestamp;
@@ -141,10 +141,10 @@ abstract contract VeloFarm is IVeloFarm, ERC20Upgradeable {
     function _update(address from, address to, uint256 amount) internal virtual override {
         collectRewards();
         if (from != address(0)) {
-            _logBalances(from);
+            _updateBalances(from);
         }
         if (to != address(0)) {
-            _logBalances(to);
+            _updateBalances(to);
         }
         super._update(from, to, amount);
     }
