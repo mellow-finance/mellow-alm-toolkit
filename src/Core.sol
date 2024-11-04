@@ -11,7 +11,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     uint256 public constant D9 = 1e9;
     uint256 public constant Q96 = 2 ** 96;
 
-    address private immutable _weth;
+    address public immutable weth;
 
     /// @inheritdoc ICore
     IAmmModule public immutable ammModule;
@@ -57,7 +57,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         ammDepositWithdrawModule = ammDepositWithdrawModule_;
         strategyModule = strategyModule_;
         oracle = oracle_;
-        _weth = weth_;
+        weth = weth_;
     }
 
     /// @inheritdoc ICore
@@ -511,7 +511,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
 
     receive() external payable {
         uint256 amount = msg.value;
-        IWETH9(_weth).deposit{value: amount}();
-        IERC20(_weth).safeTransfer(tx.origin, amount);
+        IWETH9(weth).deposit{value: amount}();
+        IERC20(weth).safeTransfer(tx.origin, amount);
     }
 }

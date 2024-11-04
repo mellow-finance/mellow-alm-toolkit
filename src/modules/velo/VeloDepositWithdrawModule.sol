@@ -23,10 +23,14 @@ contract VeloDepositWithdrawModule is IVeloDepositWithdrawModule {
         address token1
     ) external override returns (uint256 actualAmount0, uint256 actualAmount1) {
         address this_ = address(this);
-        IERC20(token0).safeTransferFrom(from, this_, amount0);
-        IERC20(token1).safeTransferFrom(from, this_, amount1);
-        IERC20(token0).safeIncreaseAllowance(address(positionManager), amount0);
-        IERC20(token1).safeIncreaseAllowance(address(positionManager), amount1);
+        if (amount0 != 0) {
+            IERC20(token0).safeTransferFrom(from, this_, amount0);
+            IERC20(token0).safeIncreaseAllowance(address(positionManager), amount0);
+        }
+        if (amount1 != 0) {
+            IERC20(token1).safeTransferFrom(from, this_, amount1);
+            IERC20(token1).safeIncreaseAllowance(address(positionManager), amount1);
+        }
         (, actualAmount0, actualAmount1) = positionManager.increaseLiquidity(
             INonfungiblePositionManager.IncreaseLiquidityParams({
                 tokenId: tokenId,
