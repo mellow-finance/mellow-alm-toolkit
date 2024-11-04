@@ -94,22 +94,175 @@ contract IntegrationTest is Test, DeployScript {
         vm.stopPrank();
     }
 
-    // function testPositionsNormal() external {
-    //     uint256 tokenId =
-    //         contracts.core.managedPositionAt(wstethWeth1Wrapper.positionId()).ammPositionIds[0];
-
-    //     uint256 g_ = gasleft();
-    //     // THIS positionManager.positions(...) CALL BREAKS THE COVERAGE TEST
-    //     INonfungiblePositionManager(coreParams.positionManager).positions(tokenId);
-    //     console2.log("Normal call usage:", g_ - gasleft());
-    // }
-
     function testPositionsModified() external {
         uint256 tokenId =
             contracts.core.managedPositionAt(wstethWeth1Wrapper.positionId()).ammPositionIds[0];
 
         uint256 g_ = gasleft();
-        PositionLibrary.getPosition(address(coreParams.positionManager), tokenId);
+        PositionLibrary.Position memory position =
+            PositionLibrary.getPosition(address(coreParams.positionManager), tokenId);
+
         console2.log("Modified call usage:", g_ - gasleft());
+
+        console2.log(position.tokenId);
+        console2.log(position.liquidity);
+    }
+
+    function logPosition(PositionLibrary.Position memory position) internal view {
+        console2.log("tokenId:", vm.toString(position.tokenId));
+        console2.log("nonce:", vm.toString(position.nonce));
+        console2.log("operator:", vm.toString(position.operator));
+        console2.log("token0:", vm.toString(position.token0));
+        console2.log("token1:", vm.toString(position.token1));
+        console2.log("tickSpacing:", vm.toString(position.tickSpacing));
+        console2.log("tickLower:", vm.toString(position.tickLower));
+        console2.log("tickUpper:", vm.toString(position.tickUpper));
+        console2.log("liquidity:", vm.toString(position.liquidity));
+        console2.log("feeGrowthInside0LastX128:", vm.toString(position.feeGrowthInside0LastX128));
+        console2.log("feeGrowthInside1LastX128:", vm.toString(position.feeGrowthInside1LastX128));
+        console2.log("tokensOwed0:", vm.toString(position.tokensOwed0));
+        console2.log("tokensOwed1:", vm.toString(position.tokensOwed1));
+        console2.log();
+    }
+
+    function testStepByStep() external {
+        Mock mock = new Mock();
+
+        logPosition(PositionLibrary.getPosition(address(mock), 1));
+        mock.setNonce(type(uint96).max);
+        logPosition(PositionLibrary.getPosition(address(mock), 2));
+        mock.setNonce(0);
+        mock.setOperator(address(type(uint160).max));
+        logPosition(PositionLibrary.getPosition(address(mock), 3));
+        mock.setOperator(address(0));
+        mock.setToken0(address(type(uint160).max));
+        logPosition(PositionLibrary.getPosition(address(mock), 4));
+        mock.setToken0(address(0));
+        mock.setToken1(address(type(uint160).max));
+        logPosition(PositionLibrary.getPosition(address(mock), 5));
+        mock.setToken1(address(0));
+        mock.setTickSpacing(type(int24).max);
+        logPosition(PositionLibrary.getPosition(address(mock), 6));
+        mock.setTickSpacing(0);
+        mock.setTickLower(type(int24).max);
+        logPosition(PositionLibrary.getPosition(address(mock), 7));
+        mock.setTickLower(0);
+        mock.setTickUpper(type(int24).max);
+        logPosition(PositionLibrary.getPosition(address(mock), 8));
+        mock.setTickUpper(0);
+        mock.setLiquidity(type(uint128).max);
+        logPosition(PositionLibrary.getPosition(address(mock), 9));
+        mock.setLiquidity(0);
+        mock.setFeeGrowthInside0LastX128(type(uint256).max);
+        logPosition(PositionLibrary.getPosition(address(mock), 10));
+        mock.setFeeGrowthInside0LastX128(0);
+        mock.setFeeGrowthInside1LastX128(type(uint256).max);
+        logPosition(PositionLibrary.getPosition(address(mock), 11));
+        mock.setFeeGrowthInside1LastX128(0);
+        mock.setTokensOwed0(type(uint128).max);
+        logPosition(PositionLibrary.getPosition(address(mock), 12));
+        mock.setTokensOwed0(0);
+        mock.setTokensOwed1(type(uint128).max);
+        logPosition(PositionLibrary.getPosition(address(mock), 13));
+        mock.setTokensOwed1(0);
+        mock.setTickLower(type(int24).min);
+        logPosition(PositionLibrary.getPosition(address(mock), 14));
+    }
+}
+
+contract Mock {
+    uint96 nonce;
+    address operator;
+    address token0;
+    address token1;
+    int24 tickSpacing;
+    int24 tickLower;
+    int24 tickUpper;
+    uint128 liquidity;
+    uint256 feeGrowthInside0LastX128;
+    uint256 feeGrowthInside1LastX128;
+    uint128 tokensOwed0;
+    uint128 tokensOwed1;
+
+    function setNonce(uint96 _nonce) external {
+        nonce = _nonce;
+    }
+
+    function setOperator(address _operator) external {
+        operator = _operator;
+    }
+
+    function setToken0(address _token0) external {
+        token0 = _token0;
+    }
+
+    function setToken1(address _token1) external {
+        token1 = _token1;
+    }
+
+    function setTickSpacing(int24 _tickSpacing) external {
+        tickSpacing = _tickSpacing;
+    }
+
+    function setTickLower(int24 _tickLower) external {
+        tickLower = _tickLower;
+    }
+
+    function setTickUpper(int24 _tickUpper) external {
+        tickUpper = _tickUpper;
+    }
+
+    function setLiquidity(uint128 _liquidity) external {
+        liquidity = _liquidity;
+    }
+
+    function setFeeGrowthInside0LastX128(uint256 _feeGrowthInside0LastX128) external {
+        feeGrowthInside0LastX128 = _feeGrowthInside0LastX128;
+    }
+
+    function setFeeGrowthInside1LastX128(uint256 _feeGrowthInside1LastX128) external {
+        feeGrowthInside1LastX128 = _feeGrowthInside1LastX128;
+    }
+
+    function setTokensOwed0(uint128 _tokensOwed0) external {
+        tokensOwed0 = _tokensOwed0;
+    }
+
+    function setTokensOwed1(uint128 _tokensOwed1) external {
+        tokensOwed1 = _tokensOwed1;
+    }
+
+    function positions(uint256 tokenId)
+        external
+        view
+        returns (
+            uint96,
+            address,
+            address,
+            address,
+            int24,
+            int24,
+            int24,
+            uint128,
+            uint256,
+            uint256,
+            uint128,
+            uint128
+        )
+    {
+        return (
+            nonce,
+            operator,
+            token0,
+            token1,
+            tickSpacing,
+            tickLower,
+            tickUpper,
+            liquidity,
+            feeGrowthInside0LastX128,
+            feeGrowthInside1LastX128,
+            tokensOwed0,
+            tokensOwed1
+        );
     }
 }

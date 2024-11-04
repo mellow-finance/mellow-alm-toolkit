@@ -31,32 +31,11 @@ library PositionLibrary {
             mstore(memPtr, 0x99fbab8800000000000000000000000000000000000000000000000000000000)
             mstore(add(memPtr, 0x04), tokenId)
 
-            let success := staticcall(
-                gas(),
-                positionManager,
-                memPtr,
-                0x24,
-                memPtr,
-                0x180
-            )
+            let success := staticcall(gas(), positionManager, memPtr, 0x24, memPtr, 0x180)
+            if iszero(success) { revert(0, 0) }
 
-            if iszero(success) {
-                revert(0, 0)
-            }
-            
-            mstore(add(position, 0x00), mload(memPtr))               // nonce
-            mstore(add(position, 0x20), mload(add(memPtr, 0x20)))    // operator
-            mstore(add(position, 0x40), mload(add(memPtr, 0x40)))    // token0
-            mstore(add(position, 0x60), mload(add(memPtr, 0x60)))    // token1
-            mstore(add(position, 0x80), mload(add(memPtr, 0x80)))    // tickSpacing
-            mstore(add(position, 0xa0), mload(add(memPtr, 0xa0)))    // tickLower
-            mstore(add(position, 0xc0), mload(add(memPtr, 0xc0)))    // tickUpper
-            mstore(add(position, 0xe0), mload(add(memPtr, 0xe0)))    // liquidity
-            mstore(add(position, 0x100), mload(add(memPtr, 0x100)))  // feeGrowthInside0LastX128
-            mstore(add(position, 0x120), mload(add(memPtr, 0x120)))  // feeGrowthInside1LastX128
-            mstore(add(position, 0x140), mload(add(memPtr, 0x140)))  // tokensOwed0
-            mstore(add(position, 0x160), mload(add(memPtr, 0x160)))  // tokensOwed1
-            mstore(add(position, 0x180), tokenId)                    // tokenId
+            returndatacopy(position, 0x00, 0x180)
+            mstore(add(position, 0x180), tokenId)
         }
     }
 }
