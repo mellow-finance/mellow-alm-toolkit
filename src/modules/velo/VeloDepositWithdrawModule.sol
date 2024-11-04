@@ -14,12 +14,14 @@ contract VeloDepositWithdrawModule is IVeloDepositWithdrawModule {
     }
 
     /// @inheritdoc IAmmDepositWithdrawModule
-    function deposit(uint256 tokenId, uint256 amount0, uint256 amount1, address from)
-        external
-        override
-        returns (uint256 actualAmount0, uint256 actualAmount1)
-    {
-        (,, address token0, address token1,,,,,,,,) = positionManager.positions(tokenId);
+    function deposit(
+        uint256 tokenId,
+        uint256 amount0,
+        uint256 amount1,
+        address from,
+        address token0,
+        address token1
+    ) external override returns (uint256 actualAmount0, uint256 actualAmount1) {
         address this_ = address(this);
         IERC20(token0).safeTransferFrom(from, this_, amount0);
         IERC20(token1).safeTransferFrom(from, this_, amount1);

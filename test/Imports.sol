@@ -2,19 +2,15 @@
 pragma solidity 0.8.25;
 
 import "../src/Core.sol";
-import "../src/bots/PulseVeloBot.sol";
-import "../src/bots/PulseVeloBotLazy.sol";
-
 import "../src/interfaces/external/velo/ICLFactory.sol";
 import "../src/interfaces/external/velo/ICLPool.sol";
 import "../src/interfaces/external/velo/INonfungiblePositionManager.sol";
-import "../src/libraries/external/velo/PositionValue.sol";
+import "../src/libraries/PositionValue.sol";
 import "../src/modules/strategies/PulseStrategyModule.sol";
 import "../src/modules/strategies/PulseStrategyModule.sol";
 import "../src/modules/velo/VeloAmmModule.sol";
 import "../src/modules/velo/VeloDepositWithdrawModule.sol";
 import "../src/oracles/VeloOracle.sol";
-
 import "../src/utils/LpWrapper.sol";
 import "../src/utils/VeloDeployFactory.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";

@@ -7,9 +7,9 @@ import "../scripts/deploy/DeployScript.sol";
 contract IntegrationTest is Test, DeployScript {
     using SafeERC20 for IERC20;
 
-    CoreDeploymentParams internal coreParams;
-    CoreDeployment internal contracts;
-    ILpWrapper internal wstethWeth1Wrapper;
+    CoreDeploymentParams private coreParams;
+    CoreDeployment private contracts;
+    ILpWrapper private wstethWeth1Wrapper;
 
     function setUp() external {
         coreParams = Constants.getDeploymentParams();
@@ -92,5 +92,24 @@ contract IntegrationTest is Test, DeployScript {
         wstethWeth1Wrapper.withdraw(wstethWeth1Wrapper.balanceOf(user), 0, 0, user, block.timestamp);
 
         vm.stopPrank();
+    }
+
+    // function testPositionsNormal() external {
+    //     uint256 tokenId =
+    //         contracts.core.managedPositionAt(wstethWeth1Wrapper.positionId()).ammPositionIds[0];
+
+    //     uint256 g_ = gasleft();
+    //     // THIS positionManager.positions(...) CALL BREAKS THE COVERAGE TEST
+    //     INonfungiblePositionManager(coreParams.positionManager).positions(tokenId);
+    //     console2.log("Normal call usage:", g_ - gasleft());
+    // }
+
+    function testPositionsModified() external {
+        uint256 tokenId =
+            contracts.core.managedPositionAt(wstethWeth1Wrapper.positionId()).ammPositionIds[0];
+
+        uint256 g_ = gasleft();
+        PositionLibrary.getPosition(address(coreParams.positionManager), tokenId);
+        console2.log("Modified call usage:", g_ - gasleft());
     }
 }

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.25;
 
+import "../../libraries/PositionLibrary.sol";
 import "../modules/strategies/IPulseStrategyModule.sol";
 import "../modules/velo/IVeloAmmModule.sol";
 import "../oracles/IVeloOracle.sol";
@@ -77,7 +78,7 @@ interface ILpWrapper is IVeloFarm, IAccessControlEnumerable, IERC20 {
      * @dev Returns corresponding position info
      * @return data - PositionData struct containing the position's data
      */
-    function getInfo() external view returns (PositionData[] memory data);
+    function getInfo() external view returns (PositionLibrary.Position[] memory data);
 
     /**
      * @dev Returns protocol params of the corresponding Core.sol
@@ -103,7 +104,7 @@ interface ILpWrapper is IVeloFarm, IAccessControlEnumerable, IERC20 {
      * @dev Returns the address of the AMM module associated with this LP wrapper.
      * @return Address of the AMM module.
      */
-    function ammModule() external view returns (IAmmModule);
+    function ammModule() external view returns (IVeloAmmModule);
 
     /**
      * @dev Returns the oracle contract address.

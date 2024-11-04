@@ -6,9 +6,10 @@ import {FixedPoint128} from "@uniswap/v3-core/contracts/libraries/FixedPoint128.
 import {TickMath} from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import {LiquidityAmounts} from "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 
-import "../../../interfaces/external/velo/ICLFactory.sol";
-import "../../../interfaces/external/velo/ICLPool.sol";
-import "../../../interfaces/external/velo/INonfungiblePositionManager.sol";
+import "../interfaces/external/velo/ICLFactory.sol";
+import "../interfaces/external/velo/ICLPool.sol";
+
+import "./PositionLibrary.sol";
 
 /// @title Returns information about the token value held in a Uniswap V3 NFT
 library PositionValue {
@@ -42,14 +43,13 @@ library PositionValue {
         uint256 tokenId,
         uint160 sqrtRatioX96
     ) internal view returns (uint256 amount0, uint256 amount1) {
-        (,,,,, int24 tickLower, int24 tickUpper, uint128 liquidity,,,,) =
-            positionManager.positions(tokenId);
-
+        PositionLibrary.Position memory position =
+            PositionLibrary.getPosition(address(positionManager), tokenId);
         return LiquidityAmounts.getAmountsForLiquidity(
             sqrtRatioX96,
-            TickMath.getSqrtRatioAtTick(tickLower),
-            TickMath.getSqrtRatioAtTick(tickUpper),
-            liquidity
+            TickMath.getSqrtRatioAtTick(position.tickLower),
+            TickMath.getSqrtRatioAtTick(position.tickUpper),
+            position.liquidity
         );
     }
 
@@ -76,34 +76,21 @@ library PositionValue {
         view
         returns (uint256 amount0, uint256 amount1)
     {
-        (
-            ,
-            ,
-            address token0,
-            address token1,
-            int24 tickSpacing,
-            int24 tickLower,
-            int24 tickUpper,
-            uint128 liquidity,
-            uint256 positionFeeGrowthInside0LastX128,
-            uint256 positionFeeGrowthInside1LastX128,
-            uint256 tokensOwed0,
-            uint256 tokensOwed1
-        ) = positionManager.positions(tokenId);
-
+        PositionLibrary.Position memory position =
+            PositionLibrary.getPosition(address(positionManager), tokenId);
         return _fees(
             positionManager,
             FeeParams({
-                token0: token0,
-                token1: token1,
-                tickSpacing: tickSpacing,
-                tickLower: tickLower,
-                tickUpper: tickUpper,
-                liquidity: liquidity,
-                positionFeeGrowthInside0LastX128: positionFeeGrowthInside0LastX128,
-                positionFeeGrowthInside1LastX128: positionFeeGrowthInside1LastX128,
-                tokensOwed0: tokensOwed0,
-                tokensOwed1: tokensOwed1
+                token0: position.token0,
+                token1: position.token1,
+                tickSpacing: position.tickSpacing,
+                tickLower: position.tickLower,
+                tickUpper: position.tickUpper,
+                liquidity: position.liquidity,
+                positionFeeGrowthInside0LastX128: position.feeGrowthInside0LastX128,
+                positionFeeGrowthInside1LastX128: position.feeGrowthInside1LastX128,
+                tokensOwed0: position.tokensOwed0,
+                tokensOwed1: position.tokensOwed1
             })
         );
     }

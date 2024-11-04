@@ -1,6 +1,7 @@
 [profile.default]
 src = 'src'
 out = 'out'
+tests = 'test'
 libs = ['lib']
 optimizer = true
 evm_version = 'shanghai'

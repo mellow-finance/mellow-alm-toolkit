@@ -21,9 +21,14 @@ interface IAmmDepositWithdrawModule {
      * @notice The caller must have previously approved this contract to spend the specified
      * amounts of token0 and token1 on their behalf.
      */
-    function deposit(uint256 tokenId, uint256 amount0, uint256 amount1, address from)
-        external
-        returns (uint256 actualAmount0, uint256 actualAmount1);
+    function deposit(
+        uint256 tokenId,
+        uint256 amount0,
+        uint256 amount1,
+        address from,
+        address token0,
+        address token1
+    ) external returns (uint256 actualAmount0, uint256 actualAmount1);
 
     /**
      * @dev Withdraws a specified amount of liquidity from a position identified by tokenId and

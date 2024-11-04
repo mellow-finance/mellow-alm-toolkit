@@ -219,10 +219,17 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
 
         bytes memory protocolParams_ = _protocolParams;
         _beforeRebalance(tokenId, info.callbackParams, protocolParams_);
+        IAmmModule.AmmPosition memory position_ = ammModule.getAmmPosition(tokenId);
         bytes memory response = Address.functionDelegateCall(
             address(ammDepositWithdrawModule),
             abi.encodeWithSelector(
-                IAmmDepositWithdrawModule.deposit.selector, tokenId, amount0, amount1, info.owner
+                IAmmDepositWithdrawModule.deposit.selector,
+                tokenId,
+                amount0,
+                amount1,
+                info.owner,
+                position_.token0,
+                position_.token1
             )
         );
         if (response.length != 0x40) {

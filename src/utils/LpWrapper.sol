@@ -16,7 +16,7 @@ contract LpWrapper is ILpWrapper, ERC20Upgradeable, DefaultAccessControl, Reentr
     /// @inheritdoc ILpWrapper
     ICore public immutable core;
     /// @inheritdoc ILpWrapper
-    IAmmModule public immutable ammModule;
+    IVeloAmmModule public immutable ammModule;
     /// @inheritdoc ILpWrapper
     IOracle public immutable oracle;
 
@@ -52,7 +52,7 @@ contract LpWrapper is ILpWrapper, ERC20Upgradeable, DefaultAccessControl, Reentr
         }
         core = ICore(core_);
         oracle = core.oracle();
-        ammModule = core.ammModule();
+        ammModule = IVeloAmmModule(address(core.ammModule()));
         positionManager = ammModule.positionManager();
     }
 
@@ -280,42 +280,12 @@ contract LpWrapper is ILpWrapper, ERC20Upgradeable, DefaultAccessControl, Reentr
     }
 
     /// @inheritdoc ILpWrapper
-    function getInfo() external view returns (PositionData[] memory data) {
+    function getInfo() external view returns (PositionLibrary.Position[] memory data) {
         ICore.ManagedPositionInfo memory info = core.managedPositionAt(positionId);
-        data = new PositionData[](info.ammPositionIds.length);
+        data = new PositionLibrary.Position[](info.ammPositionIds.length);
         for (uint256 i = 0; i < info.ammPositionIds.length; i++) {
-            data[i] = _getInfo(info.ammPositionIds[i]);
+            data[i] = PositionLibrary.getPosition(positionManager, info.ammPositionIds[i]);
         }
-    }
-
-    function _getInfo(uint256 tokenId) internal view returns (PositionData memory data) {
-        (
-            uint96 nonce,
-            address operator,
-            address token0_,
-            address token1_,
-            int24 tickSpacing,
-            int24 tickLower,
-            int24 tickUpper,
-            uint128 liquidity,
-            uint256 feeGrowthInside0LastX128,
-            uint256 feeGrowthInside1LastX128,
-            uint128 tokensOwed0,
-            uint128 tokensOwed1
-        ) = INonfungiblePositionManager(positionManager).positions(tokenId);
-        data.tokenId = tokenId;
-        data.nonce = nonce;
-        data.operator = operator;
-        data.token0 = token0_;
-        data.token1 = token1_;
-        data.tickSpacing = tickSpacing;
-        data.tickLower = tickLower;
-        data.tickUpper = tickUpper;
-        data.liquidity = liquidity;
-        data.feeGrowthInside0LastX128 = feeGrowthInside0LastX128;
-        data.feeGrowthInside1LastX128 = feeGrowthInside1LastX128;
-        data.tokensOwed0 = tokensOwed0;
-        data.tokensOwed1 = tokensOwed1;
     }
 
     /// @inheritdoc ILpWrapper

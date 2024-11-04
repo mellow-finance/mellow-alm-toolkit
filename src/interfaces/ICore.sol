@@ -2,8 +2,12 @@
 pragma solidity 0.8.25;
 
 import "./external/IWETH9.sol";
+
 import "./modules/IAmmDepositWithdrawModule.sol";
+import "./modules/IAmmModule.sol";
+
 import "./modules/IStrategyModule.sol";
+import "./oracles/IOracle.sol";
 import "./utils/IRebalanceCallback.sol";
 import "@openzeppelin/contracts/access/extensions/IAccessControlEnumerable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";

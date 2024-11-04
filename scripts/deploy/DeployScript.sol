@@ -88,4 +88,6 @@ abstract contract DeployScript {
     ) internal returns (ILpWrapper) {
         return contracts.deployFactory.createStrategy(params);
     }
+
+    function testDeployScript() public pure {}
 }

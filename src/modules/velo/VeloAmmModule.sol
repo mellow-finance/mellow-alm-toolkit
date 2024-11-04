@@ -2,8 +2,7 @@
 pragma solidity 0.8.25;
 
 import "../../interfaces/modules/velo/IVeloAmmModule.sol";
-
-import "../../libraries/external/velo/PositionValue.sol";
+import "../../libraries/PositionValue.sol";
 
 contract VeloAmmModule is IVeloAmmModule {
     using SafeERC20 for IERC20;
@@ -101,21 +100,14 @@ contract VeloAmmModule is IVeloAmmModule {
         override
         returns (AmmPosition memory position)
     {
-        int24 tickSpacing;
-        (
-            ,
-            ,
-            position.token0,
-            position.token1,
-            tickSpacing,
-            position.tickLower,
-            position.tickUpper,
-            position.liquidity,
-            ,
-            ,
-            ,
-        ) = INonfungiblePositionManager(positionManager).positions(tokenId);
-        position.property = uint24(tickSpacing);
+        PositionLibrary.Position memory position_ =
+            PositionLibrary.getPosition(positionManager, tokenId);
+        position.token0 = position_.token0;
+        position.token1 = position_.token1;
+        position.property = uint24(position_.tickSpacing);
+        position.tickLower = position_.tickLower;
+        position.tickUpper = position_.tickUpper;
+        position.liquidity = position_.liquidity;
     }
 
     /// @inheritdoc IAmmModule
