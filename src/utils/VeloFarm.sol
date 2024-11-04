@@ -19,7 +19,7 @@ abstract contract VeloFarm is IVeloFarm, ERC20Upgradeable {
     /// @inheritdoc IVeloFarm
     mapping(address account => uint256) public lastRewardsUpdate;
     /// @inheritdoc IVeloFarm
-    mapping(address => uint256) public claimable;
+    mapping(address account => uint256) public claimable;
     /// @inheritdoc IVeloFarm
     mapping(address account => TimestampValue) public weightedBalance;
     /// @inheritdoc IVeloFarm
