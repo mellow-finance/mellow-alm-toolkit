@@ -108,14 +108,14 @@ contract IntegrationTest is Test, DeployScript {
         console2.log(position.liquidity);
     }
 
-    function testPositionsRegular() external view {
-        uint256 tokenId =
-            contracts.core.managedPositionAt(wstethWeth1Wrapper.positionId()).ammPositionIds[0];
+    // function testPositionsRegular() external view {
+    //     uint256 tokenId =
+    //         contracts.core.managedPositionAt(wstethWeth1Wrapper.positionId()).ammPositionIds[0];
 
-        uint256 g_ = gasleft();
-        INonfungiblePositionManager(coreParams.positionManager).positions(tokenId);
-        console2.log("Regular call usage:", g_ - gasleft());
-    }
+    //     uint256 g_ = gasleft();
+    //     INonfungiblePositionManager(coreParams.positionManager).positions(tokenId);
+    //     console2.log("Regular call usage:", g_ - gasleft());
+    // }
 
     function logPosition(PositionLibrary.Position memory position) internal pure {
         console2.log("tokenId:", vm.toString(position.tokenId));
