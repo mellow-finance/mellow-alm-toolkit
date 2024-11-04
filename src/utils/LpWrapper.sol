@@ -62,21 +62,18 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl, ReentrancyGuar
         if (info.owner != this_) {
             revert Forbidden();
         }
+        ICLPool pool_ = ICLPool(info.pool);
 
-        __VeloFarm_init(ICLGauge(ICLPool(info.pool).gauge()).rewardToken(), name_, symbol_);
+        __VeloFarm_init(ICLGauge(pool_.gauge()).rewardToken(), name_, symbol_);
 
         positionId = positionId_;
         totalSupplyLimit = totalSupplyLimit_;
 
-        pool = info.pool;
-        token0 = IERC20(ICLPool(info.pool).token0());
-        token1 = IERC20(ICLPool(info.pool).token1());
+        pool = address(pool_);
+        token0 = IERC20(pool_.token0());
+        token1 = IERC20(pool_.token1());
 
         _mint(this_, initialTotalSupply);
-
-        initializationTimestamp = block.timestamp;
-        collectRewards();
-
         emit TotalSupplyLimitUpdated(totalSupplyLimit, 0, totalSupply());
     }
 
@@ -124,10 +121,10 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl, ReentrancyGuar
             }
             for (uint256 i = 0; i < n; i++) {
                 if (actualAmount0 != 0) {
-                    amounts0[i] = Math.mulDiv(amount0, amounts0[i], actualAmount0);
+                    amounts0[i] = amounts0[i].mulDiv(amount0, actualAmount0);
                 }
                 if (actualAmount1 != 0) {
-                    amounts1[i] = Math.mulDiv(amount1, amounts1[i], actualAmount1);
+                    amounts1[i] = amounts1[i].mulDiv(amount1, actualAmount1);
                 }
             }
             // used to avoid stack too deep error
@@ -148,9 +145,8 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl, ReentrancyGuar
             if (positionsBefore[i].liquidity == 0) {
                 continue;
             }
-            uint256 lpAmount_ = Math.mulDiv(
+            uint256 lpAmount_ = totalSupply_.mulDiv(
                 positionsAfter.liquidity - positionsBefore[i].liquidity,
-                totalSupply_,
                 positionsBefore[i].liquidity
             );
             lpAmount = lpAmount < lpAmount_ ? lpAmount : lpAmount_;
@@ -217,7 +213,7 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl, ReentrancyGuar
         }
 
         address sender = _msgSender();
-        actualLpAmount = Math.min(lpAmount, balanceOf(sender));
+        actualLpAmount = lpAmount.min(balanceOf(sender));
         if (actualLpAmount == 0) {
             revert InsufficientLpAmount();
         }
@@ -242,7 +238,7 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl, ReentrancyGuar
     ) private returns (uint256 amount0, uint256 amount1) {
         for (uint256 i = 0; i < ammPositionIds.length; i++) {
             IAmmModule.AmmPosition memory position = ammModule.getAmmPosition(ammPositionIds[i]);
-            uint256 liquidity = Math.mulDiv(position.liquidity, actualLpAmount, totalSupply);
+            uint256 liquidity = actualLpAmount.mulDiv(position.liquidity, totalSupply);
             if (liquidity == 0) {
                 continue;
             }
@@ -288,21 +284,19 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl, ReentrancyGuar
         );
     }
 
-    function setPositionSlippageD9(uint32 slippageD9) external {
+    function setSlippageD9(uint32 slippageD9) external {
         ICore.ManagedPositionInfo memory info = core.managedPositionAt(positionId);
         setPositionParams(slippageD9, info.callbackParams, info.strategyParams, info.securityParams);
     }
 
-    function setPositionCallbackParams(IVeloAmmModule.CallbackParams calldata callbackParams)
-        external
-    {
+    function setCallbackParams(IVeloAmmModule.CallbackParams calldata callbackParams) external {
         ICore.ManagedPositionInfo memory info = core.managedPositionAt(positionId);
         setPositionParams(
             info.slippageD9, abi.encode(callbackParams), info.strategyParams, info.securityParams
         );
     }
 
-    function setPositionStrategyParams(IPulseStrategyModule.StrategyParams calldata strategyParams)
+    function setStrategyParams(IPulseStrategyModule.StrategyParams calldata strategyParams)
         external
     {
         ICore.ManagedPositionInfo memory info = core.managedPositionAt(positionId);
@@ -311,9 +305,7 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl, ReentrancyGuar
         );
     }
 
-    function setPositionSecurityParams(IVeloOracle.SecurityParams calldata securityParams)
-        external
-    {
+    function setSecurityParams(IVeloOracle.SecurityParams calldata securityParams) external {
         ICore.ManagedPositionInfo memory info = core.managedPositionAt(positionId);
         setPositionParams(
             info.slippageD9, info.callbackParams, info.strategyParams, abi.encode(securityParams)
@@ -352,8 +344,7 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl, ReentrancyGuar
         core.emptyRebalance(positionId);
     }
 
-    // assumption: lpWrapper == farm
-
+    /// @inheritdoc IVeloFarm
     function collectRewards() public override(IVeloFarm, VeloFarm) {
         core.collectRewards(positionId);
     }
