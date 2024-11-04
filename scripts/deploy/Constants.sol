@@ -47,4 +47,6 @@ library Constants {
         }
         revert("Unsupported chain");
     }
+
+    function testConstants() internal pure {}
 }

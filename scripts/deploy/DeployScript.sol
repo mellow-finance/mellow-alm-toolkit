@@ -89,5 +89,5 @@ abstract contract DeployScript {
         return contracts.deployFactory.createStrategy(params);
     }
 
-    function testDeployScript() public pure {}
+    function testDeployScript() internal pure {}
 }
