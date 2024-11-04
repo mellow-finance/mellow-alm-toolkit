@@ -5,9 +5,9 @@
   "repository": "https://github.com/mellow-finance/mellow-alm-toolkit",
   "scripts": {
     "prettier": "forge fmt && forge fmt ./scripts/**",
-    "test": "forge test -vv --fork-url $(grep OPTIMISM_RPC .env | cut -d '=' -f2,3,4,5) --match-path ./test/\\* --fork-block-number 126785000",
-    "coverage": "forge coverage -vv --fork-url $(grep OPTIMISM_RPC .env | cut -d '=' -f2,3,4,5) --match-path ./test/\\* --fork-block-number 126785000",
-    "coverage:report": "forge coverage -vv --fork-url $(grep OPTIMISM_RPC .env | cut -d '=' -f2,3,4,5) --match-path ./test/\\* --fork-block-number 126785000 --report lcov && genhtml lcov.info --rc derive_function_end_line=0 -o report --branch-coverage && rm lcov.info",
+    "test": "forge test -vv --fork-url $(grep OPTIMISM_RPC .env | cut -d '=' -f2,3,4,5) --fork-block-number 126785000",
+    "coverage": "forge coverage -vv --fork-url $(grep OPTIMISM_RPC .env | cut -d '=' -f2,3,4,5) --fork-block-number 126785000",
+    "coverage:report": "forge coverage -vv --fork-url $(grep OPTIMISM_RPC .env | cut -d '=' -f2,3,4,5) --fork-block-number 126785000 --report lcov && genhtml lcov.info --rc derive_function_end_line=0 -o report --branch-coverage && rm lcov.info",
     "sizes": "forge build --sizes --force",
     "compile": "forge build"
   }

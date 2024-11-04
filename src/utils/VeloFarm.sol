@@ -48,7 +48,7 @@ abstract contract VeloFarm is IVeloFarm, ERC20Upgradeable {
         uint256 toTimestamp
     ) public view returns (uint256) {
         CumulativeValue[] storage balances = _cumulativeBalance[account];
-        if (balances.length == 0) {
+        if (balances.length < 2) {
             return 0;
         }
         mapping(uint256 => uint256) storage timestampToIndex =
@@ -129,8 +129,10 @@ abstract contract VeloFarm is IVeloFarm, ERC20Upgradeable {
         collectRewards();
         _logBalances(sender);
         amount = claimable[sender];
-        IERC20(rewardToken).safeTransfer(recipient, amount);
-        delete claimable[sender];
+        if (amount != 0) {
+            IERC20(rewardToken).safeTransfer(recipient, amount);
+            delete claimable[sender];
+        }
     }
 
     function _update(address from, address to, uint256 amount) internal virtual override {
