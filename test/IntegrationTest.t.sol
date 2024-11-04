@@ -94,7 +94,7 @@ contract IntegrationTest is Test, DeployScript {
         vm.stopPrank();
     }
 
-    function testPositionsModified() external {
+    function testPositionsModified() external view {
         uint256 tokenId =
             contracts.core.managedPositionAt(wstethWeth1Wrapper.positionId()).ammPositionIds[0];
 
@@ -108,7 +108,16 @@ contract IntegrationTest is Test, DeployScript {
         console2.log(position.liquidity);
     }
 
-    function logPosition(PositionLibrary.Position memory position) internal view {
+    // function testPositionsRegular() external view {
+    //     uint256 tokenId =
+    //         contracts.core.managedPositionAt(wstethWeth1Wrapper.positionId()).ammPositionIds[0];
+
+    //     uint256 g_ = gasleft();
+    //     INonfungiblePositionManager(coreParams.positionManager).positions(tokenId);
+    //     console2.log("Regular call usage:", g_ - gasleft());
+    // }
+
+    function logPosition(PositionLibrary.Position memory position) internal pure {
         console2.log("tokenId:", vm.toString(position.tokenId));
         console2.log("nonce:", vm.toString(position.nonce));
         console2.log("operator:", vm.toString(position.operator));
@@ -232,7 +241,7 @@ contract Mock {
         tokensOwed1 = _tokensOwed1;
     }
 
-    function positions(uint256 tokenId)
+    function positions(uint256 /* tokenId */ )
         external
         view
         returns (
