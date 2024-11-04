@@ -26,33 +26,37 @@ library PositionLibrary {
         view
         returns (Position memory position)
     {
-        // to prevent stack too deep error
-        bytes memory data_ = Address.functionStaticCall(
-            positionManager,
-            abi.encodeWithSelector(INonfungiblePositionManager.positions.selector, tokenId)
-        );
-        bytes32[12] memory values_;
-        unchecked {
-            for (uint256 offset = 0; offset < 0x180; offset += 0x20) {
-                bytes32 value_;
-                assembly {
-                    value_ := mload(add(add(data_, 0x20), offset))
-                }
-                values_[offset >> 5] = value_;
+        assembly {
+            let memPtr := mload(0x40)
+            mstore(memPtr, 0x99fbab8800000000000000000000000000000000000000000000000000000000)
+            mstore(add(memPtr, 0x04), tokenId)
+
+            let success := staticcall(
+                gas(),
+                positionManager,
+                memPtr,
+                0x24,
+                memPtr,
+                0x180
+            )
+
+            if iszero(success) {
+                revert(0, 0)
             }
+            
+            mstore(add(position, 0x00), mload(memPtr))               // nonce
+            mstore(add(position, 0x20), mload(add(memPtr, 0x20)))    // operator
+            mstore(add(position, 0x40), mload(add(memPtr, 0x40)))    // token0
+            mstore(add(position, 0x60), mload(add(memPtr, 0x60)))    // token1
+            mstore(add(position, 0x80), mload(add(memPtr, 0x80)))    // tickSpacing
+            mstore(add(position, 0xa0), mload(add(memPtr, 0xa0)))    // tickLower
+            mstore(add(position, 0xc0), mload(add(memPtr, 0xc0)))    // tickUpper
+            mstore(add(position, 0xe0), mload(add(memPtr, 0xe0)))    // liquidity
+            mstore(add(position, 0x100), mload(add(memPtr, 0x100)))  // feeGrowthInside0LastX128
+            mstore(add(position, 0x120), mload(add(memPtr, 0x120)))  // feeGrowthInside1LastX128
+            mstore(add(position, 0x140), mload(add(memPtr, 0x140)))  // tokensOwed0
+            mstore(add(position, 0x160), mload(add(memPtr, 0x160)))  // tokensOwed1
+            mstore(add(position, 0x180), tokenId)                    // tokenId
         }
-        position.nonce = uint96(uint256(values_[0]));
-        position.operator = address(uint160(uint256(values_[1])));
-        position.token0 = address(uint160(uint256(values_[2])));
-        position.token1 = address(uint160(uint256(values_[3])));
-        position.tickSpacing = int24(int256(uint256(values_[4])));
-        position.tickLower = int24(int256(uint256(values_[5])));
-        position.tickUpper = int24(int256(uint256(values_[6])));
-        position.liquidity = uint128(uint256(values_[7]));
-        position.feeGrowthInside0LastX128 = uint256(values_[8]);
-        position.feeGrowthInside1LastX128 = uint256(values_[9]);
-        position.tokensOwed0 = uint128(uint256(values_[10]));
-        position.tokensOwed1 = uint128(uint256(values_[11]));
-        position.tokenId = tokenId;
     }
 }
