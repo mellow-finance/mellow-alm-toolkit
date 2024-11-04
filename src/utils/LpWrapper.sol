@@ -36,7 +36,7 @@ contract LpWrapper is ILpWrapper, ERC20Upgradeable, DefaultAccessControl, Reentr
     /// @inheritdoc ILpWrapper
     uint256 public totalSupplyLimit;
     /// @inheritdoc IVeloFarm
-    mapping(address account => uint256) public lastClaimTimestamp;
+    mapping(address account => uint256) public lastRewardsUpdate;
     /// @inheritdoc IVeloFarm
     mapping(address => uint256) public claimable;
 
@@ -401,7 +401,6 @@ contract LpWrapper is ILpWrapper, ERC20Upgradeable, DefaultAccessControl, Reentr
 
     function collectRewards() public {
         core.collectRewards(positionId);
-        _logBalances(address(0));
     }
 
     function getAccountCumulativeBalance(
@@ -454,24 +453,6 @@ contract LpWrapper is ILpWrapper, ERC20Upgradeable, DefaultAccessControl, Reentr
         _cumulativeRewardRateTimestampToIndex[timestamp] = n;
     }
 
-    function _modifyRewards(address account) private {
-        if (account == address(0)) {
-            return;
-        }
-        uint256 lastClaimTimestamp_ = lastClaimTimestamp[account];
-        uint256 timestamp = block.timestamp;
-        if (lastClaimTimestamp_ == timestamp) {
-            return;
-        }
-        lastClaimTimestamp[account] = timestamp;
-        uint256 amount = getAccountCumulativeBalance(account, lastClaimTimestamp_, timestamp);
-        if (amount == 0) {
-            return;
-        }
-        uint256 cumulativeRateD18 = getCumulativeRateD18(lastClaimTimestamp_, timestamp);
-        claimable[account] += amount.mulDiv(cumulativeRateD18, D18);
-    }
-
     function _logBalances(address account) private {
         CumulativeValue[] storage balances = _cumulativeBalance[account];
         uint256 n = balances.length;
@@ -486,6 +467,17 @@ contract LpWrapper is ILpWrapper, ERC20Upgradeable, DefaultAccessControl, Reentr
             CumulativeValue(timestamp, last.value + balance * (timestamp - last.timestamp))
         );
         _cumulativeBalanceTimestampToIndex[account][timestamp] = n;
+        if (account == address(0)) {
+            return;
+        }
+        uint256 lastRewardsUpdate_ = lastRewardsUpdate[account];
+        lastRewardsUpdate[account] = timestamp;
+        uint256 amount = getAccountCumulativeBalance(account, lastRewardsUpdate_, timestamp);
+        if (amount == 0) {
+            return;
+        }
+        uint256 cumulativeRateD18 = getCumulativeRateD18(lastRewardsUpdate_, timestamp);
+        claimable[account] += amount.mulDiv(cumulativeRateD18, D18);
     }
 
     function earned(address account) external view returns (uint256) {
@@ -497,7 +489,6 @@ contract LpWrapper is ILpWrapper, ERC20Upgradeable, DefaultAccessControl, Reentr
         address sender = _msgSender();
         collectRewards();
         _logBalances(sender);
-        _modifyRewards(sender);
         amount = claimable[sender];
         IERC20(rewardToken).safeTransfer(recipient, amount);
         delete claimable[sender];
@@ -507,11 +498,9 @@ contract LpWrapper is ILpWrapper, ERC20Upgradeable, DefaultAccessControl, Reentr
         collectRewards();
         if (from != address(0)) {
             _logBalances(from);
-            _modifyRewards(from);
         }
         if (to != address(0)) {
             _logBalances(to);
-            _modifyRewards(to);
         }
         super._update(from, to, amount);
     }

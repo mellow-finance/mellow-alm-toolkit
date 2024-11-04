@@ -164,26 +164,26 @@ contract VeloAmmModule is IVeloAmmModule {
         CallbackParams memory callbackParams_ = abi.decode(callbackParams, (CallbackParams));
         ProtocolParams memory protocolParams_ = abi.decode(protocolParams, (ProtocolParams));
         address gauge = callbackParams_.gauge;
-        if (!_isStaked(gauge, tokenId)) {
-            return;
-        }
-        ICLGauge(gauge).getReward(tokenId);
-        address token = ICLGauge(gauge).rewardToken();
-        uint256 balance = IERC20(token).balanceOf(address(this));
-        if (balance > 0) {
-            uint256 protocolReward = Math.mulDiv(protocolParams_.feeD9, balance, D9);
-
-            if (protocolReward > 0) {
-                IERC20(token).safeTransfer(protocolParams_.treasury, protocolReward);
-            }
-
-            balance -= protocolReward;
+        uint256 balance;
+        if (_isStaked(gauge, tokenId)) {
+            ICLGauge(gauge).getReward(tokenId);
+            IERC20 token = IERC20(ICLGauge(gauge).rewardToken());
+            balance = token.balanceOf(address(this));
             if (balance > 0) {
-                IERC20(token).safeTransfer(callbackParams_.farm, balance);
+                uint256 protocolReward = Math.mulDiv(protocolParams_.feeD9, balance, D9);
+
+                if (protocolReward > 0) {
+                    token.safeTransfer(protocolParams_.treasury, protocolReward);
+                }
+
+                balance -= protocolReward;
+                if (balance > 0) {
+                    token.safeTransfer(callbackParams_.farm, balance);
+                }
             }
-            // we want to provide that info into farm in any case, even if we do not have any rewards to distribute
-            IVeloFarm(callbackParams_.farm).distribute(balance);
         }
+        // we want to provide this information to the farm anyway, even if we don't have any rewards to distribute
+        IVeloFarm(callbackParams_.farm).distribute(balance);
     }
 
     /// @inheritdoc IAmmModule

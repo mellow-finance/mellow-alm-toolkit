@@ -18,7 +18,7 @@ interface IVeloFarm {
 
     function initializationTimestamp() external view returns (uint256);
 
-    function lastClaimTimestamp(address account) external view returns (uint256);
+    function lastRewardsUpdate(address account) external view returns (uint256);
 
     function claimable(address account) external view returns (uint256);
 
