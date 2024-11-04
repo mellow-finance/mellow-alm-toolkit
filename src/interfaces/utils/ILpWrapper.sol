@@ -6,7 +6,6 @@ import "../modules/strategies/IPulseStrategyModule.sol";
 import "../modules/velo/IVeloAmmModule.sol";
 import "../oracles/IVeloOracle.sol";
 import "./IVeloFarm.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts/access/extensions/IAccessControlEnumerable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
