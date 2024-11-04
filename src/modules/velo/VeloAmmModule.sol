@@ -4,8 +4,6 @@ pragma solidity 0.8.25;
 import "../../interfaces/modules/velo/IVeloAmmModule.sol";
 import "../../libraries/PositionValue.sol";
 
-import "forge-std/console2.sol";
-
 contract VeloAmmModule is IVeloAmmModule {
     using SafeERC20 for IERC20;
 
@@ -104,7 +102,6 @@ contract VeloAmmModule is IVeloAmmModule {
     {
         PositionLibrary.Position memory position_ =
             PositionLibrary.getPosition(positionManager, tokenId);
-        console2.log(position_.token0, position_.token1);
         position.token0 = position_.token0;
         position.token1 = position_.token1;
         position.property = uint24(position_.tickSpacing);
