@@ -12,9 +12,9 @@ interface IVeloFarm {
     error InvalidDistributor();
     error InvalidState();
 
-    struct TimestampValue {
+    struct RewardRates {
         uint256 timestamp;
-        uint256 value;
+        uint256 rewardRateX96;
     }
 
     function rewardDistributor() external view returns (address);
@@ -27,14 +27,11 @@ interface IVeloFarm {
 
     function claimable(address account) external view returns (uint256 claimable_);
 
-    function weightedBalance(address account)
-        external
-        view
-        returns (uint256 timestamp, uint256 value);
+    function lastWeightedTotalSupply() external view returns (uint256);
 
-    function rewardRate(uint256 index) external view returns (uint256 timestamp, uint256 value);
+    function rewardRates(uint256 index) external view returns (uint256 timestamp, uint256 value);
 
-    function timestampToRewardRateIndex(uint256 timestamp) external view returns (uint256);
+    function timestampToRewardRatesIndex(uint256 timestamp) external view returns (uint256);
 
     function collectRewards() external;
 

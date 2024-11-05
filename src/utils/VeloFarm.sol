@@ -9,23 +9,14 @@ abstract contract VeloFarm is IVeloFarm, ERC20Upgradeable, ReentrancyGuard {
 
     uint256 public constant Q96 = 2 ** 96;
 
-    /// @inheritdoc IVeloFarm
     address public immutable rewardDistributor;
-
-    /// @inheritdoc IVeloFarm
     address public rewardToken;
-    /// @inheritdoc IVeloFarm
     uint256 public initializationTimestamp;
-    /// @inheritdoc IVeloFarm
+    uint256 public lastWeightedTotalSupply;
     mapping(address account => uint256) public lastRewardsUpdate;
-    /// @inheritdoc IVeloFarm
     mapping(address account => uint256) public claimable;
-    /// @inheritdoc IVeloFarm
-    mapping(address account => TimestampValue) public weightedBalance;
-    /// @inheritdoc IVeloFarm
-    TimestampValue[] public rewardRate;
-    /// @inheritdoc IVeloFarm
-    mapping(uint256 timestamp => uint256) public timestampToRewardRateIndex;
+    mapping(uint256 timestamp => uint256) public timestampToRewardRatesIndex;
+    RewardRates[] public rewardRates;
 
     /// ---------------------- INITIALIZER FUNCTIONS ----------------------
 
@@ -41,25 +32,23 @@ abstract contract VeloFarm is IVeloFarm, ERC20Upgradeable, ReentrancyGuard {
         __Context_init();
         rewardToken = rewardToken_;
         initializationTimestamp = block.timestamp;
-        rewardRate.push(TimestampValue(initializationTimestamp, 0));
+        rewardRates.push(RewardRates(initializationTimestamp, 0));
     }
 
     /// ---------------------- EXTERNAL MUTATING FUNCTIONS ----------------------
 
-    /// @inheritdoc IVeloFarm
     function collectRewards() external nonReentrant {
         _collectRewards();
     }
 
-    /// @inheritdoc IVeloFarm
     function distribute(uint256 amount) external {
         if (_msgSender() != rewardDistributor) {
             revert InvalidDistributor();
         }
 
         _updateBalances(address(0));
-        uint256 length = rewardRate.length;
-        TimestampValue memory prevRate = rewardRate[length - 1];
+        uint256 length = rewardRates.length;
+        RewardRates memory prevRate = rewardRates[length - 1];
         uint256 timestamp = block.timestamp;
         if (timestamp == prevRate.timestamp) {
             if (amount > 0) {
@@ -68,48 +57,56 @@ abstract contract VeloFarm is IVeloFarm, ERC20Upgradeable, ReentrancyGuard {
             return;
         }
 
-        uint256 incrementX96 =
-            amount == 0 ? 0 : amount.mulDiv(Q96, weightedBalance[address(0)].value);
-        rewardRate.push(TimestampValue(timestamp, prevRate.value + incrementX96));
-        timestampToRewardRateIndex[timestamp] = length;
+        uint256 incrementX96 = amount == 0 ? 0 : amount.mulDiv(Q96, lastWeightedTotalSupply);
+        rewardRates.push(RewardRates(timestamp, prevRate.rewardRateX96 + incrementX96));
+        timestampToRewardRatesIndex[timestamp] = length;
     }
 
-    /// @inheritdoc IVeloFarm
     function getRewards(address recipient) external nonReentrant returns (uint256 amount) {
         return _getRewards(recipient);
     }
 
     /// ---------------------- EXTERNAL VIEW FUNCTIONS ----------------------
 
-    /// @inheritdoc IVeloFarm
     function earned(address account) external view returns (uint256 earned_) {
-        earned_ = claimable[account];
-        uint256 prevTimestamp = weightedBalance[account].timestamp;
+        (,, earned_) = calculateIncrements(account);
+        return claimable[account] + earned_;
+    }
+
+    function calculateIncrements(address account)
+        public
+        view
+        returns (bool isDublicate, uint256 balanceIncrement, uint256 rewardsEarned)
+    {
+        uint256 prevTimestamp = lastRewardsUpdate[account];
         if (prevTimestamp == 0) {
             prevTimestamp = initializationTimestamp;
         }
 
         uint256 timestamp = block.timestamp;
         if (timestamp == prevTimestamp) {
-            return earned_;
+            return (true, 0, 0);
         }
 
         uint256 timespan = timestamp - prevTimestamp;
-        uint256 balance = balanceOf(account);
-        if (balance == 0) {
-            return earned_;
+        if (account == address(0)) {
+            return (false, totalSupply() * timespan, 0);
         }
 
-        uint256 balanceIncrement = balance * timespan;
-        uint256 length = rewardRate.length;
+        balanceIncrement = balanceOf(account) * timespan;
+        if (balanceIncrement == 0) {
+            return (false, balanceIncrement, 0);
+        }
+
+        uint256 length = rewardRates.length;
         if (length < 2) {
-            return earned_;
+            return (false, balanceIncrement, 0);
         }
 
-        uint256 prevValue = rewardRate[timestampToRewardRateIndex[prevTimestamp]].value;
-        uint256 lastValue = rewardRate[length - 1].value;
+        uint256 prevValue = rewardRates[timestampToRewardRatesIndex[prevTimestamp]].rewardRateX96;
+        uint256 lastValue = rewardRates[length - 1].rewardRateX96;
         if (prevValue < lastValue) {
-            earned_ += balanceIncrement.mulDiv(lastValue - prevValue, Q96);
+            rewardsEarned = balanceIncrement.mulDiv(lastValue - prevValue, Q96);
         }
     }
 
@@ -129,39 +126,16 @@ abstract contract VeloFarm is IVeloFarm, ERC20Upgradeable, ReentrancyGuard {
     }
 
     function _updateBalances(address account) private {
-        uint256 prevTimestamp = weightedBalance[account].timestamp;
-        if (prevTimestamp == 0) {
-            prevTimestamp = initializationTimestamp;
-        }
-
-        uint256 timestamp = block.timestamp;
-        if (timestamp == prevTimestamp) {
+        (bool isDublicate, uint256 balanceIncrement, uint256 rewardIncrement) =
+            calculateIncrements(account);
+        if (isDublicate) {
             return;
         }
-
-        uint256 timespan = timestamp - prevTimestamp;
+        lastRewardsUpdate[account] = block.timestamp;
         if (account == address(0)) {
-            weightedBalance[account] = TimestampValue(timestamp, totalSupply() * timespan);
-            return;
-        }
-
-        uint256 newBalance = balanceOf(account) * timespan;
-        weightedBalance[account] = TimestampValue(timestamp, newBalance);
-        uint256 lastRewardsUpdate_ = lastRewardsUpdate[account];
-        lastRewardsUpdate[account] = timestamp;
-        if (newBalance == 0) {
-            return;
-        }
-
-        uint256 length = rewardRate.length;
-        if (length < 2) {
-            return;
-        }
-
-        uint256 prevValue = rewardRate[timestampToRewardRateIndex[lastRewardsUpdate_]].value;
-        uint256 lastValue = rewardRate[length - 1].value;
-        if (prevValue < lastValue) {
-            claimable[account] += newBalance.mulDiv(lastValue - prevValue, Q96);
+            lastWeightedTotalSupply = balanceIncrement;
+        } else {
+            claimable[account] += rewardIncrement;
         }
     }
 
