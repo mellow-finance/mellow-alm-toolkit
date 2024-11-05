@@ -241,6 +241,8 @@ contract Mock {
         tokensOwed1 = _tokensOwed1;
     }
 
+    function test() internal pure {}
+
     function positions(uint256 /* tokenId */ )
         external
         view

@@ -50,6 +50,8 @@ contract MockVeloFarm is VeloFarm {
             console2.log(string(reason));
         }
     }
+
+    function test() internal pure {}
 }
 
 contract IntegrationTest is Test {

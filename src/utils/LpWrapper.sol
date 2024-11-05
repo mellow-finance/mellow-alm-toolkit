@@ -5,7 +5,7 @@ import "../interfaces/utils/ILpWrapper.sol";
 import "./DefaultAccessControl.sol";
 import "./VeloFarm.sol";
 
-contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl, ReentrancyGuard {
+contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
     using SafeERC20 for IERC20;
     using Math for uint256;
 
@@ -226,7 +226,7 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl, ReentrancyGuar
         if (amount0 < minAmount0 || amount1 < minAmount1) {
             revert InsufficientAmounts();
         }
-        getRewards(to);
+        _getRewards(to);
         emit Withdraw(sender, to, pool, amount0, amount1, lpAmount, totalSupply());
     }
 
@@ -340,7 +340,7 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl, ReentrancyGuar
     }
 
     /// @inheritdoc ILpWrapper
-    function emptyRebalance() external {
+    function emptyRebalance() external nonReentrant {
         core.emptyRebalance(positionId);
     }
 
