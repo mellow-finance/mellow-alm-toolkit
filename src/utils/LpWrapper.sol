@@ -344,8 +344,7 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
         core.emptyRebalance(positionId);
     }
 
-    /// @inheritdoc IVeloFarm
-    function collectRewards() public override(IVeloFarm, VeloFarm) {
+    function _collectRewards() internal override {
         core.collectRewards(positionId);
     }
 }

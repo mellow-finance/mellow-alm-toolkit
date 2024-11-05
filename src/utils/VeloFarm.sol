@@ -27,6 +27,8 @@ abstract contract VeloFarm is IVeloFarm, ERC20Upgradeable, ReentrancyGuard {
     /// @inheritdoc IVeloFarm
     mapping(uint256 timestamp => uint256) public timestampToRewardRateIndex;
 
+    /// ---------------------- INITIALIZER FUNCTIONS ----------------------
+
     constructor(address rewardDistributor_) {
         rewardDistributor = rewardDistributor_;
     }
@@ -45,7 +47,9 @@ abstract contract VeloFarm is IVeloFarm, ERC20Upgradeable, ReentrancyGuard {
     /// ---------------------- EXTERNAL MUTATING FUNCTIONS ----------------------
 
     /// @inheritdoc IVeloFarm
-    function collectRewards() public virtual {}
+    function collectRewards() external nonReentrant {
+        _collectRewards();
+    }
 
     /// @inheritdoc IVeloFarm
     function distribute(uint256 amount) external {
@@ -58,6 +62,9 @@ abstract contract VeloFarm is IVeloFarm, ERC20Upgradeable, ReentrancyGuard {
         TimestampValue memory prevRate = rewardRate[length - 1];
         uint256 timestamp = block.timestamp;
         if (timestamp == prevRate.timestamp) {
+            if (amount > 0) {
+                revert InvalidState();
+            }
             return;
         }
 
@@ -83,11 +90,11 @@ abstract contract VeloFarm is IVeloFarm, ERC20Upgradeable, ReentrancyGuard {
         }
 
         uint256 timestamp = block.timestamp;
-        uint256 timespan = timestamp - prevTimestamp;
-        if (timespan == 0) {
+        if (timestamp == prevTimestamp) {
             return earned_;
         }
 
+        uint256 timespan = timestamp - prevTimestamp;
         uint256 balance = balanceOf(account);
         if (balance == 0) {
             return earned_;
@@ -108,9 +115,11 @@ abstract contract VeloFarm is IVeloFarm, ERC20Upgradeable, ReentrancyGuard {
 
     /// ---------------------- INTERNAL MUTABLE FUNCTIONS ----------------------
 
+    function _collectRewards() internal virtual {}
+
     function _getRewards(address recipient) internal returns (uint256 amount) {
         address sender = _msgSender();
-        collectRewards();
+        _collectRewards();
         _updateBalances(sender);
         amount = claimable[sender];
         if (amount != 0) {
@@ -126,11 +135,11 @@ abstract contract VeloFarm is IVeloFarm, ERC20Upgradeable, ReentrancyGuard {
         }
 
         uint256 timestamp = block.timestamp;
-        uint256 timespan = timestamp - prevTimestamp;
-        if (timespan == 0) {
+        if (timestamp == prevTimestamp) {
             return;
         }
 
+        uint256 timespan = timestamp - prevTimestamp;
         if (account == address(0)) {
             weightedBalance[account] = TimestampValue(timestamp, totalSupply() * timespan);
             return;
@@ -157,7 +166,7 @@ abstract contract VeloFarm is IVeloFarm, ERC20Upgradeable, ReentrancyGuard {
     }
 
     function _update(address from, address to, uint256 amount) internal virtual override {
-        collectRewards();
+        _collectRewards();
         if (from != address(0)) {
             _updateBalances(from);
         }

@@ -16,7 +16,6 @@ contract MockVeloFarm is VeloFarm {
 
     function setRewardsForDistribution(uint256 amount) external {
         newRewards = amount;
-        delete lastDistributionTimestamp;
     }
 
     function mint(address to, uint256 amount) external {
@@ -27,7 +26,7 @@ contract MockVeloFarm is VeloFarm {
         _burn(from, amount);
     }
 
-    function collectRewards() public override {
+    function _collectRewards() internal override {
         uint256 rewards = 0;
         if (lastDistributionTimestamp < block.timestamp) {
             rewards = newRewards;
@@ -37,7 +36,7 @@ contract MockVeloFarm is VeloFarm {
     }
 
     function doAndDone(address account) external returns (uint256) {
-        collectRewards();
+        _collectRewards();
         uint256 amount = VeloFarm(address(this)).earned(account);
         revert(
             string(abi.encodePacked(Strings.toHexString(account), ": ", Strings.toString(amount)))

@@ -10,6 +10,7 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 
 interface IVeloFarm {
     error InvalidDistributor();
+    error InvalidState();
 
     struct TimestampValue {
         uint256 timestamp;
