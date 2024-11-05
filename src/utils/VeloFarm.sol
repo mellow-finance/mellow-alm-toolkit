@@ -39,10 +39,12 @@ abstract contract VeloFarm is IVeloFarm, ERC20Upgradeable, ReentrancyGuard {
 
     /// ---------------------- EXTERNAL MUTATING FUNCTIONS ----------------------
 
+    /// @inheritdoc IVeloFarm
     function collectRewards() external nonReentrant {
         _collectRewards();
     }
 
+    /// @inheritdoc IVeloFarm
     function distribute(uint256 amount) external {
         if (_msgSender() != rewardDistributor) {
             revert InvalidDistributor();
@@ -64,16 +66,19 @@ abstract contract VeloFarm is IVeloFarm, ERC20Upgradeable, ReentrancyGuard {
         }
     }
 
+    /// @inheritdoc IVeloFarm
     function getRewards(address recipient) external nonReentrant returns (uint256 amount) {
         return _getRewards(recipient);
     }
 
     /// ---------------------- EXTERNAL VIEW FUNCTIONS ----------------------
 
+    /// @inheritdoc IVeloFarm
     function earned(address account) external view returns (uint256 earned_) {
         return claimable[account] + calculateEarnedRewards(account);
     }
 
+    /// @inheritdoc IVeloFarm
     function calculateEarnedRewards(address account) public view returns (uint256 rewardsEarned) {
         uint256 lastTimestamp = lastBalancesUpdate[account];
         if (lastTimestamp == 0 || lastTimestamp == block.timestamp) {

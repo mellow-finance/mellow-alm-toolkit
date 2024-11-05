@@ -4,7 +4,30 @@ pragma solidity 0.8.25;
 import "../interfaces/external/velo/INonfungiblePositionManager.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
-library PositionLibrary {
+/**
+ * @title PositionLibrary
+ * @notice Provides utilities to interact with and manage positions in an AMM (Automated Market Maker) pool.
+ * @dev This library allows for optimized, gas-efficient retrieval of position data from a Nonfungible Position Manager contract.
+ *      The `Position` struct represents an individual position, encapsulating details such as liquidity, fee growth, tick range, and tokens owed.
+ */
+library PositionLibrary {    
+    /**
+     * @notice Represents a position in an AMM pool with detailed attributes.
+     * @dev This struct contains information about a specific position, including liquidity, fee growth, and token owed data.
+     * @param nonce A unique identifier for each position to prevent replay attacks.
+     * @param operator The address authorized to manage this position.
+     * @param token0 The address of the first token in the position pair.
+     * @param token1 The address of the second token in the position pair.
+     * @param tickSpacing The spacing between ticks in the AMM pool.
+     * @param tickLower The lower tick boundary for this position.
+     * @param tickUpper The upper tick boundary for this position.
+     * @param liquidity The amount of liquidity provided by this position.
+     * @param feeGrowthInside0LastX128 The fee growth of token0 inside the position’s tick range since the last action.
+     * @param feeGrowthInside1LastX128 The fee growth of token1 inside the position’s tick range since the last action.
+     * @param tokensOwed0 The amount of token0 owed to the position.
+     * @param tokensOwed1 The amount of token1 owed to the position.
+     * @param tokenId The unique identifier of the position token.
+     */
     struct Position {
         uint96 nonce;
         address operator;
@@ -21,7 +44,15 @@ library PositionLibrary {
         uint256 tokenId;
     }
 
-    // This function consumes ~22,232 gas, which is more efficient than the 23,141 gas required for a regular call to NonfungiblePositionManager::positions
+    /**
+     * @notice Fetches position details for a specific tokenId from the position manager.
+     * @dev Uses an optimized `staticcall` in assembly for reduced gas consumption.
+     *      Consumes ~22,232 gas, which is more efficient than the ~23,141 gas required for a typical call to NonfungiblePositionManager::positions.
+     *      Stores the function selector and tokenId in memory and performs a staticcall to retrieve data.
+     * @param positionManager The address of the NonfungiblePositionManager contract managing the positions.
+     * @param tokenId The unique identifier of the position token.
+     * @return position The position struct with detailed information.
+     */
     function getPosition(address positionManager, uint256 tokenId)
         internal
         view

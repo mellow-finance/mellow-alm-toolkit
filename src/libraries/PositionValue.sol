@@ -11,15 +11,22 @@ import "../interfaces/external/velo/ICLPool.sol";
 
 import "./PositionLibrary.sol";
 
-/// @title Returns information about the token value held in a Uniswap V3 NFT
+/**
+ * @title PositionValue
+ * @notice Provides utilities to calculate the total value held by a Uniswap V3 NFT position, including principal and accrued fees.
+ * @dev This library calculates the principal and fees in token0 and token1 that a position represents, based on current market conditions and position parameters.
+*/
 library PositionValue {
-    /// @notice Returns the total amounts of token0 and token1, i.e. the sum of fees and principal
-    /// that a given nonfungible position manager token is worth
-    /// @param positionManager The CL NonfungiblePositionManager
-    /// @param tokenId The tokenId of the token for which to get the total value
-    /// @param sqrtRatioX96 The square root price X96 for which to calculate the principal amounts
-    /// @return amount0 The total amount of token0 including principal and fees
-    /// @return amount1 The total amount of token1 including principal and fees
+    
+    /**
+     * @notice Returns the total amounts of token0 and token1 held by a Uniswap V3 NFT position, including both principal and fees.
+     * @dev Fetches principal amounts via `principal` and accrued fees via `fees`, then sums them for a complete value.
+     * @param positionManager The address of the NonfungiblePositionManager contract managing the positions.
+     * @param tokenId The ID of the NFT position token to calculate the total value for.
+     * @param sqrtRatioX96 The square root of the current price, in Q96 format, used for calculating principal.
+     * @return amount0 The total amount of token0 including principal and fees.
+     * @return amount1 The total amount of token1 including principal and fees.
+     */
     function total(
         INonfungiblePositionManager positionManager,
         uint256 tokenId,
@@ -31,13 +38,15 @@ library PositionValue {
         return (amount0Principal + amount0Fee, amount1Principal + amount1Fee);
     }
 
-    /// @notice Calculates the principal (currently acting as liquidity) owed to the token owner in the event
-    /// that the position is burned
-    /// @param positionManager The CL NonfungiblePositionManager
-    /// @param tokenId The tokenId of the token for which to get the total principal owed
-    /// @param sqrtRatioX96 The square root price X96 for which to calculate the principal amounts
-    /// @return amount0 The principal amount of token0
-    /// @return amount1 The principal amount of token1
+    /**
+     * @notice Calculates the principal amounts of token0 and token1 that would be returned if the position were burned.
+     * @dev Uses liquidity and tick bounds of the position to compute the value based on the current market price.
+     * @param positionManager The address of the NonfungiblePositionManager contract managing the positions.
+     * @param tokenId The ID of the NFT position token to calculate the principal for.
+     * @param sqrtRatioX96 The square root of the current price, in Q96 format, used for calculating principal.
+     * @return amount0 The principal amount of token0.
+     * @return amount1 The principal amount of token1.
+     */
     function principal(
         INonfungiblePositionManager positionManager,
         uint256 tokenId,
@@ -53,6 +62,20 @@ library PositionValue {
         );
     }
 
+    /**
+     * @notice Parameters needed to calculate the fees for a Uniswap V3 position.
+     * @dev The struct stores position-specific information to facilitate fee calculation.
+     * @param token0 The address of token0.
+     * @param token1 The address of token1.
+     * @param tickSpacing The tick spacing of the AMM pool.
+     * @param tickLower The lower tick boundary of the position.
+     * @param tickUpper The upper tick boundary of the position.
+     * @param liquidity The liquidity of the position.
+     * @param positionFeeGrowthInside0LastX128 The last recorded fee growth inside the position’s range for token0.
+     * @param positionFeeGrowthInside1LastX128 The last recorded fee growth inside the position’s range for token1.
+     * @param tokensOwed0 The amount of token0 owed to the position.
+     * @param tokensOwed1 The amount of token1 owed to the position.
+     */
     struct FeeParams {
         address token0;
         address token1;
@@ -62,15 +85,19 @@ library PositionValue {
         uint128 liquidity;
         uint256 positionFeeGrowthInside0LastX128;
         uint256 positionFeeGrowthInside1LastX128;
-        uint256 tokensOwed0;
-        uint256 tokensOwed1;
+        uint128 tokensOwed0;
+        uint128 tokensOwed1;
     }
 
-    /// @notice Calculates the total fees owed to the token owner
-    /// @param positionManager The CL NonfungiblePositionManager
-    /// @param tokenId The tokenId of the token for which to get the total fees owed
-    /// @return amount0 The amount of fees owed in token0
-    /// @return amount1 The amount of fees owed in token1
+    /**
+     * @notice Calculates the accrued fees in token0 and token1 for a Uniswap V3 NFT position.
+     * @dev Fetches current fee growth from the pool and subtracts the last recorded fee growth for the position.
+     *      The result is multiplied by the position’s liquidity to calculate total fees owed.
+     * @param positionManager The address of the NonfungiblePositionManager contract managing the positions.
+     * @param tokenId The ID of the NFT position token to calculate fees for.
+     * @return amount0 The accrued fees in token0.
+     * @return amount1 The accrued fees in token1.
+     */
     function fees(INonfungiblePositionManager positionManager, uint256 tokenId)
         internal
         view
@@ -95,6 +122,14 @@ library PositionValue {
         );
     }
 
+    /**
+     * @notice Calculates fees accrued within a given tick range in the Uniswap V3 pool.
+     * @dev Uses unchecked math for gas efficiency and to compute fees based on liquidity and fee growth changes.
+     * @param positionManager The address of the NonfungiblePositionManager contract.
+     * @param feeParams Struct containing position details needed for fee calculation.
+     * @return amount0 The accrued fees in token0.
+     * @return amount1 The accrued fees in token1.
+     */
     function _fees(INonfungiblePositionManager positionManager, FeeParams memory feeParams)
         private
         view
@@ -125,6 +160,15 @@ library PositionValue {
         }
     }
 
+    /**
+     * @notice Retrieves the fee growth for the given tick range in the pool.
+     * @dev Fetches tick data from the pool and calculates fee growth based on the position of the current tick.
+     * @param pool The Uniswap V3 pool to get fee growth data from.
+     * @param tickLower The lower tick boundary of the position.
+     * @param tickUpper The upper tick boundary of the position.
+     * @return feeGrowthInside0X128 The fee growth inside the tick range for token0.
+     * @return feeGrowthInside1X128 The fee growth inside the tick range for token1.
+     */
     function _getFeeGrowthInside(ICLPool pool, int24 tickLower, int24 tickUpper)
         private
         view

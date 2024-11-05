@@ -11,14 +11,30 @@ import "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 
 /**
  * @title IVeloDeployFactory Interface
- * @dev Interface for the VeloDeployFactory contract, facilitating the creation of strategies,
- * LP wrappers, and managing their configurations for Velo pools.
+ * @notice Interface for the VeloDeployFactory contract, facilitating the creation of strategies, LP wrappers,
+ *         and managing configurations for Velo pools.
+ * @dev This interface enables the deployment and configuration of various components in the Velo ecosystem.
+ *      It includes functions for creating strategies, managing pool associations, and updating administrative parameters.
  */
 interface IVeloDeployFactory is IAccessControlEnumerable {
-    // Custom errors for operation failures
+    /**
+     * @notice Thrown when provided parameters are invalid.
+     */
     error InvalidParams();
-    error LpWrapperAlreadyCreated();
 
+    /**
+     * @notice Thrown when attempting to perform an operation on a forbidden pool.
+     */
+    error ForbiddenPool();
+
+    /**
+     * @notice Parameters for a newly created strategy.
+     * @param pool The address of the liquidity pool associated with the strategy.
+     * @param ammPosition Array of positions for the AMM within the strategy.
+     * @param strategyParams Parameters governing the strategy’s behavior and configuration.
+     * @param lpWrapper The address of the LP wrapper associated with the strategy.
+     * @param caller The address of the account that initiated the strategy creation.
+     */
     struct StrategyCreatedParams {
         address pool;
         IVeloAmmModule.AmmPosition[] ammPosition;
@@ -27,10 +43,22 @@ interface IVeloDeployFactory is IAccessControlEnumerable {
         address caller;
     }
 
+    /**
+     * @notice Emitted when a strategy is successfully created.
+     * @param params The parameters associated with the newly created strategy.
+     */
     event StrategyCreated(StrategyCreatedParams params);
 
     /**
-     * @dev Represents the parameters for configuring a strategy.
+     * @notice Parameters for deploying a new strategy.
+     * @param slippageD9 Slippage tolerance with 9 decimals, affecting strategy operations.
+     * @param strategyParams The strategy parameters defining behavior and thresholds.
+     * @param securityParams Security parameters for managing risk within the strategy.
+     * @param pool The address of the CLPool associated with this strategy.
+     * @param maxAmount0 Maximum amount of token0 allowed for the strategy.
+     * @param maxAmount1 Maximum amount of token1 allowed for the strategy.
+     * @param initialTotalSupply Initial total supply of the LP wrapper tokens.
+     * @param totalSupplyLimit Maximum allowable total supply of the LP wrapper tokens.
      */
     struct DeployParams {
         uint32 slippageD9;
@@ -43,8 +71,14 @@ interface IVeloDeployFactory is IAccessControlEnumerable {
         uint256 totalSupplyLimit;
     }
 
-    error ForbiddenPool();
-
+    /**
+     * @notice Parameters for configuring a pool strategy.
+     * @param pool The address of the CLPool.
+     * @param strategyParams Strategy parameters defining behavior for the pool.
+     * @param maxAmount0 Maximum amount of token0 allowed for the strategy.
+     * @param maxAmount1 Maximum amount of token1 allowed for the strategy.
+     * @param securityParams Additional security parameters, encoded as bytes, for risk control.
+     */
     struct PoolStrategyParameter {
         ICLPool pool;
         IPulseStrategyModule.StrategyParams strategyParams;
@@ -53,6 +87,13 @@ interface IVeloDeployFactory is IAccessControlEnumerable {
         bytes securityParams;
     }
 
+    /**
+     * @notice Information about minting in a specified tick range.
+     * @param amount0 Amount of token0 for the mint operation.
+     * @param amount1 Amount of token1 for the mint operation.
+     * @param tickLower Lower bound of the tick range for minting.
+     * @param tickUpper Upper bound of the tick range for minting.
+     */
     struct MintInfo {
         uint256 amount0;
         uint256 amount1;
@@ -61,17 +102,11 @@ interface IVeloDeployFactory is IAccessControlEnumerable {
     }
 
     /**
-     * @dev Creates a strategy for the given deployParams
-     * @param params DeployParams for the strategy
-     * @return lpWrapper lp wrapper address - ERC20 representation of the LP token
+     * @notice Creates a strategy based on provided deployment parameters.
+     * @param params The parameters for deploying the strategy, encapsulated in `DeployParams`.
+     * @return lpWrapper The address of the LP wrapper, which is an ERC20 representation of the LP token.
      */
     function createStrategy(DeployParams calldata params) external returns (ILpWrapper lpWrapper);
-
-    /**
-     * @dev Maps a pool address to its associated addresses.
-     * @param pool Pool address
-     */
-    function poolToWrapper(address pool) external view returns (address lpWrapper);
 
     /**
      * @dev Removes the addresses associated with a specific pool from the contract's records. This action is irreversible
@@ -89,14 +124,39 @@ interface IVeloDeployFactory is IAccessControlEnumerable {
      */
     function removeWrapperForPool(address pool) external;
 
+    /**
+     * @notice Sets a new LP wrapper admin address.
+     * @param lpWrapperAdmin_ The address to set as the LP wrapper admin.
+     */
     function setLpWrapperAdmin(address lpWrapperAdmin_) external;
 
+    /**
+     * @notice Sets a new LP wrapper manager address.
+     * @param lpWrapperManager_ The address to set as the LP wrapper manager.
+     */
     function setLpWrapperManager(address lpWrapperManager_) external;
 
+    /**
+     * @notice Sets the minimum initial total supply required for an LP wrapper.
+     * @param minInitialTotalSupply_ The minimum initial total supply for new LP wrappers.
+     */
     function setMinInitialTotalSupply(uint256 minInitialTotalSupply_) external;
 
+    /**
+     * @notice Retrieves the name and symbol for a given pool's associated LP wrapper.
+     * @param pool The address of the pool.
+     * @return name The name of the LP wrapper.
+     * @return symbol The symbol of the LP wrapper.
+     */
     function configureNameAndSymbol(ICLPool pool)
         external
         view
         returns (string memory name, string memory symbol);
+
+    /**
+     * @notice Maps a pool address to its associated LP wrapper address.
+     * @param pool The address of the pool.
+     * @return lpWrapper The address of the LP wrapper associated with the specified pool.
+     */
+    function poolToWrapper(address pool) external view returns (address lpWrapper);
 }

@@ -14,16 +14,28 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
  * Velo-specific contracts and settings.
  */
 interface IVeloAmmModule is IAmmModule {
-    error InvalidFee(); // Thrown when the fee is invalid
-    error AddressZero(); // Thrown when an address is zero
-    error InvalidParams(); // Thrown when input parameters are invalid
-    error InvalidLength(); // Thrown when array lengths are mismatched or invalid
-    error InvalidGauge(); // Thrown when the gauge is invalid
+    /**
+    * @notice Thrown when the specified fee is invalid.
+    */
+    error InvalidFee();
+
+    /**
+     * @notice Thrown when an address is set to the zero address.
+     */
+    error AddressZero();
+
+    /**
+     * @notice Thrown when array lengths are mismatched or invalid.
+     */
+    error InvalidLength();
+
+    /**
+     * @notice Thrown when the specified gauge is invalid.
+     */
+    error InvalidGauge();
 
     /**
      * @dev Struct representing callback parameters for operations associated with the Velo protocol.
-     *
-     * Parameters:
      * @param farm Address of the Synthetix farm contract. It acts as a central hub for yield farming activities, interfacing directly
      * with users and other contracts to manage and allocate yield farming rewards based on defined criteria.
      * @param gauge Address of the Velo gauge contract.
@@ -73,4 +85,5 @@ interface IVeloAmmModule is IAmmModule {
      * @return bytes4 function selector.
      */
     function selectorIsPool() external view returns (bytes4);
+
 }

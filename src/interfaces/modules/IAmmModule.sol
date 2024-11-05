@@ -96,7 +96,14 @@ interface IAmmModule {
      */
     function getProperty(address pool) external view returns (uint24);
 
-    // TODO
+    /**
+     * @notice Collects accumulated rewards for a specific token ID.
+     * @dev This function allows the caller to collect rewards associated with a specified token,
+     *      using additional parameters for customization of the collection process.
+     * @param tokenId The unique identifier of the token for which rewards are to be collected.
+     * @param callbackParams Additional parameters for callback configuration during reward collection.
+     * @param protocolParams Protocol-specific parameters that influence the reward collection process.
+     */
     function collectRewards(
         uint256 tokenId,
         bytes memory callbackParams,

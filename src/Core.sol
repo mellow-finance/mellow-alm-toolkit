@@ -30,6 +30,8 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     ManagedPositionInfo[] private _positions;
     mapping(address => EnumerableSet.UintSet) private _userIds;
 
+    /// ---------------------- INITIALIZER FUNCTIONS ----------------------
+    
     /**
      * @dev Constructor function for the Core contract.
      * @param ammModule_ The address of the AMM module contract.
@@ -60,67 +62,12 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         weth = weth_;
     }
 
-    /// @inheritdoc ICore
-    function managedPositionAt(uint256 id)
-        public
-        view
-        override
-        returns (ManagedPositionInfo memory)
-    {
-        return _positions[id];
-    }
+    /// ---------------------- EXTERNAL MUTATING FUNCTIONS ----------------------
 
-    /// @inheritdoc ICore
-    function positionCount() public view override returns (uint256) {
-        return _positions.length;
-    }
-
-    /// @inheritdoc ICore
-    function getUserIds(address user) external view override returns (uint256[] memory ids) {
-        return _userIds[user].values();
-    }
-
-    /// @inheritdoc ICore
-    function protocolParams() external view override returns (bytes memory) {
-        return _protocolParams;
-    }
-
-    /// @inheritdoc ICore
-    function setOperatorFlag(bool operatorFlag_) external override nonReentrant {
-        _requireAdmin();
-        operatorFlag = operatorFlag_;
-    }
-
-    /// @inheritdoc ICore
-    function setProtocolParams(bytes memory params) external override nonReentrant {
-        _requireAdmin();
-        ammModule.validateProtocolParams(params);
-        _protocolParams = params;
-    }
-
-    /// @inheritdoc ICore
-    function setPositionParams(
-        uint256 id,
-        uint32 slippageD9,
-        bytes memory callbackParams,
-        bytes memory strategyParams,
-        bytes memory securityParams
-    ) external override nonReentrant {
-        ManagedPositionInfo memory info = _positions[id];
-        if (info.owner != msg.sender) {
-            revert Forbidden();
-        }
-        ammModule.validateCallbackParams(callbackParams);
-        strategyModule.validateStrategyParams(strategyParams);
-        oracle.validateSecurityParams(securityParams);
-        if (slippageD9 > D9 / 4 || slippageD9 == 0) {
-            revert InvalidParams();
-        }
-        info.callbackParams = callbackParams;
-        info.strategyParams = strategyParams;
-        info.securityParams = securityParams;
-        info.slippageD9 = slippageD9;
-        _positions[id] = info;
+    receive() external payable {
+        uint256 amount = msg.value;
+        IWETH9(weth).deposit{value: amount}();
+        IERC20(weth).safeTransfer(tx.origin, amount);
     }
 
     /// @inheritdoc ICore
@@ -348,26 +295,17 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         }
     }
 
-    function _emitRebalanceEvent(address pool, uint256 tokenIdBefore, uint256 tokenIdAfter)
-        private
-    {
-        IAmmModule.AmmPosition memory info = ammModule.getAmmPosition(tokenIdAfter);
-        (uint160 sqrtPriceX96,) = oracle.getOraclePrice(pool);
-        (uint256 amount0, uint256 amount1) = ammModule.getAmountsForLiquidity(
-            info.liquidity, sqrtPriceX96, info.tickLower, info.tickUpper
-        );
+    /// @inheritdoc ICore
+    function setOperatorFlag(bool operatorFlag_) external override nonReentrant {
+        _requireAdmin();
+        operatorFlag = operatorFlag_;
+    }
 
-        emit Rebalance(
-            RebalanceEventParams({
-                pool: pool,
-                ammPositionInfo: info,
-                sqrtPriceX96: sqrtPriceX96,
-                amount0: amount0,
-                amount1: amount1,
-                ammPositionIdBefore: tokenIdBefore,
-                ammPositionIdAfter: tokenIdAfter
-            })
-        );
+    /// @inheritdoc ICore
+    function setProtocolParams(bytes memory params) external override nonReentrant {
+        _requireAdmin();
+        ammModule.validateProtocolParams(params);
+        _protocolParams = params;
     }
 
     /// @inheritdoc ICore
@@ -384,6 +322,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         }
     }
 
+    /// @inheritdoc ICore
     function collectRewards(uint256 id) external override nonReentrant {
         ManagedPositionInfo memory params = _positions[id];
         if (params.owner != msg.sender) {
@@ -396,6 +335,45 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         }
     }
 
+    /// @inheritdoc ICore
+    function setPositionParams(
+        uint256 id,
+        uint32 slippageD9,
+        bytes memory callbackParams,
+        bytes memory strategyParams,
+        bytes memory securityParams
+    ) external override nonReentrant {
+        ManagedPositionInfo memory info = _positions[id];
+        if (info.owner != msg.sender) {
+            revert Forbidden();
+        }
+        ammModule.validateCallbackParams(callbackParams);
+        strategyModule.validateStrategyParams(strategyParams);
+        oracle.validateSecurityParams(securityParams);
+        if (slippageD9 > D9 / 4 || slippageD9 == 0) {
+            revert InvalidParams();
+        }
+        info.callbackParams = callbackParams;
+        info.strategyParams = strategyParams;
+        info.securityParams = securityParams;
+        info.slippageD9 = slippageD9;
+        _positions[id] = info;
+    }
+
+    /// ---------------------- EXTERNAL VIEW FUNCTIONS ----------------------
+
+    /// @inheritdoc ICore
+    function getUserIds(address user) external view override returns (uint256[] memory ids) {
+        return _userIds[user].values();
+    }
+
+    /// @inheritdoc ICore
+    function protocolParams() external view override returns (bytes memory) {
+        return _protocolParams;
+    }
+
+    /// ---------------------- EXTERNAL PURE FUNCTIONS ----------------------
+
     /// @inheritdoc IERC721Receiver
     function onERC721Received(address, address, uint256, bytes calldata)
         external
@@ -405,46 +383,24 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         return IERC721Receiver.onERC721Received.selector;
     }
 
-    function _validateTarget(TargetPositionInfo memory target) private pure {
-        uint256 n = target.liquidityRatiosX96.length;
-        if (n != target.lowerTicks.length) {
-            revert InvalidTarget();
-        }
-        if (n != target.upperTicks.length) {
-            revert InvalidTarget();
-        }
-        if (n != target.info.ammPositionIds.length) {
-            revert InvalidTarget();
-        }
-        uint256 cumulativeLiquidityX96 = 0;
-        for (uint256 i = 0; i < n; i++) {
-            cumulativeLiquidityX96 += target.liquidityRatiosX96[i];
-        }
-        if (cumulativeLiquidityX96 != Q96) {
-            revert InvalidTarget();
-        }
-        for (uint256 i = 0; i < n; i++) {
-            if (target.lowerTicks[i] >= target.upperTicks[i]) {
-                revert InvalidTarget();
-            }
-        }
+    /// ---------------------- PUBLIC VIEW FUNCTIONS ----------------------
+
+    /// @inheritdoc ICore
+    function positionCount() public view override returns (uint256) {
+        return _positions.length;
     }
 
-    function _calculateTargetCapitalX96(
-        TargetPositionInfo memory target,
-        uint160 sqrtPriceX96,
-        uint256 priceX96
-    ) private view returns (uint256 targetCapitalInToken1X96) {
-        for (uint256 j = 0; j < target.lowerTicks.length; j++) {
-            (uint256 amount0, uint256 amount1) = ammModule.getAmountsForLiquidity(
-                uint128(target.liquidityRatiosX96[j]),
-                sqrtPriceX96,
-                target.lowerTicks[j],
-                target.upperTicks[j]
-            );
-            targetCapitalInToken1X96 += Math.mulDiv(amount0, priceX96, Q96) + amount1;
-        }
+    /// @inheritdoc ICore
+    function managedPositionAt(uint256 id)
+        public
+        view
+        override
+        returns (ManagedPositionInfo memory)
+    {
+        return _positions[id];
     }
+
+    /// ---------------------- PRIVATE MUTATING FUNCTIONS ----------------------
 
     function _preprocess(
         RebalanceParams memory params,
@@ -509,9 +465,70 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         );
     }
 
-    receive() external payable {
-        uint256 amount = msg.value;
-        IWETH9(weth).deposit{value: amount}();
-        IERC20(weth).safeTransfer(tx.origin, amount);
+    function _emitRebalanceEvent(address pool, uint256 tokenIdBefore, uint256 tokenIdAfter)
+        private
+    {
+        IAmmModule.AmmPosition memory info = ammModule.getAmmPosition(tokenIdAfter);
+        (uint160 sqrtPriceX96,) = oracle.getOraclePrice(pool);
+        (uint256 amount0, uint256 amount1) = ammModule.getAmountsForLiquidity(
+            info.liquidity, sqrtPriceX96, info.tickLower, info.tickUpper
+        );
+
+        emit Rebalance(
+            RebalanceEventParams({
+                pool: pool,
+                ammPositionInfo: info,
+                sqrtPriceX96: sqrtPriceX96,
+                amount0: amount0,
+                amount1: amount1,
+                ammPositionIdBefore: tokenIdBefore,
+                ammPositionIdAfter: tokenIdAfter
+            })
+        );
+    }
+
+    /// ---------------------- PRIVATE VIEW FUNCTIONS ----------------------
+    
+    function _calculateTargetCapitalX96(
+        TargetPositionInfo memory target,
+        uint160 sqrtPriceX96,
+        uint256 priceX96
+    ) private view returns (uint256 targetCapitalInToken1X96) {
+        for (uint256 j = 0; j < target.lowerTicks.length; j++) {
+            (uint256 amount0, uint256 amount1) = ammModule.getAmountsForLiquidity(
+                uint128(target.liquidityRatiosX96[j]),
+                sqrtPriceX96,
+                target.lowerTicks[j],
+                target.upperTicks[j]
+            );
+            targetCapitalInToken1X96 += Math.mulDiv(amount0, priceX96, Q96) + amount1;
+        }
+    }
+
+    /// ---------------------- PRIVATE PURE FUNCTIONS ----------------------
+
+    function _validateTarget(TargetPositionInfo memory target) private pure {
+        uint256 n = target.liquidityRatiosX96.length;
+        if (n != target.lowerTicks.length) {
+            revert InvalidTarget();
+        }
+        if (n != target.upperTicks.length) {
+            revert InvalidTarget();
+        }
+        if (n != target.info.ammPositionIds.length) {
+            revert InvalidTarget();
+        }
+        uint256 cumulativeLiquidityX96 = 0;
+        for (uint256 i = 0; i < n; i++) {
+            cumulativeLiquidityX96 += target.liquidityRatiosX96[i];
+        }
+        if (cumulativeLiquidityX96 != Q96) {
+            revert InvalidTarget();
+        }
+        for (uint256 i = 0; i < n; i++) {
+            if (target.lowerTicks[i] >= target.upperTicks[i]) {
+                revert InvalidTarget();
+            }
+        }
     }
 }

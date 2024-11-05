@@ -10,31 +10,53 @@ import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
  * @dev Implements various strategies for Pulse V1, including Original, Lazy Syncing, Lazy Ascending, and Lazy Descending strategies.
  */
 interface IPulseStrategyModule is IStrategyModule {
-    // Custom errors to address operation failures
-    error InvalidParams(); // Thrown when input parameters are invalid
-    error InvalidLength(); // Thrown when an array length is incorrect
-    error InvalidPosition(); // Thrown when count of amm position is not equal to 2 in case of Tamper strategy
+    /**
+     * @notice Thrown when input parameters are invalid.
+     */
+    error InvalidParams();
 
-    // Enum representing different types of strategies
+    /**
+     * @notice Thrown when an array length is incorrect.
+     */
+    error InvalidLength();
+
+    /**
+     * @notice Thrown when the count of AMM positions is not equal to 2 in the case of the Tamper strategy.
+     */
+    error InvalidPosition();
+
+    /**
+     * @notice Enum representing different types of strategies.
+     * @dev Defines the strategies available for AMM operations.
+     * @value Original Original Pulse V1 strategy.
+     * @value LazySyncing Lazy syncing strategy.
+     * @value LazyAscending Lazy ascending strategy.
+     * @value LazyDescending Lazy descending strategy.
+     * @value Tamper Tamper strategy.
+     */
     enum StrategyType {
-        Original, // Original Pulse V1 strategy
-        LazySyncing, // Lazy syncing strategy
+        Original,      // Original Pulse V1 strategy
+        LazySyncing,   // Lazy syncing strategy
         LazyAscending, // Lazy ascending strategy
         LazyDescending, // Lazy descending strategy
-        Tamper // Tamper strategy
-
+        Tamper         // Tamper strategy
     }
 
     /**
-     * @dev Struct for strategy parameters.
-     * Encapsulates the details required to execute different types of strategies.
+     * @notice Parameters used to define a strategy for AMM operations.
+     * @dev This struct encapsulates the details required to execute different types of strategies.
+     * @param strategyType The type of strategy being employed.
+     * @param tickNeighborhood The neighborhood of ticks to consider for rebalancing.
+     * @param tickSpacing The tick spacing of the corresponding AMM pool.
+     * @param width The width of the interval for rebalancing.
+     * @param maxLiquidityRatioDeviationX96 The maximum allowed deviation of the liquidity ratio for the lower position.
      */
     struct StrategyParams {
-        StrategyType strategyType; // Type of strategy
-        int24 tickNeighborhood; // Neighborhood of ticks to consider for rebalancing
-        int24 tickSpacing; // tickSpacing of the corresponding amm pool
-        int24 width; // Width of the interval
-        uint256 maxLiquidityRatioDeviationX96; // The maximum allowed deviation of the liquidity ratio for lower position.
+        StrategyType strategyType;
+        int24 tickNeighborhood;
+        int24 tickSpacing;
+        int24 width;
+        uint256 maxLiquidityRatioDeviationX96;
     }
 
     /**

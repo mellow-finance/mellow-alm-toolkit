@@ -32,6 +32,8 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
     /// @inheritdoc ILpWrapper
     uint256 public totalSupplyLimit;
 
+    /// ---------------------- INITIALIZER FUNCTIONS ----------------------
+
     constructor(address core_) VeloFarm(core_) {
         if (core_ == address(0)) {
             revert AddressZero();
@@ -76,6 +78,8 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
         _mint(this_, initialTotalSupply);
         emit TotalSupplyLimitUpdated(totalSupplyLimit, 0, totalSupply());
     }
+
+    /// ---------------------- EXTERNAL MUTATING FUNCTIONS ----------------------
 
     /// @inheritdoc ILpWrapper
     function deposit(
@@ -163,6 +167,141 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
         emit Deposit(_msgSender(), to, pool, actualAmount0, actualAmount1, lpAmount, totalSupply());
     }
 
+    /// @inheritdoc ILpWrapper
+    function withdraw(
+        uint256 lpAmount,
+        uint256 minAmount0,
+        uint256 minAmount1,
+        address to,
+        uint256 deadline
+    ) external nonReentrant returns (uint256 amount0, uint256 amount1, uint256 actualLpAmount) {
+        if (block.timestamp > deadline) {
+            revert Deadline();
+        }
+
+        address sender = _msgSender();
+        actualLpAmount = lpAmount.min(balanceOf(sender));
+        if (actualLpAmount == 0) {
+            revert InsufficientLpAmount();
+        }
+
+        uint256 totalSupply_ = totalSupply();
+        _burn(sender, actualLpAmount);
+        (amount0, amount1) = _directWithdraw(
+            actualLpAmount, totalSupply_, to, core.managedPositionAt(positionId).ammPositionIds
+        );
+        if (amount0 < minAmount0 || amount1 < minAmount1) {
+            revert InsufficientAmounts();
+        }
+        _getRewards(to);
+        emit Withdraw(sender, to, pool, amount0, amount1, lpAmount, totalSupply());
+    }
+
+    /// @inheritdoc ILpWrapper
+    function setPositionParams(
+        uint32 slippageD9,
+        IVeloAmmModule.CallbackParams calldata callbackParams,
+        IPulseStrategyModule.StrategyParams calldata strategyParams,
+        IVeloOracle.SecurityParams calldata securityParams
+    ) external {
+        setPositionParams(
+            slippageD9,
+            abi.encode(callbackParams),
+            abi.encode(strategyParams),
+            abi.encode(securityParams)
+        );
+    }
+
+    /// @inheritdoc ILpWrapper
+    function setPositionParams(
+        uint32 slippageD9,
+        bytes memory callbackParams,
+        bytes memory strategyParams,
+        bytes memory securityParams
+    ) public {
+        _requireAdmin();
+        core.setPositionParams(
+            positionId, slippageD9, callbackParams, strategyParams, securityParams
+        );
+
+        emit PositionParamsSet(
+            slippageD9,
+            abi.decode(callbackParams, (IVeloAmmModule.CallbackParams)),
+            abi.decode(strategyParams, (IPulseStrategyModule.StrategyParams)),
+            abi.decode(securityParams, (IVeloOracle.SecurityParams))
+        );
+    }
+
+    /// @inheritdoc ILpWrapper
+    function setSlippageD9(uint32 slippageD9) external {
+        ICore.ManagedPositionInfo memory info = core.managedPositionAt(positionId);
+        setPositionParams(slippageD9, info.callbackParams, info.strategyParams, info.securityParams);
+    }
+
+    /// @inheritdoc ILpWrapper
+    function setCallbackParams(IVeloAmmModule.CallbackParams calldata callbackParams) external {
+        ICore.ManagedPositionInfo memory info = core.managedPositionAt(positionId);
+        setPositionParams(
+            info.slippageD9, abi.encode(callbackParams), info.strategyParams, info.securityParams
+        );
+    }
+
+    /// @inheritdoc ILpWrapper
+    function setStrategyParams(IPulseStrategyModule.StrategyParams calldata strategyParams)
+        external
+    {
+        ICore.ManagedPositionInfo memory info = core.managedPositionAt(positionId);
+        setPositionParams(
+            info.slippageD9, info.callbackParams, abi.encode(strategyParams), info.securityParams
+        );
+    }
+
+    /// @inheritdoc ILpWrapper
+    function setSecurityParams(IVeloOracle.SecurityParams calldata securityParams) external {
+        ICore.ManagedPositionInfo memory info = core.managedPositionAt(positionId);
+        setPositionParams(
+            info.slippageD9, info.callbackParams, info.strategyParams, abi.encode(securityParams)
+        );
+    }
+
+    /// @inheritdoc ILpWrapper
+    function setTotalSupplyLimit(uint256 newTotalSupplyLimit) external {
+        _requireAdmin();
+        emit TotalSupplyLimitUpdated(newTotalSupplyLimit, totalSupplyLimit, totalSupply());
+        totalSupplyLimit = newTotalSupplyLimit;
+    }
+
+    /// @inheritdoc ILpWrapper
+    function emptyRebalance() external nonReentrant {
+        core.emptyRebalance(positionId);
+    }
+
+    /// ---------------------- EXTERNAL VIEW FUNCTIONS ----------------------
+
+    /// @inheritdoc ILpWrapper
+    function protocolParams()
+        external
+        view
+        returns (IVeloAmmModule.ProtocolParams memory params, uint256 d9)
+    {
+        return (abi.decode(core.protocolParams(), (IVeloAmmModule.ProtocolParams)), D9);
+    }
+
+    /// @inheritdoc ILpWrapper
+    function getInfo() external view returns (PositionLibrary.Position[] memory data) {
+        ICore.ManagedPositionInfo memory info = core.managedPositionAt(positionId);
+        data = new PositionLibrary.Position[](info.ammPositionIds.length);
+        for (uint256 i = 0; i < info.ammPositionIds.length; i++) {
+            data[i] = PositionLibrary.getPosition(positionManager, info.ammPositionIds[i]);
+        }
+    }
+
+    /// ---------------------- INTERNAL MUTABLE FUNCTIONS ----------------------
+
+    function _collectRewardsImplementation() internal override {
+        core.collectRewards(positionId);
+    }
+
     function _directDeposit(
         uint256 amount0,
         uint256 amount1,
@@ -200,36 +339,6 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
         }
     }
 
-    /// @inheritdoc ILpWrapper
-    function withdraw(
-        uint256 lpAmount,
-        uint256 minAmount0,
-        uint256 minAmount1,
-        address to,
-        uint256 deadline
-    ) external nonReentrant returns (uint256 amount0, uint256 amount1, uint256 actualLpAmount) {
-        if (block.timestamp > deadline) {
-            revert Deadline();
-        }
-
-        address sender = _msgSender();
-        actualLpAmount = lpAmount.min(balanceOf(sender));
-        if (actualLpAmount == 0) {
-            revert InsufficientLpAmount();
-        }
-
-        uint256 totalSupply_ = totalSupply();
-        _burn(sender, actualLpAmount);
-        (amount0, amount1) = _directWithdraw(
-            actualLpAmount, totalSupply_, to, core.managedPositionAt(positionId).ammPositionIds
-        );
-        if (amount0 < minAmount0 || amount1 < minAmount1) {
-            revert InsufficientAmounts();
-        }
-        _getRewards(to);
-        emit Withdraw(sender, to, pool, amount0, amount1, lpAmount, totalSupply());
-    }
-
     function _directWithdraw(
         uint256 actualLpAmount,
         uint256 totalSupply,
@@ -249,102 +358,5 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
             amount0 += actualAmount0;
             amount1 += actualAmount1;
         }
-    }
-
-    /// @inheritdoc ILpWrapper
-    function protocolParams()
-        external
-        view
-        returns (IVeloAmmModule.ProtocolParams memory params, uint256 d9)
-    {
-        return (abi.decode(core.protocolParams(), (IVeloAmmModule.ProtocolParams)), D9);
-    }
-
-    /// @inheritdoc ILpWrapper
-    function getInfo() external view returns (PositionLibrary.Position[] memory data) {
-        ICore.ManagedPositionInfo memory info = core.managedPositionAt(positionId);
-        data = new PositionLibrary.Position[](info.ammPositionIds.length);
-        for (uint256 i = 0; i < info.ammPositionIds.length; i++) {
-            data[i] = PositionLibrary.getPosition(positionManager, info.ammPositionIds[i]);
-        }
-    }
-
-    /// @inheritdoc ILpWrapper
-    function setPositionParams(
-        uint32 slippageD9,
-        IVeloAmmModule.CallbackParams calldata callbackParams,
-        IPulseStrategyModule.StrategyParams calldata strategyParams,
-        IVeloOracle.SecurityParams calldata securityParams
-    ) external {
-        setPositionParams(
-            slippageD9,
-            abi.encode(callbackParams),
-            abi.encode(strategyParams),
-            abi.encode(securityParams)
-        );
-    }
-
-    function setSlippageD9(uint32 slippageD9) external {
-        ICore.ManagedPositionInfo memory info = core.managedPositionAt(positionId);
-        setPositionParams(slippageD9, info.callbackParams, info.strategyParams, info.securityParams);
-    }
-
-    function setCallbackParams(IVeloAmmModule.CallbackParams calldata callbackParams) external {
-        ICore.ManagedPositionInfo memory info = core.managedPositionAt(positionId);
-        setPositionParams(
-            info.slippageD9, abi.encode(callbackParams), info.strategyParams, info.securityParams
-        );
-    }
-
-    function setStrategyParams(IPulseStrategyModule.StrategyParams calldata strategyParams)
-        external
-    {
-        ICore.ManagedPositionInfo memory info = core.managedPositionAt(positionId);
-        setPositionParams(
-            info.slippageD9, info.callbackParams, abi.encode(strategyParams), info.securityParams
-        );
-    }
-
-    function setSecurityParams(IVeloOracle.SecurityParams calldata securityParams) external {
-        ICore.ManagedPositionInfo memory info = core.managedPositionAt(positionId);
-        setPositionParams(
-            info.slippageD9, info.callbackParams, info.strategyParams, abi.encode(securityParams)
-        );
-    }
-
-    /// @inheritdoc ILpWrapper
-    function setPositionParams(
-        uint32 slippageD9,
-        bytes memory callbackParams,
-        bytes memory strategyParams,
-        bytes memory securityParams
-    ) public {
-        _requireAdmin();
-        core.setPositionParams(
-            positionId, slippageD9, callbackParams, strategyParams, securityParams
-        );
-
-        emit PositionParamsSet(
-            slippageD9,
-            abi.decode(callbackParams, (IVeloAmmModule.CallbackParams)),
-            abi.decode(strategyParams, (IPulseStrategyModule.StrategyParams)),
-            abi.decode(securityParams, (IVeloOracle.SecurityParams))
-        );
-    }
-
-    /// @inheritdoc ILpWrapper
-    function setTotalSupplyLimit(uint256 newTotalSupplyLimit) external {
-        _requireAdmin();
-        emit TotalSupplyLimitUpdated(newTotalSupplyLimit, totalSupplyLimit, totalSupply());
-        totalSupplyLimit = newTotalSupplyLimit;
-    }
-
-    /// @inheritdoc ILpWrapper
-    function emptyRebalance() external nonReentrant {
-        core.emptyRebalance(positionId);
-    }
-
-    function _collectRewardsImplementation() internal override {
-        core.collectRewards(positionId);
     }
 }

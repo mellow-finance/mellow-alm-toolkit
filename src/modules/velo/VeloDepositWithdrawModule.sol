@@ -9,10 +9,14 @@ contract VeloDepositWithdrawModule is IVeloDepositWithdrawModule {
     /// @inheritdoc IVeloDepositWithdrawModule
     INonfungiblePositionManager public immutable positionManager;
 
+    /// ---------------------- INITIALIZER FUNCTIONS ----------------------
+
     constructor(INonfungiblePositionManager positionManager_) {
         positionManager = positionManager_;
     }
 
+    /// ---------------------- EXTERNAL MUTATING FUNCTIONS ----------------------
+    
     /// @inheritdoc IAmmDepositWithdrawModule
     function deposit(
         uint256 tokenId,

@@ -10,20 +10,42 @@ import "@openzeppelin/contracts/access/extensions/IAccessControlEnumerable.sol";
 
 /**
  * @title ILpWrapper Interface
- * @dev Interface for a liquidity pool wrapper, facilitating interactions between LP tokens, AMM modules, and core contract functionalities.
+ * @notice Interface for the LP token wrapper that combines functionalities for managing liquidity pool positions.
+ * @dev This contract extends functionalities from `IVeloFarm`, `IAccessControlEnumerable`, and `IERC20`, and is designed
+ *      to facilitate deposit, withdrawal, and parameter management for liquidity positions within a pool.
+ *      It provides role-based access control, emits events for critical operations, and handles errors gracefully.
  */
 interface ILpWrapper is IVeloFarm, IAccessControlEnumerable, IERC20 {
-    // Custom errors for handling operation failures
-    error InsufficientAmounts(); // Thrown when provided amounts are insufficient for operation execution
-    error InsufficientAllowance(); // Thrown when provided allowance are insufficient for operation execution
-    error InsufficientLpAmount(); // Thrown when the LP amount for withdrawal is insufficient
-    error AlreadyInitialized(); // Thrown if the wrapper is already initialized
-    error DepositCallFailed(); // Thrown when a deposit operation fails due to deletage call to the AmmDepositWithdrawModule
-    error WithdrawCallFailed(); // Thrown when a withdrawal operation fails due to deletage call to the AmmDepositWithdrawModule
-    error Deadline(); // Thrown when the deadline for a function call has passed
-    error InvalidPositionsCount(); // Thrown when the number of positions is invalid
-    error TotalSupplyLimitReached(); // Thrown when the amount of liquidity is above the limit
+    /**
+     * @notice Thrown when provided amounts are insufficient to execute the operation.
+     */
+    error InsufficientAmounts();
 
+    /**
+     * @notice Thrown when the LP amount is insufficient for a withdrawal operation.
+     */
+    error InsufficientLpAmount();
+
+    /**
+     * @notice Thrown when the deadline for a function call has passed.
+     */
+    error Deadline();
+
+    /**
+     * @notice Thrown when the liquidity amount exceeds the total supply limit.
+     */
+    error TotalSupplyLimitReached();
+
+    /**
+     * @notice Emitted when a deposit is made into the `LpWrapper`.
+     * @param sender The address initiating the deposit.
+     * @param recipient The address receiving the deposited LP tokens.
+     * @param pool The address of the liquidity pool where the deposit is made.
+     * @param amount0 The amount of token0 deposited.
+     * @param amount1 The amount of token1 deposited.
+     * @param lpAmount The amount of LP tokens minted as a result of the deposit.
+     * @param totalSupply The updated total supply of LP tokens after the deposit.
+     */
     event Deposit(
         address indexed sender,
         address indexed recipient,
@@ -34,6 +56,16 @@ interface ILpWrapper is IVeloFarm, IAccessControlEnumerable, IERC20 {
         uint256 totalSupply
     );
 
+    /**
+     * @notice Emitted when a withdrawal is made from the `LpWrapper`.
+     * @param sender The address initiating the withdrawal.
+     * @param recipient The address receiving the withdrawn tokens.
+     * @param pool The address of the liquidity pool from which the withdrawal is made.
+     * @param amount0 The amount of token0 withdrawn.
+     * @param amount1 The amount of token1 withdrawn.
+     * @param lpAmount The amount of LP tokens burned as a result of the withdrawal.
+     * @param totalSupply The updated total supply of LP tokens after the withdrawal.
+     */
     event Withdraw(
         address indexed sender,
         address indexed recipient,
@@ -44,6 +76,13 @@ interface ILpWrapper is IVeloFarm, IAccessControlEnumerable, IERC20 {
         uint256 totalSupply
     );
 
+    /**
+     * @notice Emitted when position parameters are updated.
+     * @param slippageD9 The slippage tolerance set, in decimal format with 9 decimals.
+     * @param callbackParams The callback parameters for AMM interactions.
+     * @param strategyParams The strategy parameters configuring the trading strategy.
+     * @param securityParams The security parameters for managing oracle and risk controls.
+     */
     event PositionParamsSet(
         uint56 slippageD9,
         IVeloAmmModule.CallbackParams callbackParams,
@@ -51,11 +90,35 @@ interface ILpWrapper is IVeloFarm, IAccessControlEnumerable, IERC20 {
         IVeloOracle.SecurityParams securityParams
     );
 
+    /**
+     * @notice Emitted when the total supply limit is updated.
+     * @param newTotalSupplyLimit The new limit for the total supply of LP tokens.
+     * @param totalSupplyLimitOld The previous limit for the total supply of LP tokens.
+     * @param totalSupplyCurrent The current total supply of LP tokens at the time of update.
+     */
     event TotalSupplyLimitUpdated(
-        uint256 newTotalSupplyLimit, uint256 totalSupplyLimitOld, uint256 totalSupplyCurrent
+        uint256 newTotalSupplyLimit,
+        uint256 totalSupplyLimitOld,
+        uint256 totalSupplyCurrent
     );
 
-    // Position data structure
+    /**
+     * @notice Stores data related to a specific liquidity position.
+     * @dev This struct holds detailed information on the parameters and state of a liquidity position within a pool.
+     * @param tokenId The unique identifier of the position.
+     * @param nonce A nonce used for position uniqueness and tracking changes.
+     * @param operator The address authorized to manage or operate this position.
+     * @param token0 The address of the first token in the pair (token0).
+     * @param token1 The address of the second token in the pair (token1).
+     * @param tickSpacing The tick spacing of the pool, representing the minimum tick interval.
+     * @param tickLower The lower bound tick of the position’s range.
+     * @param tickUpper The upper bound tick of the position’s range.
+     * @param liquidity The amount of liquidity provided by this position.
+     * @param feeGrowthInside0LastX128 The last recorded fee growth for token0 inside the position’s tick range, in Q128 format.
+     * @param feeGrowthInside1LastX128 The last recorded fee growth for token1 inside the position’s tick range, in Q128 format.
+     * @param tokensOwed0 The amount of token0 owed to the position due to earned fees.
+     * @param tokensOwed1 The amount of token1 owed to the position due to earned fees.
+     */
     struct PositionData {
         uint256 tokenId;
         uint96 nonce;
@@ -122,6 +185,18 @@ interface ILpWrapper is IVeloFarm, IAccessControlEnumerable, IERC20 {
      */
     function totalSupplyLimit() external view returns (uint256);
 
+    /**
+     * @notice Initializes the contract with the specified configuration parameters.
+     * @dev This function sets up initial values for the position ID, total supply, supply limit, and assigns administrative roles.
+     *      This function should be called only once to initialize the contract.
+     * @param positionId_ The unique identifier for the `Core` position.
+     * @param initialTotalSupply The initial total supply of LP tokens.
+     * @param totalSupplyLimit_ The maximum allowable total supply of LP tokens.
+     * @param admin_ The address of the contract administrator, with elevated permissions.
+     * @param manager_ The address of the contract manager, responsible for managing positions.
+     * @param name_ The name of the LP token.
+     * @param symbol_ The symbol of the LPtoken.
+     */
     function initialize(
         uint256 positionId_,
         uint256 initialTotalSupply,
@@ -203,6 +278,43 @@ interface ILpWrapper is IVeloFarm, IAccessControlEnumerable, IERC20 {
     ) external;
 
     /**
+     * @notice Sets the slippage tolerance for the strategy, in decimal format with 9 decimal places.
+     * @dev This function updates the slippage tolerance parameter, allowing fine control over acceptable price movement during rebalance.
+     * @param slippageD9 The slippage tolerance expressed as a uint32 value, with 9 decimal places (e.g., 500000000 represents 0.5%).
+     * Requirements:
+     * - Caller must have the ADMIN_ROLE.
+     */
+    function setSlippageD9(uint32 slippageD9) external;
+
+    /**
+     * @notice Sets the callback parameters for AMM interactions.
+     * @dev This function updates the callback parameters that define specific configurations or behaviors
+     *      when interacting with the AMM (Automated Market Maker).
+     * @param callbackParams A struct containing the callback parameters, which may include settings
+     *        like minimum expected output, slippage tolerance, or other AMM-specific configurations.
+     */
+    function setCallbackParams(IVeloAmmModule.CallbackParams calldata callbackParams) external;
+
+    /**
+     * @notice Sets the parameters for the strategy.
+     * @dev This function updates the strategy parameters for managing the position.
+     * @param strategyParams A struct containing the strategy parameters, including details like position width, tick spacing, and other relevant settings for strategy configuration.
+     * Requirements:
+     * - Caller must have the ADMIN_ROLE.
+     */
+    function setStrategyParams(IPulseStrategyModule.StrategyParams calldata strategyParams)
+        external;
+
+    /**
+     * @notice Sets the security parameters for the oracle or system.
+     * @dev This function updates security-related parameters, providing control over risk management settings such as price limits, validation intervals, or other security thresholds.
+     * @param securityParams A struct containing security parameters, including configurations relevant to maintaining oracle integrity and risk controls.
+     * Requirements:
+     * - Caller must have the ADMIN_ROLE.
+     */
+    function setSecurityParams(IVeloOracle.SecurityParams calldata securityParams) external;
+
+    /**
      * @dev Sets a new value of `totalSupplyLimit`
      * @param totalSupplyLimitNew The value of a new `totalSupplyLimit`.
      * Requirements:
@@ -219,7 +331,21 @@ interface ILpWrapper is IVeloFarm, IAccessControlEnumerable, IERC20 {
      */
     function emptyRebalance() external;
 
+    /**
+     * @notice Returns the address of the liquidity pool associated with this contract.
+     * @return The address of the liquidity pool.
+     */
     function pool() external view returns (address);
+
+    /**
+     * @notice Returns the ERC20 token contract for token0 in the pool.
+     * @return The IERC20 contract of token0.
+     */
     function token0() external view returns (IERC20);
+
+    /**
+     * @notice Returns the ERC20 token contract for token1 in the pool.
+     * @return The IERC20 contract of token1.
+     */
     function token1() external view returns (IERC20);
 }

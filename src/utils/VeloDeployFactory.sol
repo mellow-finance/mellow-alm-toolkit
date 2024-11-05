@@ -25,6 +25,8 @@ contract VeloDeployFactory is DefaultAccessControl, IERC721Receiver, IVeloDeploy
     uint16 public constant MIN_OBSERVATION_CARDINALITY = 100;
     uint256 public constant Q96 = 2 ** 96;
 
+    /// ---------------------- INITIALIZER FUNCTIONS ----------------------
+
     constructor(
         address admin_,
         ICore core_,
@@ -39,27 +41,9 @@ contract VeloDeployFactory is DefaultAccessControl, IERC721Receiver, IVeloDeploy
         lpWrapperImplementation = lpWrapperImplementation_;
     }
 
-    function setLpWrapperAdmin(address lpWrapperAdmin_) external {
-        _requireAdmin();
-        if (lpWrapperAdmin_ == address(0)) {
-            revert AddressZero();
-        }
-        lpWrapperAdmin = lpWrapperAdmin_;
-    }
+    /// ---------------------- EXTERNAL MUTATING FUNCTIONS ----------------------
 
-    function setLpWrapperManager(address lpWrapperManager_) external {
-        _requireAdmin();
-        lpWrapperManager = lpWrapperManager_;
-    }
-
-    function setMinInitialTotalSupply(uint256 minInitialTotalSupply_) external {
-        _requireAdmin();
-        if (minInitialTotalSupply_ == 0) {
-            revert InvalidParams();
-        }
-        minInitialTotalSupply = minInitialTotalSupply_;
-    }
-
+    /// @inheritdoc IVeloDeployFactory
     function createStrategy(DeployParams calldata params) external returns (ILpWrapper lpWrapper) {
         _requireAtLeastOperator();
 
@@ -115,6 +99,38 @@ contract VeloDeployFactory is DefaultAccessControl, IERC721Receiver, IVeloDeploy
 
         _emitStrategyCreated(positionId, params.strategyParams);
     }
+    
+    /// @inheritdoc IVeloDeployFactory
+    function removeWrapperForPool(address pool) external {
+        _requireAdmin();
+        delete poolToWrapper[pool];
+    }
+
+    /// @inheritdoc IVeloDeployFactory
+    function setLpWrapperAdmin(address lpWrapperAdmin_) external {
+        _requireAdmin();
+        if (lpWrapperAdmin_ == address(0)) {
+            revert AddressZero();
+        }
+        lpWrapperAdmin = lpWrapperAdmin_;
+    }
+
+    /// @inheritdoc IVeloDeployFactory
+    function setLpWrapperManager(address lpWrapperManager_) external {
+        _requireAdmin();
+        lpWrapperManager = lpWrapperManager_;
+    }
+
+    /// @inheritdoc IVeloDeployFactory
+    function setMinInitialTotalSupply(uint256 minInitialTotalSupply_) external {
+        _requireAdmin();
+        if (minInitialTotalSupply_ == 0) {
+            revert InvalidParams();
+        }
+        minInitialTotalSupply = minInitialTotalSupply_;
+    }
+
+    /// ---------------------- EXTERNAL PURE FUNCTIONS ----------------------
 
     /// @inheritdoc IERC721Receiver
     function onERC721Received(address, address, uint256, bytes calldata)
@@ -125,12 +141,9 @@ contract VeloDeployFactory is DefaultAccessControl, IERC721Receiver, IVeloDeploy
         return IERC721Receiver.onERC721Received.selector;
     }
 
-    /// @inheritdoc IVeloDeployFactory
-    function removeWrapperForPool(address pool) external {
-        _requireAdmin();
-        delete poolToWrapper[pool];
-    }
+    /// ---------------------- PUBLIC VIEW FUNCTIONS ----------------------
 
+    /// @inheritdoc IVeloDeployFactory
     function configureNameAndSymbol(ICLPool pool)
         public
         view
@@ -198,6 +211,8 @@ contract VeloDeployFactory is DefaultAccessControl, IERC721Receiver, IVeloDeploy
         }
     }
 
+    /// ----------------  PRIVATE MUTABLE FUNCTIONS  ----------------
+
     function _handleToken(address depositor, IERC20 token, uint256 amount) private {
         address this_ = address(this);
         uint256 balance = token.balanceOf(this_);
@@ -230,7 +245,7 @@ contract VeloDeployFactory is DefaultAccessControl, IERC721Receiver, IVeloDeploy
         emit StrategyCreated(strategyCreatedParams);
     }
 
-    /// ----------------  INTERNAL VIEW FUNCTIONS  ----------------
+    /// ----------------  PRIVATE VIEW FUNCTIONS  ----------------
 
     function _getPositionParamTamper(PoolStrategyParameter memory params)
         private
