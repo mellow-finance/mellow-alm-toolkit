@@ -52,16 +52,16 @@ abstract contract VeloFarm is IVeloFarm, ERC20Upgradeable, ReentrancyGuard {
         uint256 timestamp = block.timestamp;
         uint256 length = rewardRates.length;
         RewardRates memory prevRate = rewardRates[length - 1];
+        uint256 incrementX96 = amount == 0 ? 0 : amount.mulDiv(Q96, totalSupply());
+        uint256 rewardRateX96 = prevRate.rewardRateX96 + incrementX96;
         if (timestamp == prevRate.timestamp) {
             if (amount > 0) {
-                revert InvalidState();
+                rewardRates[length - 1].rewardRateX96 = rewardRateX96;
             }
-            return;
+        } else {
+            rewardRates.push(RewardRates(timestamp, rewardRateX96));
+            timestampToRewardRatesIndex[timestamp] = length;
         }
-
-        uint256 incrementX96 = amount == 0 ? 0 : amount.mulDiv(Q96, totalSupply());
-        rewardRates.push(RewardRates(timestamp, prevRate.rewardRateX96 + incrementX96));
-        timestampToRewardRatesIndex[timestamp] = length;
     }
 
     function getRewards(address recipient) external nonReentrant returns (uint256 amount) {
