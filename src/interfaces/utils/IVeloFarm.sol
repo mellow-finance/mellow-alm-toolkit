@@ -27,8 +27,6 @@ interface IVeloFarm {
 
     function claimable(address account) external view returns (uint256 claimable_);
 
-    function lastWeightedTotalSupply() external view returns (uint256);
-
     function rewardRates(uint256 index) external view returns (uint256 timestamp, uint256 value);
 
     function timestampToRewardRatesIndex(uint256 timestamp) external view returns (uint256);
