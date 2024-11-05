@@ -13,10 +13,11 @@ abstract contract VeloFarm is IVeloFarm, ERC20Upgradeable, ReentrancyGuard {
     address public rewardToken;
     uint256 public initializationTimestamp;
     uint256 public lastWeightedTotalSupply;
-    mapping(address account => uint256) public lastRewardsUpdate;
+    mapping(address account => uint256) public lastBalancesUpdate;
     mapping(address account => uint256) public claimable;
     mapping(uint256 timestamp => uint256) public timestampToRewardRatesIndex;
     RewardRates[] public rewardRates;
+    bool private _isDistributeFunctionCalled;
 
     /// ---------------------- INITIALIZER FUNCTIONS ----------------------
 
@@ -45,8 +46,8 @@ abstract contract VeloFarm is IVeloFarm, ERC20Upgradeable, ReentrancyGuard {
         if (_msgSender() != rewardDistributor) {
             revert InvalidDistributor();
         }
-
         _updateBalances(address(0));
+        _isDistributeFunctionCalled = true;
         uint256 length = rewardRates.length;
         RewardRates memory prevRate = rewardRates[length - 1];
         uint256 timestamp = block.timestamp;
@@ -78,7 +79,7 @@ abstract contract VeloFarm is IVeloFarm, ERC20Upgradeable, ReentrancyGuard {
         view
         returns (bool isDublicate, uint256 balanceIncrement, uint256 rewardsEarned)
     {
-        uint256 prevTimestamp = lastRewardsUpdate[account];
+        uint256 prevTimestamp = lastBalancesUpdate[account];
         if (prevTimestamp == 0) {
             prevTimestamp = initializationTimestamp;
         }
@@ -112,7 +113,15 @@ abstract contract VeloFarm is IVeloFarm, ERC20Upgradeable, ReentrancyGuard {
 
     /// ---------------------- INTERNAL MUTABLE FUNCTIONS ----------------------
 
-    function _collectRewards() internal virtual {}
+    function _collectRewards() internal {
+        _isDistributeFunctionCalled = false;
+        _collectRewardsImplementation();
+        if (!_isDistributeFunctionCalled) {
+            revert InvalidState();
+        }
+    }
+
+    function _collectRewardsImplementation() internal virtual {}
 
     function _getRewards(address recipient) internal returns (uint256 amount) {
         address sender = _msgSender();
@@ -131,7 +140,7 @@ abstract contract VeloFarm is IVeloFarm, ERC20Upgradeable, ReentrancyGuard {
         if (isDublicate) {
             return;
         }
-        lastRewardsUpdate[account] = block.timestamp;
+        lastBalancesUpdate[account] = block.timestamp;
         if (account == address(0)) {
             lastWeightedTotalSupply = balanceIncrement;
         } else {

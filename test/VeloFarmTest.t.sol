@@ -26,7 +26,7 @@ contract MockVeloFarm is VeloFarm {
         _burn(from, amount);
     }
 
-    function _collectRewards() internal override {
+    function _collectRewardsImplementation() internal override {
         uint256 rewards = 0;
         if (lastDistributionTimestamp < block.timestamp) {
             rewards = newRewards;
