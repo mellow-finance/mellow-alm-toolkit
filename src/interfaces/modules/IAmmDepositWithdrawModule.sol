@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: BSL-1.1
-pragma solidity ^0.8.0;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.25;
 
 /**
  * @title IAmmDepositWithdrawModule Interface
@@ -25,7 +25,9 @@ interface IAmmDepositWithdrawModule {
         uint256 tokenId,
         uint256 amount0,
         uint256 amount1,
-        address from
+        address from,
+        address token0,
+        address token1
     ) external returns (uint256 actualAmount0, uint256 actualAmount1);
 
     /**
@@ -41,9 +43,7 @@ interface IAmmDepositWithdrawModule {
      *
      * @notice This function will collect tokens from position associated with the specified tokenId.
      */
-    function withdraw(
-        uint256 tokenId,
-        uint256 liquidity,
-        address to
-    ) external returns (uint256 actualAmount0, uint256 actualAmount1);
+    function withdraw(uint256 tokenId, uint256 liquidity, address to)
+        external
+        returns (uint256 actualAmount0, uint256 actualAmount1);
 }

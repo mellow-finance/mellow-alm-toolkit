@@ -1,96 +1,112 @@
-// SPDX-License-Identifier: BSL-1.1
-pragma solidity ^0.8.0;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.25;
 
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "./ILpWrapper.sol";
+
+import "@openzeppelin/contracts/access/extensions/IAccessControlEnumerable.sol";
+import "@openzeppelin/contracts/interfaces/IERC721Receiver.sol";
+import "@openzeppelin/contracts/proxy/Clones.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
-
-import "../ICore.sol";
-import "../modules/velo/IVeloAmmModule.sol";
-import "../modules/velo/IVeloDepositWithdrawModule.sol";
-import "../modules/strategies/IPulseStrategyModule.sol";
-
-import "./IVeloDeployFactoryHelper.sol";
+import "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 
 /**
  * @title IVeloDeployFactory Interface
- * @dev Interface for the VeloDeployFactory contract, facilitating the creation of strategies,
- * LP wrappers, and managing their configurations for Velo pools.
+ * @notice Interface for the VeloDeployFactory contract, facilitating the creation of strategies, LP wrappers,
+ *         and managing configurations for Velo pools.
+ * @dev This interface enables the deployment and configuration of various components in the Velo ecosystem.
+ *      It includes functions for creating strategies, managing pool associations, and updating administrative parameters.
  */
-interface IVeloDeployFactory {
-    // Custom errors for operation failures
+interface IVeloDeployFactory is IAccessControlEnumerable {
+    /**
+     * @notice Thrown when provided parameters are invalid.
+     */
     error InvalidParams();
-    error LpWrapperAlreadyCreated();
 
     /**
-     * @dev Represents the immutable parameters for the VeloDeployFactory contract.
+     * @notice Thrown when attempting to perform an operation on a forbidden pool.
      */
-    struct ImmutableParams {
-        ICore core; // Core contract interface
-        IPulseStrategyModule strategyModule; // Pulse strategy module contract interface
-        IVeloAmmModule veloModule; // Velo AMM module contract interface
-        IVeloDepositWithdrawModule depositWithdrawModule; // Velo deposit/withdraw module contract interface
-        IVeloDeployFactoryHelper helper; // Helper contract interface for the VeloDeployFactory
+    error ForbiddenPool();
+
+    /**
+     * @notice Parameters for a newly created strategy.
+     * @param pool The address of the liquidity pool associated with the strategy.
+     * @param ammPosition Array of positions for the AMM within the strategy.
+     * @param strategyParams Parameters governing the strategy’s behavior and configuration.
+     * @param lpWrapper The address of the LP wrapper associated with the strategy.
+     * @param caller The address of the account that initiated the strategy creation.
+     */
+    struct StrategyCreatedParams {
+        address pool;
+        IVeloAmmModule.AmmPosition[] ammPosition;
+        IPulseStrategyModule.StrategyParams strategyParams;
+        address lpWrapper;
+        address caller;
     }
 
     /**
-     * @dev Represents the mutable parameters for the VeloDeployFactory contract.
+     * @notice Emitted when a strategy is successfully created.
+     * @param params The parameters associated with the newly created strategy.
      */
-    struct MutableParams {
-        address lpWrapperAdmin; // Admin address for the LP wrapper
-        address lpWrapperManager; // Manager address for the LP wrapper
-        address farmOwner; // Owner address for the farm
-        address farmOperator; // Operator address for the farm (compounder)
-        uint256 minInitialLiquidity; // Minimum initial liquidity for the LP wrapper
-    }
+    event StrategyCreated(StrategyCreatedParams params);
 
     /**
-     * @dev Stores addresses related to a specific pool.
-     */
-    struct PoolAddresses {
-        address synthetixFarm; // Synthetix farm contract address
-        address lpWrapper; // LP wrapper contract address
-    }
-
-    /**
-     * @dev Represents the parameters for configuring a strategy.
+     * @notice Parameters for deploying a new strategy.
+     * @param slippageD9 Slippage tolerance with 9 decimals, affecting strategy operations.
+     * @param strategyParams The strategy parameters defining behavior and thresholds.
+     * @param securityParams Security parameters for managing risk within the strategy.
+     * @param pool The address of the CLPool associated with this strategy.
+     * @param maxAmount0 Maximum amount of token0 allowed for the strategy.
+     * @param maxAmount1 Maximum amount of token1 allowed for the strategy.
+     * @param initialTotalSupply Initial total supply of the LP wrapper tokens.
+     * @param totalSupplyLimit Maximum allowable total supply of the LP wrapper tokens.
      */
     struct DeployParams {
-        int24 tickNeighborhood;
         uint32 slippageD9;
-        uint256 tokenId;
-        bytes securityParams;
-        IPulseStrategyModule.StrategyType strategyType;
+        IPulseStrategyModule.StrategyParams strategyParams;
+        IVeloOracle.SecurityParams securityParams;
+        ICLPool pool;
+        uint256 maxAmount0;
+        uint256 maxAmount1;
+        uint256 initialTotalSupply;
+        uint256 totalSupplyLimit;
     }
 
     /**
-     * @dev Updates the mutable parameters of the contract, accessible only to users with the ADMIN_ROLE. This function enables post-deployment
-     * adjustments to key operational settings, reflecting the evolving nature of protocol management and governance.
-     *
-     * @param newMutableParams The new mutable parameters to be applied, including administrative and operational settings crucial for protocol functionality.
-     * Requirements:
-     * - Caller must have the ADMIN_ROLE.
+     * @notice Parameters for configuring a pool strategy.
+     * @param pool The address of the CLPool.
+     * @param strategyParams Strategy parameters defining behavior for the pool.
+     * @param maxAmount0 Maximum amount of token0 allowed for the strategy.
+     * @param maxAmount1 Maximum amount of token1 allowed for the strategy.
+     * @param securityParams Additional security parameters, encoded as bytes, for risk control.
      */
-    function updateMutableParams(
-        MutableParams memory newMutableParams
-    ) external;
+    struct PoolStrategyParameter {
+        ICLPool pool;
+        IPulseStrategyModule.StrategyParams strategyParams;
+        uint256 maxAmount0;
+        uint256 maxAmount1;
+        bytes securityParams;
+    }
 
     /**
-     * @dev Creates a strategy for the given deployParams
-     * @param params DeployParams for the strategy
-     * @return poolAddresses addresses related to the created pool
+     * @notice Information about minting in a specified tick range.
+     * @param amount0 Amount of token0 for the mint operation.
+     * @param amount1 Amount of token1 for the mint operation.
+     * @param tickLower Lower bound of the tick range for minting.
+     * @param tickUpper Upper bound of the tick range for minting.
      */
-    function createStrategy(
-        DeployParams calldata params
-    ) external returns (PoolAddresses memory poolAddresses);
+    struct MintInfo {
+        uint256 amount0;
+        uint256 amount1;
+        int24 tickLower;
+        int24 tickUpper;
+    }
 
     /**
-     * @dev Maps a pool address to its associated addresses.
-     * @param pool Pool address
-     * @return PoolAddresses addresses associated with the pool
+     * @notice Creates a strategy based on provided deployment parameters.
+     * @param params The parameters for deploying the strategy, encapsulated in `DeployParams`.
+     * @return lpWrapper The address of the LP wrapper, which is an ERC20 representation of the LP token.
      */
-    function poolToAddresses(
-        address pool
-    ) external view returns (PoolAddresses memory);
+    function createStrategy(DeployParams calldata params) external returns (ILpWrapper lpWrapper);
 
     /**
      * @dev Removes the addresses associated with a specific pool from the contract's records. This action is irreversible
@@ -106,20 +122,41 @@ interface IVeloDeployFactory {
      * Requirements:
      * - Caller must have the ADMIN role, ensuring that only authorized personnel can alter the protocol's configuration in this manner.
      */
-    function removeAddressesForPool(address pool) external;
+    function removeWrapperForPool(address pool) external;
 
     /**
-     * @dev Retrieves the immutable parameters for the VeloDeployFactory contract.
-     * @return ImmutableParams Immutable parameters for the VeloDeployFactory
+     * @notice Sets a new LP wrapper admin address.
+     * @param lpWrapperAdmin_ The address to set as the LP wrapper admin.
      */
-    function getImmutableParams()
+    function setLpWrapperAdmin(address lpWrapperAdmin_) external;
+
+    /**
+     * @notice Sets a new LP wrapper manager address.
+     * @param lpWrapperManager_ The address to set as the LP wrapper manager.
+     */
+    function setLpWrapperManager(address lpWrapperManager_) external;
+
+    /**
+     * @notice Sets the minimum initial total supply required for an LP wrapper.
+     * @param minInitialTotalSupply_ The minimum initial total supply for new LP wrappers.
+     */
+    function setMinInitialTotalSupply(uint256 minInitialTotalSupply_) external;
+
+    /**
+     * @notice Retrieves the name and symbol for a given pool's associated LP wrapper.
+     * @param pool The address of the pool.
+     * @return name The name of the LP wrapper.
+     * @return symbol The symbol of the LP wrapper.
+     */
+    function configureNameAndSymbol(ICLPool pool)
         external
         view
-        returns (ImmutableParams memory);
+        returns (string memory name, string memory symbol);
 
     /**
-     * @dev Retrieves the mutable parameters for the VeloDeployFactory contract.
-     * @return MutableParams Mutable parameters for the VeloDeployFactory
+     * @notice Maps a pool address to its associated LP wrapper address.
+     * @param pool The address of the pool.
+     * @return lpWrapper The address of the LP wrapper associated with the specified pool.
      */
-    function getMutableParams() external view returns (MutableParams memory);
+    function poolToWrapper(address pool) external view returns (address lpWrapper);
 }

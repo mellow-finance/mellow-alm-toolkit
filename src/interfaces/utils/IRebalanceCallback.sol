@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: BSL-1.1
-pragma solidity ^0.8.0;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.25;
 
 import "../ICore.sol";
 
@@ -10,8 +10,7 @@ interface IRebalanceCallback {
      * @param targets An array of target position information.
      * @return newAmmPositionIds An array of new AMM position IDs.
      */
-    function call(
-        bytes memory data,
-        ICore.TargetPositionInfo[] memory targets
-    ) external returns (uint256[][] memory newAmmPositionIds);
+    function call(bytes memory data, ICore.TargetPositionInfo memory targets)
+        external
+        returns (uint256[] memory newAmmPositionIds);
 }

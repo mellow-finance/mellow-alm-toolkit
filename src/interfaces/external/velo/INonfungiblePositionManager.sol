@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity ^0.8.0;
+pragma solidity 0.8.25;
 pragma abicoder v2;
 
-import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Enumerable.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
 
 import "./IERC721Permit.sol";
-import "./IPeripheryPayments.sol";
+
 import "./IPeripheryImmutableState.sol";
+import "./IPeripheryPayments.sol";
 
 /// @title Non-fungible token for positions
 /// @notice Wraps CL positions in a non-fungible token interface which allows for them to be transferred
@@ -26,10 +27,7 @@ interface INonfungiblePositionManager is
     /// @param amount0 The amount of token0 that was paid for the increase in liquidity
     /// @param amount1 The amount of token1 that was paid for the increase in liquidity
     event IncreaseLiquidity(
-        uint256 indexed tokenId,
-        uint128 liquidity,
-        uint256 amount0,
-        uint256 amount1
+        uint256 indexed tokenId, uint128 liquidity, uint256 amount0, uint256 amount1
     );
     /// @notice Emitted when liquidity is decreased for a position NFT
     /// @param tokenId The ID of the token for which liquidity was decreased
@@ -37,10 +35,7 @@ interface INonfungiblePositionManager is
     /// @param amount0 The amount of token0 that was accounted for the decrease in liquidity
     /// @param amount1 The amount of token1 that was accounted for the decrease in liquidity
     event DecreaseLiquidity(
-        uint256 indexed tokenId,
-        uint128 liquidity,
-        uint256 amount0,
-        uint256 amount1
+        uint256 indexed tokenId, uint128 liquidity, uint256 amount0, uint256 amount1
     );
     /// @notice Emitted when tokens are collected for a position NFT
     /// @dev The amounts reported may not be exactly equivalent to the amounts transferred, due to rounding behavior
@@ -48,12 +43,7 @@ interface INonfungiblePositionManager is
     /// @param recipient The address of the account that received the collected tokens
     /// @param amount0 The amount of token0 owed to the position that was collected
     /// @param amount1 The amount of token1 owed to the position that was collected
-    event Collect(
-        uint256 indexed tokenId,
-        address recipient,
-        uint256 amount0,
-        uint256 amount1
-    );
+    event Collect(uint256 indexed tokenId, address recipient, uint256 amount0, uint256 amount1);
     /// @notice Emitted when a new Token Descriptor is set
     /// @param tokenDescriptor Address of the new Token Descriptor
     event TokenDescriptorChanged(address indexed tokenDescriptor);
@@ -76,9 +66,7 @@ interface INonfungiblePositionManager is
     /// @return feeGrowthInside1LastX128 The fee growth of token1 as of the last action on the individual position
     /// @return tokensOwed0 The uncollected amount of token0 owed to the position as of the last computation
     /// @return tokensOwed1 The uncollected amount of token1 owed to the position as of the last computation
-    function positions(
-        uint256 tokenId
-    )
+    function positions(uint256 tokenId)
         external
         view
         returns (
@@ -125,17 +113,10 @@ interface INonfungiblePositionManager is
     /// @return liquidity The amount of liquidity for this position
     /// @return amount0 The amount of token0
     /// @return amount1 The amount of token1
-    function mint(
-        MintParams calldata params
-    )
+    function mint(MintParams calldata params)
         external
         payable
-        returns (
-            uint256 tokenId,
-            uint128 liquidity,
-            uint256 amount0,
-            uint256 amount1
-        );
+        returns (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1);
 
     struct IncreaseLiquidityParams {
         uint256 tokenId;
@@ -156,9 +137,7 @@ interface INonfungiblePositionManager is
     /// @return liquidity The new liquidity amount as a result of the increase
     /// @return amount0 The amount of token0 to acheive resulting liquidity
     /// @return amount1 The amount of token1 to acheive resulting liquidity
-    function increaseLiquidity(
-        IncreaseLiquidityParams calldata params
-    )
+    function increaseLiquidity(IncreaseLiquidityParams calldata params)
         external
         payable
         returns (uint128 liquidity, uint256 amount0, uint256 amount1);
@@ -183,9 +162,10 @@ interface INonfungiblePositionManager is
     /// @dev for tokens that have very high decimals.
     /// @dev The amount of tokens necessary for the loss is: 3.4028237e+38.
     /// @dev This is equivalent to 1e20 value with 18 decimals.
-    function decreaseLiquidity(
-        DecreaseLiquidityParams calldata params
-    ) external payable returns (uint256 amount0, uint256 amount1);
+    function decreaseLiquidity(DecreaseLiquidityParams calldata params)
+        external
+        payable
+        returns (uint256 amount0, uint256 amount1);
 
     struct CollectParams {
         uint256 tokenId;
@@ -202,9 +182,10 @@ interface INonfungiblePositionManager is
     /// amount1Max The maximum amount of token1 to collect
     /// @return amount0 The amount of fees collected in token0
     /// @return amount1 The amount of fees collected in token1
-    function collect(
-        CollectParams calldata params
-    ) external payable returns (uint256 amount0, uint256 amount1);
+    function collect(CollectParams calldata params)
+        external
+        payable
+        returns (uint256 amount0, uint256 amount1);
 
     /// @notice Burns a token ID, which deletes it from the NFT contract. The token must have 0 liquidity and all tokens
     /// must be collected first.

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity ^0.8.0;
+pragma solidity 0.8.25;
 pragma abicoder v2;
 
 /// @title Tick Lens
@@ -18,8 +18,8 @@ interface ITickLens {
     /// @param tickBitmapIndex The index of the word in the tick bitmap for which to parse the bitmap and
     /// fetch all the populated ticks
     /// @return populatedTicks An array of tick data for the given word in the tick bitmap
-    function getPopulatedTicksInWord(
-        address pool,
-        int16 tickBitmapIndex
-    ) external view returns (PopulatedTick[] memory populatedTicks);
+    function getPopulatedTicksInWord(address pool, int16 tickBitmapIndex)
+        external
+        view
+        returns (PopulatedTick[] memory populatedTicks);
 }

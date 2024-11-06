@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity ^0.8.0;
+pragma solidity 0.8.25;
 
 /// @title Callback for ICLPoolActions#swap
 /// @notice Any contract that calls ICLPoolActions#swap must implement this interface
@@ -13,9 +13,6 @@ interface ICLSwapCallback {
     /// @param amount1Delta The amount of token1 that was sent (negative) or must be received (positive) by the pool by
     /// the end of the swap. If positive, the callback must send that amount of token1 to the pool.
     /// @param data Any data passed through by the caller via the ICLPoolActions#swap call
-    function uniswapV3SwapCallback(
-        int256 amount0Delta,
-        int256 amount1Delta,
-        bytes calldata data
-    ) external;
+    function uniswapV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata data)
+        external;
 }

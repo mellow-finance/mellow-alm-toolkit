@@ -1,14 +1,48 @@
-// SPDX-License-Identifier: BSL-1.1
-pragma solidity ^0.8.0;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.25;
 
-import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "./external/IWETH9.sol";
 
-import "./utils/IRebalanceCallback.sol";
+import "./modules/IAmmDepositWithdrawModule.sol";
+import "./modules/IAmmModule.sol";
 
 import "./modules/IStrategyModule.sol";
+import "./oracles/IOracle.sol";
+import "./utils/IRebalanceCallback.sol";
+import "@openzeppelin/contracts/access/extensions/IAccessControlEnumerable.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 
-interface ICore is IERC721Receiver {
+interface ICore is IERC721Receiver, IAccessControlEnumerable {
+    /**
+     * @notice Parameters used in the Rebalance event.
+     * @dev This struct captures details about a rebalancing event within the AMM pool.
+     * @param pool The address of the pool being rebalanced.
+     * @param ammPositionInfo Information about the AMM position, such as tick range, liquidity, etc.
+     * @param sqrtPriceX96 The square root of the price at the time of the rebalance, in Q96 format.
+     * @param amount0 The amount of token0 involved in the rebalance.
+     * @param amount1 The amount of token1 involved in the rebalance.
+     * @param ammPositionIdBefore The AMM position ID before the rebalance.
+     * @param ammPositionIdAfter The AMM position ID after the rebalance.
+     */
+    struct RebalanceEventParams {
+        address pool;
+        IAmmModule.AmmPosition ammPositionInfo;
+        uint160 sqrtPriceX96;
+        uint256 amount0;
+        uint256 amount1;
+        uint256 ammPositionIdBefore;
+        uint256 ammPositionIdAfter;
+    }
+
+    /**
+     * @notice Emitted when a rebalance operation occurs in the AMM pool.
+     * @param rebalanceEventParams Parameters of the rebalance event.
+     */
+    event Rebalance(RebalanceEventParams rebalanceEventParams);
+
     /**
      * @title ManagedPositionInfo Structure
      * @dev This structure holds information about a managed position within a liquidity management system.
@@ -139,10 +173,10 @@ interface ICore is IERC721Receiver {
      */
     struct RebalanceParams {
         /**
-         * @notice Array of IDs for ManagedPositions that the rebalancer intends to rebalance.
+         * @notice The ID for ManagedPosition that the rebalancer intends to rebalance.
          * @dev Identifies the specific positions within the liquidity management system that are targeted for rebalancing. This allows for focused and efficient rebalancing actions, addressing the needs of selected positions.
          */
-        uint256[] ids;
+        uint256 id;
         /**
          * @notice Address of the contract to which Core.sol will make calls during the rebalancing process to execute all operations with swaps, creation of new positions, etc.
          * @dev Specifies the external contract responsible for the operational aspects of the rebalancing process, such as executing swaps and managing position adjustments. This modular approach enables flexible and customizable rebalancing strategies.
@@ -170,6 +204,13 @@ interface ICore is IERC721Receiver {
     error InvalidParams();
 
     /**
+     * @dev Custom error for signaling that a rebalance operation is not needed.
+     * This error is thrown when a rebalance operation is attempted but is deemed unnecessary,
+     * typically due to the position already being in an optimal state or not requiring any adjustments.
+     */
+    error NoRebalanceNeeded();
+
+    /**
      * @dev Custom error for signaling that an array or similar data structure has an invalid length.
      * This error is thrown when the length of an input array or similar data structure does not match
      * the expected or required length, potentially leading to incorrect or incomplete processing.
@@ -190,6 +231,12 @@ interface ICore is IERC721Receiver {
     function ammModule() external view returns (IAmmModule);
 
     /**
+     * @dev Returns the address of the AMM deposit/withdraw module.
+     * @return address of the AMM deposit/withdraw module.
+     */
+    function ammDepositWithdrawModule() external view returns (IAmmDepositWithdrawModule);
+
+    /**
      * @dev Returns the address of the oracle contract.
      * @return address of the oracle contract.
      */
@@ -202,19 +249,11 @@ interface ICore is IERC721Receiver {
     function strategyModule() external view returns (IStrategyModule);
 
     /**
-     * @dev Returns the operator flag.
-     * @return bool value indicating the operator flag.
-     */
-    function operatorFlag() external view returns (bool);
-
-    /**
      * @dev Retrieves the ManagedPositionInfo struct at the specified index.
      * @param id The index of the ManagedPositionInfo struct to retrieve.
      * @return ManagedPositionInfo - struct at the specified index.
      */
-    function managedPositionAt(
-        uint256 id
-    ) external view returns (ManagedPositionInfo memory);
+    function managedPositionAt(uint256 id) external view returns (ManagedPositionInfo memory);
 
     /**
      * @dev Returns the count of managed positions within the contract.
@@ -227,9 +266,7 @@ interface ICore is IERC721Receiver {
      * @param user The address of the user.
      * @return ids array of user IDs.
      */
-    function getUserIds(
-        address user
-    ) external view returns (uint256[] memory ids);
+    function getUserIds(address user) external view returns (uint256[] memory ids);
 
     /**
      * @dev Returns the current protocol parameters.
@@ -242,27 +279,6 @@ interface ICore is IERC721Receiver {
      * specific protocol logic it adheres to.
      */
     function protocolParams() external view returns (bytes memory);
-
-    /**
-     * @dev Sets the operator flag to enable or disable specific operator functionalities,
-     * such as the requirement for operator privileges to execute rebalances.
-     * This adjustment allows for the dynamic control over who can initiate and execute rebalance operations,
-     * a critical aspect of managing the protocol's liquidity and position strategies. By toggling this flag,
-     * the protocol's administrator can restrict or open rebalancing capabilities in response to operational,
-     * security, or strategic considerations.
-     *
-     * @param operatorFlag_ A boolean value indicating the new state of the operator flag.
-     * Setting this flag to `true` requires operator privileges for rebalancing actions,
-     * adding an additional layer of control and security. Conversely, setting it to `false`
-     * removes the necessity for such privileges, potentially broadening the pool of entities
-     * that can perform rebalances under certain conditions.
-     *
-     * Requirements:
-     * - Only the admin of the `Core.sol` contract can call this function. This restriction ensures
-     * that changes to the operator flag, which can significantly impact the protocol's operation and
-     * security posture, are made solely by the most trusted level of authority within the protocol's governance structure.
-     */
-    function setOperatorFlag(bool operatorFlag_) external;
 
     /**
      * @dev Sets the global protocol parameters for the contract.
@@ -313,6 +329,30 @@ interface ICore is IERC721Receiver {
     ) external;
 
     /**
+     * @notice Deposits specified amounts of tokens into a position directly.
+     * @param id The identifier of the position.
+     * @param tokenId The token ID associated with the position.
+     * @param amount0 The amount of token0 to deposit.
+     * @param amount1 The amount of token1 to deposit.
+     * @return The actual amounts of token0 and token1 deposited.
+     */
+    function directDeposit(uint256 id, uint256 tokenId, uint256 amount0, uint256 amount1)
+        external
+        returns (uint256, uint256);
+
+    /**
+     * @notice Withdraws a specified amount of liquidity from a position directly.
+     * @param id The identifier of the position.
+     * @param tokenId The token ID associated with the position.
+     * @param liquidity The amount of liquidity to withdraw from the position.
+     * @param to The address to which the withdrawn tokens should be sent.
+     * @return The actual amounts of token0 and token1 withdrawn.
+     */
+    function directWithdraw(uint256 id, uint256 tokenId, uint256 liquidity, address to)
+        external
+        returns (uint256, uint256);
+
+    /**
      * @dev Deposits multiple tokens into the contract and creates new ManagedPosition.
      * @param params The deposit parameters including strategy parameters, security parameters, slippage, and token IDs.
      * @return id The ID of the position for deposited tokens.
@@ -347,4 +387,11 @@ interface ICore is IERC721Receiver {
      * @notice This function is only callable by the owner of the position.
      */
     function emptyRebalance(uint256 id) external;
+
+    /**
+     * @notice Collects rewards associated with a specific identifier.
+     * @dev This function allows external accounts to claim rewards for a given ID.
+     * @param id The identifier of position for which rewards are to be collected.
+     */
+    function collectRewards(uint256 id) external;
 }
