@@ -9,6 +9,7 @@ library Constants {
     address internal constant OPTIMISM_POSITION_MANAGER = 0x416b433906b1B72FA758e166e239c43d68dC6F29;
     bytes4 internal constant OPTIMISM_IS_POOL_SELECTOR = bytes4(keccak256("isPair(address)"));
 
+    address internal constant OPTIMISM_OP = 0x4200000000000000000000000000000000000042;
     address internal constant OPTIMISM_WETH = 0x4200000000000000000000000000000000000006;
     address internal constant OPTIMISM_WSTETH = 0x1F32b1c2345538c0c6f582fCB022739c4A194Ebb;
     address internal constant OPTIMISM_LP_WRAPPER_ADMIN = address(3);
