@@ -1,30 +1,14 @@
 {
   "name": "mellow-alm-toolkit",
-  "license": "BUSL-1.1",
-  "version": "1.0.0",
+  "license": "UNLICENSED",
+  "version": "2.0.0",
   "repository": "https://github.com/mellow-finance/mellow-alm-toolkit",
   "scripts": {
-    "prettier": "forge fmt",
-    "test:mainnet": "forge test -vvv --fork-url $(grep MAINNET_RPC .env | cut -d '=' -f2,3,4,5) --match-path ./test/mainnet/\\*",
-    "test:mantle": "forge test -vvv --fork-url $(grep MANTLE_RPC .env | cut -d '=' -f2,3,4,5) --match-path ./test/mantle/\\*",
-    "test:velo": "forge test -vvv --fork-url $(grep OPTIMISM_SPECIAL_RPC .env | cut -d '=' -f2,3,4,5) --match-path ./test/velo/\\*",
-    "test:velo:pulsev2": "forge test -vvv --fork-url $(grep OPTIMISM_RPC .env | cut -d '=' -f2,3,4,5) --match-path ./test/velo-prod/unit/PulseStrategyModuleV2.t.sol\\* --fork-block-number 125777000",
-    "velo": "forge test -vv --fork-url $(grep OPTIMISM_RPC .env | cut -d '=' -f2,3,4,5) --match-path ./test/velo-prod/\\* --fork-block-number 126785000",
-    "velo:spec": "forge test -vv --fork-url $(grep OPTIMISM_RPC .env | cut -d '=' -f2,3,4,5) --fork-block-number 126785000",
-    "back": "forge test -vv --fork-url $(grep BASE_DRPC .env | cut -d '=' -f2,3,4,5) --match-test testInitPosition\\* --fork-block-number 20747000",
-    "velo:lpwr": "forge test -vv --fork-url $(grep BASE_DRPC .env | cut -d '=' -f2,3,4,5) --match-path ./test/velo-prod/unit/LpWrapper.t.sol --fork-block-number 123712535",
-    "size": "forge build --sizes --force",
-    "deploy:mantle": "forge script --use 0.8.20 src/scripts/deploy/mantle/Deploy.s.sol:Deploy --rpc-url $(grep MANTLE_RPC .env | cut -d '=' -f2) --broadcast --slow --verify -vvvv",
-    "deploy:base:core": "forge script --use 0.8.21 src/scripts/deploy/optimism/Deploy.sol:Deploy --rpc-url $(grep BASE_DRPC .env | cut -d '=' -f2) --broadcast --slow --verify -vvvv",
-    "compile": "forge build",
-    "solc:velo": "cat velo_scope.txt | xargs ls -d 2>/dev/null | xargs wc -l",
-    "load": "cd test/backtest && env $(cat ../../.env | xargs) python3 loader.py",
-    "backtest": "forge build && cd test/backtest && env $(cat ../../.env | xargs) python3 HistoryTest.py",
-    "deploy:base:velo:prod": "forge script src/scripts/deploy/optimism/DeployVeloLazy.s.sol --rpc-url $(grep BASE_DRPC .env | cut -d '=' -f2,3,4,5) --etherscan-api-key $(grep API_KEY_BASE .env | cut -d '=' -f2,3,4,5) --broadcast --verify --slow --private-key $(grep DEPLOYER_PRIVATE_KEY .env | cut -d '=' -f2,3,4,5) --evm-version shanghai",
-    "deploy:base:velo:test": "forge test -vvvvv --rpc-url $(grep BASE_DRPC .env | cut -d '=' -f2,3,4,5) --match-path ./test/velo-prod/deploy\\* --fork-block-number 19709210 --evm-version shanghai",
-    "deploy:base:velo:bottest": "forge script src/scripts/bots/PulseVeloBotLazy.s.sol --fork-url $(grep BASE_DRPC .env | cut -d '=' -f2,3,4,5) --fork-block-number 122545420",
-    "deploy:base:velo:bot": "forge script src/scripts/deploy/optimism/DeployPulseVeloBotLazy.s.sol --fork-url $(grep BASE_DRPC .env | cut -d '=' -f2,3,4,5) --evm-version shanghai --broadcast --slow",
-    "deploy:base:velo:strat": "forge script src/scripts/deploy/optimism/DeployStrategy.s.sol --rpc-url $(grep BASE_DRPC .env | cut -d '=' -f2,3,4,5) --etherscan-api-key $(grep API_KEY_BASE .env | cut -d '=' -f2,3,4,5) --broadcast --slow --verify --private-key $(grep DEPLOYER_PRIVATE_KEY .env | cut -d '=' -f2,3,4,5) --evm-version shanghai",
-    "deploy:base:velo:sugar": "forge script src/scripts/deploy/optimism/DeployVeloSugarHelper.s.sol --rpc-url $(grep BASE_DRPC .env | cut -d '=' -f2,3,4,5) --etherscan-api-key $(grep API_KEY_BASE .env | cut -d '=' -f2,3,4,5) --broadcast --slow --verify"
+    "prettier": "forge fmt && forge fmt ./scripts/**",
+    "test": "forge test -vv --fork-url $(grep OPTIMISM_RPC .env | cut -d '=' -f2,3,4,5) --gas-limit 1000000000000000 --fork-block-number 126785000",
+    "coverage": "forge coverage -vv --fork-url $(grep OPTIMISM_RPC .env | cut -d '=' -f2,3,4,5) --gas-limit 1000000000000000 --fork-block-number 126785000",
+    "coverage:report": "forge coverage -vv --fork-url $(grep OPTIMISM_RPC .env | cut -d '=' -f2,3,4,5) --gas-limit 1000000000000000 --fork-block-number 126785000 --report lcov && genhtml lcov.info --rc derive_function_end_line=0 -o report --branch-coverage && rm lcov.info",
+    "sizes": "forge build --sizes --force",
+    "compile": "forge build"
   }
 }

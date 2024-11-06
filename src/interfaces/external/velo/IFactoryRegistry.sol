@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity ^0.8.0;
+pragma solidity 0.8.25;
 
 interface IFactoryRegistry {
     function approve(address poolFactory, address votingRewardsFactory, address gaugeFactory)

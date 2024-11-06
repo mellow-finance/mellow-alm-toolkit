@@ -1,17 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.0;
-
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-
-import "../IAmmModule.sol";
+pragma solidity 0.8.25;
 
 import "../../external/velo/ICLFactory.sol";
 import "../../external/velo/ICLGauge.sol";
-import "../../external/velo/ICLPool.sol";
-
-import "../../external/velo/INonfungiblePositionManager.sol";
-
-import "../../utils/ICounter.sol";
+import "../../utils/IVeloFarm.sol";
+import "../IAmmModule.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * @title IVeloAmmModule Interface
@@ -20,29 +14,35 @@ import "../../utils/ICounter.sol";
  * Velo-specific contracts and settings.
  */
 interface IVeloAmmModule is IAmmModule {
-    error InvalidFee(); // Thrown when the fee is invalid
-    error AddressZero(); // Thrown when an address is zero
-    error InvalidParams(); // Thrown when input parameters are invalid
-    error InvalidLength(); // Thrown when array lengths are mismatched or invalid
-    error InvalidGauge(); // Thrown when the gauge is invalid
-    error IsPool(); // Thrown when call isPool/isPair is failed
+    /**
+     * @notice Thrown when the specified fee is invalid.
+     */
+    error InvalidFee();
+
+    /**
+     * @notice Thrown when an address is set to the zero address.
+     */
+    error AddressZero();
+
+    /**
+     * @notice Thrown when array lengths are mismatched or invalid.
+     */
+    error InvalidLength();
+
+    /**
+     * @notice Thrown when the specified gauge is invalid.
+     */
+    error InvalidGauge();
 
     /**
      * @dev Struct representing callback parameters for operations associated with the Velo protocol.
-     *
-     * Parameters:
      * @param farm Address of the Synthetix farm contract. It acts as a central hub for yield farming activities, interfacing directly
      * with users and other contracts to manage and allocate yield farming rewards based on defined criteria.
      * @param gauge Address of the Velo gauge contract.
-     * @param counter Address of a counter contract. This contract is designed for tracking and aggregating
-     * specific numerical data, such as the total amount of rewards added to the farm. It serves as a
-     * specialized tool for monitoring and reporting on key metrics that inform decisions and actions within
-     * the protocol, ensuring transparency and accuracy in reward distribution and other quantifiable activities.
      */
     struct CallbackParams {
         address farm; // Synthetix farm contract address for yield farming operations
         address gauge; // Velo gauge contract address
-        address counter; // Counter contract address for aggregating and tracking numerical data, such as reward amounts
     }
 
     /**

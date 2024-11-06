@@ -1,7 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.0;
-
-import "@openzeppelin/contracts/utils/math/Math.sol";
+pragma solidity 0.8.25;
 
 import "./interfaces/ICore.sol";
 import "./utils/DefaultAccessControl.sol";
@@ -13,7 +11,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     uint256 public constant D9 = 1e9;
     uint256 public constant Q96 = 2 ** 96;
 
-    address private immutable _weth;
+    address public immutable weth;
 
     /// @inheritdoc ICore
     IAmmModule public immutable ammModule;
@@ -25,12 +23,12 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     IOracle public immutable oracle;
     /// @inheritdoc ICore
     IStrategyModule public immutable strategyModule;
-    /// @inheritdoc ICore
-    bool public operatorFlag;
 
     bytes private _protocolParams;
     ManagedPositionInfo[] private _positions;
     mapping(address => EnumerableSet.UintSet) private _userIds;
+
+    /// ---------------------- INITIALIZER FUNCTIONS ----------------------
 
     /**
      * @dev Constructor function for the Core contract.
@@ -46,90 +44,28 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         IOracle oracle_,
         address admin_,
         address weth_
-    ) DefaultAccessControl(admin_) {
-        if (address(ammModule_) == address(0)) {
-            revert AddressZero();
-        }
-        if (address(ammDepositWithdrawModule_) == address(0)) {
-            revert AddressZero();
-        }
-        if (address(strategyModule_) == address(0)) {
-            revert AddressZero();
-        }
-        if (address(oracle_) == address(0)) {
-            revert AddressZero();
-        }
-        if (address(weth_) == address(0)) {
+    ) initializer {
+        __DefaultAccessControl_init(admin_);
+        if (
+            address(ammModule_) == address(0) || address(ammDepositWithdrawModule_) == address(0)
+                || address(strategyModule_) == address(0) || address(oracle_) == address(0)
+                || weth_ == address(0)
+        ) {
             revert AddressZero();
         }
         ammModule = ammModule_;
         ammDepositWithdrawModule = ammDepositWithdrawModule_;
         strategyModule = strategyModule_;
         oracle = oracle_;
-        _weth = weth_;
+        weth = weth_;
     }
 
-    /// @inheritdoc ICore
-    function managedPositionAt(uint256 id)
-        public
-        view
-        override
-        returns (ManagedPositionInfo memory)
-    {
-        return _positions[id];
-    }
+    /// ---------------------- EXTERNAL MUTATING FUNCTIONS ----------------------
 
-    /// @inheritdoc ICore
-    function positionCount() public view override returns (uint256) {
-        return _positions.length;
-    }
-
-    /// @inheritdoc ICore
-    function getUserIds(address user) external view override returns (uint256[] memory ids) {
-        return _userIds[user].values();
-    }
-
-    /// @inheritdoc ICore
-    function protocolParams() external view override returns (bytes memory) {
-        return _protocolParams;
-    }
-
-    /// @inheritdoc ICore
-    function setOperatorFlag(bool operatorFlag_) external override nonReentrant {
-        _requireAdmin();
-        operatorFlag = operatorFlag_;
-    }
-
-    /// @inheritdoc ICore
-    function setProtocolParams(bytes memory params) external override nonReentrant {
-        _requireAdmin();
-        ammModule.validateProtocolParams(params);
-        _protocolParams = params;
-    }
-
-    /// @inheritdoc ICore
-    function setPositionParams(
-        uint256 id,
-        uint32 slippageD9,
-        bytes memory callbackParams,
-        bytes memory strategyParams,
-        bytes memory securityParams
-    ) external override nonReentrant {
-        ManagedPositionInfo memory info = _positions[id];
-        if (info.owner != msg.sender) {
-            revert Forbidden();
-        }
-        ammModule.validateCallbackParams(callbackParams);
-        strategyModule.validateStrategyParams(strategyParams);
-        oracle.validateSecurityParams(securityParams);
-        if (slippageD9 > D9 / 4 || slippageD9 == 0) {
-            revert InvalidParams();
-        }
-        info.callbackParams = callbackParams;
-        info.strategyParams = strategyParams;
-        info.securityParams = securityParams;
-        info.slippageD9 = slippageD9;
-        _positions[id] = info;
+    receive() external payable {
+        uint256 amount = msg.value;
+        IWETH9(weth).deposit{value: amount}();
+        IERC20(weth).safeTransfer(tx.origin, amount);
     }
 
     /// @inheritdoc ICore
@@ -207,13 +143,10 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     }
 
     /// @inheritdoc ICore
-    function directDeposit(
-        uint256 id,
-        uint256 tokenId,
-        uint256 amount0,
-        uint256 amount1,
-        bool requireSuccess
-    ) external returns (uint256, uint256) {
+    function directDeposit(uint256 id, uint256 tokenId, uint256 amount0, uint256 amount1)
+        external
+        returns (uint256, uint256)
+    {
         ManagedPositionInfo memory info = _positions[id];
         if (info.owner != msg.sender) {
             revert Forbidden();
@@ -231,27 +164,31 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
 
         bytes memory protocolParams_ = _protocolParams;
         _beforeRebalance(tokenId, info.callbackParams, protocolParams_);
-        (bool success, bytes memory response) = address(ammDepositWithdrawModule).delegatecall(
+        IAmmModule.AmmPosition memory position_ = ammModule.getAmmPosition(tokenId);
+        bytes memory response = Address.functionDelegateCall(
+            address(ammDepositWithdrawModule),
             abi.encodeWithSelector(
-                IAmmDepositWithdrawModule.deposit.selector, tokenId, amount0, amount1, info.owner
+                IAmmDepositWithdrawModule.deposit.selector,
+                tokenId,
+                amount0,
+                amount1,
+                info.owner,
+                position_.token0,
+                position_.token1
             )
         );
-        if (requireSuccess && (!success || response.length != 0x40)) {
-            revert DelegateCallFailed();
+        if (response.length != 0x40) {
+            revert InvalidParams();
         }
         _afterRebalance(tokenId, info.callbackParams, protocolParams_);
-
         return abi.decode(response, (uint256, uint256));
     }
 
     /// @inheritdoc ICore
-    function directWithdraw(
-        uint256 id,
-        uint256 tokenId,
-        uint256 liquidity,
-        address to,
-        bool requireSuccess
-    ) external returns (uint256, uint256) {
+    function directWithdraw(uint256 id, uint256 tokenId, uint256 liquidity, address to)
+        external
+        returns (uint256, uint256)
+    {
         ManagedPositionInfo memory info = _positions[id];
         if (info.owner != msg.sender) {
             revert Forbidden();
@@ -269,14 +206,16 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
 
         bytes memory protocolParams_ = _protocolParams;
         _beforeRebalance(tokenId, info.callbackParams, protocolParams_);
-        (bool success, bytes memory response) = address(ammDepositWithdrawModule).delegatecall(
+        bytes memory response = Address.functionDelegateCall(
+            address(ammDepositWithdrawModule),
             abi.encodeWithSelector(
                 IAmmDepositWithdrawModule.withdraw.selector, tokenId, liquidity, to
             )
         );
-        if (requireSuccess && !success) {
+        if (response.length != 0x40) {
             revert DelegateCallFailed();
         }
+
         _afterRebalance(tokenId, info.callbackParams, protocolParams_);
 
         return abi.decode(response, (uint256, uint256));
@@ -284,74 +223,225 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
 
     /// @inheritdoc ICore
     function rebalance(RebalanceParams memory params) external override nonReentrant {
-        if (operatorFlag) {
-            _requireAtLeastOperator();
+        _requireAtLeastOperator();
+
+        ManagedPositionInfo memory info = _positions[params.id];
+        oracle.ensureNoMEV(info.pool, info.securityParams);
+        (bool isRebalanceNeeded, TargetPositionInfo memory target) =
+            strategyModule.getTargets(info, ammModule, oracle);
+        if (!isRebalanceNeeded) {
+            revert NoRebalanceNeeded();
         }
-        TargetPositionInfo[] memory targets = new TargetPositionInfo[](params.ids.length);
-        uint256 iterator = 0;
+        target.id = params.id;
+        target.info = info;
+        _validateTarget(target);
+
+        (uint160 sqrtPriceX96,) = oracle.getOraclePrice(info.pool);
+        uint256 priceX96 = Math.mulDiv(sqrtPriceX96, sqrtPriceX96, Q96);
         bytes memory protocolParams_ = _protocolParams;
-        for (uint256 i = 0; i < params.ids.length; i++) {
-            ManagedPositionInfo memory info = _positions[params.ids[i]];
-            oracle.ensureNoMEV(info.pool, info.securityParams);
-            (bool flag, TargetPositionInfo memory target) =
-                strategyModule.getTargets(info, ammModule, oracle);
-            if (!flag) {
-                continue;
-            }
-            target.id = params.ids[i];
-            target.info = info;
-            _validateTarget(target);
-            (uint160 sqrtPriceX96,) = oracle.getOraclePrice(info.pool);
-            uint256 priceX96 = Math.mulDiv(sqrtPriceX96, sqrtPriceX96, Q96);
-            uint256 capitalInToken1 =
-                _preprocess(params, info, protocolParams_, sqrtPriceX96, priceX96);
-            uint256 targetCapitalInToken1X96 =
-                _calculateTargetCapitalX96(target, sqrtPriceX96, priceX96);
-            target.minLiquidities = new uint256[](info.ammPositionIds.length);
-            for (uint256 j = 0; j < info.ammPositionIds.length; j++) {
-                target.minLiquidities[j] = Math.mulDiv(
-                    target.liquidityRatiosX96[j], capitalInToken1, targetCapitalInToken1X96
-                );
-                target.minLiquidities[j] =
-                    Math.mulDiv(target.minLiquidities[j], D9 - info.slippageD9, D9);
-            }
-            targets[iterator++] = target;
+        uint256 capitalInToken1 = _preprocess(params, info, protocolParams_, sqrtPriceX96, priceX96);
+        uint256 targetCapitalInToken1X96 =
+            _calculateTargetCapitalX96(target, sqrtPriceX96, priceX96);
+
+        uint256 length = info.ammPositionIds.length;
+        target.minLiquidities = new uint256[](length);
+        for (uint256 i = 0; i < length; i++) {
+            target.minLiquidities[i] =
+                Math.mulDiv(target.liquidityRatiosX96[i], capitalInToken1, targetCapitalInToken1X96);
+            target.minLiquidities[i] =
+                Math.mulDiv(target.minLiquidities[i], D9 - info.slippageD9, D9);
         }
 
-        assembly {
-            mstore(targets, iterator)
-        }
+        uint256[] memory ammPositionIds =
+            IRebalanceCallback(params.callback).call(params.data, target);
 
-        uint256[][] memory newAmmPositionIds =
-            IRebalanceCallback(params.callback).call(params.data, targets);
-        if (newAmmPositionIds.length != iterator) {
+        if (ammPositionIds.length != length) {
             revert InvalidLength();
         }
-        for (uint256 i = 0; i < iterator; i++) {
-            TargetPositionInfo memory target = targets[i];
-            uint256[] memory ammPositionIds = newAmmPositionIds[i];
-            if (ammPositionIds.length != target.liquidityRatiosX96.length) {
-                revert InvalidLength();
+        IAmmModule.AmmPosition memory position_;
+        address this_ = address(this);
+        for (uint256 i = 0; i < length; i++) {
+            uint256 tokenId = ammPositionIds[i];
+            position_ = ammModule.getAmmPosition(tokenId);
+            if (
+                position_.liquidity < target.minLiquidities[i]
+                    || position_.tickLower != target.lowerTicks[i]
+                    || position_.tickUpper != target.upperTicks[i]
+                    || ammModule.getPool(position_.token0, position_.token1, position_.property)
+                        != target.info.pool
+            ) {
+                revert InvalidParams();
             }
-            for (uint256 j = 0; j < ammPositionIds.length; j++) {
-                uint256 tokenId = ammPositionIds[j];
-                IAmmModule.AmmPosition memory position_ = ammModule.getAmmPosition(tokenId);
-                if (
-                    position_.liquidity < target.minLiquidities[j]
-                        || position_.tickLower != target.lowerTicks[j]
-                        || position_.tickUpper != target.upperTicks[j]
-                        || ammModule.getPool(position_.token0, position_.token1, position_.property)
-                            != target.info.pool
-                ) {
-                    revert InvalidParams();
-                }
-                _transferFrom(params.callback, address(this), tokenId);
-                _afterRebalance(tokenId, target.info.callbackParams, protocolParams_);
+            _transferFrom(params.callback, this_, tokenId);
+            _afterRebalance(tokenId, target.info.callbackParams, protocolParams_);
 
-                _emitRebalanceEvent(target.info.pool, target.info.ammPositionIds[j], tokenId);
-            }
-            _positions[target.id].ammPositionIds = ammPositionIds;
+            _emitRebalanceEvent(target.info.pool, target.info.ammPositionIds[i], tokenId);
         }
+        _positions[target.id].ammPositionIds = ammPositionIds;
+    }
+
+    /// @inheritdoc ICore
+    function setProtocolParams(bytes memory params) external override nonReentrant {
+        _requireAdmin();
+        ammModule.validateProtocolParams(params);
+        _protocolParams = params;
+    }
+
+    /// @inheritdoc ICore
+    function emptyRebalance(uint256 id) external override nonReentrant {
+        ManagedPositionInfo memory params = _positions[id];
+        if (params.owner != msg.sender) {
+            revert Forbidden();
+        }
+        bytes memory protocolParams_ = _protocolParams;
+        for (uint256 i = 0; i < params.ammPositionIds.length; i++) {
+            uint256 tokenId = params.ammPositionIds[i];
+            _beforeRebalance(tokenId, params.callbackParams, protocolParams_);
+            _afterRebalance(tokenId, params.callbackParams, protocolParams_);
+        }
+    }
+
+    /// @inheritdoc ICore
+    function collectRewards(uint256 id) external override nonReentrant {
+        ManagedPositionInfo memory params = _positions[id];
+        if (params.owner != msg.sender) {
+            revert Forbidden();
+        }
+        bytes memory protocolParams_ = _protocolParams;
+        for (uint256 i = 0; i < params.ammPositionIds.length; i++) {
+            uint256 tokenId = params.ammPositionIds[i];
+            _collectRewards(tokenId, params.callbackParams, protocolParams_);
+        }
+    }
+
+    /// @inheritdoc ICore
+    function setPositionParams(
+        uint256 id,
+        uint32 slippageD9,
+        bytes memory callbackParams,
+        bytes memory strategyParams,
+        bytes memory securityParams
+    ) external override nonReentrant {
+        ManagedPositionInfo memory info = _positions[id];
+        if (info.owner != msg.sender) {
+            revert Forbidden();
+        }
+        ammModule.validateCallbackParams(callbackParams);
+        strategyModule.validateStrategyParams(strategyParams);
+        oracle.validateSecurityParams(securityParams);
+        if (slippageD9 > D9 / 4 || slippageD9 == 0) {
+            revert InvalidParams();
+        }
+        info.callbackParams = callbackParams;
+        info.strategyParams = strategyParams;
+        info.securityParams = securityParams;
+        info.slippageD9 = slippageD9;
+        _positions[id] = info;
+    }
+
+    /// ---------------------- EXTERNAL VIEW FUNCTIONS ----------------------
+
+    /// @inheritdoc ICore
+    function getUserIds(address user) external view override returns (uint256[] memory ids) {
+        return _userIds[user].values();
+    }
+
+    /// @inheritdoc ICore
+    function protocolParams() external view override returns (bytes memory) {
+        return _protocolParams;
+    }
+
+    /// ---------------------- EXTERNAL PURE FUNCTIONS ----------------------
+
+    /// @inheritdoc IERC721Receiver
+    function onERC721Received(address, address, uint256, bytes calldata)
+        external
+        pure
+        returns (bytes4)
+    {
+        return IERC721Receiver.onERC721Received.selector;
+    }
+
+    /// ---------------------- PUBLIC VIEW FUNCTIONS ----------------------
+
+    /// @inheritdoc ICore
+    function positionCount() public view override returns (uint256) {
+        return _positions.length;
+    }
+
+    /// @inheritdoc ICore
+    function managedPositionAt(uint256 id)
+        public
+        view
+        override
+        returns (ManagedPositionInfo memory)
+    {
+        return _positions[id];
+    }
+
+    /// ---------------------- PRIVATE MUTATING FUNCTIONS ----------------------
+
+    function _preprocess(
+        RebalanceParams memory params,
+        ManagedPositionInfo memory info,
+        bytes memory protocolParams_,
+        uint160 sqrtPriceX96,
+        uint256 priceX96
+    ) private returns (uint256 capitalInToken1) {
+        for (uint256 i = 0; i < info.ammPositionIds.length; i++) {
+            uint256 tokenId = info.ammPositionIds[i];
+            (uint256 amount0, uint256 amount1) =
+                ammModule.tvl(tokenId, sqrtPriceX96, info.callbackParams, protocolParams_);
+            capitalInToken1 += Math.mulDiv(amount0, priceX96, Q96) + amount1;
+            _beforeRebalance(tokenId, info.callbackParams, protocolParams_);
+            _transferFrom(address(this), params.callback, tokenId);
+        }
+    }
+
+    function _transferFrom(address from, address to, uint256 tokenId) private {
+        Address.functionDelegateCall(
+            address(ammModule),
+            abi.encodeWithSelector(IAmmModule.transferFrom.selector, from, to, tokenId)
+        );
+    }
+
+    function _collectRewards(
+        uint256 tokenId,
+        bytes memory callbackParams_,
+        bytes memory protocolParams_
+    ) private {
+        Address.functionDelegateCall(
+            address(ammModule),
+            abi.encodeWithSelector(
+                IAmmModule.collectRewards.selector, tokenId, callbackParams_, protocolParams_
+            )
+        );
+    }
+
+    function _beforeRebalance(
+        uint256 tokenId,
+        bytes memory callbackParams_,
+        bytes memory protocolParams_
+    ) private {
+        Address.functionDelegateCall(
+            address(ammModule),
+            abi.encodeWithSelector(
+                IAmmModule.beforeRebalance.selector, tokenId, callbackParams_, protocolParams_
+            )
+        );
+    }
+
+    function _afterRebalance(
+        uint256 tokenId,
+        bytes memory callbackParams_,
+        bytes memory protocolParams_
+    ) private {
+        Address.functionDelegateCall(
+            address(ammModule),
+            abi.encodeWithSelector(
+                IAmmModule.afterRebalance.selector, tokenId, callbackParams_, protocolParams_
+            )
+        );
     }
 
     function _emitRebalanceEvent(address pool, uint256 tokenIdBefore, uint256 tokenIdAfter)
@@ -376,28 +466,25 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         );
     }
 
-    /// @inheritdoc ICore
-    function emptyRebalance(uint256 id) external override nonReentrant {
-        ManagedPositionInfo memory params = _positions[id];
-        if (params.owner != msg.sender) {
-            revert Forbidden();
-        }
-        bytes memory protocolParams_ = _protocolParams;
-        for (uint256 i = 0; i < params.ammPositionIds.length; i++) {
-            uint256 tokenId = params.ammPositionIds[i];
-            _beforeRebalance(tokenId, params.callbackParams, protocolParams_);
-            _afterRebalance(tokenId, params.callbackParams, protocolParams_);
+    /// ---------------------- PRIVATE VIEW FUNCTIONS ----------------------
+
+    function _calculateTargetCapitalX96(
+        TargetPositionInfo memory target,
+        uint160 sqrtPriceX96,
+        uint256 priceX96
+    ) private view returns (uint256 targetCapitalInToken1X96) {
+        for (uint256 j = 0; j < target.lowerTicks.length; j++) {
+            (uint256 amount0, uint256 amount1) = ammModule.getAmountsForLiquidity(
+                uint128(target.liquidityRatiosX96[j]),
+                sqrtPriceX96,
+                target.lowerTicks[j],
+                target.upperTicks[j]
+            );
+            targetCapitalInToken1X96 += Math.mulDiv(amount0, priceX96, Q96) + amount1;
         }
     }
 
-    /// @inheritdoc IERC721Receiver
-    function onERC721Received(address, address, uint256, bytes calldata)
-        external
-        pure
-        returns (bytes4)
-    {
-        return IERC721Receiver.onERC721Received.selector;
-    }
+    /// ---------------------- PRIVATE PURE FUNCTIONS ----------------------
 
     function _validateTarget(TargetPositionInfo memory target) private pure {
         uint256 n = target.liquidityRatiosX96.length;
@@ -422,83 +509,5 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
                 revert InvalidTarget();
             }
         }
-    }
-
-    function _calculateTargetCapitalX96(
-        TargetPositionInfo memory target,
-        uint160 sqrtPriceX96,
-        uint256 priceX96
-    ) private view returns (uint256 targetCapitalInToken1X96) {
-        for (uint256 j = 0; j < target.lowerTicks.length; j++) {
-            (uint256 amount0, uint256 amount1) = ammModule.getAmountsForLiquidity(
-                uint128(target.liquidityRatiosX96[j]),
-                sqrtPriceX96,
-                target.lowerTicks[j],
-                target.upperTicks[j]
-            );
-            targetCapitalInToken1X96 += Math.mulDiv(amount0, priceX96, Q96) + amount1;
-        }
-    }
-
-    function _preprocess(
-        RebalanceParams memory params,
-        ManagedPositionInfo memory info,
-        bytes memory protocolParams_,
-        uint160 sqrtPriceX96,
-        uint256 priceX96
-    ) private returns (uint256 capitalInToken1) {
-        for (uint256 i = 0; i < info.ammPositionIds.length; i++) {
-            uint256 tokenId = info.ammPositionIds[i];
-            (uint256 amount0, uint256 amount1) =
-                ammModule.tvl(tokenId, sqrtPriceX96, info.callbackParams, protocolParams_);
-            capitalInToken1 += Math.mulDiv(amount0, priceX96, Q96) + amount1;
-            _beforeRebalance(tokenId, info.callbackParams, protocolParams_);
-            _transferFrom(address(this), params.callback, tokenId);
-        }
-    }
-
-    function _transferFrom(address from, address to, uint256 tokenId) private {
-        (bool success,) = address(ammModule).delegatecall(
-            abi.encodeWithSelector(IAmmModule.transferFrom.selector, from, to, tokenId)
-        );
-        if (!success) {
-            revert DelegateCallFailed();
-        }
-    }
-
-    function _beforeRebalance(
-        uint256 tokenId,
-        bytes memory callbackParams_,
-        bytes memory protocolParams_
-    ) private {
-        (bool success,) = address(ammModule).delegatecall(
-            abi.encodeWithSelector(
-                IAmmModule.beforeRebalance.selector, tokenId, callbackParams_, protocolParams_
-            )
-        );
-        if (!success) {
-            revert DelegateCallFailed();
-        }
-    }
-
-    function _afterRebalance(
-        uint256 tokenId,
-        bytes memory callbackParams_,
-        bytes memory protocolParams_
-    ) private {
-        (bool success,) = address(ammModule).delegatecall(
-            abi.encodeWithSelector(
-                IAmmModule.afterRebalance.selector, tokenId, callbackParams_, protocolParams_
-            )
-        );
-        if (!success) {
-            revert DelegateCallFailed();
-        }
-    }
-
-    receive() external payable {
-        uint256 amount = msg.value;
-        IWETH9(_weth).deposit{value: amount}();
-        IERC20(_weth).safeTransfer(tx.origin, amount);
     }
 }

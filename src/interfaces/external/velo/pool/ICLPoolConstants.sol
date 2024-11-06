@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity ^0.8.0;
+pragma solidity 0.8.25;
 
 /// @title Pool state that never changes
 /// @notice These parameters are not defined as immutable (due to proxy pattern) but are effectively immutable.
