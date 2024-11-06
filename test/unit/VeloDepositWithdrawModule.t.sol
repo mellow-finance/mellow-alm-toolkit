@@ -22,17 +22,17 @@ contract Unit is Fixture {
             token0, token1, pool.tickSpacing(), pool.tickSpacing() * 2, 10000, pool, address(this)
         );
 
-        (,,,,, int24 tickLower, int24 tickUpper, uint128 liquidity,,,,) =
-            positionManager.positions(tokenId);
+        PositionLibrary.Position memory position_ =
+            PositionLibrary.getPosition(address(positionManager), tokenId);
 
         (uint160 sqrtPriceX96,,,,,) = pool.slot0();
 
         for (uint256 i = 0; i < 10; i++) {
             (uint256 before0, uint256 before1) = LiquidityAmounts.getAmountsForLiquidity(
                 sqrtPriceX96,
-                TickMath.getSqrtRatioAtTick(tickLower),
-                TickMath.getSqrtRatioAtTick(tickUpper),
-                liquidity
+                TickMath.getSqrtRatioAtTick(position_.tickLower),
+                TickMath.getSqrtRatioAtTick(position_.tickUpper),
+                position_.liquidity
             );
 
             deal(token0, address(this), 1 ether);
@@ -43,13 +43,14 @@ contract Unit is Fixture {
             (uint256 actualAmount0, uint256 actualAmount1) =
                 module.deposit(tokenId, 1 ether, 1 ether, address(this), token0, token1);
 
-            (,,,,,,, liquidity,,,,) = positionManager.positions(tokenId);
+            position_.liquidity =
+                PositionLibrary.getPosition(address(positionManager), tokenId).liquidity;
 
             (uint256 after0, uint256 after1) = LiquidityAmounts.getAmountsForLiquidity(
                 sqrtPriceX96,
-                TickMath.getSqrtRatioAtTick(tickLower),
-                TickMath.getSqrtRatioAtTick(tickUpper),
-                liquidity
+                TickMath.getSqrtRatioAtTick(position_.tickLower),
+                TickMath.getSqrtRatioAtTick(position_.tickUpper),
+                position_.liquidity
             );
 
             assertApproxEqAbs(actualAmount0, after0 - before0, 1 wei);
@@ -77,30 +78,31 @@ contract Unit is Fixture {
         (uint160 sqrtPriceX96,,,,,) = pool.slot0();
 
         for (uint256 i = 0; i < 10; i++) {
-            (,,,,, int24 tickLower, int24 tickUpper, uint128 liquidity,,,,) =
-                positionManager.positions(tokenId);
+            PositionLibrary.Position memory position_ =
+                PositionLibrary.getPosition(address(positionManager), tokenId);
 
             (uint256 before0, uint256 before1) = LiquidityAmounts.getAmountsForLiquidity(
                 sqrtPriceX96,
-                TickMath.getSqrtRatioAtTick(tickLower),
-                TickMath.getSqrtRatioAtTick(tickUpper),
-                liquidity
+                TickMath.getSqrtRatioAtTick(position_.tickLower),
+                TickMath.getSqrtRatioAtTick(position_.tickUpper),
+                position_.liquidity
             );
 
-            uint128 liquidityForWithdraw = liquidity / 4;
+            uint128 liquidityForWithdraw = position_.liquidity / 4;
 
             (uint256 actualAmount0, uint256 actualAmount1) =
                 module.withdraw(tokenId, liquidityForWithdraw, address(this));
 
-            (,,,,,,, uint128 liquidityAfter,,,,) = positionManager.positions(tokenId);
+            uint128 liquidityAfter =
+                PositionLibrary.getPosition(address(positionManager), tokenId).liquidity;
             (uint256 after0, uint256 after1) = LiquidityAmounts.getAmountsForLiquidity(
                 sqrtPriceX96,
-                TickMath.getSqrtRatioAtTick(tickLower),
-                TickMath.getSqrtRatioAtTick(tickUpper),
+                TickMath.getSqrtRatioAtTick(position_.tickLower),
+                TickMath.getSqrtRatioAtTick(position_.tickUpper),
                 liquidityAfter
             );
 
-            assertApproxEqAbs(liquidityAfter, liquidity - liquidityForWithdraw, 0 wei);
+            assertApproxEqAbs(liquidityAfter, position_.liquidity - liquidityForWithdraw, 0 wei);
             assertApproxEqAbs(actualAmount0, before0 - after0, 1 wei);
             assertApproxEqAbs(actualAmount1, before1 - after1, 1 wei);
         }

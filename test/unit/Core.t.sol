@@ -4,9 +4,9 @@ pragma solidity ^0.8.0;
 import "./Fixture.sol";
 
 contract EmptyBot is IRebalanceCallback {
-    function call(bytes memory, ICore.TargetPositionInfo[] memory)
+    function call(bytes memory, ICore.TargetPositionInfo memory)
         external
-        returns (uint256[][] memory)
+        returns (uint256[] memory)
     {}
 }
 

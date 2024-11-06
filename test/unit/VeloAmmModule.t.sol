@@ -143,25 +143,14 @@ contract Unit is Fixture {
             Constants.OPTIMISM_DEPLOYER
         );
         IAmmModule.AmmPosition memory position = module.getAmmPosition(tokenId);
-        (
-            ,
-            ,
-            address token0,
-            address token1,
-            int24 tickSpacing,
-            int24 tickLower,
-            int24 tickUpper,
-            uint128 liquidity,
-            ,
-            ,
-            ,
-        ) = positionManager.positions(tokenId);
-        assertEq(position.tickLower, tickLower, "tickLower should be equal");
-        assertEq(position.tickUpper, tickUpper, "tickUpper should be equal");
-        assertEq(position.liquidity, liquidity, "liquidity should be equal");
-        assertEq(position.token0, token0, "token0 should be equal");
-        assertEq(position.token1, token1, "token1 should be equal");
-        assertEq(int24(position.property), tickSpacing, "tickSpacing should be equal");
+        PositionLibrary.Position memory position_ =
+            PositionLibrary.getPosition(address(positionManager), tokenId);
+        assertEq(position.tickLower, position_.tickLower, "tickLower should be equal");
+        assertEq(position.tickUpper, position_.tickUpper, "tickUpper should be equal");
+        assertEq(position.liquidity, position_.liquidity, "liquidity should be equal");
+        assertEq(position.token0, position_.token0, "token0 should be equal");
+        assertEq(position.token1, position_.token1, "token1 should be equal");
+        assertEq(int24(position.property), position_.tickSpacing, "tickSpacing should be equal");
     }
 
     function testGetPool() external {

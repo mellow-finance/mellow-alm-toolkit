@@ -173,10 +173,10 @@ interface ICore is IERC721Receiver, IAccessControlEnumerable {
      */
     struct RebalanceParams {
         /**
-         * @notice Array of IDs for ManagedPositions that the rebalancer intends to rebalance.
+         * @notice The ID for ManagedPosition that the rebalancer intends to rebalance.
          * @dev Identifies the specific positions within the liquidity management system that are targeted for rebalancing. This allows for focused and efficient rebalancing actions, addressing the needs of selected positions.
          */
-        uint256[] ids;
+        uint256 id;
         /**
          * @notice Address of the contract to which Core.sol will make calls during the rebalancing process to execute all operations with swaps, creation of new positions, etc.
          * @dev Specifies the external contract responsible for the operational aspects of the rebalancing process, such as executing swaps and managing position adjustments. This modular approach enables flexible and customizable rebalancing strategies.
@@ -202,6 +202,13 @@ interface ICore is IERC721Receiver, IAccessControlEnumerable {
      * such as out-of-range values or parameters that do not adhere to expected formats or constraints.
      */
     error InvalidParams();
+
+    /**
+     * @dev Custom error for signaling that a rebalance operation is not needed.
+     * This error is thrown when a rebalance operation is attempted but is deemed unnecessary,
+     * typically due to the position already being in an optimal state or not requiring any adjustments.
+     */
+    error NoRebalanceNeeded();
 
     /**
      * @dev Custom error for signaling that an array or similar data structure has an invalid length.
