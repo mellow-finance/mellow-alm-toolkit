@@ -17,8 +17,6 @@ library Constants {
     uint256 internal constant OPTIMISM_MIN_INITIAL_TOTAL_SUPPLY = 1000 wei;
     address internal constant OPTIMISM_FACTORY_OPERATOR = address(4);
 
-    bool internal constant OPTIMISM_OPERATOR_FLAG = true;
-
     address internal constant OPTIMISM_MELLOW_TREASURY = address(5);
     uint32 internal constant OPTIMISM_FEE_D9 = 1e7; // 10% fee
 
@@ -38,7 +36,6 @@ library Constants {
                 lpWrapperManager: OPTIMISM_LP_WRAPPER_MANAGER,
                 minInitialTotalSupply: OPTIMISM_MIN_INITIAL_TOTAL_SUPPLY,
                 factoryOperator: OPTIMISM_FACTORY_OPERATOR,
-                operatorFlag: OPTIMISM_OPERATOR_FLAG,
                 protocolParams: IVeloAmmModule.ProtocolParams({
                     treasury: OPTIMISM_MELLOW_TREASURY,
                     feeD9: OPTIMISM_FEE_D9

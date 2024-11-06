@@ -9,7 +9,7 @@ contract VeloAmmModule is IVeloAmmModule {
 
     /// @inheritdoc IVeloAmmModule
     uint256 public constant D9 = 1e9;
-    
+
     /// @inheritdoc IVeloAmmModule
     uint32 public constant MAX_PROTOCOL_FEE = 3e8; // 30%
 

@@ -99,7 +99,7 @@ contract VeloDeployFactory is DefaultAccessControl, IERC721Receiver, IVeloDeploy
 
         _emitStrategyCreated(positionId, params.strategyParams);
     }
-    
+
     /// @inheritdoc IVeloDeployFactory
     function removeWrapperForPool(address pool) external {
         _requireAdmin();

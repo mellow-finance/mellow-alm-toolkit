@@ -35,11 +35,12 @@ interface IPulseStrategyModule is IStrategyModule {
      * @value Tamper Tamper strategy.
      */
     enum StrategyType {
-        Original,      // Original Pulse V1 strategy
-        LazySyncing,   // Lazy syncing strategy
+        Original, // Original Pulse V1 strategy
+        LazySyncing, // Lazy syncing strategy
         LazyAscending, // Lazy ascending strategy
         LazyDescending, // Lazy descending strategy
-        Tamper         // Tamper strategy
+        Tamper // Tamper strategy
+
     }
 
     /**

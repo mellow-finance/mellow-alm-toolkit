@@ -15,9 +15,8 @@ import "./PositionLibrary.sol";
  * @title PositionValue
  * @notice Provides utilities to calculate the total value held by a Uniswap V3 NFT position, including principal and accrued fees.
  * @dev This library calculates the principal and fees in token0 and token1 that a position represents, based on current market conditions and position parameters.
-*/
+ */
 library PositionValue {
-    
     /**
      * @notice Returns the total amounts of token0 and token1 held by a Uniswap V3 NFT position, including both principal and fees.
      * @dev Fetches principal amounts via `principal` and accrued fees via `fees`, then sums them for a complete value.

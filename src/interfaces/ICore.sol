@@ -17,16 +17,16 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 
 interface ICore is IERC721Receiver, IAccessControlEnumerable {
     /**
-    * @notice Parameters used in the Rebalance event.
-    * @dev This struct captures details about a rebalancing event within the AMM pool.
-    * @param pool The address of the pool being rebalanced.
-    * @param ammPositionInfo Information about the AMM position, such as tick range, liquidity, etc.
-    * @param sqrtPriceX96 The square root of the price at the time of the rebalance, in Q96 format.
-    * @param amount0 The amount of token0 involved in the rebalance.
-    * @param amount1 The amount of token1 involved in the rebalance.
-    * @param ammPositionIdBefore The AMM position ID before the rebalance.
-    * @param ammPositionIdAfter The AMM position ID after the rebalance.
-    */
+     * @notice Parameters used in the Rebalance event.
+     * @dev This struct captures details about a rebalancing event within the AMM pool.
+     * @param pool The address of the pool being rebalanced.
+     * @param ammPositionInfo Information about the AMM position, such as tick range, liquidity, etc.
+     * @param sqrtPriceX96 The square root of the price at the time of the rebalance, in Q96 format.
+     * @param amount0 The amount of token0 involved in the rebalance.
+     * @param amount1 The amount of token1 involved in the rebalance.
+     * @param ammPositionIdBefore The AMM position ID before the rebalance.
+     * @param ammPositionIdAfter The AMM position ID after the rebalance.
+     */
     struct RebalanceEventParams {
         address pool;
         IAmmModule.AmmPosition ammPositionInfo;
@@ -242,12 +242,6 @@ interface ICore is IERC721Receiver, IAccessControlEnumerable {
     function strategyModule() external view returns (IStrategyModule);
 
     /**
-     * @dev Returns the operator flag.
-     * @return bool value indicating the operator flag.
-     */
-    function operatorFlag() external view returns (bool);
-
-    /**
      * @dev Retrieves the ManagedPositionInfo struct at the specified index.
      * @param id The index of the ManagedPositionInfo struct to retrieve.
      * @return ManagedPositionInfo - struct at the specified index.
@@ -278,27 +272,6 @@ interface ICore is IERC721Receiver, IAccessControlEnumerable {
      * specific protocol logic it adheres to.
      */
     function protocolParams() external view returns (bytes memory);
-
-    /**
-     * @dev Sets the operator flag to enable or disable specific operator functionalities,
-     * such as the requirement for operator privileges to execute rebalances.
-     * This adjustment allows for the dynamic control over who can initiate and execute rebalance operations,
-     * a critical aspect of managing the protocol's liquidity and position strategies. By toggling this flag,
-     * the protocol's administrator can restrict or open rebalancing capabilities in response to operational,
-     * security, or strategic considerations.
-     *
-     * @param operatorFlag_ A boolean value indicating the new state of the operator flag.
-     * Setting this flag to `true` requires operator privileges for rebalancing actions,
-     * adding an additional layer of control and security. Conversely, setting it to `false`
-     * removes the necessity for such privileges, potentially broadening the pool of entities
-     * that can perform rebalances under certain conditions.
-     *
-     * Requirements:
-     * - Only the admin of the `Core.sol` contract can call this function. This restriction ensures
-     * that changes to the operator flag, which can significantly impact the protocol's operation and
-     * security posture, are made solely by the most trusted level of authority within the protocol's governance structure.
-     */
-    function setOperatorFlag(bool operatorFlag_) external;
 
     /**
      * @dev Sets the global protocol parameters for the contract.

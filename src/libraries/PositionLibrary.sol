@@ -10,7 +10,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
  * @dev This library allows for optimized, gas-efficient retrieval of position data from a Nonfungible Position Manager contract.
  *      The `Position` struct represents an individual position, encapsulating details such as liquidity, fee growth, tick range, and tokens owed.
  */
-library PositionLibrary {    
+library PositionLibrary {
     /**
      * @notice Represents a position in an AMM pool with detailed attributes.
      * @dev This struct contains information about a specific position, including liquidity, fee growth, and token owed data.

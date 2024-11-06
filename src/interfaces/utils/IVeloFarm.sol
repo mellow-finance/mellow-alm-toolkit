@@ -16,8 +16,8 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
  */
 interface IVeloFarm {
     /**
-    * @notice Thrown when an invalid distributor address is encountered.
-    */
+     * @notice Thrown when an invalid distributor address is encountered.
+     */
     error InvalidDistributor();
 
     /**
@@ -67,7 +67,10 @@ interface IVeloFarm {
      * @param account The address of the account.
      * @return rewardsEarned The calculated amount of rewards the account has earned.
      */
-    function calculateEarnedRewards(address account) external view returns (uint256 rewardsEarned);
+    function calculateEarnedRewards(address account)
+        external
+        view
+        returns (uint256 rewardsEarned);
 
     /**
      * @notice Returns the address of the reward distributor.

@@ -15,8 +15,8 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
  */
 interface IVeloAmmModule is IAmmModule {
     /**
-    * @notice Thrown when the specified fee is invalid.
-    */
+     * @notice Thrown when the specified fee is invalid.
+     */
     error InvalidFee();
 
     /**
@@ -85,5 +85,4 @@ interface IVeloAmmModule is IAmmModule {
      * @return bytes4 function selector.
      */
     function selectorIsPool() external view returns (bytes4);
-
 }

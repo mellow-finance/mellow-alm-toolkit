@@ -19,7 +19,6 @@ abstract contract DeployScript {
         address factoryOperator;
         // Core
         IVeloAmmModule.ProtocolParams protocolParams;
-        bool operatorFlag;
     }
 
     struct CoreDeployment {
@@ -63,7 +62,6 @@ abstract contract DeployScript {
             address(contracts.lpWrapperImplementation)
         );
 
-        contracts.core.setOperatorFlag(params.operatorFlag);
         contracts.core.setProtocolParams(abi.encode(params.protocolParams));
 
         contracts.deployFactory.setLpWrapperAdmin(params.lpWrapperAdmin);

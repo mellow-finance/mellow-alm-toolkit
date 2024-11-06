@@ -23,15 +23,13 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     IOracle public immutable oracle;
     /// @inheritdoc ICore
     IStrategyModule public immutable strategyModule;
-    /// @inheritdoc ICore
-    bool public operatorFlag;
 
     bytes private _protocolParams;
     ManagedPositionInfo[] private _positions;
     mapping(address => EnumerableSet.UintSet) private _userIds;
 
     /// ---------------------- INITIALIZER FUNCTIONS ----------------------
-    
+
     /**
      * @dev Constructor function for the Core contract.
      * @param ammModule_ The address of the AMM module contract.
@@ -225,9 +223,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
 
     /// @inheritdoc ICore
     function rebalance(RebalanceParams memory params) external override nonReentrant {
-        if (operatorFlag) {
-            _requireAtLeastOperator();
-        }
+        _requireAtLeastOperator();
         TargetPositionInfo[] memory targets = new TargetPositionInfo[](params.ids.length);
         uint256 iterator = 0;
         bytes memory protocolParams_ = _protocolParams;
@@ -293,12 +289,6 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
             }
             _positions[target.id].ammPositionIds = ammPositionIds;
         }
-    }
-
-    /// @inheritdoc ICore
-    function setOperatorFlag(bool operatorFlag_) external override nonReentrant {
-        _requireAdmin();
-        operatorFlag = operatorFlag_;
     }
 
     /// @inheritdoc ICore
@@ -488,7 +478,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     }
 
     /// ---------------------- PRIVATE VIEW FUNCTIONS ----------------------
-    
+
     function _calculateTargetCapitalX96(
         TargetPositionInfo memory target,
         uint160 sqrtPriceX96,

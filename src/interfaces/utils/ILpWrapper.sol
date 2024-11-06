@@ -97,9 +97,7 @@ interface ILpWrapper is IVeloFarm, IAccessControlEnumerable, IERC20 {
      * @param totalSupplyCurrent The current total supply of LP tokens at the time of update.
      */
     event TotalSupplyLimitUpdated(
-        uint256 newTotalSupplyLimit,
-        uint256 totalSupplyLimitOld,
-        uint256 totalSupplyCurrent
+        uint256 newTotalSupplyLimit, uint256 totalSupplyLimitOld, uint256 totalSupplyCurrent
     );
 
     /**

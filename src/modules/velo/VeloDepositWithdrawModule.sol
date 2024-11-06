@@ -16,7 +16,7 @@ contract VeloDepositWithdrawModule is IVeloDepositWithdrawModule {
     }
 
     /// ---------------------- EXTERNAL MUTATING FUNCTIONS ----------------------
-    
+
     /// @inheritdoc IAmmDepositWithdrawModule
     function deposit(
         uint256 tokenId,
