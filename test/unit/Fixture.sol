@@ -4,6 +4,26 @@ pragma solidity ^0.8.0;
 import "../Imports.sol";
 import "scripts/deploy/Constants.sol";
 
+contract VeloFarmMock {
+    function distribute(uint256 amount) external {}
+}
+
+contract VoterMock {
+    function isAlive(address) external pure returns (bool) {
+        return false;
+    }
+}
+
+contract GuageMock {
+    address public immutable pool;
+    VoterMock public immutable voter;
+
+    constructor(address pool_) {
+        pool = pool_;
+        voter = new VoterMock();
+    }
+}
+
 contract Fixture is DeployScript, Test {
     using SafeERC20 for IERC20;
 
@@ -50,6 +70,52 @@ contract Fixture is DeployScript, Test {
         deal(pool.token1(), address(contracts.deployFactory), 1 ether);
         lpWrapper = deployStrategy(contracts, deployParams);
         vm.stopPrank();
+    }
+
+    function mint(
+        address token0,
+        address token1,
+        int24 tickSpacing,
+        int24 tickLower,
+        int24 tickUpper,
+        uint128 liquidity,
+        ICLPool pool,
+        address recipient
+    ) public returns (uint256) {
+        vm.startPrank(recipient);
+
+        if (token0 > token1) {
+            (token0, token1) = (token1, token0);
+        }
+        (uint160 sqrtRatioX96,,,,,) = pool.slot0();
+
+        INonfungiblePositionManager.MintParams memory mintParams;
+        mintParams.tickLower = tickLower;
+        mintParams.tickUpper = tickUpper;
+        mintParams.recipient = recipient;
+        mintParams.deadline = type(uint256).max;
+        mintParams.token0 = token0;
+        mintParams.token1 = token1;
+        mintParams.tickSpacing = tickSpacing;
+        {
+            uint160 sqrtLowerRatioX96 = TickMath.getSqrtRatioAtTick(mintParams.tickLower);
+            uint160 sqrtUpperRatioX96 = TickMath.getSqrtRatioAtTick(mintParams.tickUpper);
+            (mintParams.amount0Desired, mintParams.amount1Desired) = LiquidityAmounts
+                .getAmountsForLiquidity(sqrtRatioX96, sqrtLowerRatioX96, sqrtUpperRatioX96, liquidity);
+            mintParams.amount0Desired += 1;
+            mintParams.amount1Desired += 1;
+        }
+        deal(token0, recipient, mintParams.amount0Desired);
+        deal(token1, recipient, mintParams.amount1Desired);
+        IERC20(token0).safeIncreaseAllowance(address(positionManager), mintParams.amount0Desired);
+        IERC20(token1).safeIncreaseAllowance(address(positionManager), mintParams.amount1Desired);
+
+        (uint256 tokenId, uint128 actualLiquidity,,) = positionManager.mint(mintParams);
+        require(
+            (liquidity * 99) / 100 <= actualLiquidity && tokenId > 0, "Invalid params of minted nft"
+        );
+        vm.stopPrank();
+        return tokenId;
     }
 
     function mint(

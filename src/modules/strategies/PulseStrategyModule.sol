@@ -148,6 +148,7 @@ contract PulseStrategyModule is IPulseStrategyModule {
                 targetTickLower += params.tickSpacing;
             }
         } else {
+            /// @dev sqrtPriceX96 in [sqrtPriceX96Lower, sqrtPriceX96Upper]
             return (tickLower, tickUpper);
         }
         targetTickUpper = targetTickLower + params.width;
@@ -315,7 +316,7 @@ contract PulseStrategyModule is IPulseStrategyModule {
         }
         if (params.strategyType == StrategyType.Tamper) {
             if (
-                params.width % 2 != 0 || params.width / 2 <= params.tickSpacing
+                params.width % 2 != 0 || (params.width / 2) % params.tickSpacing != 0
                     || params.maxLiquidityRatioDeviationX96 == 0
                     || params.maxLiquidityRatioDeviationX96 >= Q96
             ) {
