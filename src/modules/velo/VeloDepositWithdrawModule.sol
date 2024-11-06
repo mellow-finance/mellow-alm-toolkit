@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: BSL-1.1
-pragma solidity ^0.8.0;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.25;
 
 import "../../interfaces/modules/velo/IVeloDepositWithdrawModule.sol";
 
@@ -9,23 +9,32 @@ contract VeloDepositWithdrawModule is IVeloDepositWithdrawModule {
     /// @inheritdoc IVeloDepositWithdrawModule
     INonfungiblePositionManager public immutable positionManager;
 
+    /// ---------------------- INITIALIZER FUNCTIONS ----------------------
+
     constructor(INonfungiblePositionManager positionManager_) {
         positionManager = positionManager_;
     }
+
+    /// ---------------------- EXTERNAL MUTATING FUNCTIONS ----------------------
 
     /// @inheritdoc IAmmDepositWithdrawModule
     function deposit(
         uint256 tokenId,
         uint256 amount0,
         uint256 amount1,
-        address from
+        address from,
+        address token0,
+        address token1
     ) external override returns (uint256 actualAmount0, uint256 actualAmount1) {
-        (, , address token0, address token1, , , , , , , , ) = positionManager
-            .positions(tokenId);
-        IERC20(token0).safeTransferFrom(from, address(this), amount0);
-        IERC20(token1).safeTransferFrom(from, address(this), amount1);
-        IERC20(token0).safeIncreaseAllowance(address(positionManager), amount0);
-        IERC20(token1).safeIncreaseAllowance(address(positionManager), amount1);
+        address this_ = address(this);
+        if (amount0 != 0) {
+            IERC20(token0).safeTransferFrom(from, this_, amount0);
+            IERC20(token0).safeIncreaseAllowance(address(positionManager), amount0);
+        }
+        if (amount1 != 0) {
+            IERC20(token1).safeTransferFrom(from, this_, amount1);
+            IERC20(token1).safeIncreaseAllowance(address(positionManager), amount1);
+        }
         (, actualAmount0, actualAmount1) = positionManager.increaseLiquidity(
             INonfungiblePositionManager.IncreaseLiquidityParams({
                 tokenId: tokenId,
@@ -45,11 +54,11 @@ contract VeloDepositWithdrawModule is IVeloDepositWithdrawModule {
     }
 
     /// @inheritdoc IAmmDepositWithdrawModule
-    function withdraw(
-        uint256 tokenId,
-        uint256 liquidity,
-        address to
-    ) external override returns (uint256 actualAmount0, uint256 actualAmount1) {
+    function withdraw(uint256 tokenId, uint256 liquidity, address to)
+        external
+        override
+        returns (uint256 actualAmount0, uint256 actualAmount1)
+    {
         positionManager.decreaseLiquidity(
             INonfungiblePositionManager.DecreaseLiquidityParams({
                 tokenId: tokenId,

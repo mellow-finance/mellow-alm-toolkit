@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity ^0.8.0;
+pragma solidity 0.8.25;
 
 /// @title Events emitted by a pool
 /// @notice Contains all events emitted by the pool
@@ -101,8 +101,7 @@ interface ICLPoolEvents {
     /// @param observationCardinalityNextOld The previous value of the next observation cardinality
     /// @param observationCardinalityNextNew The updated value of the next observation cardinality
     event IncreaseObservationCardinalityNext(
-        uint16 observationCardinalityNextOld,
-        uint16 observationCardinalityNextNew
+        uint16 observationCardinalityNextOld, uint16 observationCardinalityNextNew
     );
 
     /// @notice Emitted when the protocol fee is changed by the pool
@@ -111,19 +110,12 @@ interface ICLPoolEvents {
     /// @param feeProtocol0New The updated value of the token0 protocol fee
     /// @param feeProtocol1New The updated value of the token1 protocol fee
     event SetFeeProtocol(
-        uint8 feeProtocol0Old,
-        uint8 feeProtocol1Old,
-        uint8 feeProtocol0New,
-        uint8 feeProtocol1New
+        uint8 feeProtocol0Old, uint8 feeProtocol1Old, uint8 feeProtocol0New, uint8 feeProtocol1New
     );
 
     /// @notice Emitted when the collected protocol fees are withdrawn by the gauge
     /// @param recipient The address that receives the collected protocol fees
     /// @param amount0 The amount of token0 protocol fees that is withdrawn
     /// @param amount0 The amount of token1 protocol fees that is withdrawn
-    event CollectFees(
-        address indexed recipient,
-        uint128 amount0,
-        uint128 amount1
-    );
+    event CollectFees(address indexed recipient, uint128 amount0, uint128 amount1);
 }

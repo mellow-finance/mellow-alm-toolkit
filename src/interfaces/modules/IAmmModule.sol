@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: BSL-1.1
-pragma solidity ^0.8.0;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.25;
 
 /**
  * @title IAmmModule Interface
@@ -69,9 +69,7 @@ interface IAmmModule {
      * @param tokenId Token ID.
      * @return AmmPosition struct with position details.
      */
-    function getAmmPosition(
-        uint256 tokenId
-    ) external view returns (AmmPosition memory);
+    function getAmmPosition(uint256 tokenId) external view returns (AmmPosition memory);
 
     /**
      * @dev Returns the pool address for given tokens and property.
@@ -80,11 +78,10 @@ interface IAmmModule {
      * @param property Pool property - fee or tickSpacing.
      * @return Pool address.
      */
-    function getPool(
-        address token0,
-        address token1,
-        uint24 property
-    ) external view returns (address);
+    function getPool(address token0, address token1, uint24 property)
+        external
+        view
+        returns (address);
 
     /**
      * @dev Returns whether the given pool address belongs to the factory.
@@ -98,6 +95,20 @@ interface IAmmModule {
      * @return Property value of the pool.
      */
     function getProperty(address pool) external view returns (uint24);
+
+    /**
+     * @notice Collects accumulated rewards for a specific token ID.
+     * @dev This function allows the caller to collect rewards associated with a specified token,
+     *      using additional parameters for customization of the collection process.
+     * @param tokenId The unique identifier of the token for which rewards are to be collected.
+     * @param callbackParams Additional parameters for callback configuration during reward collection.
+     * @param protocolParams Protocol-specific parameters that influence the reward collection process.
+     */
+    function collectRewards(
+        uint256 tokenId,
+        bytes memory callbackParams,
+        bytes memory protocolParams
+    ) external;
 
     /**
      * @dev Hook called before rebalancing a token or before any deposit/withdraw actions.

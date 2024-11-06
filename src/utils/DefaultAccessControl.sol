@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.0;
+pragma solidity 0.8.25;
 
-import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
+import
+    "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
 
 /// @notice This is a default access control with 3 roles:
 ///
 /// - ADMIN: allowed to do anything
 /// - ADMIN_DELEGATE: allowed to do anything except assigning ADMIN and ADMIN_DELEGATE roles
 /// - OPERATOR: low-privileged role, generally keeper or some other bot
-contract DefaultAccessControl is AccessControlEnumerable {
+abstract contract DefaultAccessControl is AccessControlEnumerableUpgradeable {
     error Forbidden();
     error AddressZero();
 
@@ -16,10 +17,10 @@ contract DefaultAccessControl is AccessControlEnumerable {
     bytes32 public constant ADMIN_ROLE = keccak256("admin");
     bytes32 public constant ADMIN_DELEGATE_ROLE = keccak256("admin_delegate");
 
-    /// @notice Creates a new contract.
-    /// @param admin Admin of the contract
-    constructor(address admin) {
-        if (admin == address(0)) revert AddressZero();
+    function __DefaultAccessControl_init(address admin) internal onlyInitializing {
+        if (admin == address(0)) {
+            revert AddressZero();
+        }
 
         _grantRole(OPERATOR, admin);
         _grantRole(ADMIN_ROLE, admin);
@@ -35,8 +36,7 @@ contract DefaultAccessControl is AccessControlEnumerable {
     /// @param sender Adddress to check
     /// @return `true` if sender is an admin, `false` otherwise
     function isAdmin(address sender) public view returns (bool) {
-        return
-            hasRole(ADMIN_ROLE, sender) || hasRole(ADMIN_DELEGATE_ROLE, sender);
+        return hasRole(ADMIN_ROLE, sender) || hasRole(ADMIN_DELEGATE_ROLE, sender);
     }
 
     /// @notice Checks if the address is OPERATOR.

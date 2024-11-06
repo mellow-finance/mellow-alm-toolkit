@@ -111,3 +111,7 @@ out/
 
 # Backtest data
 test/backtest/data
+
+report/
+
+lcov.info

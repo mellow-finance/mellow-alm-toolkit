@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity ^0.8.0;
+pragma solidity 0.8.25;
 
 /// @title Permissionless pool actions
 /// @notice Contains pool methods that can be called by anyone
@@ -98,11 +98,9 @@ interface ICLPoolActions {
     /// @param amount How much liquidity to burn
     /// @return amount0 The amount of token0 sent to the recipient
     /// @return amount1 The amount of token1 sent to the recipient
-    function burn(
-        int24 tickLower,
-        int24 tickUpper,
-        uint128 amount
-    ) external returns (uint256 amount0, uint256 amount1);
+    function burn(int24 tickLower, int24 tickUpper, uint128 amount)
+        external
+        returns (uint256 amount0, uint256 amount1);
 
     /// @notice Burn liquidity from the supplied owner and account tokens owed for the liquidity to the position
     /// @dev Can be used to trigger a recalculation of fees owed to a position by calling with an amount of 0
@@ -113,12 +111,9 @@ interface ICLPoolActions {
     /// @param owner Owner of the position in the pool (nft manager or gauge)
     /// @return amount0 The amount of token0 sent to the recipient
     /// @return amount1 The amount of token1 sent to the recipient
-    function burn(
-        int24 tickLower,
-        int24 tickUpper,
-        uint128 amount,
-        address owner
-    ) external returns (uint256 amount0, uint256 amount1);
+    function burn(int24 tickLower, int24 tickUpper, uint128 amount, address owner)
+        external
+        returns (uint256 amount0, uint256 amount1);
 
     /// @notice Convert existing liquidity into staked liquidity
     /// @notice Only callable by the gauge associated with this pool
@@ -159,20 +154,14 @@ interface ICLPoolActions {
     /// @param amount0 The amount of token0 to send
     /// @param amount1 The amount of token1 to send
     /// @param data Any data to be passed through to the callback
-    function flash(
-        address recipient,
-        uint256 amount0,
-        uint256 amount1,
-        bytes calldata data
-    ) external;
+    function flash(address recipient, uint256 amount0, uint256 amount1, bytes calldata data)
+        external;
 
     /// @notice Increase the maximum number of price and liquidity observations that this pool will store
     /// @dev This method is no-op if the pool already has an observationCardinalityNext greater than or equal to
     /// the input observationCardinalityNext.
     /// @param observationCardinalityNext The desired minimum number of observations for the pool to store
-    function increaseObservationCardinalityNext(
-        uint16 observationCardinalityNext
-    ) external;
+    function increaseObservationCardinalityNext(uint16 observationCardinalityNext) external;
 
     /// @notice Updates rewardGrowthGlobalX128 every time when any tick is crossed,
     /// or when any position is staked/unstaked from the gauge
@@ -182,9 +171,5 @@ interface ICLPoolActions {
     /// @param rewardRate the rate rewards being distributed during the epoch
     /// @param rewardReserve the available rewards to be distributed during the epoch
     /// @param periodFinish the end of the current period of rewards, updated once per epoch
-    function syncReward(
-        uint256 rewardRate,
-        uint256 rewardReserve,
-        uint256 periodFinish
-    ) external;
+    function syncReward(uint256 rewardRate, uint256 rewardReserve, uint256 periodFinish) external;
 }

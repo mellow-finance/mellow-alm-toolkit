@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity ^0.8.0;
+pragma solidity 0.8.25;
 
 /// @title Minimal ERC20 interface for CL
 /// @notice Contains a subset of the full ERC20 interface that is used in CL
@@ -13,19 +13,13 @@ interface IERC20Minimal {
     /// @param recipient The account that will receive the amount transferred
     /// @param amount The number of tokens to send from the sender to the recipient
     /// @return Returns true for a successful transfer, false for an unsuccessful transfer
-    function transfer(
-        address recipient,
-        uint256 amount
-    ) external returns (bool);
+    function transfer(address recipient, uint256 amount) external returns (bool);
 
     /// @notice Returns the current allowance given to a spender by an owner
     /// @param owner The account of the token owner
     /// @param spender The account of the token spender
     /// @return The current allowance granted by `owner` to `spender`
-    function allowance(
-        address owner,
-        address spender
-    ) external view returns (uint256);
+    function allowance(address owner, address spender) external view returns (uint256);
 
     /// @notice Sets the allowance of a spender from the `msg.sender` to the value `amount`
     /// @param spender The account which will be allowed to spend a given amount of the owners tokens
@@ -38,11 +32,9 @@ interface IERC20Minimal {
     /// @param recipient The recipient of the transfer
     /// @param amount The amount of the transfer
     /// @return Returns true for a successful transfer, false for unsuccessful
-    function transferFrom(
-        address sender,
-        address recipient,
-        uint256 amount
-    ) external returns (bool);
+    function transferFrom(address sender, address recipient, uint256 amount)
+        external
+        returns (bool);
 
     /// @notice Event emitted when tokens are transferred from one address to another, either via `#transfer` or `#transferFrom`.
     /// @param from The account from which the tokens were sent, i.e. the balance decreased
@@ -54,9 +46,5 @@ interface IERC20Minimal {
     /// @param owner The account that approved spending of its tokens
     /// @param spender The account for which the spending allowance was modified
     /// @param value The new allowance from the owner to the spender
-    event Approval(
-        address indexed owner,
-        address indexed spender,
-        uint256 value
-    );
+    event Approval(address indexed owner, address indexed spender, uint256 value);
 }
