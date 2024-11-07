@@ -404,7 +404,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
         );
     }
 
-    function testCalculateTamperPosition() external {
+    function testCalculateTamperPosition() external view {
         int24 tick = 1000;
         uint160 sqrtPriceX96 = TickMath.getSqrtRatioAtTick(tick);
         pulseStrategyModule.calculateTamperPosition(sqrtPriceX96, tick, 20);
