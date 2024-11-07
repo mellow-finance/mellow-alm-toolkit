@@ -3,10 +3,6 @@ pragma solidity ^0.8.0;
 
 import "./Fixture.sol";
 
-contract VeloFarmMock {
-    function distribute(uint256 amount) external {}
-}
-
 contract Unit is Fixture {
     using SafeERC20 for IERC20;
 
@@ -107,6 +103,7 @@ contract Unit is Fixture {
             Constants.OPTIMISM_DEPLOYER
         );
         (uint160 sqrtPriceX96, int24 tick,,,,) = pool.slot0();
+
         {
             (uint256 amount0, uint256 amount1) =
                 module.tvl(tokenId, sqrtPriceX96, defaultCallbackParams, defaultProtocolParams);
@@ -118,10 +115,12 @@ contract Unit is Fixture {
             assertEq(amount1, expected1);
         }
 
-        movePrice(pool, TickMath.getSqrtRatioAtTick(tick + pool.tickSpacing() * 2));
+        (, tick,,,,) = pool.slot0();
+        for (int24 i = 0; i < 10; i++) {
+            (sqrtPriceX96,,,,,) = pool.slot0();
 
-        (sqrtPriceX96,,,,,) = pool.slot0();
-        {
+            movePrice(pool, TickMath.getSqrtRatioAtTick(tick + int24(i - 5) * 100));
+
             (uint256 amount0, uint256 amount1) =
                 module.tvl(tokenId, sqrtPriceX96, defaultCallbackParams, defaultProtocolParams);
             assertTrue(amount0 + amount1 > 0);
@@ -198,12 +197,21 @@ contract Unit is Fixture {
         );
 
         positionManager.approve(pool.gauge(), tokenId);
+        (bool success,) = address(module).delegatecall(
+            abi.encodeWithSelector(
+                IAmmModule.beforeRebalance.selector,
+                tokenId,
+                defaultCallbackParams,
+                defaultProtocolParams
+            )
+        );
+        assertTrue(success);
         ICLGauge(pool.gauge()).deposit(tokenId);
 
         addRewardToGauge(10 ether, ICLGauge(pool.gauge()));
         skip(10 days);
 
-        (bool success,) = address(module).delegatecall(
+        (success,) = address(module).delegatecall(
             abi.encodeWithSelector(
                 IAmmModule.beforeRebalance.selector,
                 tokenId,
@@ -246,6 +254,22 @@ contract Unit is Fixture {
             abi.encodeWithSelector(
                 IAmmModule.afterRebalance.selector,
                 tokenId,
+                abi.encode(
+                    IVeloAmmModule.CallbackParams({
+                        farm: address(0),
+                        gauge: address(new GuageMock(address(pool)))
+                    })
+                ),
+                defaultProtocolParams
+            )
+        );
+        assertTrue(success);
+        assertEq(positionManager.ownerOf(tokenId), address(this));
+
+        (success,) = address(module).delegatecall(
+            abi.encodeWithSelector(
+                IAmmModule.afterRebalance.selector,
+                tokenId,
                 defaultCallbackParams,
                 defaultProtocolParams
             )
@@ -283,6 +307,13 @@ contract Unit is Fixture {
         module.validateCallbackParams(
             abi.encode(IVeloAmmModule.CallbackParams({farm: address(1), gauge: address(0)}))
         );
+
+        address wrongGuauge = address(new GuageMock(address(pool)));
+        vm.expectRevert(abi.encodeWithSignature("InvalidGauge()"));
+        module.validateCallbackParams(
+            abi.encode(IVeloAmmModule.CallbackParams({farm: address(1), gauge: wrongGuauge}))
+        );
+
         vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
         module.validateCallbackParams(new bytes(123));
 

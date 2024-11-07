@@ -189,7 +189,7 @@ contract VeloDeployFactory is DefaultAccessControl, IERC721Receiver, IVeloDeploy
         int24 tickSpacing = pool.tickSpacing();
 
         _handleToken(depositor, token0, params.maxAmount0);
-        _handleToken(depositor, token1, params.maxAmount0);
+        _handleToken(depositor, token1, params.maxAmount1);
 
         for (uint256 i = 0; i < mintInfo.length; i++) {
             (tokenIds[i],,,) = positionManager.mint(

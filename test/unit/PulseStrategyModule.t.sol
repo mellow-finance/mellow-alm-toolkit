@@ -212,7 +212,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
     function testCalculateTargetLazySyncing() external {
         IPulseStrategyModule.StrategyType t = IPulseStrategyModule.StrategyType.LazySyncing;
         for (int24 spot = -200; spot <= 200; spot++) {
-            _test(spot, -100, 200, t, 100, 0, 300);
+            _test(spot, -100, 200, t, 100, 10, 300);
         }
 
         _test(191, -100, 200, t, 100, 0, 300);
@@ -337,55 +337,219 @@ contract PulseStrategyModuleTestV1 is Fixture {
                 })
             )
         );
+
+        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        pulseStrategyModule.validateStrategyParams(
+            abi.encode(
+                IPulseStrategyModule.StrategyParams({
+                    strategyType: IPulseStrategyModule.StrategyType.Original,
+                    tickSpacing: 50,
+                    tickNeighborhood: 200,
+                    width: 4200,
+                    maxLiquidityRatioDeviationX96: 1
+                })
+            )
+        );
+
+        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        pulseStrategyModule.validateStrategyParams(
+            abi.encode(
+                IPulseStrategyModule.StrategyParams({
+                    strategyType: IPulseStrategyModule.StrategyType.Tamper,
+                    tickSpacing: 1,
+                    tickNeighborhood: 0,
+                    width: 3,
+                    maxLiquidityRatioDeviationX96: Q96 / 2
+                })
+            )
+        );
+
+        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        pulseStrategyModule.validateStrategyParams(
+            abi.encode(
+                IPulseStrategyModule.StrategyParams({
+                    strategyType: IPulseStrategyModule.StrategyType.Tamper,
+                    tickSpacing: 10,
+                    tickNeighborhood: 0,
+                    width: 30,
+                    maxLiquidityRatioDeviationX96: Q96 / 2
+                })
+            )
+        );
+
+        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        pulseStrategyModule.validateStrategyParams(
+            abi.encode(
+                IPulseStrategyModule.StrategyParams({
+                    strategyType: IPulseStrategyModule.StrategyType.Tamper,
+                    tickSpacing: 200,
+                    tickNeighborhood: 0,
+                    width: 4000,
+                    maxLiquidityRatioDeviationX96: 0
+                })
+            )
+        );
+
+        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        pulseStrategyModule.validateStrategyParams(
+            abi.encode(
+                IPulseStrategyModule.StrategyParams({
+                    strategyType: IPulseStrategyModule.StrategyType.Tamper,
+                    tickSpacing: 200,
+                    tickNeighborhood: 0,
+                    width: 4000,
+                    maxLiquidityRatioDeviationX96: Q96
+                })
+            )
+        );
+    }
+
+    function testCalculateTamperPosition() external view {
+        int24 tick = 1000;
+        uint160 sqrtPriceX96 = TickMath.getSqrtRatioAtTick(tick);
+        pulseStrategyModule.calculateTamperPosition(sqrtPriceX96, tick, 20);
+        pulseStrategyModule.calculateTamperPosition(sqrtPriceX96, tick + 100, 20);
     }
 
     function testGetTargets() external {
         ICore.ManagedPositionInfo memory info;
-        //  info.ammPositionIds = new uint256[](3);
 
         ICLPool pool = ICLPool(factory.getPool(Constants.OPTIMISM_WETH, Constants.OPTIMISM_OP, 200));
         info.pool = address(pool);
         VeloOracle oracle = new VeloOracle();
-        info.strategyParams = abi.encode(
-            IPulseStrategyModule.StrategyParams({
-                strategyType: IPulseStrategyModule.StrategyType.Original,
-                tickSpacing: pool.tickSpacing(),
-                tickNeighborhood: 50,
-                width: 300,
-                maxLiquidityRatioDeviationX96: 0
-            })
-        );
+        {
+            info.strategyParams = abi.encode(
+                IPulseStrategyModule.StrategyParams({
+                    strategyType: IPulseStrategyModule.StrategyType.Original,
+                    tickSpacing: pool.tickSpacing(),
+                    tickNeighborhood: 50,
+                    width: 300,
+                    maxLiquidityRatioDeviationX96: 0
+                })
+            );
 
-        vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
-        pulseStrategyModule.getTargets(info, IAmmModule(address(0)), oracle);
+            vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
+            pulseStrategyModule.getTargets(info, IAmmModule(address(0)), oracle);
 
-        pool.increaseObservationCardinalityNext(2);
-        uint256 tokenId = mint(
-            pool.token0(),
-            pool.token1(),
-            pool.tickSpacing(),
-            pool.tickSpacing() * 2,
-            10000,
-            pool,
-            address(this)
-        );
+            pool.increaseObservationCardinalityNext(2);
+            uint256 tokenId = mint(
+                pool.token0(),
+                pool.token1(),
+                pool.tickSpacing(),
+                pool.tickSpacing() * 2,
+                10000,
+                pool,
+                address(this)
+            );
 
-        info.ammPositionIds = new uint256[](1);
-        info.ammPositionIds[0] = tokenId;
+            info.ammPositionIds = new uint256[](1);
+            info.ammPositionIds[0] = tokenId;
 
-        VeloAmmModule ammModule = new VeloAmmModule(
-            INonfungiblePositionManager(Constants.OPTIMISM_POSITION_MANAGER),
-            Constants.OPTIMISM_IS_POOL_SELECTOR
-        );
+            VeloAmmModule ammModule = new VeloAmmModule(
+                INonfungiblePositionManager(Constants.OPTIMISM_POSITION_MANAGER),
+                Constants.OPTIMISM_IS_POOL_SELECTOR
+            );
 
-        (bool isRebalanceRequired, ICore.TargetPositionInfo memory target) =
+            (bool isRebalanceRequired, ICore.TargetPositionInfo memory target) =
+                pulseStrategyModule.getTargets(info, ammModule, oracle);
+
+            assertTrue(isRebalanceRequired);
+            assertEq(target.lowerTicks.length, 1);
+            assertEq(target.upperTicks.length, 1);
+            assertEq(target.liquidityRatiosX96.length, 1);
+            assertEq(target.upperTicks[0] - target.lowerTicks[0], 300);
+        }
+
+        {
+            info.ammPositionIds = new uint256[](1);
+            info.strategyParams = abi.encode(
+                IPulseStrategyModule.StrategyParams({
+                    strategyType: IPulseStrategyModule.StrategyType.Tamper,
+                    tickSpacing: pool.tickSpacing(),
+                    tickNeighborhood: 50,
+                    width: 300,
+                    maxLiquidityRatioDeviationX96: 0
+                })
+            );
+
+            vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
+            pulseStrategyModule.getTargets(info, IAmmModule(address(0)), oracle);
+
+            info.ammPositionIds = new uint256[](3);
+            info.strategyParams = abi.encode(
+                IPulseStrategyModule.StrategyParams({
+                    strategyType: IPulseStrategyModule.StrategyType.Tamper,
+                    tickSpacing: pool.tickSpacing(),
+                    tickNeighborhood: 50,
+                    width: 300,
+                    maxLiquidityRatioDeviationX96: 0
+                })
+            );
+
+            vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
+            pulseStrategyModule.getTargets(info, IAmmModule(address(0)), oracle);
+
+            IVeloAmmModule ammModule = IVeloAmmModule(
+                new VeloAmmModule(
+                    INonfungiblePositionManager(Constants.OPTIMISM_POSITION_MANAGER),
+                    Constants.OPTIMISM_IS_POOL_SELECTOR
+                )
+            );
+            info.ammPositionIds = new uint256[](2);
+            info.strategyParams = abi.encode(
+                IPulseStrategyModule.StrategyParams({
+                    strategyType: IPulseStrategyModule.StrategyType.Tamper,
+                    tickSpacing: pool.tickSpacing(),
+                    tickNeighborhood: 0,
+                    width: 400,
+                    maxLiquidityRatioDeviationX96: Q96 - 1
+                })
+            );
+
+            info.ammPositionIds[0] = mint(
+                pool.token0(),
+                pool.token1(),
+                pool.tickSpacing(),
+                400,
+                800,
+                1000,
+                pool,
+                address(this)
+            );
+            info.ammPositionIds[1] = mint(
+                pool.token0(),
+                pool.token1(),
+                pool.tickSpacing(),
+                600,
+                1000,
+                1000,
+                pool,
+                address(this)
+            );
             pulseStrategyModule.getTargets(info, ammModule, oracle);
 
-        assertTrue(isRebalanceRequired);
-        assertEq(target.lowerTicks.length, 1);
-        assertEq(target.upperTicks.length, 1);
-        assertEq(target.liquidityRatiosX96.length, 1);
-        assertEq(target.upperTicks[0] - target.lowerTicks[0], 300);
+            info.ammPositionIds[0] = mint(
+                pool.token0(),
+                pool.token1(),
+                pool.tickSpacing(),
+                73600,
+                74000,
+                1000,
+                pool,
+                address(this)
+            );
+            info.ammPositionIds[1] = mint(
+                pool.token0(),
+                pool.token1(),
+                pool.tickSpacing(),
+                73800,
+                74200,
+                1000,
+                pool,
+                address(this)
+            );
+            pulseStrategyModule.getTargets(info, ammModule, oracle);
+        }
     }
 }
 

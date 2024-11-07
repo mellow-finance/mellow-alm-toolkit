@@ -159,4 +159,16 @@ interface IVeloDeployFactory is IAccessControlEnumerable {
      * @return lpWrapper The address of the LP wrapper associated with the specified pool.
      */
     function poolToWrapper(address pool) external view returns (address lpWrapper);
+
+    /**
+     * @notice Gets the LP wrapper admin address.
+     * @return lpWrapperAdmin The address of the LP wrapper admin.
+     */
+    function lpWrapperAdmin() external view returns (address lpWrapperAdmin);
+
+    /**
+     * @notice Gets value of `minInitialTotalSupply`.
+     * @return minInitialTotalSupply Value of minimal initial total supply of LpWrapper.
+     */
+    function minInitialTotalSupply() external view returns (uint256 minInitialTotalSupply);
 }

@@ -25,9 +25,11 @@ contract Unit is Fixture {
         PositionLibrary.Position memory position_ =
             PositionLibrary.getPosition(address(positionManager), tokenId);
 
-        (uint160 sqrtPriceX96,,,,,) = pool.slot0();
+        (uint160 sqrtPriceX96, int24 tick,,,,) = pool.slot0();
 
-        for (uint256 i = 0; i < 10; i++) {
+        for (int24 i = 0; i < 10; i++) {
+            (sqrtPriceX96,,,,,) = pool.slot0();
+
             (uint256 before0, uint256 before1) = LiquidityAmounts.getAmountsForLiquidity(
                 sqrtPriceX96,
                 TickMath.getSqrtRatioAtTick(position_.tickLower),
@@ -55,6 +57,8 @@ contract Unit is Fixture {
 
             assertApproxEqAbs(actualAmount0, after0 - before0, 1 wei);
             assertApproxEqAbs(actualAmount1, after1 - before1, 1 wei);
+
+            movePrice(pool, TickMath.getSqrtRatioAtTick(tick + int24(i - 5) * 100));
         }
     }
 
