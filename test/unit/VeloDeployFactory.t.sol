@@ -14,6 +14,10 @@ contract Unit is Fixture {
     int24 tickSpacing = pool.tickSpacing();
 
     function testConstructor() external {
+
+        vm.expectRevert();
+        new VeloDeployFactory(address(0), ICore(address(0)), IPulseStrategyModule(address(0)), address(0));
+
         DeployScript.CoreDeployment memory contracts = deployContracts();
         VeloDeployFactory factory;
 

@@ -6,12 +6,16 @@ import "scripts/deploy/Constants.sol";
 
 contract VeloFarmMock {
     function distribute(uint256 amount) external {}
+
+    function test() internal pure {}
 }
 
 contract VoterMock {
     function isAlive(address) external pure returns (bool) {
         return false;
     }
+
+    function test() internal pure {}
 }
 
 contract GuageMock {
@@ -22,6 +26,8 @@ contract GuageMock {
         pool = pool_;
         voter = new VoterMock();
     }
+
+    function test() internal pure {}
 }
 
 contract CLPoolMock {
@@ -34,6 +40,8 @@ contract CLPoolMock {
         token1 = token1_;
         tickSpacing = tickSpacing_;
     }
+
+    function test() internal pure {}
 }
 
 contract DummyBot is IRebalanceCallback {
@@ -115,6 +123,8 @@ contract DummyBot is IRebalanceCallback {
             newTokenIds[i] = tokenId;
         }
     }
+
+    function test() internal pure {}
 }
 
 contract Fixture is DeployScript, Test {
@@ -332,4 +342,6 @@ contract Fixture is DeployScript, Test {
             })
         );
     }
+    
+    function test() internal pure {}
 }
