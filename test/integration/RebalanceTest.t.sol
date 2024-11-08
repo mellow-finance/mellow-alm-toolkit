@@ -68,6 +68,11 @@ contract RebalancingBot_IntegrationTests is IRebalanceCallback {
         );
     }
 
+    struct SwapData {
+        address target;
+        bytes data;
+    }
+
     function call(
         bytes memory data,
         ICore.TargetPositionInfo memory target,
@@ -76,6 +81,14 @@ contract RebalancingBot_IntegrationTests is IRebalanceCallback {
         for (uint256 i = 0; i < info.ammPositionIds.length; i++) {
             _pullLiquidity(info.ammPositionIds[i]);
         }
+
+        if (data.length != 0) {
+            SwapData[] memory swaps = abi.decode(data, (SwapData[]));
+            for (uint256 i = 0; i < swaps.length; i++) {
+                Address.functionCall(swaps[i].target, swaps[i].data);
+            }
+        }
+
         uint256 length = target.lowerTicks.length;
         tokenIds = new uint256[](length);
         for (uint256 i = 0; i < length; i++) {
@@ -88,6 +101,8 @@ contract RebalancingBot_IntegrationTests is IRebalanceCallback {
             positionManager.approve(msg.sender, tokenIds[i]);
         }
     }
+
+    function test() internal pure {}
 }
 
 contract IntegrationTest is Test, DeployScript {
@@ -204,17 +219,7 @@ contract IntegrationTest is Test, DeployScript {
         }
 
         IERC20(address(wstethWeth1Wrapper)).safeTransfer(user, 0);
-
-        IERC20 rewardToken = IERC20(wstethWeth1Wrapper.rewardToken());
-        uint256 wrapperBalanceBefore = rewardToken.balanceOf(address(wstethWeth1Wrapper));
-        uint256 userBalanceBefore = rewardToken.balanceOf(user);
-        uint256 earned = wstethWeth1Wrapper.earned(user);
-
         wstethWeth1Wrapper.getRewards(user);
-
-        uint256 wrapperBalanceAfter = rewardToken.balanceOf(address(wstethWeth1Wrapper));
-        uint256 userBalanceAfter = rewardToken.balanceOf(user);
-
         wstethWeth1Wrapper.withdraw(
             wstethWeth1Wrapper.balanceOf(user) / 2, 0, 0, user, block.timestamp
         );
