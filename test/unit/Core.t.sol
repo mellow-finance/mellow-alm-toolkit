@@ -144,7 +144,7 @@ contract Unit is Fixture {
 
         rebalanceParams.id = 1;
         ICore.ManagedPositionInfo memory info = core.managedPositionAt(1);
-        rebalanceParams.data = abi.encode(info.ammPositionIds);
+        rebalanceParams.data = new bytes(0);
         vm.startPrank(params.mellowAdmin);
         //vm.expectRevert(abi.encodeWithSignature("PriceManipulationDetected()"));
         core.rebalance(rebalanceParams);
