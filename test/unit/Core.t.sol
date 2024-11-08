@@ -143,7 +143,6 @@ contract Unit is Fixture {
         movePrice(pool, TickMath.getSqrtRatioAtTick(tick + 1000));
 
         rebalanceParams.id = 1;
-        ICore.ManagedPositionInfo memory info = core.managedPositionAt(1);
         rebalanceParams.data = new bytes(0);
         vm.startPrank(params.mellowAdmin);
         //vm.expectRevert(abi.encodeWithSignature("PriceManipulationDetected()"));

@@ -13,10 +13,11 @@ import "../src/modules/velo/VeloDepositWithdrawModule.sol";
 import "../src/oracles/VeloOracle.sol";
 import "../src/utils/LpWrapper.sol";
 import "../src/utils/VeloDeployFactory.sol";
+
+import "./RandomLib.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
-
 import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 import "forge-std/Script.sol";
