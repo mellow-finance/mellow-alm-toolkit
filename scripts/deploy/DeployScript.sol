@@ -18,6 +18,7 @@ abstract contract DeployScript {
         uint256 minInitialTotalSupply;
         address factoryOperator;
         // Core
+        address coreOperator;
         IVeloAmmModule.ProtocolParams protocolParams;
     }
 
@@ -69,6 +70,11 @@ abstract contract DeployScript {
         contracts.deployFactory.setMinInitialTotalSupply(params.minInitialTotalSupply);
 
         contracts.core.grantRole(ADMIN_ROLE, params.mellowAdmin);
+        if (params.coreOperator != address(0)) {
+            contracts.core.grantRole(ADMIN_DELEGATE_ROLE, params.deployer);
+            contracts.core.grantRole(OPERATOR, params.coreOperator);
+            contracts.core.renounceRole(ADMIN_DELEGATE_ROLE, params.deployer);
+        }
         contracts.core.renounceRole(ADMIN_ROLE, params.deployer);
         contracts.core.renounceRole(OPERATOR, params.deployer);
 

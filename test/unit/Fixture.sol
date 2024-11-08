@@ -48,14 +48,15 @@ contract DummyBot is IRebalanceCallback {
     INonfungiblePositionManager public immutable positionManager =
         INonfungiblePositionManager(Constants.OPTIMISM_POSITION_MANAGER);
 
-    function call(bytes memory, ICore.TargetPositionInfo memory target)
-        external
-        returns (uint256[] memory newTokenIds)
-    {
-        uint256 ammPositionLength = target.info.ammPositionIds.length;
+    function call(
+        bytes memory,
+        ICore.TargetPositionInfo memory target,
+        ICore.ManagedPositionInfo memory info
+    ) external returns (uint256[] memory newTokenIds) {
+        uint256 ammPositionLength = info.ammPositionIds.length;
         for (uint256 i = 0; i < ammPositionLength; i++) {
             // getting liquidity from all position
-            uint256 tokenId = target.info.ammPositionIds[i];
+            uint256 tokenId = info.ammPositionIds[i];
             PositionLibrary.Position memory pos =
                 PositionLibrary.getPosition(address(positionManager), tokenId);
 
@@ -81,7 +82,7 @@ contract DummyBot is IRebalanceCallback {
 
         // creating new positions with minimal liquidity
         newTokenIds = new uint256[](ammPositionLength);
-        ICLPool pool = ICLPool(target.info.pool);
+        ICLPool pool = ICLPool(info.pool);
 
         IERC20 token0 = IERC20(pool.token0());
         if (token0.allowance(address(this), address(positionManager)) == 0) {

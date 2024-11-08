@@ -233,7 +233,6 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
             revert NoRebalanceNeeded();
         }
         target.id = params.id;
-        target.info = info;
         _validateTarget(target);
 
         (uint160 sqrtPriceX96,) = oracle.getOraclePrice(info.pool);
@@ -253,7 +252,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         }
 
         uint256[] memory ammPositionIds =
-            IRebalanceCallback(params.callback).call(params.data, target);
+            IRebalanceCallback(params.callback).call(params.data, target, info);
 
         if (ammPositionIds.length != length) {
             revert InvalidLength();
@@ -268,14 +267,16 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
                     || position_.tickLower != target.lowerTicks[i]
                     || position_.tickUpper != target.upperTicks[i]
                     || ammModule.getPool(position_.token0, position_.token1, position_.property)
-                        != target.info.pool
+                        != info.pool
             ) {
                 revert InvalidParams();
             }
             _transferFrom(params.callback, this_, tokenId);
-            _afterRebalance(tokenId, target.info.callbackParams, protocolParams_);
+            _afterRebalance(tokenId, info.callbackParams, protocolParams_);
 
-            _emitRebalanceEvent(target.info.pool, target.info.ammPositionIds[i], tokenId);
+            _emitRebalanceEvent(
+                info.pool, i < info.ammPositionIds.length ? info.ammPositionIds[i] : 0, tokenId
+            );
         }
         _positions[target.id].ammPositionIds = ammPositionIds;
     }
@@ -492,9 +493,6 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
             revert InvalidTarget();
         }
         if (n != target.upperTicks.length) {
-            revert InvalidTarget();
-        }
-        if (n != target.info.ammPositionIds.length) {
             revert InvalidTarget();
         }
         uint256 cumulativeLiquidityX96 = 0;

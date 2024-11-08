@@ -123,12 +123,12 @@ interface ICore is IERC721Receiver, IAccessControlEnumerable {
          * @dev Sets the minimum acceptable liquidity for each position, ensuring that rebalancing actions do not result in suboptimal or excessively diluted positions.
          */
         uint256[] minLiquidities;
-        /**
-         * @notice Information about the original corresponding ManagedPosition.
-         * @dev Captures the initial state and parameters of the ManagedPosition prior to rebalancing. This includes detailed information necessary for the rebalancer to accurately target the desired end state.
-         */
-        ManagedPositionInfo info;
     }
+    /**
+     * @notice Information about the original corresponding ManagedPosition.
+     * @dev Captures the initial state and parameters of the ManagedPosition prior to rebalancing. This includes detailed information necessary for the rebalancer to accurately target the desired end state.
+     */
+    // ManagedPositionInfo info;
 
     /**
      * @title DepositParams Structure
