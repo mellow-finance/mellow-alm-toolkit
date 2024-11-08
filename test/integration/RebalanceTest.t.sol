@@ -13,8 +13,14 @@ contract RebalancingBot_IntegrationTests is IRebalanceCallback {
     }
 
     function _pullLiquidity(uint256 tokenId) internal {
+        if (tokenId == 0) {
+            return;
+        }
         PositionLibrary.Position memory position =
             PositionLibrary.getPosition(address(positionManager), tokenId);
+        if (position.liquidity == 0) {
+            return;
+        }
         positionManager.decreaseLiquidity(
             INonfungiblePositionManager.DecreaseLiquidityParams({
                 tokenId: tokenId,
@@ -46,10 +52,14 @@ contract RebalancingBot_IntegrationTests is IRebalanceCallback {
             sqrtRatioX96,
             TickMath.getSqrtRatioAtTick(tickLower),
             TickMath.getSqrtRatioAtTick(tickUpper),
-            liquidity * 10001 / 10000 + 100 // just to create no less than required liquidity
+            liquidity * 10001 / 10000 + 100 // just to create not less than required liquidity
         );
-        token0.safeIncreaseAllowance(address(positionManager), amount0);
-        token1.safeIncreaseAllowance(address(positionManager), amount1);
+        if (amount0 > 0) {
+            token0.safeIncreaseAllowance(address(positionManager), amount0);
+        }
+        if (amount1 > 0) {
+            token1.safeIncreaseAllowance(address(positionManager), amount1);
+        }
         (tokenId,,,) = positionManager.mint(
             INonfungiblePositionManager.MintParams({
                 token0: address(token0),
