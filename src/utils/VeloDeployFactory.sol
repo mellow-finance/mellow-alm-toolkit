@@ -6,7 +6,7 @@ import "../interfaces/utils/IVeloDeployFactory.sol";
 import "../modules/strategies/PulseStrategyModule.sol";
 import "./DefaultAccessControl.sol";
 
-contract VeloDeployFactory is DefaultAccessControl, IERC721Receiver, IVeloDeployFactory {
+contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
     using SafeERC20 for IERC20;
 
     string public constant factoryName = "MellowVelodromeStrategy";
@@ -130,17 +130,6 @@ contract VeloDeployFactory is DefaultAccessControl, IERC721Receiver, IVeloDeploy
         minInitialTotalSupply = minInitialTotalSupply_;
     }
 
-    /// ---------------------- EXTERNAL PURE FUNCTIONS ----------------------
-
-    /// @inheritdoc IERC721Receiver
-    function onERC721Received(address, address, uint256, bytes calldata)
-        external
-        pure
-        returns (bytes4)
-    {
-        return IERC721Receiver.onERC721Received.selector;
-    }
-
     /// ---------------------- PUBLIC VIEW FUNCTIONS ----------------------
 
     /// @inheritdoc IVeloDeployFactory
@@ -253,13 +242,9 @@ contract VeloDeployFactory is DefaultAccessControl, IERC721Receiver, IVeloDeploy
         returns (MintInfo[] memory mintInfo)
     {
         (uint160 sqrtPriceX96, int24 tick,,,,) = params.pool.slot0();
-        ICore.TargetPositionInfo memory target;
-        {
-            IAmmModule.AmmPosition memory position;
-            (, target) = strategyModule.calculateTargetTamper(
-                sqrtPriceX96, tick, position, position, params.strategyParams
-            );
-        }
+        (, ICore.TargetPositionInfo memory target) = strategyModule.calculateTargetTamper(
+            sqrtPriceX96, tick, new IAmmModule.AmmPosition[](0), params.strategyParams
+        );
         (uint256 lowerAmount0X96, uint256 lowerAmount1X96) = LiquidityAmounts.getAmountsForLiquidity(
             sqrtPriceX96,
             TickMath.getSqrtRatioAtTick(target.lowerTicks[0]),
@@ -298,8 +283,9 @@ contract VeloDeployFactory is DefaultAccessControl, IERC721Receiver, IVeloDeploy
         returns (MintInfo[] memory mintInfo)
     {
         (uint160 sqrtPriceX96, int24 tick,,,,) = params.pool.slot0();
-        (, ICore.TargetPositionInfo memory target) =
-            strategyModule.calculateTargetPulse(sqrtPriceX96, tick, 0, 0, params.strategyParams);
+        (, ICore.TargetPositionInfo memory target) = strategyModule.calculateTargetPulse(
+            sqrtPriceX96, tick, new IAmmModule.AmmPosition[](0), params.strategyParams
+        );
         mintInfo = new MintInfo[](1);
         mintInfo[0] = MintInfo({
             tickLower: target.lowerTicks[0],

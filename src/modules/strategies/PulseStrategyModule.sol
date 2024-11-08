@@ -158,8 +158,7 @@ contract PulseStrategyModule is IPulseStrategyModule {
      * @notice Determines if rebalancing is needed and calculates the target position if so.
      * @param sqrtPriceX96 Current square root price in Q96 format.
      * @param tick Current tick.
-     * @param tickLower Lower tick of the existing position.
-     * @param tickUpper Upper tick of the existing position.
+     * @param positions Position data of the existing positions.
      * @param params Strategy parameters.
      * @return isRebalanceRequired Boolean indicating if rebalancing is required.
      * @return target Target position information for rebalancing.
@@ -167,10 +166,16 @@ contract PulseStrategyModule is IPulseStrategyModule {
     function calculateTargetPulse(
         uint160 sqrtPriceX96,
         int24 tick,
-        int24 tickLower,
-        int24 tickUpper,
+        IAmmModule.AmmPosition[] memory positions,
         IPulseStrategyModule.StrategyParams memory params
     ) public pure returns (bool isRebalanceRequired, ICore.TargetPositionInfo memory target) {
+        int24 tickLower;
+        int24 tickUpper;
+        isRebalanceRequired = positions.length != 1;
+        if (!isRebalanceRequired) {
+            tickLower = positions[0].tickLower;
+            tickUpper = positions[0].tickUpper;
+        }
         (int24 targetTickLower, int24 targetTickUpper) =
             calculatePulsePosition(sqrtPriceX96, tick, tickLower, tickUpper, params);
         if (targetTickLower == tickLower && targetTickUpper == tickUpper) {
@@ -228,8 +233,7 @@ contract PulseStrategyModule is IPulseStrategyModule {
      * @notice Determines if rebalancing is needed and calculates the target position if so.
      * @param sqrtPriceX96 Current square root price in Q96 format.
      * @param tick Current tick.
-     * @param lowerPosition Position data of the lower range.
-     * @param upperPosition Position data of the upper range.
+     * @param positions Position data of the existing positions.
      * @param params Strategy parameters.
      * @return isRebalanceRequired Boolean indicating if rebalancing is required.
      * @return target Target position information for rebalancing.
@@ -237,18 +241,24 @@ contract PulseStrategyModule is IPulseStrategyModule {
     function calculateTargetTamper(
         uint160 sqrtPriceX96,
         int24 tick,
-        IAmmModule.AmmPosition memory lowerPosition,
-        IAmmModule.AmmPosition memory upperPosition,
+        IAmmModule.AmmPosition[] memory positions,
         IPulseStrategyModule.StrategyParams memory params
     ) public pure returns (bool isRebalanceRequired, ICore.TargetPositionInfo memory target) {
         int24 width = params.width;
         int24 half = width / 2;
         (int24 targetLower, uint256 targetLowerRatioX96) =
             calculateTamperPosition(sqrtPriceX96, tick, width);
-        isRebalanceRequired = lowerPosition.tickUpper - lowerPosition.tickLower != width
-            || upperPosition.tickUpper - upperPosition.tickLower != width
-            || lowerPosition.tickUpper != upperPosition.tickLower + half
-            || lowerPosition.tickLower % half != 0;
+        isRebalanceRequired = positions.length != 2;
+        IAmmModule.AmmPosition memory lowerPosition;
+        IAmmModule.AmmPosition memory upperPosition;
+        if (!isRebalanceRequired) {
+            lowerPosition = positions[0];
+            upperPosition = positions[1];
+            isRebalanceRequired = lowerPosition.tickUpper - lowerPosition.tickLower != width
+                || upperPosition.tickUpper - upperPosition.tickLower != width
+                || lowerPosition.tickUpper != upperPosition.tickLower + half
+                || lowerPosition.tickLower % half != 0;
+        }
 
         if (!isRebalanceRequired) {
             uint256 ratioDiffX96 = 0;
@@ -342,26 +352,25 @@ contract PulseStrategyModule is IPulseStrategyModule {
         // uniswap V3: https://github.com/Uniswap/v3-core/blob/main/contracts/interfaces/pool/IUniswapV3PoolState.sol#L12
         // velodrome slipstream: https://github.com/velodrome-finance/slipstream/blob/main/contracts/core/interfaces/pool/ICLPoolState.sol#L12
         tick = TickMath.getTickAtSqrtRatio(sqrtPriceX96);
+        uint256 length = info.ammPositionIds.length;
+        IAmmModule.AmmPosition[] memory positions = new IAmmModule.AmmPosition[](length);
+        for (uint256 i = 0; i < length; i++) {
+            positions[i] = ammModule.getAmmPosition(info.ammPositionIds[i]);
+        }
+        return calculateTarget(sqrtPriceX96, tick, positions, strategyParams);
+    }
+
+    /// @inheritdoc IPulseStrategyModule
+    function calculateTarget(
+        uint160 sqrtPriceX96,
+        int24 tick,
+        IAmmModule.AmmPosition[] memory positions,
+        StrategyParams memory strategyParams
+    ) public pure returns (bool isRebalanceRequired, ICore.TargetPositionInfo memory target) {
         if (strategyParams.strategyType == StrategyType.Tamper) {
-            if (info.ammPositionIds.length != 2) {
-                revert InvalidLength();
-            }
-            return calculateTargetTamper(
-                sqrtPriceX96,
-                tick,
-                ammModule.getAmmPosition(info.ammPositionIds[0]),
-                ammModule.getAmmPosition(info.ammPositionIds[1]),
-                strategyParams
-            );
+            return calculateTargetTamper(sqrtPriceX96, tick, positions, strategyParams);
         } else {
-            if (info.ammPositionIds.length != 1) {
-                revert InvalidLength();
-            }
-            IAmmModule.AmmPosition memory position =
-                ammModule.getAmmPosition(info.ammPositionIds[0]);
-            return calculateTargetPulse(
-                sqrtPriceX96, tick, position.tickLower, position.tickUpper, strategyParams
-            );
+            return calculateTargetPulse(sqrtPriceX96, tick, positions, strategyParams);
         }
     }
 }

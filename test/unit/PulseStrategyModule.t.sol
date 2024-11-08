@@ -171,10 +171,11 @@ contract PulseStrategyModuleTestV1 is Fixture {
             width: width,
             maxLiquidityRatioDeviationX96: 0
         });
+        IAmmModule.AmmPosition[] memory positions = new IAmmModule.AmmPosition[](1);
+        positions[0].tickLower = tickLower;
+        positions[0].tickUpper = tickUpper;
         (bool isRebalanceRequired, ICore.TargetPositionInfo memory target) = pulseStrategyModule
-            .calculateTargetPulse(
-            TickMath.getSqrtRatioAtTick(spotTick), spotTick, tickLower, tickUpper, params
-        );
+            .calculateTargetPulse(TickMath.getSqrtRatioAtTick(spotTick), spotTick, positions, params);
 
         _validate(spotTick, tickLower, tickUpper, params, isRebalanceRequired, target);
     }
@@ -428,7 +429,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
                 })
             );
 
-            vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
+            // vm.expectRevert();
             pulseStrategyModule.getTargets(info, IAmmModule(address(0)), oracle);
 
             pool.increaseObservationCardinalityNext(2);
@@ -472,7 +473,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
                 })
             );
 
-            vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
+            vm.expectRevert();
             pulseStrategyModule.getTargets(info, IAmmModule(address(0)), oracle);
 
             info.ammPositionIds = new uint256[](3);
@@ -486,7 +487,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
                 })
             );
 
-            vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
+            vm.expectRevert();
             pulseStrategyModule.getTargets(info, IAmmModule(address(0)), oracle);
 
             IVeloAmmModule ammModule = IVeloAmmModule(
@@ -495,6 +496,10 @@ contract PulseStrategyModuleTestV1 is Fixture {
                     Constants.OPTIMISM_IS_POOL_SELECTOR
                 )
             );
+
+            vm.expectRevert();
+            pulseStrategyModule.getTargets(info, ammModule, oracle);
+
             info.ammPositionIds = new uint256[](2);
             info.strategyParams = abi.encode(
                 IPulseStrategyModule.StrategyParams({
@@ -549,6 +554,39 @@ contract PulseStrategyModuleTestV1 is Fixture {
                 address(this)
             );
             pulseStrategyModule.getTargets(info, ammModule, oracle);
+
+            info.ammPositionIds = new uint256[](3);
+            info.ammPositionIds[0] = mint(
+                pool.token0(),
+                pool.token1(),
+                pool.tickSpacing(),
+                73600,
+                74000,
+                1000,
+                pool,
+                address(this)
+            );
+            info.ammPositionIds[1] = mint(
+                pool.token0(),
+                pool.token1(),
+                pool.tickSpacing(),
+                73600,
+                74000,
+                1000,
+                pool,
+                address(this)
+            );
+            info.ammPositionIds[2] = mint(
+                pool.token0(),
+                pool.token1(),
+                pool.tickSpacing(),
+                73600,
+                74000,
+                1000,
+                pool,
+                address(this)
+            );
+            pulseStrategyModule.getTargets(info, ammModule, oracle);
         }
     }
 }
@@ -587,9 +625,11 @@ contract PulseStrategyModuleTestV2 is Fixture {
             width: width,
             maxLiquidityRatioDeviationX96: 0
         });
-        (, ICore.TargetPositionInfo memory target) = pulseStrategyModule.calculateTargetPulse(
-            tc.sqrtPriceX96, spotTick, tc.tickLower, tc.tickUpper, params
-        );
+        IAmmModule.AmmPosition[] memory positions = new IAmmModule.AmmPosition[](1);
+        positions[0].tickLower = tc.tickLower;
+        positions[0].tickUpper = tc.tickUpper;
+        (, ICore.TargetPositionInfo memory target) =
+            pulseStrategyModule.calculateTargetPulse(tc.sqrtPriceX96, spotTick, positions, params);
 
         if (tc.tickLowerExpected != tc.tickUpperExpected) {
             assertEq(target.lowerTicks.length, 1);
@@ -1099,28 +1139,26 @@ contract PulseStrategyModuleTamperTest is Fixture {
             maxLiquidityRatioDeviationX96: tc.maxLiquidityRatioDeviationX96
         });
 
-        (bool isRebalanceRequired, ICore.TargetPositionInfo memory target) = pulseStrategyModule
-            .calculateTargetTamper(
-            tc.sqrtPriceX96,
-            spotTick,
-            IAmmModule.AmmPosition({
-                token0: token0,
-                token1: token1,
-                property: uint24(tc.tickSpacing),
-                tickLower: tc.tickLower[0],
-                tickUpper: tc.tickUpper[0],
-                liquidity: tc.liquidity[0]
-            }),
-            IAmmModule.AmmPosition({
-                token0: token0,
-                token1: token1,
-                property: uint24(tc.tickSpacing),
-                tickLower: tc.tickLower[1],
-                tickUpper: tc.tickUpper[1],
-                liquidity: tc.liquidity[1]
-            }),
-            params
-        );
+        IAmmModule.AmmPosition[] memory positions = new IAmmModule.AmmPosition[](2);
+        positions[0] = IAmmModule.AmmPosition({
+            token0: token0,
+            token1: token1,
+            property: uint24(tc.tickSpacing),
+            tickLower: tc.tickLower[0],
+            tickUpper: tc.tickUpper[0],
+            liquidity: tc.liquidity[0]
+        });
+        positions[1] = IAmmModule.AmmPosition({
+            token0: token0,
+            token1: token1,
+            property: uint24(tc.tickSpacing),
+            tickLower: tc.tickLower[1],
+            tickUpper: tc.tickUpper[1],
+            liquidity: tc.liquidity[1]
+        });
+
+        (bool isRebalanceRequired, ICore.TargetPositionInfo memory target) =
+            pulseStrategyModule.calculateTargetTamper(tc.sqrtPriceX96, spotTick, positions, params);
 
         if (isRebalanceRequired) {
             assertEq(target.lowerTicks.length, 2);

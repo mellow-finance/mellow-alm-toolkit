@@ -38,7 +38,20 @@ contract Unit is Fixture {
 
         assertTrue(address(contracts.core) != address(0));
     }
-    
+
+    function testCollectRewards() public {
+        ICore core = contracts.core;
+
+        uint256 positionId = 0;
+        ICore.ManagedPositionInfo memory info = core.managedPositionAt(positionId);
+
+        vm.expectRevert(abi.encodeWithSignature("Forbidden()"));
+        core.collectRewards(positionId);
+
+        vm.prank(info.owner);
+        core.collectRewards(positionId);
+    }
+
     function testDirectDeposit() public {
         ICore core = contracts.core;
         uint256 positionId = 0;
@@ -52,7 +65,7 @@ contract Unit is Fixture {
         core.directDeposit(positionId, tokenId, 1 ether, 1 ether);
 
         vm.startPrank(info.owner);
-        
+
         vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
         core.directDeposit(positionId, tokenId + 1, 1 ether, 1 ether);
 
@@ -72,25 +85,28 @@ contract Unit is Fixture {
         core.directWithdraw(positionId, tokenId, position.liquidity, address(this));
 
         vm.startPrank(info.owner);
-        
+
         vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
-        core.directWithdraw(positionId, tokenId+1, position.liquidity, address(this));
+        core.directWithdraw(positionId, tokenId + 1, position.liquidity, address(this));
 
         vm.expectRevert(abi.encodeWithSignature("FailedCall()"));
-        core.directWithdraw(positionId, tokenId, position.liquidity+1, address(this));
+        core.directWithdraw(positionId, tokenId, position.liquidity + 1, address(this));
 
         vm.expectRevert(bytes("NP"));
         core.directWithdraw(positionId, tokenId, position.liquidity, info.owner);
 
-        core.directWithdraw(positionId, tokenId, position.liquidity/2, info.owner);
+        core.directWithdraw(positionId, tokenId, position.liquidity / 2, info.owner);
     }
 
     function testRebalance() public {
         ICore core = contracts.core;
         ICore.RebalanceParams memory rebalanceParams;
         rebalanceParams.id = 0;
-        rebalanceParams.callback = address(new DummyBot());
+        rebalanceParams.callback = address(new RebalancingBot(positionManager));
         rebalanceParams.data = new bytes(0);
+
+        vm.expectRevert(abi.encodeWithSignature("Forbidden()"));
+        core.rebalance(rebalanceParams);
 
         vm.startPrank(params.mellowAdmin);
         vm.expectRevert(abi.encodeWithSignature("NoRebalanceNeeded()"));
@@ -110,9 +126,9 @@ contract Unit is Fixture {
 
         //-------------------------------------------------------------------------------
 
-        IVeloDeployFactory.DeployParams memory deployParams;
-        deployParams.slippageD9 = 1e6;
-        deployParams.strategyParams = IPulseStrategyModule.StrategyParams({
+        IVeloDeployFactory.DeployParams memory deployParams_;
+        deployParams_.slippageD9 = 1e6;
+        deployParams_.strategyParams = IPulseStrategyModule.StrategyParams({
             strategyType: IPulseStrategyModule.StrategyType.LazySyncing,
             tickNeighborhood: 0, // Neighborhood of ticks to consider for rebalancing
             tickSpacing: pool.tickSpacing(), // tickSpacing of the corresponding amm pool
@@ -120,14 +136,14 @@ contract Unit is Fixture {
             maxLiquidityRatioDeviationX96: 0 // The maximum allowed deviation of the liquidity ratio for lower position.
         });
 
-        deployParams.securityParams =
+        deployParams_.securityParams =
             IVeloOracle.SecurityParams({lookback: 1, maxAge: 1 seconds, maxAllowedDelta: 1000});
 
-        deployParams.pool = pool;
-        deployParams.maxAmount0 = 100 ether;
-        deployParams.maxAmount1 = 1 ether;
-        deployParams.initialTotalSupply = 1000 wei;
-        deployParams.totalSupplyLimit = 1000 ether;
+        deployParams_.pool = pool;
+        deployParams_.maxAmount0 = 100 ether;
+        deployParams_.maxAmount1 = 1 ether;
+        deployParams_.initialTotalSupply = 1000 wei;
+        deployParams_.totalSupplyLimit = 1000 ether;
 
         deal(pool.token0(), params.factoryOperator, 100 ether);
         deal(pool.token1(), params.factoryOperator, 1 ether);
@@ -137,20 +153,18 @@ contract Unit is Fixture {
         vm.startPrank(params.factoryOperator);
         IERC20(pool.token0()).approve(address(contracts.deployFactory), 100 ether);
         IERC20(pool.token1()).approve(address(contracts.deployFactory), 1 ether);
-        contracts.deployFactory.createStrategy(deployParams);
+        contracts.deployFactory.createStrategy(deployParams_);
 
         (sqrtPriceX96, tick,,,,) = pool.slot0();
         movePrice(pool, TickMath.getSqrtRatioAtTick(tick + 1000));
 
         rebalanceParams.id = 1;
-        ICore.ManagedPositionInfo memory info = core.managedPositionAt(1);
-        rebalanceParams.data = abi.encode(info.ammPositionIds);
+        rebalanceParams.data = new bytes(0);
         vm.startPrank(params.mellowAdmin);
-        //vm.expectRevert(abi.encodeWithSignature("PriceManipulationDetected()"));
+
         core.rebalance(rebalanceParams);
         vm.stopPrank();
     }
-
 
     function testDeposit() external {
         Core core = new Core(
@@ -170,24 +184,7 @@ contract Unit is Fixture {
             pool,
             Constants.OPTIMISM_DEPLOYER
         );
-/*         uint256 tokenId1 = mint(
-            pool.token0(),
-            pool.token1(),
-            100,
-            200,
-            10000,
-            ICLPool(factory.getPool(Constants.OPTIMISM_WETH, Constants.OPTIMISM_OP, 100)),
-            Constants.OPTIMISM_DEPLOYER
-        );
-        uint256 tokenId2 = mint(
-            Constants.OPTIMISM_WETH,
-            Constants.OPTIMISM_WSTETH,
-            1,
-            2,
-            10000,
-            ICLPool(factory.getPool(Constants.OPTIMISM_WETH, Constants.OPTIMISM_WSTETH, 1)),
-            Constants.OPTIMISM_DEPLOYER
-        ); */
+
         vm.startPrank(Constants.OPTIMISM_DEPLOYER);
 
         core.setProtocolParams(
@@ -200,7 +197,6 @@ contract Unit is Fixture {
         );
 
         positionManager.approve(address(core), tokenId);
-       // positionManager.approve(address(core), tokenId2);
         ICore.DepositParams memory depositParams;
         depositParams.ammPositionIds = new uint256[](1);
         depositParams.owner = Constants.OPTIMISM_DEPLOYER;
@@ -246,26 +242,12 @@ contract Unit is Fixture {
         vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
         core.deposit(depositParams);
 
-
         depositParams.owner = Constants.OPTIMISM_DEPLOYER;
 
         depositParams.ammPositionIds[0] = 0;
         vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
         core.deposit(depositParams);
 
-/*         depositParams.ammPositionIds[0] = tokenId1;
-        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
-        core.deposit(depositParams);
-
-        depositParams.strategyParams = abi.encode(
-            IPulseStrategyModule.StrategyParams({
-                strategyType: IPulseStrategyModule.StrategyType.Original,
-                width: 1000,
-                tickSpacing: 200,
-                tickNeighborhood: 100,
-                maxLiquidityRatioDeviationX96: 0
-            })
-        ); */
         depositParams.ammPositionIds[0] = tokenId;
         core.deposit(depositParams);
 
@@ -597,13 +579,13 @@ contract Unit is Fixture {
         vm.startPrank(Constants.OPTIMISM_DEPLOYER);
         core.emptyRebalance(positionId);
     }
-/*
+    /*
     deposit InvalidParams
     directDeposit Forbidden InvalidParams
     collectRewards Forbidden
     directWithdraw FULL
     rebalance FULL
- */
+    */
 
     /*
     function _checkState(uint256 positionId, ICore.RebalanceParams memory rebalanceParams)

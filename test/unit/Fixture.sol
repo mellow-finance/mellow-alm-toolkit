@@ -44,89 +44,6 @@ contract CLPoolMock {
     function test() internal pure {}
 }
 
-contract DummyBot is IRebalanceCallback {
-    INonfungiblePositionManager immutable public positionManager = INonfungiblePositionManager(Constants.OPTIMISM_POSITION_MANAGER);
-
-    function call(bytes memory, ICore.TargetPositionInfo memory target)
-        external
-        returns (uint256[] memory newTokenIds)
-    {
-        uint256 ammPositionLength = target.info.ammPositionIds.length;
-
-        for (uint i = 0; i < ammPositionLength; i++) {
-            // getting liquidity from all position
-            uint256 tokenId = target.info.ammPositionIds[i];
-            PositionLibrary.Position memory pos = PositionLibrary.getPosition(address(positionManager), tokenId);
-
-            positionManager.decreaseLiquidity(
-                INonfungiblePositionManager.DecreaseLiquidityParams({
-                    tokenId: tokenId,
-                    liquidity: pos.liquidity,
-                    amount0Min: 0,
-                    amount1Min: 0,
-                    deadline: type(uint256).max
-                })
-            );
-            positionManager.collect(
-                INonfungiblePositionManager.CollectParams({
-                    recipient: address(this),
-                    tokenId: tokenId,
-                    amount0Max: type(uint128).max,
-                    amount1Max: type(uint128).max
-                })
-            );
-            positionManager.burn(tokenId);
-        }
-
-        // creating new positions with minimal liquidity
-        newTokenIds = new uint256[](ammPositionLength);
-        ICLPool pool = ICLPool(target.info.pool);
-
-        IERC20 token0 = IERC20(pool.token0());
-        if (token0.allowance(address(this), address(positionManager)) == 0) {
-            token0.approve(address(positionManager), type(uint256).max);
-        }
-        IERC20 token1 = IERC20(pool.token1());
-        if (token1.allowance(address(this), address(positionManager)) == 0) {
-            token1.approve(address(positionManager), type(uint256).max);
-        }
-
-        for (uint i = 0; i < ammPositionLength; i++) {
-            (uint256 tokenId, uint128 actualLiquidity,,) = positionManager.mint(
-                INonfungiblePositionManager.MintParams({
-                    token0: address(token0),
-                    token1: address(token1),
-                    tickSpacing: pool.tickSpacing(),
-                    tickLower: target.lowerTicks[i],
-                    tickUpper: target.upperTicks[i],
-                    amount0Desired: token0.balanceOf(address(this)),
-                    amount1Desired: token1.balanceOf(address(this)),
-                    amount0Min: 0,
-                    amount1Min: 0,
-                    recipient: address(this),
-                    deadline: type(uint256).max,
-                    sqrtPriceX96: 0
-                })
-            );
-            require(
-                actualLiquidity >= target.minLiquidities[0],
-                string(
-                    abi.encodePacked(
-                        "Insufficient amount of liquidity. Actual: ",
-                        Strings.toString(actualLiquidity),
-                        "; Expected: ",
-                        Strings.toString(target.minLiquidities[0])
-                    )
-                )
-            );
-            positionManager.approve(msg.sender, tokenId);
-            newTokenIds[i] = tokenId;
-        }
-    }
-
-    function test() internal pure {}
-}
-
 contract Fixture is DeployScript, Test {
     using SafeERC20 for IERC20;
 
@@ -163,9 +80,9 @@ contract Fixture is DeployScript, Test {
             IVeloOracle.SecurityParams({lookback: 100, maxAge: 5 days, maxAllowedDelta: 10});
 
         deployParams.pool = pool;
-        deployParams.maxAmount0 = 1000 wei;
-        deployParams.maxAmount1 = 1000 wei;
-        deployParams.initialTotalSupply = 1000 wei;
+        deployParams.maxAmount0 = 1 ether;
+        deployParams.maxAmount1 = 1 ether;
+        deployParams.initialTotalSupply = 1 ether;
         deployParams.totalSupplyLimit = 1000 ether;
 
         vm.startPrank(params.factoryOperator);
@@ -342,6 +259,6 @@ contract Fixture is DeployScript, Test {
             })
         );
     }
-    
+
     function test() internal pure {}
 }
