@@ -253,13 +253,9 @@ contract VeloDeployFactory is DefaultAccessControl, IERC721Receiver, IVeloDeploy
         returns (MintInfo[] memory mintInfo)
     {
         (uint160 sqrtPriceX96, int24 tick,,,,) = params.pool.slot0();
-        ICore.TargetPositionInfo memory target;
-        {
-            IAmmModule.AmmPosition memory position;
-            (, target) = strategyModule.calculateTargetTamper(
-                sqrtPriceX96, tick, position, position, params.strategyParams
-            );
-        }
+        (, ICore.TargetPositionInfo memory target) = strategyModule.calculateTargetTamper(
+            sqrtPriceX96, tick, new IAmmModule.AmmPosition[](0), params.strategyParams
+        );
         (uint256 lowerAmount0X96, uint256 lowerAmount1X96) = LiquidityAmounts.getAmountsForLiquidity(
             sqrtPriceX96,
             TickMath.getSqrtRatioAtTick(target.lowerTicks[0]),
@@ -298,8 +294,9 @@ contract VeloDeployFactory is DefaultAccessControl, IERC721Receiver, IVeloDeploy
         returns (MintInfo[] memory mintInfo)
     {
         (uint160 sqrtPriceX96, int24 tick,,,,) = params.pool.slot0();
-        (, ICore.TargetPositionInfo memory target) =
-            strategyModule.calculateTargetPulse(sqrtPriceX96, tick, 0, 0, params.strategyParams);
+        (, ICore.TargetPositionInfo memory target) = strategyModule.calculateTargetPulse(
+            sqrtPriceX96, tick, new IAmmModule.AmmPosition[](0), params.strategyParams
+        );
         mintInfo = new MintInfo[](1);
         mintInfo[0] = MintInfo({
             tickLower: target.lowerTicks[0],

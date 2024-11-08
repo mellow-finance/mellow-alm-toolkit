@@ -14,9 +14,10 @@ contract Unit is Fixture {
     int24 tickSpacing = pool.tickSpacing();
 
     function testConstructor() external {
-
         vm.expectRevert();
-        new VeloDeployFactory(address(0), ICore(address(0)), IPulseStrategyModule(address(0)), address(0));
+        new VeloDeployFactory(
+            address(0), ICore(address(0)), IPulseStrategyModule(address(0)), address(0)
+        );
 
         DeployScript.CoreDeployment memory contracts = deployContracts();
         VeloDeployFactory factory;
@@ -214,12 +215,12 @@ contract Unit is Fixture {
         assertEq(postition.ammPositionIds.length, 2);
         (uint160 sqrtPriceX96, int24 tick,,,,) = pool.slot0();
 
+        IAmmModule.AmmPosition[] memory positions = new IAmmModule.AmmPosition[](2);
+        positions[0] = contracts.ammModule.getAmmPosition(postition.ammPositionIds[0]);
+        positions[1] = contracts.ammModule.getAmmPosition(postition.ammPositionIds[1]);
+
         (bool isRebalanceRequired,) = contracts.strategyModule.calculateTargetTamper(
-            sqrtPriceX96,
-            tick,
-            contracts.ammModule.getAmmPosition(postition.ammPositionIds[0]),
-            contracts.ammModule.getAmmPosition(postition.ammPositionIds[1]),
-            deployParams.strategyParams
+            sqrtPriceX96, tick, positions, deployParams.strategyParams
         );
 
         assertEq(isRebalanceRequired, false);

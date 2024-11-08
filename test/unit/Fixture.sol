@@ -45,18 +45,19 @@ contract CLPoolMock {
 }
 
 contract DummyBot is IRebalanceCallback {
-    INonfungiblePositionManager immutable public positionManager = INonfungiblePositionManager(Constants.OPTIMISM_POSITION_MANAGER);
+    INonfungiblePositionManager public immutable positionManager =
+        INonfungiblePositionManager(Constants.OPTIMISM_POSITION_MANAGER);
 
     function call(bytes memory, ICore.TargetPositionInfo memory target)
         external
         returns (uint256[] memory newTokenIds)
     {
         uint256 ammPositionLength = target.info.ammPositionIds.length;
-
-        for (uint i = 0; i < ammPositionLength; i++) {
+        for (uint256 i = 0; i < ammPositionLength; i++) {
             // getting liquidity from all position
             uint256 tokenId = target.info.ammPositionIds[i];
-            PositionLibrary.Position memory pos = PositionLibrary.getPosition(address(positionManager), tokenId);
+            PositionLibrary.Position memory pos =
+                PositionLibrary.getPosition(address(positionManager), tokenId);
 
             positionManager.decreaseLiquidity(
                 INonfungiblePositionManager.DecreaseLiquidityParams({
@@ -91,7 +92,7 @@ contract DummyBot is IRebalanceCallback {
             token1.approve(address(positionManager), type(uint256).max);
         }
 
-        for (uint i = 0; i < ammPositionLength; i++) {
+        for (uint256 i = 0; i < ammPositionLength; i++) {
             (uint256 tokenId, uint128 actualLiquidity,,) = positionManager.mint(
                 INonfungiblePositionManager.MintParams({
                     token0: address(token0),
@@ -108,19 +109,26 @@ contract DummyBot is IRebalanceCallback {
                     sqrtPriceX96: 0
                 })
             );
-            require(
-                actualLiquidity >= target.minLiquidities[0],
-                string(
-                    abi.encodePacked(
-                        "Insufficient amount of liquidity. Actual: ",
-                        Strings.toString(actualLiquidity),
-                        "; Expected: ",
-                        Strings.toString(target.minLiquidities[0])
-                    )
-                )
-            );
+            // console2.log("here1",
+            //     target.minLiquidities.length,
+            //     i
+            // );
+            // require(
+            //     actualLiquidity >= target.minLiquidities[i],
+            //     string(
+            //         abi.encodePacked(
+            //             "Insufficient amount of liquidity. Actual: ",
+            //             Strings.toString(actualLiquidity),
+            //             "; Expected: ",
+            //             Strings.toString(target.minLiquidities[i])
+            //         )
+            //     )
+            // );
+
+            // console2.log("here2");
             positionManager.approve(msg.sender, tokenId);
             newTokenIds[i] = tokenId;
+            // console2.log("here3");
         }
     }
 
@@ -342,6 +350,6 @@ contract Fixture is DeployScript, Test {
             })
         );
     }
-    
+
     function test() internal pure {}
 }

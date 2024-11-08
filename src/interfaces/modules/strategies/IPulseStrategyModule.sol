@@ -21,11 +21,6 @@ interface IPulseStrategyModule is IStrategyModule {
     error InvalidLength();
 
     /**
-     * @notice Thrown when the count of AMM positions is not equal to 2 in the case of the Tamper strategy.
-     */
-    error InvalidPosition();
-
-    /**
      * @notice Enum representing different types of strategies.
      * @dev Defines the strategies available for AMM operations.
      * @value Original Original Pulse V1 strategy.
@@ -94,8 +89,7 @@ interface IPulseStrategyModule is IStrategyModule {
      *
      * @param sqrtPriceX96 The current sqrtPriceX96 of the market, indicating the instantaneous price level.
      * @param tick The current tick of the market, indicating the instantaneous price level.
-     * @param tickLower The lower bound tick of the existing position.
-     * @param tickUpper The upper bound tick of the existing position.
+     * @param positions The current AMM positions to be rebalanced.
      * @param params The strategy parameters defining the rebalancing logic, including strategy type, tick neighborhood, and desired position width.
      * @return isRebalanceRequired A boolean indicating if rebalancing is needed based on the current market condition and strategy parameters.
      * @return target Details of the target position if rebalancing is required, including new tick bounds and liquidity distribution.
@@ -103,8 +97,7 @@ interface IPulseStrategyModule is IStrategyModule {
     function calculateTargetPulse(
         uint160 sqrtPriceX96,
         int24 tick,
-        int24 tickLower,
-        int24 tickUpper,
+        IAmmModule.AmmPosition[] memory positions,
         StrategyParams memory params
     ) external pure returns (bool isRebalanceRequired, ICore.TargetPositionInfo memory target);
 
@@ -125,8 +118,7 @@ interface IPulseStrategyModule is IStrategyModule {
      * If rebalancing is required, it calculates the target position details, ensuring strategic alignment with the current market conditions.
      *
      * @param sqrtPriceX96 The current sqrtPriceX96 of the market, indicating the instantaneous price level.
-     * @param lowerPosition The lower position.
-     * @param upperPosition The upper position.
+     * @param positions The current AMM positions to be rebalanced.
      * @param params The strategy parameters defining the rebalancing logic, including strategy type, tick neighborhood, and desired position width.
      * @return isRebalanceRequired A boolean indicating if rebalancing is needed based on the current market condition and strategy parameters.
      * @return target Details of the target position if rebalancing is required, including new tick bounds and liquidity distribution.
@@ -134,8 +126,21 @@ interface IPulseStrategyModule is IStrategyModule {
     function calculateTargetTamper(
         uint160 sqrtPriceX96,
         int24 tick,
-        IAmmModule.AmmPosition memory lowerPosition,
-        IAmmModule.AmmPosition memory upperPosition,
+        IAmmModule.AmmPosition[] memory positions,
+        StrategyParams memory params
+    ) external pure returns (bool isRebalanceRequired, ICore.TargetPositionInfo memory target);
+
+    /**
+     * @param sqrtPriceX96 The current sqrtPriceX96 of the market, indicating the instantaneous price level.
+     * @param positions The current AMM positions to be rebalanced.
+     * @param params The strategy parameters defining the rebalancing logic, including strategy type, tick neighborhood, and desired position width.
+     * @return isRebalanceRequired A boolean indicating if rebalancing is needed based on the current market condition and strategy parameters.
+     * @return target Details of the target position if rebalancing is required, including new tick bounds and liquidity distribution.
+     */
+    function calculateTarget(
+        uint160 sqrtPriceX96,
+        int24 tick,
+        IAmmModule.AmmPosition[] memory positions,
         StrategyParams memory params
     ) external pure returns (bool isRebalanceRequired, ICore.TargetPositionInfo memory target);
 }

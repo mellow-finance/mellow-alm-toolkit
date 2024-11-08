@@ -243,7 +243,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         uint256 targetCapitalInToken1X96 =
             _calculateTargetCapitalX96(target, sqrtPriceX96, priceX96);
 
-        uint256 length = info.ammPositionIds.length;
+        uint256 length = target.liquidityRatiosX96.length;
         target.minLiquidities = new uint256[](length);
         for (uint256 i = 0; i < length; i++) {
             target.minLiquidities[i] =
