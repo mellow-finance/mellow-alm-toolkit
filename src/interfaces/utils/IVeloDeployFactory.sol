@@ -4,7 +4,6 @@ pragma solidity 0.8.25;
 import "./ILpWrapper.sol";
 
 import "@openzeppelin/contracts/access/extensions/IAccessControlEnumerable.sol";
-import "@openzeppelin/contracts/interfaces/IERC721Receiver.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";

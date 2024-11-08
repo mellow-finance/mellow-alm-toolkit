@@ -6,7 +6,7 @@ import "../interfaces/utils/IVeloDeployFactory.sol";
 import "../modules/strategies/PulseStrategyModule.sol";
 import "./DefaultAccessControl.sol";
 
-contract VeloDeployFactory is DefaultAccessControl, IERC721Receiver, IVeloDeployFactory {
+contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
     using SafeERC20 for IERC20;
 
     string public constant factoryName = "MellowVelodromeStrategy";
@@ -128,17 +128,6 @@ contract VeloDeployFactory is DefaultAccessControl, IERC721Receiver, IVeloDeploy
             revert InvalidParams();
         }
         minInitialTotalSupply = minInitialTotalSupply_;
-    }
-
-    /// ---------------------- EXTERNAL PURE FUNCTIONS ----------------------
-
-    /// @inheritdoc IERC721Receiver
-    function onERC721Received(address, address, uint256, bytes calldata)
-        external
-        pure
-        returns (bytes4)
-    {
-        return IERC721Receiver.onERC721Received.selector;
     }
 
     /// ---------------------- PUBLIC VIEW FUNCTIONS ----------------------
