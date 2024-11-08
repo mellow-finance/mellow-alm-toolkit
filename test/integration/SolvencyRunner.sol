@@ -90,8 +90,9 @@ contract SolvencyRunner is Test, DeployScript {
 
         uint256 lpAmount = rnd.randAmountD18();
         (uint256 totalAmount0, uint256 totalAmount1, uint256 totalSupply) = calculateTvl();
-        uint256 amount0 = totalAmount0 * lpAmount / totalSupply * 10001 / 10000 + 100; // + 0.01% + dust due to roundings
-        uint256 amount1 = totalAmount1 * lpAmount / totalSupply * 10001 / 10000 + 100;
+        uint256 d = 6;
+        uint256 amount0 = totalAmount0 * lpAmount / totalSupply * (10 ** d + 1) / 10 ** d + 1; // + 0.0001% + dust due to roundings
+        uint256 amount1 = totalAmount1 * lpAmount / totalSupply * (10 ** d + 1) / 10 ** d + 1;
 
         vm.startPrank(user);
         deal(address(token0), user, amount0);

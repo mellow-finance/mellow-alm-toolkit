@@ -14,6 +14,7 @@ contract IntegrationTest is Test, DeployScript {
 
     function setUp() external {
         coreParams = Constants.getDeploymentParams();
+        coreParams.lpWrapperManager = address(0);
         vm.startPrank(coreParams.deployer);
         contracts = deployCore(coreParams);
 
