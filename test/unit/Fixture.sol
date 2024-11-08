@@ -80,9 +80,9 @@ contract Fixture is DeployScript, Test {
             IVeloOracle.SecurityParams({lookback: 100, maxAge: 5 days, maxAllowedDelta: 10});
 
         deployParams.pool = pool;
-        deployParams.maxAmount0 = 1000 wei;
-        deployParams.maxAmount1 = 1000 wei;
-        deployParams.initialTotalSupply = 1000 wei;
+        deployParams.maxAmount0 = 1 ether;
+        deployParams.maxAmount1 = 1 ether;
+        deployParams.initialTotalSupply = 1 ether;
         deployParams.totalSupplyLimit = 1000 ether;
 
         vm.startPrank(params.factoryOperator);

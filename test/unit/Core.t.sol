@@ -39,6 +39,19 @@ contract Unit is Fixture {
         assertTrue(address(contracts.core) != address(0));
     }
 
+    function testCollectRewards() public {
+        ICore core = contracts.core;
+
+        uint256 positionId = 0;
+        ICore.ManagedPositionInfo memory info = core.managedPositionAt(positionId);
+
+        vm.expectRevert(abi.encodeWithSignature("Forbidden()"));
+        core.collectRewards(positionId);
+
+        vm.prank(info.owner);
+        core.collectRewards(positionId);
+    }
+
     function testDirectDeposit() public {
         ICore core = contracts.core;
         uint256 positionId = 0;
@@ -91,6 +104,9 @@ contract Unit is Fixture {
         rebalanceParams.id = 0;
         rebalanceParams.callback = address(new RebalancingBot(positionManager));
         rebalanceParams.data = new bytes(0);
+
+        vm.expectRevert(abi.encodeWithSignature("Forbidden()"));
+        core.rebalance(rebalanceParams);
 
         vm.startPrank(params.mellowAdmin);
         vm.expectRevert(abi.encodeWithSignature("NoRebalanceNeeded()"));
@@ -145,7 +161,7 @@ contract Unit is Fixture {
         rebalanceParams.id = 1;
         rebalanceParams.data = new bytes(0);
         vm.startPrank(params.mellowAdmin);
-        //vm.expectRevert(abi.encodeWithSignature("PriceManipulationDetected()"));
+
         core.rebalance(rebalanceParams);
         vm.stopPrank();
     }
@@ -168,24 +184,7 @@ contract Unit is Fixture {
             pool,
             Constants.OPTIMISM_DEPLOYER
         );
-        /*         uint256 tokenId1 = mint(
-            pool.token0(),
-            pool.token1(),
-            100,
-            200,
-            10000,
-            ICLPool(factory.getPool(Constants.OPTIMISM_WETH, Constants.OPTIMISM_OP, 100)),
-            Constants.OPTIMISM_DEPLOYER
-        );
-        uint256 tokenId2 = mint(
-            Constants.OPTIMISM_WETH,
-            Constants.OPTIMISM_WSTETH,
-            1,
-            2,
-            10000,
-            ICLPool(factory.getPool(Constants.OPTIMISM_WETH, Constants.OPTIMISM_WSTETH, 1)),
-            Constants.OPTIMISM_DEPLOYER
-        ); */
+
         vm.startPrank(Constants.OPTIMISM_DEPLOYER);
 
         core.setProtocolParams(
@@ -198,7 +197,6 @@ contract Unit is Fixture {
         );
 
         positionManager.approve(address(core), tokenId);
-        // positionManager.approve(address(core), tokenId2);
         ICore.DepositParams memory depositParams;
         depositParams.ammPositionIds = new uint256[](1);
         depositParams.owner = Constants.OPTIMISM_DEPLOYER;
@@ -250,19 +248,6 @@ contract Unit is Fixture {
         vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
         core.deposit(depositParams);
 
-        /*         depositParams.ammPositionIds[0] = tokenId1;
-        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
-        core.deposit(depositParams);
-
-        depositParams.strategyParams = abi.encode(
-            IPulseStrategyModule.StrategyParams({
-                strategyType: IPulseStrategyModule.StrategyType.Original,
-                width: 1000,
-                tickSpacing: 200,
-                tickNeighborhood: 100,
-                maxLiquidityRatioDeviationX96: 0
-            })
-        ); */
         depositParams.ammPositionIds[0] = tokenId;
         core.deposit(depositParams);
 
