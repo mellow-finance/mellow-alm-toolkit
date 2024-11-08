@@ -33,14 +33,14 @@ contract IntegrationTest is SolvencyRunner {
                 Constants.OPTIMISM_WETH, Constants.OPTIMISM_WSTETH, 1
             )
         );
-        params.maxAmount0 = 1000 wei;
-        params.maxAmount1 = 1000 wei;
-        params.initialTotalSupply = 1000 wei;
+        params.maxAmount0 = 1000 gwei;
+        params.maxAmount1 = 1000 gwei;
+        params.initialTotalSupply = 1000 gwei;
         params.totalSupplyLimit = type(uint256).max;
 
         vm.startPrank(coreParams.factoryOperator);
-        deal(Constants.OPTIMISM_WETH, address(contracts.deployFactory), 1000 wei);
-        deal(Constants.OPTIMISM_WSTETH, address(contracts.deployFactory), 1000 wei);
+        deal(Constants.OPTIMISM_WETH, address(contracts.deployFactory), 1000 gwei);
+        deal(Constants.OPTIMISM_WSTETH, address(contracts.deployFactory), 1000 gwei);
         ILpWrapper wrapper = deployStrategy(contracts, params);
         vm.stopPrank();
 

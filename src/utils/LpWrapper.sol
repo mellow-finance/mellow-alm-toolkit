@@ -100,21 +100,27 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
 
         uint256 n = info.ammPositionIds.length;
         IAmmModule.AmmPosition[] memory positionsBefore = new IAmmModule.AmmPosition[](n);
+        uint256 liquidity = 0;
         for (uint256 i = 0; i < n; i++) {
             positionsBefore[i] = ammModule.getAmmPosition(info.ammPositionIds[i]);
+            liquidity =
+                liquidity < positionsBefore[i].liquidity ? positionsBefore[i].liquidity : liquidity;
         }
-
-        uint256[] memory amounts0 = new uint256[](n);
-        uint256[] memory amounts1 = new uint256[](n);
+        if (liquidity == 0 || amount0 == 0 && amount1 == 0) {
+            revert InsufficientAmounts();
+        }
         {
+            uint256[] memory amounts0 = new uint256[](n);
+            uint256[] memory amounts1 = new uint256[](n);
             {
+                uint128 liquidityMultiplier = uint128(type(uint128).max / liquidity);
                 (uint160 sqrtPriceX96,) = oracle.getOraclePrice(info.pool);
                 for (uint256 i = 0; i < n; i++) {
                     if (positionsBefore[i].liquidity == 0) {
                         continue;
                     }
                     (amounts0[i], amounts1[i]) = ammModule.getAmountsForLiquidity(
-                        positionsBefore[i].liquidity,
+                        positionsBefore[i].liquidity * liquidityMultiplier,
                         sqrtPriceX96,
                         positionsBefore[i].tickLower,
                         positionsBefore[i].tickUpper
@@ -131,15 +137,9 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
                     amounts1[i] = amounts1[i].mulDiv(amount1, actualAmount1);
                 }
             }
-            // used to avoid stack too deep error
-            actualAmount0 = 0;
-            actualAmount1 = 0;
+            (actualAmount0, actualAmount1) =
+                _directDeposit(amount0, amount1, amounts0, amounts1, positionsBefore, info);
         }
-        if (amount0 == 0 && amount1 == 0) {
-            revert InsufficientAmounts();
-        }
-        (actualAmount0, actualAmount1) =
-            _directDeposit(amount0, amount1, amounts0, amounts1, positionsBefore, info);
 
         uint256 totalSupply_ = totalSupply();
         IAmmModule.AmmPosition memory positionsAfter;
