@@ -2,6 +2,7 @@
 pragma solidity 0.8.25;
 
 import "./DeployScript.sol";
+import "./RebalancingBot.sol";
 
 library Constants {
     address internal constant OPTIMISM_DEPLOYER = address(1);

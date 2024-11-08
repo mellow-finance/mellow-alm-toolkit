@@ -89,7 +89,7 @@ contract Unit is Fixture {
         ICore core = contracts.core;
         ICore.RebalanceParams memory rebalanceParams;
         rebalanceParams.id = 0;
-        rebalanceParams.callback = address(new DummyBot());
+        rebalanceParams.callback = address(new RebalancingBot(positionManager));
         rebalanceParams.data = new bytes(0);
 
         vm.startPrank(params.mellowAdmin);
