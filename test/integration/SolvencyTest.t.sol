@@ -36,7 +36,7 @@ contract IntegrationTest is SolvencyRunner {
         params.maxAmount0 = 1000 gwei;
         params.maxAmount1 = 1000 gwei;
         params.initialTotalSupply = 1000 gwei;
-        params.totalSupplyLimit = type(uint256).max;
+        params.totalSupplyLimit = 1e6 ether;
 
         vm.startPrank(coreParams.factoryOperator);
         deal(Constants.OPTIMISM_WETH, address(contracts.deployFactory), 1000 gwei);
@@ -48,12 +48,6 @@ contract IntegrationTest is SolvencyRunner {
     }
 
     function testSolvency() external {
-        uint256 length = 20;
-        Transition[] memory transitions = new Transition[](length);
-        for (uint256 i = 0; i < length; i++) {
-            transitions[i] = Transition(rnd.randInt(1));
-        }
-
-        _runSolvency(transitions);
+        _runSolvency(100, 0xffffff);
     }
 }
