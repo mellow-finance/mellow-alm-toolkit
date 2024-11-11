@@ -9,6 +9,7 @@ library Constants {
     address internal constant OPTIMISM_MELLOW_ADMIN = address(2);
     address internal constant OPTIMISM_POSITION_MANAGER = 0x416b433906b1B72FA758e166e239c43d68dC6F29;
     bytes4 internal constant OPTIMISM_IS_POOL_SELECTOR = bytes4(keccak256("isPair(address)"));
+    address internal constant OPTIMISM_SWAP_ROUTER = 0x0792a633F0c19c351081CF4B211F68F79bCc9676;
 
     address internal constant OPTIMISM_OP = 0x4200000000000000000000000000000000000042;
     address internal constant OPTIMISM_WETH = 0x4200000000000000000000000000000000000006;

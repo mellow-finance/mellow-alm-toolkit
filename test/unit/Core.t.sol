@@ -58,8 +58,8 @@ contract Unit is Fixture {
         ICore.ManagedPositionInfo memory info = core.managedPositionAt(positionId);
         uint256 tokenId = info.ammPositionIds[0];
 
-        deal(pool.token0(), info.owner, 1 ether);
-        deal(pool.token1(), info.owner, 1 ether);
+        deal(pool.token0(), info.owner, 10 ether);
+        deal(pool.token1(), info.owner, 10 ether);
 
         vm.expectRevert(abi.encodeWithSignature("Forbidden()"));
         core.directDeposit(positionId, tokenId, 1 ether, 1 ether);
@@ -71,7 +71,94 @@ contract Unit is Fixture {
 
         IERC20(pool.token0()).approve(address(core), 1 ether);
         IERC20(pool.token1()).approve(address(core), 1 ether);
+
         core.directDeposit(positionId, tokenId, 1 ether, 1 ether);
+    }
+
+    function testDirectDepositWithdrawRevert() public {
+        VeloDepositWithdrawModuleMock module = new VeloDepositWithdrawModuleMock(positionManager);
+        uint256 specificValueRevert = module.specificValueRevert();
+
+        ICore coreBroken = new Core(
+            contracts.ammModule,
+            IVeloDepositWithdrawModule(address(module)),
+            contracts.strategyModule,
+            contracts.oracle,
+            Constants.OPTIMISM_DEPLOYER,
+            Constants.OPTIMISM_WETH
+        );
+
+        uint256 tokenId = mint(
+            pool.token0(),
+            pool.token1(),
+            pool.tickSpacing(),
+            pool.tickSpacing() * 2,
+            1 ether,
+            pool,
+            Constants.OPTIMISM_DEPLOYER
+        );
+
+        vm.startPrank(Constants.OPTIMISM_DEPLOYER);
+
+        positionManager.approve(address(coreBroken), tokenId);
+
+        coreBroken.setProtocolParams(
+            abi.encode(
+                IVeloAmmModule.ProtocolParams({
+                    treasury: Constants.OPTIMISM_MELLOW_TREASURY,
+                    feeD9: Constants.OPTIMISM_FEE_D9
+                })
+            )
+        );
+
+        ICore.DepositParams memory depositParams;
+        depositParams.slippageD9 = 1 * 1e5;
+        depositParams.ammPositionIds = new uint256[](1);
+        depositParams.owner = Constants.OPTIMISM_DEPLOYER;
+        depositParams.callbackParams = abi.encode(
+            IVeloAmmModule.CallbackParams({
+                gauge: address(pool.gauge()),
+                farm: address(new VeloFarmMock())
+            })
+        );
+
+        depositParams.securityParams = abi.encode(
+            IVeloOracle.SecurityParams({lookback: 100, maxAllowedDelta: 100, maxAge: 7 days})
+        );
+        depositParams.strategyParams = abi.encode(
+            IPulseStrategyModule.StrategyParams({
+                strategyType: IPulseStrategyModule.StrategyType.Original,
+                width: 1000,
+                tickSpacing: 200,
+                tickNeighborhood: 100,
+                maxLiquidityRatioDeviationX96: 0
+            })
+        );
+
+        depositParams.ammPositionIds[0] = tokenId;
+        coreBroken.deposit(depositParams);
+
+        uint256 positionId = 0;
+        ICore.ManagedPositionInfo memory info = coreBroken.managedPositionAt(positionId);
+        uint256 tokenIdActual = info.ammPositionIds[0];
+        assertEq(tokenIdActual, tokenId);
+
+        deal(pool.token0(), Constants.OPTIMISM_DEPLOYER, 1 ether);
+        deal(pool.token1(), Constants.OPTIMISM_DEPLOYER, 1 ether);
+        IERC20(pool.token0()).approve(address(coreBroken), 1 ether);
+        IERC20(pool.token1()).approve(address(coreBroken), 1 ether);
+
+        vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
+        coreBroken.directDeposit(positionId, tokenId, specificValueRevert, 1 ether);
+
+        coreBroken.directDeposit(positionId, tokenId, 1 ether, 1 ether);
+
+        vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
+        coreBroken.directWithdraw(
+            positionId, tokenId, specificValueRevert, Constants.OPTIMISM_DEPLOYER
+        );
+
+        coreBroken.directWithdraw(positionId, tokenId, 1 ether / 2, Constants.OPTIMISM_DEPLOYER);
     }
 
     function testDirectWithdraw() public {
@@ -103,7 +190,7 @@ contract Unit is Fixture {
         ICore.RebalanceParams memory rebalanceParams;
         rebalanceParams.id = 0;
         rebalanceParams.callback = address(new RebalancingBot(positionManager));
-        rebalanceParams.data = new bytes(0);
+        rebalanceParams.data = new bytes(0); // count of position, if empty - ignore
 
         vm.expectRevert(abi.encodeWithSignature("Forbidden()"));
         core.rebalance(rebalanceParams);
@@ -159,9 +246,21 @@ contract Unit is Fixture {
         movePrice(pool, TickMath.getSqrtRatioAtTick(tick + 1000));
 
         rebalanceParams.id = 1;
-        rebalanceParams.data = new bytes(0);
         vm.startPrank(params.mellowAdmin);
 
+        rebalanceParams.data = abi.encode(10);
+        vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
+        core.rebalance(rebalanceParams);
+
+        rebalanceParams.data = new bytes(0x40);
+        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        core.rebalance(rebalanceParams);
+
+        rebalanceParams.data = new bytes(0x60);
+        vm.expectRevert(abi.encodeWithSignature("InvalidTarget()"));
+        core.rebalance(rebalanceParams);
+
+        rebalanceParams.data = new bytes(0);
         core.rebalance(rebalanceParams);
         vm.stopPrank();
     }
@@ -175,6 +274,7 @@ contract Unit is Fixture {
             Constants.OPTIMISM_DEPLOYER,
             Constants.OPTIMISM_WETH
         );
+
         uint256 tokenId = mint(
             pool.token0(),
             pool.token1(),
@@ -185,7 +285,52 @@ contract Unit is Fixture {
             Constants.OPTIMISM_DEPLOYER
         );
 
+        uint256 tokenId1 = mint(
+            pool.token0(),
+            pool.token1(),
+            pool.tickSpacing(),
+            pool.tickSpacing() * 2,
+            10000,
+            pool,
+            Constants.OPTIMISM_DEPLOYER
+        );
+
+        uint256 tokenId2 = mint(
+            Constants.OPTIMISM_WETH,
+            Constants.OPTIMISM_WSTETH,
+            1,
+            2,
+            10000,
+            pool,
+            Constants.OPTIMISM_DEPLOYER
+        );
+
+        uint256 tokenIdEmpty = mint(
+            pool.token0(),
+            pool.token1(),
+            pool.tickSpacing(),
+            pool.tickSpacing() * 2,
+            10000,
+            pool,
+            Constants.OPTIMISM_DEPLOYER
+        );
+
+        IAmmModule.AmmPosition memory position = contracts.ammModule.getAmmPosition(tokenIdEmpty);
+        vm.startPrank(positionManager.ownerOf(tokenIdEmpty));
+        positionManager.approve(address(contracts.depositWithdrawModule), tokenIdEmpty);
+        contracts.depositWithdrawModule.withdraw(
+            tokenIdEmpty, position.liquidity, Constants.OPTIMISM_DEPLOYER
+        );
+        vm.stopPrank();
+        position = contracts.ammModule.getAmmPosition(tokenIdEmpty);
+        assertEq(position.liquidity, 0);
+
         vm.startPrank(Constants.OPTIMISM_DEPLOYER);
+
+        positionManager.approve(address(core), tokenId);
+        positionManager.approve(address(core), tokenId1);
+        positionManager.approve(address(core), tokenId2);
+        positionManager.approve(address(core), tokenIdEmpty);
 
         core.setProtocolParams(
             abi.encode(
@@ -196,7 +341,6 @@ contract Unit is Fixture {
             )
         );
 
-        positionManager.approve(address(core), tokenId);
         ICore.DepositParams memory depositParams;
         depositParams.ammPositionIds = new uint256[](1);
         depositParams.owner = Constants.OPTIMISM_DEPLOYER;
@@ -248,10 +392,25 @@ contract Unit is Fixture {
         vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
         core.deposit(depositParams);
 
+        depositParams.ammPositionIds[0] = tokenIdEmpty;
+        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        core.deposit(depositParams);
+
+        depositParams.ammPositionIds[0] = tokenId2;
+        vm.expectRevert(bytes("PM"));
+        core.deposit(depositParams);
+
         depositParams.ammPositionIds[0] = tokenId;
         core.deposit(depositParams);
 
         assertEq(positionManager.ownerOf(tokenId), address(pool.gauge()));
+
+        depositParams.ammPositionIds = new uint256[](2);
+        depositParams.ammPositionIds[0] = tokenId1;
+        depositParams.ammPositionIds[1] = tokenId2;
+
+        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        core.deposit(depositParams);
 
         vm.stopPrank();
     }
@@ -579,113 +738,4 @@ contract Unit is Fixture {
         vm.startPrank(Constants.OPTIMISM_DEPLOYER);
         core.emptyRebalance(positionId);
     }
-    /*
-    deposit InvalidParams
-    directDeposit Forbidden InvalidParams
-    collectRewards Forbidden
-    directWithdraw FULL
-    rebalance FULL
-    */
-
-    /*
-    function _checkState(uint256 positionId, ICore.RebalanceParams memory rebalanceParams)
-        private
-    {
-        ICore core = contracts.core;
-        IAmmModule ammModule = contracts.ammModule;
-        ICore.ManagedPositionInfo memory infoBefore = core.managedPositionAt(positionId);
-        uint256 capitalBefore = 0;
-        uint256 capitalAfter = 0;
-        (uint160 sqrtPriceX96, int24 tick,,,,) = pool.slot0();
-        uint256 priceX96 = Math.mulDiv(sqrtPriceX96, sqrtPriceX96, Q96);
-
-        {
-            (uint256 amount0, uint256 amount1) = ammModule.tvl(
-                infoBefore.ammPositionIds[0],
-                sqrtPriceX96,
-                infoBefore.callbackParams,
-                core.protocolParams()
-            );
-            capitalBefore = Math.mulDiv(amount0, priceX96, Q96) + amount1;
-        }
-
-        core.rebalance(rebalanceParams);
-
-        ICore.ManagedPositionInfo memory infoAfter = core.managedPositionAt(positionId);
-        IAmmModule.AmmPosition memory positionAfter =
-            ammModule.getAmmPosition(infoAfter.ammPositionIds[0]);
-
-        {
-            (uint256 amount0, uint256 amount1) = ammModule.tvl(
-                infoAfter.ammPositionIds[0],
-                sqrtPriceX96,
-                infoAfter.callbackParams,
-                core.protocolParams()
-            );
-            capitalAfter = Math.mulDiv(amount0, priceX96, Q96) + amount1;
-        }
-
-        IPulseStrategyModule.StrategyParams memory strategyParams =
-            abi.decode(infoBefore.strategyParams, (IPulseStrategyModule.StrategyParams));
-
-        assertTrue(Math.mulDiv(capitalBefore, D9 - infoBefore.slippageD9, D9) <= capitalAfter);
-
-        assertEq(positionAfter.tickUpper - positionAfter.tickLower, strategyParams.width);
-        assertEq(positionAfter.tickUpper % strategyParams.tickSpacing, 0);
-        assertEq(positionAfter.tickLower % strategyParams.tickSpacing, 0);
-        assertTrue(positionAfter.tickLower <= tick && tick <= positionAfter.tickUpper);
-    }
-
-    function testRebalance() external {
-        ICore core = contracts.core;
-
-        pool.increaseObservationCardinalityNext(2);
-        mint(
-            pool.token0(),
-            pool.token1(),
-            pool.tickSpacing(),
-            pool.tickSpacing() * 100,
-            1000000,
-            pool
-        );
-
-        uint256 tokenId = mint(
-            pool.token0(), pool.token1(), pool.tickSpacing(), pool.tickSpacing() * 2, 10000, pool
-        );
-
-        ICore.RebalanceParams memory rebalanceParams;
-
-        uint256 positionId = _depositToken(tokenId);
-        vm.startPrank(Constants.DEPLOYER);
-        movePrice(73400, pool);
-        vm.stopPrank();
-
-        vm.startPrank(Constants.OPTIMISM_DEPLOYER);
-        core.setOperatorFlag(true);
-        vm.stopPrank();
-
-        vm.expectRevert(abi.encodeWithSignature("Forbidden()"));
-        core.rebalance(rebalanceParams);
-
-        vm.startPrank(Constants.OPTIMISM_DEPLOYER);
-        core.setOperatorFlag(false);
-        vm.stopPrank();
-
-        rebalanceParams.callback = address(new EmptyBot());
-
-        // nothig happens
-        core.rebalance(rebalanceParams);
-
-        rebalanceParams.ids = new uint256[](1);
-        rebalanceParams.ids[0] = positionId;
-
-        vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
-        core.rebalance(rebalanceParams);
-
-        rebalanceParams.callback = address(new PulseVeloBot(quoterV2, swapRouter, positionManager));
-
-        vm.expectRevert();
-        core.rebalance(rebalanceParams);
-    }
-    */
 }

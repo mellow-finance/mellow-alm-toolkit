@@ -115,3 +115,4 @@ test/backtest/data
 report/
 
 lcov.info
+.DS_Store

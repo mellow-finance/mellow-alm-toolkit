@@ -190,13 +190,6 @@ interface ICore is IERC721Receiver, IAccessControlEnumerable {
     }
 
     /**
-     * @dev Custom error for signaling that a delegate call has failed.
-     * This error is thrown when a delegate call made by the contract to another contract does not execute successfully.
-     * Typically, this indicates an issue with the target contract or the data provided for the delegate call.
-     */
-    error DelegateCallFailed();
-
-    /**
      * @dev Custom error for indicating invalid parameters have been supplied to a function.
      * This error is used when the arguments passed to a function do not meet the required criteria,
      * such as out-of-range values or parameters that do not adhere to expected formats or constraints.
