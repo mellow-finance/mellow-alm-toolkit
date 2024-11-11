@@ -116,12 +116,7 @@ contract Unit is Fixture {
         );
 
         (positionId,) = _depositCore(pool, address(lpWrapper), address(lpWrapper));
-
-        /*         vm.startPrank(params.mellowAdmin);
-        vm.expectRevert(abi.encodeWithSignature("InvalidInitialization()"));
-        lpWrapper.initialize(positionId, 1000 wei, 1000 ether, params.mellowAdmin, address(0), "Name", "Symbol");
-        vm.stopPrank(); */
-
+        
         vm.prank(params.mellowAdmin);
         lpWrapper.initialize(
             positionId,
@@ -345,13 +340,21 @@ contract Unit is Fixture {
         IVeloAmmModule ammModule = contracts.ammModule;
         uint256 tokenId = info.ammPositionIds[0];
 
-        deal(pool.token0(), Constants.OPTIMISM_DEPLOYER, 1 ether);
-        deal(pool.token1(), Constants.OPTIMISM_DEPLOYER, 1 ether);
+        deal(pool.token0(), Constants.OPTIMISM_DEPLOYER, 1 ether + 2);
+        deal(pool.token1(), Constants.OPTIMISM_DEPLOYER, 1 ether + 2);
 
         vm.startPrank(Constants.OPTIMISM_DEPLOYER);
         IERC20(pool.token0()).approve(address(lpWrapper), 1 ether);
         IERC20(pool.token1()).approve(address(lpWrapper), 1 ether);
 
+        lpWrapper.deposit(
+            1 ether, 1 ether, 0.1 ether, Constants.OPTIMISM_DEPLOYER, type(uint256).max
+        );
+        lpWrapper.withdraw(type(uint256).max, 0,0,Constants.OPTIMISM_DEPLOYER, type(uint256).max);
+        skip(1 seconds);
+        assertEq(IVeloFarm(lpWrapper).calculateEarnedRewards(Constants.OPTIMISM_DEPLOYER), 0);
+        IERC20(pool.token0()).approve(address(lpWrapper), 1 ether);
+        IERC20(pool.token1()).approve(address(lpWrapper), 1 ether);
         lpWrapper.deposit(
             1 ether, 1 ether, 0.1 ether, Constants.OPTIMISM_DEPLOYER, type(uint256).max
         );

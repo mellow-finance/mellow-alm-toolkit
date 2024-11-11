@@ -44,6 +44,122 @@ contract CLPoolMock {
     function test() internal pure {}
 }
 
+contract VeloDepositWithdrawModuleMock {
+    using SafeERC20 for IERC20;
+
+    INonfungiblePositionManager public immutable positionManager;
+    bool private state_;
+    uint256 public immutable specificValueRevert = 1234e5;
+
+    constructor(INonfungiblePositionManager positionManager_) {
+        positionManager = positionManager_;
+    }
+
+    function deposit(
+        uint256 tokenId,
+        uint256 amount0,
+        uint256 amount1,
+        address from,
+        address token0,
+        address token1
+    ) external returns (uint256 actualAmount0, uint256 actualAmount1) {
+        address this_ = address(this);
+        if (amount0 != 0) {
+            IERC20(token0).safeTransferFrom(from, this_, amount0);
+            IERC20(token0).safeIncreaseAllowance(address(positionManager), amount0);
+        }
+        if (amount1 != 0) {
+            IERC20(token1).safeTransferFrom(from, this_, amount1);
+            IERC20(token1).safeIncreaseAllowance(address(positionManager), amount1);
+        }
+        (, actualAmount0, actualAmount1) = positionManager.increaseLiquidity(
+            INonfungiblePositionManager.IncreaseLiquidityParams({
+                tokenId: tokenId,
+                amount0Desired: amount0,
+                amount1Desired: amount1,
+                amount0Min: 0,
+                amount1Min: 0,
+                deadline: type(uint256).max
+            })
+        );
+        if (actualAmount0 != amount0) {
+            IERC20(token0).safeTransfer(from, amount0 - actualAmount0);
+        }
+        if (actualAmount1 != amount1) {
+            IERC20(token1).safeTransfer(from, amount1 - actualAmount1);
+        }
+
+        if (amount0 == specificValueRevert) {
+            state_ = true;
+        } else {
+            state_ = false;
+        }
+
+        assembly {
+            let data := 42 // Set a value in memory, here we're using 42 as an example
+            let resultPtr := mload(0x40) // Load the free memory pointer
+            mstore(resultPtr, data) // Store the data at resultPtr
+
+            let flagValue := sload(0)
+            switch flagValue
+            case 0 {
+                // If flag is true, return 64 bytes
+                return(resultPtr, 0x40)
+            }
+            default {
+                // If flag is false, return 32 bytes
+                return(resultPtr, 0x20)
+            }
+        }
+    }
+
+    function withdraw(uint256 tokenId, uint256 liquidity, address to)
+        external
+        returns (uint256 actualAmount0, uint256 actualAmount1)
+    {
+        positionManager.decreaseLiquidity(
+            INonfungiblePositionManager.DecreaseLiquidityParams({
+                tokenId: tokenId,
+                liquidity: uint128(liquidity),
+                amount0Min: 0,
+                amount1Min: 0,
+                deadline: type(uint256).max
+            })
+        );
+        (actualAmount0, actualAmount1) = positionManager.collect(
+            INonfungiblePositionManager.CollectParams({
+                tokenId: tokenId,
+                recipient: to,
+                amount0Max: type(uint128).max,
+                amount1Max: type(uint128).max
+            })
+        );
+
+        if (liquidity == specificValueRevert) {
+            state_ = true;
+        } else {
+            state_ = false;
+        }
+
+        assembly {
+            let data := 42 // Set a value in memory, here we're using 42 as an example
+            let resultPtr := mload(0x40) // Load the free memory pointer
+            mstore(resultPtr, data) // Store the data at resultPtr
+
+            let flagValue := sload(0)
+            switch flagValue
+            case 0 {
+                // If flag is true, return 64 bytes
+                return(resultPtr, 0x40)
+            }
+            default {
+                // If flag is false, return 32 bytes
+                return(resultPtr, 0x20)
+            }
+        }
+    }
+}
+
 contract Fixture is DeployScript, Test {
     using SafeERC20 for IERC20;
 

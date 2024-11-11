@@ -29,6 +29,7 @@ contract Unit is Fixture {
 
     function testEnsureNoMEV() external {
         oracle = new VeloOracle();
+
         ICLPool pool = ICLPool(factory.getPool(Constants.OPTIMISM_WETH, Constants.OPTIMISM_OP, 200));
         assertEq(pool.tickSpacing(), 200);
         oracle.ensureNoMEV(
@@ -91,7 +92,7 @@ contract Unit is Fixture {
             )
         );
         vm.startPrank(Constants.OPTIMISM_DEPLOYER);
-        (, int24 spotTick,,,,) = pool.slot0();
+        (, int24 spotTick,, uint16 observationCardinality,uint16 observationCardinalityNext,) = pool.slot0();
         movePrice(pool, TickMath.getSqrtRatioAtTick(spotTick + 100));
         vm.stopPrank();
         vm.expectRevert(abi.encodeWithSignature("PriceManipulationDetected()"));
@@ -101,6 +102,12 @@ contract Unit is Fixture {
                 IVeloOracle.SecurityParams({lookback: 1, maxAllowedDelta: 0, maxAge: 7 days})
             )
         );
+        movePrice(pool, TickMath.getSqrtRatioAtTick(spotTick));
+/*         for (uint16 i = observationCardinality; i < observationCardinality+1000; i++) {
+            pool.increaseObservationCardinalityNext(i);
+        }
+        (, ,, observationCardinality, observationCardinalityNext,) = pool.slot0();
+        console2.log(observationCardinality, observationCardinalityNext); */
     }
 
     function testGetOraclePrice() external {

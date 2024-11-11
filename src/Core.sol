@@ -178,7 +178,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
             )
         );
         if (response.length != 0x40) {
-            revert InvalidParams();
+            revert InvalidLength();
         }
         _afterRebalance(tokenId, info.callbackParams, protocolParams_);
         return abi.decode(response, (uint256, uint256));
@@ -213,7 +213,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
             )
         );
         if (response.length != 0x40) {
-            revert DelegateCallFailed();
+            revert InvalidLength();
         }
 
         _afterRebalance(tokenId, info.callbackParams, protocolParams_);
