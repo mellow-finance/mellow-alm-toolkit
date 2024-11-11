@@ -3,7 +3,7 @@ pragma solidity 0.8.25;
 
 import "./SolvencyRunner.sol";
 
-contract IntegrationTest is SolvencyRunner {
+contract SolvencyTest is SolvencyRunner {
     using SafeERC20 for IERC20;
     using RandomLib for RandomLib.Storage;
 
@@ -64,8 +64,18 @@ contract IntegrationTest is SolvencyRunner {
 
     function testSolvencyTamper() external {
         _setup(false);
-        rnd.seed = 4076137254;
-        _runSolvency(211, 125);
+        _runSolvency(200, type(uint256).max);
+    }
+
+    function testSolvencyPulseDepositsOnly() external {
+        _setup(true);
+        _runSolvency(200, type(uint256).max ^ 2); // second bit is for withdrawals
+    }
+
+    function testFuzz_testSolvencyFullMask(uint256 seed_) external {
+        rnd.seed = seed_;
+        _setup(rnd.randBool());
+        _runSolvency(10, type(uint256).max);
     }
 
     function testFuzz_FullSolvency(uint256 seed_, uint8 length, uint8 mask) external {
@@ -73,8 +83,8 @@ contract IntegrationTest is SolvencyRunner {
             console2.log("Fuzz test is disabled by default");
             return;
         }
-        _setup(false);
         rnd.seed = seed_;
+        _setup(rnd.randBool());
         _runSolvency(uint256(length), uint256(mask));
     }
 }
