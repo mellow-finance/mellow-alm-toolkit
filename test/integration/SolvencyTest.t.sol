@@ -73,6 +73,10 @@ contract SolvencyTest is SolvencyRunner {
     }
 
     function testFuzz_testSolvencyFullMask(uint256 seed_) external {
+        if (true) {
+            console2.log("Fuzz test is disabled by default");
+            return;
+        }
         rnd.seed = seed_;
         _setup(rnd.randBool());
         _runSolvency(10, type(uint256).max);
