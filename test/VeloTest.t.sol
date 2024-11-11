@@ -50,10 +50,12 @@ contract IntegrationTest is Test {
             ICLPool(factory.getPool(Constants.OPTIMISM_WSTETH, Constants.OPTIMISM_WETH, 1));
         ICLGauge gauge = ICLGauge(pool.gauge());
 
+        skip(1 weeks);
         // ok
         distributeRewards(gauge, false);
         console2.log(gauge.fees0(), gauge.fees1());
 
+        skip(1 weeks);
         distributeRewards(gauge, false);
         // must be zeros
         console2.log(gauge.fees0(), gauge.fees1());
@@ -62,6 +64,7 @@ contract IntegrationTest is Test {
         doSwap(pool);
 
         // reverts
+        skip(1 weeks);
         distributeRewards(gauge, true);
     }
 }
