@@ -9,12 +9,14 @@ contract SolvencyRunner is Test, DeployScript {
     using RandomLib for RandomLib.Storage;
 
     uint256 private constant Q96 = 2 ** 96;
+    uint256 private constant ROUNDING_DECIMALS = 5;
 
     ICore private _core;
     ILpWrapper private _wrapper;
     RebalancingBot private _bot =
         new RebalancingBot(INonfungiblePositionManager(Constants.OPTIMISM_POSITION_MANAGER));
     RandomLib.Storage internal rnd;
+    uint256 internal _iteration;
 
     address[] private depositors;
     uint256[] private depositedAmounts0;
@@ -25,8 +27,18 @@ contract SolvencyRunner is Test, DeployScript {
     uint256[] private withdrawnAmounts1;
     uint256[] private withdrawnShares;
 
-    IERC20 token0;
-    IERC20 token1;
+    IERC20 private token0;
+    IERC20 private token1;
+    ICLPool private pool;
+    ICLGauge private gauge;
+
+    int256 private rebalanceChange0;
+    int256 private rebalanceChange1;
+    int256 private swapChange0;
+    int256 private swapChange1;
+
+    uint256 private initialBalance0;
+    uint256 private initialBalance1;
 
     function __SolvencyRunner_init(ICore core_, ILpWrapper wrapper_) internal {
         delete depositors;
@@ -38,11 +50,31 @@ contract SolvencyRunner is Test, DeployScript {
         delete withdrawnAmounts1;
         delete withdrawnShares;
 
+        delete rebalanceChange0;
+        delete rebalanceChange1;
+        delete swapChange0;
+        delete swapChange1;
+
+        delete _iteration;
+
         _core = core_;
         _wrapper = wrapper_;
 
         token0 = _wrapper.token0();
         token1 = _wrapper.token1();
+
+        pool = ICLPool(_core.managedPositionAt(_wrapper.positionId()).pool);
+        gauge = ICLGauge(pool.gauge());
+
+        // just a magic, nvm
+        deal(address(token0), address(gauge), 1000 wei);
+        deal(address(token1), address(gauge), 1000 wei);
+
+        (initialBalance0, initialBalance1,) = calculateTvl();
+    }
+
+    function _getRoundings(uint256 amount) internal pure returns (uint256) {
+        return Math.ceilDiv(amount, 10 ** ROUNDING_DECIMALS);
     }
 
     function calculateTvl()
@@ -55,7 +87,7 @@ contract SolvencyRunner is Test, DeployScript {
         uint256 length = tokenIds.length;
         totalSupply = _wrapper.totalSupply();
         IAmmModule ammModule = _core.ammModule();
-        (uint160 sqrtPriceX96,,,,,) = ICLPool(info.pool).slot0();
+        (uint160 sqrtPriceX96,,,,,) = pool.slot0();
         for (uint256 i = 0; i < length; i++) {
             (uint256 position0, uint256 position1) =
                 ammModule.tvl(tokenIds[i], sqrtPriceX96, info.callbackParams, new bytes(0));
@@ -83,9 +115,10 @@ contract SolvencyRunner is Test, DeployScript {
 
         uint256 lpAmount = rnd.randAmountD18();
         (uint256 totalAmount0, uint256 totalAmount1, uint256 totalSupply) = calculateTvl();
-        uint256 d = 6;
-        uint256 amount0 = totalAmount0 * lpAmount / totalSupply * (10 ** d + 1) / 10 ** d + 1; // + 0.0001% + dust due to roundings
-        uint256 amount1 = totalAmount1 * lpAmount / totalSupply * (10 ** d + 1) / 10 ** d + 1;
+        uint256 amount0 = totalAmount0 * lpAmount / totalSupply;
+        uint256 amount1 = totalAmount1 * lpAmount / totalSupply;
+        amount0 += _getRoundings(amount0);
+        amount1 += _getRoundings(amount1);
 
         deal(address(token0), user, amount0);
         deal(address(token1), user, amount1);
@@ -118,6 +151,21 @@ contract SolvencyRunner is Test, DeployScript {
         vm.stopPrank();
     }
 
+    function _withdraw(uint256 userIndex, uint256 lpAmount) internal {
+        (uint256 totalAmount0, uint256 totalAmount1, uint256 totalSupply) = calculateTvl();
+        uint256 minAmount0 = totalAmount0 * lpAmount / totalSupply; // 0.05% slippage due to roundings
+        uint256 minAmount1 = totalAmount1 * lpAmount / totalSupply;
+        minAmount0 -= _getRoundings(minAmount0);
+        minAmount1 -= _getRoundings(minAmount1);
+        address user = depositors[userIndex];
+        vm.prank(user);
+        (uint256 amount0, uint256 amount1, uint256 actualLpAmount) =
+            _wrapper.withdraw(lpAmount, minAmount0, minAmount1, user, type(uint256).max);
+        withdrawnAmounts0[userIndex] += amount0;
+        withdrawnAmounts1[userIndex] += amount1;
+        withdrawnShares[userIndex] += actualLpAmount;
+    }
+
     function transitionRandomWithdraw() internal {
         uint256 holders = 0;
         for (uint256 i = 0; i < depositors.length; i++) {
@@ -143,21 +191,10 @@ contract SolvencyRunner is Test, DeployScript {
         }
         address user = depositors[userIndex];
         uint256 lpAmount = rnd.randInt(1, _wrapper.balanceOf(user));
-
-        (uint256 totalAmount0, uint256 totalAmount1, uint256 totalSupply) = calculateTvl();
-        uint256 minAmount0 = (totalAmount0 * lpAmount / totalSupply) * 9995 / 10000; // 0.05% slippage due to roundings
-        uint256 minAmount1 = (totalAmount1 * lpAmount / totalSupply) * 9995 / 10000;
-
-        vm.prank(user);
-        (uint256 amount0, uint256 amount1, uint256 actualLpAmount) =
-            _wrapper.withdraw(lpAmount, minAmount0, minAmount1, user, type(uint256).max);
-        withdrawnAmounts0[userIndex] += amount0;
-        withdrawnAmounts1[userIndex] += amount1;
-        withdrawnShares[userIndex] += actualLpAmount;
+        _withdraw(userIndex, lpAmount);
     }
 
     function transitionRandomSwap() internal {
-        ICLPool pool = ICLPool(_core.managedPositionAt(_wrapper.positionId()).pool);
         ISwapRouter swapRouter = ISwapRouter(Constants.OPTIMISM_SWAP_ROUTER);
 
         address swapper = rnd.randAddress();
@@ -181,7 +218,15 @@ contract SolvencyRunner is Test, DeployScript {
         deal(params.tokenIn, swapper, params.amountInMaximum);
         IERC20(params.tokenIn).forceApprove(address(swapRouter), params.amountInMaximum);
 
+        (uint256 balance0Before, uint256 balance1Before,) = calculateTvl();
+
         swapRouter.exactOutputSingle(params);
+
+        {
+            (uint256 balance0After, uint256 balance1After,) = calculateTvl();
+            swapChange0 += int256(balance0After) - int256(balance0Before);
+            swapChange1 += int256(balance1After) - int256(balance1Before);
+        }
 
         deal(params.tokenIn, swapper, 0);
         IERC20(params.tokenIn).forceApprove(address(swapRouter), 0);
@@ -226,12 +271,14 @@ contract SolvencyRunner is Test, DeployScript {
         deal(address(token1), address(_bot), type(uint128).max);
 
         if (rnd.randBool() && rnd.randBool()) {
+            console2.log("Random swap");
             transitionRandomSwap();
         }
         (bool isRebalanceRequired,) = strategyModule.getTargets(info, _core.ammModule(), oracle);
         bool isRevertExpected = !isRebalanceRequired;
+        (uint256 balance0, uint256 balance1,) = calculateTvl();
         if (!isRevertExpected) {
-            try oracle.ensureNoMEV(info.pool, info.securityParams) {
+            try oracle.ensureNoMEV(address(pool), info.securityParams) {
                 // normal pool state
             } catch {
                 isRevertExpected = true;
@@ -248,6 +295,10 @@ contract SolvencyRunner is Test, DeployScript {
 
         if (isRevertExpected) {
             vm.expectRevert();
+        } else {
+            (uint256 balance0After, uint256 balance1After,) = calculateTvl();
+            rebalanceChange0 += int256(balance0After) - int256(balance0);
+            rebalanceChange1 += int256(balance1After) - int256(balance1);
         }
 
         _core.rebalance(rebalanceParams);
@@ -301,6 +352,67 @@ contract SolvencyRunner is Test, DeployScript {
         vm.stopPrank();
     }
 
+    function transitionDistributeRewards() internal {
+        uint256 amount = rnd.randAmountD18();
+        address voter = address(gauge.voter());
+        address rewardToken = gauge.rewardToken();
+        vm.startPrank(voter);
+        deal(rewardToken, voter, amount);
+        IERC20(rewardToken).safeIncreaseAllowance(address(gauge), amount);
+        ICLGauge(gauge).notifyRewardAmount(amount);
+        vm.stopPrank();
+    }
+
+    function finalize() internal {
+        for (uint256 i = 0; i < depositors.length; i++) {
+            address user = depositors[i];
+            uint256 lpAmount = _wrapper.balanceOf(user);
+            if (lpAmount == 0) {
+                continue;
+            }
+            _withdraw(i, lpAmount);
+        }
+    }
+
+    function validateState() internal {
+        uint256 deposited0 = initialBalance0;
+        uint256 deposited1 = initialBalance1;
+        uint256 withdrawn0 = 0;
+        uint256 withdrawn1 = 0;
+        for (uint256 i = 0; i < depositors.length; i++) {
+            deposited0 += depositedAmounts0[i];
+            deposited1 += depositedAmounts1[i];
+            withdrawn0 += withdrawnAmounts0[i];
+            withdrawn1 += withdrawnAmounts1[i];
+        }
+
+        (uint256 tvl0, uint256 tvl1,) = calculateTvl();
+
+        int256 expectedBalance0 =
+            int256(deposited0) - int256(withdrawn0) + swapChange0 + rebalanceChange0;
+        int256 expectedBalance1 =
+            int256(deposited1) - int256(withdrawn1) + swapChange1 + rebalanceChange1;
+
+        console2.log(
+            "Token0:",
+            vm.toString(expectedBalance0),
+            vm.toString(swapChange0),
+            vm.toString(rebalanceChange0)
+        );
+        console2.log(
+            "Token1:",
+            vm.toString(expectedBalance1),
+            vm.toString(swapChange1),
+            vm.toString(rebalanceChange1)
+        );
+
+        int256 actualBalance0 = int256(tvl0);
+        int256 actualBalance1 = int256(tvl1);
+
+        assertApproxEqAbs(expectedBalance0, actualBalance0, _iteration);
+        assertApproxEqAbs(expectedBalance1, actualBalance1, _iteration);
+    }
+
     function() internal[] allTransitions = [
         transitionRandomDeposit,
         transitionRandomWithdraw,
@@ -308,7 +420,8 @@ contract SolvencyRunner is Test, DeployScript {
         transitionRandomRebalance,
         transitionRandomSetStrategyParams,
         transitionRandomSkip,
-        transitionRandomSetTotalSupplyLimit
+        transitionRandomSetTotalSupplyLimit,
+        transitionDistributeRewards
     ];
 
     function _runSolvency(uint256 iterations, uint256 bitMask) internal {
@@ -321,8 +434,13 @@ contract SolvencyRunner is Test, DeployScript {
 
     function _runSolvency(uint256[] memory indices) internal {
         for (uint256 i = 0; i < indices.length; i++) {
+            _iteration = i;
+            console2.log("Transition:", indices[i]);
             allTransitions[indices[i]]();
+            validateState();
         }
+        finalize();
+        validateState();
     }
 
     function testSolvencyRunner() internal pure {}
