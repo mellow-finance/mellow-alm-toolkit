@@ -7,7 +7,7 @@
     "prettier": "forge fmt && forge fmt ./scripts/**",
     "test": "forge test -vv --fork-url $(grep OPTIMISM_RPC .env | cut -d '=' -f2,3,4,5) --gas-limit 1000000000000000 --fork-block-number 126785000",
     "test:solvency": "forge test -vv --fork-url $(grep OPTIMISM_RPC .env | cut -d '=' -f2,3,4,5) --gas-limit 1000000000000000 --fork-block-number 126785000 --match-path test/integration/SolvencyTest.t.sol",
-    "test:velo": "forge test -vv --fork-url $(grep OPTIMISM_RPC .env | cut -d '=' -f2,3,4,5) --gas-limit 1000000000000000 --match-path test/VeloTest.t.sol",
+    "test:velo": "forge test -vv --fork-url $(grep OPTIMISM_RPC .env | cut -d '=' -f2,3,4,5) --fork-block-number 126785000 --gas-limit 1000000000000000 --match-path test/VeloTest.t.sol",
     "coverage": "forge coverage -vv --fork-url $(grep OPTIMISM_RPC .env | cut -d '=' -f2,3,4,5) --gas-limit 1000000000000000 --fork-block-number 126785000",
     "coverage:report": "forge coverage -vv --fork-url $(grep OPTIMISM_RPC .env | cut -d '=' -f2,3,4,5) --gas-limit 1000000000000000 --fork-block-number 126785000 --report lcov && genhtml lcov.info --rc derive_function_end_line=0 -o report --branch-coverage && rm lcov.info",
     "sizes": "forge build --sizes --force",

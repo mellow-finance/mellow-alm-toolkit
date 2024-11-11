@@ -4,6 +4,10 @@ pragma solidity 0.8.25;
 import "../scripts/deploy/Constants.sol";
 import "../src/interfaces/external/velo/ISwapRouter.sol";
 
+interface ICLVoter {
+    function distribute(address[] memory _gauges) external;
+}
+
 contract IntegrationTest is Test {
     using SafeERC20 for IERC20;
 
@@ -13,17 +17,13 @@ contract IntegrationTest is Test {
     ISwapRouter public router = ISwapRouter(Constants.OPTIMISM_SWAP_ROUTER);
 
     function distributeRewards(ICLGauge gauge, bool isRevertExpected) internal {
-        uint256 amount = 1 ether;
         address voter = address(gauge.voter());
-        address rewardToken = gauge.rewardToken();
-        vm.startPrank(voter);
-        deal(rewardToken, voter, amount);
-        IERC20(rewardToken).safeIncreaseAllowance(address(gauge), amount);
         if (isRevertExpected) {
             vm.expectRevert();
         }
-        ICLGauge(gauge).notifyRewardAmount(amount);
-        vm.stopPrank();
+        address[] memory gauges = new address[](1);
+        gauges[0] = address(gauge);
+        ICLVoter(voter).distribute(gauges);
     }
 
     function doSwap(ICLPool pool) internal {
