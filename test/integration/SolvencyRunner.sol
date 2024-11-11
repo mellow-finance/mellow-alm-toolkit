@@ -458,7 +458,6 @@ contract SolvencyRunner is Test, DeployScript {
         for (uint256 i = 0; i < indices.length; i++) {
             _iteration = i + 1;
             allTransitions[indices[i]]();
-            console2.log(i, indices[i]);
             validateState();
         }
         finalize();
