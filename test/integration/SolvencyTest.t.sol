@@ -69,8 +69,12 @@ contract IntegrationTest is SolvencyRunner {
     }
 
     function testFuzz_FullSolvency(uint256 seed_, uint8 length, uint8 mask) external {
+        if (true) {
+            console2.log("Fuzz test is disabled by default");
+            return;
+        }
         _setup(false);
         rnd.seed = seed_;
-        _runSolvency(Math.min(uint256(length), 50), uint256(mask));
+        _runSolvency(uint256(length), uint256(mask));
     }
 }

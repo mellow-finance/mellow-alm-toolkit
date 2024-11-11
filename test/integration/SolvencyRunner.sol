@@ -22,7 +22,6 @@ contract SolvencyRunner is Test, DeployScript {
     uint256[] private depositedAmounts0;
     uint256[] private depositedAmounts1;
     uint256[] private depositedShares;
-    uint256[] private claimedAmounts;
     uint256[] private withdrawnAmounts0;
     uint256[] private withdrawnAmounts1;
     uint256[] private withdrawnShares;
@@ -39,13 +38,13 @@ contract SolvencyRunner is Test, DeployScript {
 
     uint256 private initialBalance0;
     uint256 private initialBalance1;
+    uint256 private initialShares;
 
     function __SolvencyRunner_init(ICore core_, ILpWrapper wrapper_) internal {
         delete depositors;
         delete depositedAmounts0;
         delete depositedAmounts1;
         delete depositedShares;
-        delete claimedAmounts;
         delete withdrawnAmounts0;
         delete withdrawnAmounts1;
         delete withdrawnShares;
@@ -70,7 +69,7 @@ contract SolvencyRunner is Test, DeployScript {
         deal(address(token0), address(gauge), 1000 wei);
         deal(address(token1), address(gauge), 1000 wei);
 
-        (initialBalance0, initialBalance1,) = calculateTvl();
+        (initialBalance0, initialBalance1, initialShares) = calculateTvl();
     }
 
     function applyRoundings(uint256 amount) internal pure returns (uint256) {
@@ -104,7 +103,6 @@ contract SolvencyRunner is Test, DeployScript {
             depositedAmounts0.push(0);
             depositedAmounts1.push(0);
             depositedShares.push(0);
-            claimedAmounts.push(0);
             withdrawnAmounts0.push(0);
             withdrawnAmounts1.push(0);
             withdrawnShares.push(0);
@@ -293,15 +291,16 @@ contract SolvencyRunner is Test, DeployScript {
 
         if (isRevertExpected) {
             vm.expectRevert();
-        } else {
-            (uint256 balance0After, uint256 balance1After,) = calculateTvl();
-            rebalanceChange0 += int256(balance0After) - int256(balance0);
-            rebalanceChange1 += int256(balance1After) - int256(balance1);
         }
 
         _core.rebalance(rebalanceParams);
         vm.stopPrank();
 
+        if (!isRevertExpected) {
+            (uint256 balance0After, uint256 balance1After,) = calculateTvl();
+            rebalanceChange0 += int256(balance0After) - int256(balance0);
+            rebalanceChange1 += int256(balance1After) - int256(balance1);
+        }
         deal(address(token0), address(_bot), 0);
         deal(address(token1), address(_bot), 0);
     }
@@ -373,42 +372,48 @@ contract SolvencyRunner is Test, DeployScript {
     }
 
     function validateState() internal {
-        // uint256 deposited0 = initialBalance0;
-        // uint256 deposited1 = initialBalance1;
-        // uint256 withdrawn0 = 0;
-        // uint256 withdrawn1 = 0;
-        // for (uint256 i = 0; i < depositors.length; i++) {
-        //     deposited0 += depositedAmounts0[i];
-        //     deposited1 += depositedAmounts1[i];
-        //     withdrawn0 += withdrawnAmounts0[i];
-        //     withdrawn1 += withdrawnAmounts1[i];
-        // }
+        uint256 deposited0 = initialBalance0;
+        uint256 deposited1 = initialBalance1;
+        uint256 withdrawn0 = 0;
+        uint256 withdrawn1 = 0;
+        for (uint256 i = 0; i < depositors.length; i++) {
+            deposited0 += depositedAmounts0[i];
+            deposited1 += depositedAmounts1[i];
+            withdrawn0 += withdrawnAmounts0[i];
+            withdrawn1 += withdrawnAmounts1[i];
+        }
 
-        // (uint256 tvl0, uint256 tvl1,) = calculateTvl();
+        (uint256 tvl0, uint256 tvl1,) = calculateTvl();
 
-        // int256 expectedBalance0 =
-        //     int256(deposited0) - int256(withdrawn0) + swapChange0 + rebalanceChange0;
-        // int256 expectedBalance1 =
-        //     int256(deposited1) - int256(withdrawn1) + swapChange1 + rebalanceChange1;
+        int256 expectedBalance0 =
+            int256(deposited0) - int256(withdrawn0) + swapChange0 + rebalanceChange0;
+        int256 expectedBalance1 =
+            int256(deposited1) - int256(withdrawn1) + swapChange1 + rebalanceChange1;
 
-        // console2.log(
-        //     "Token0:",
-        //     vm.toString(expectedBalance0),
-        //     vm.toString(swapChange0),
-        //     vm.toString(rebalanceChange0)
-        // );
-        // console2.log(
-        //     "Token1:",
-        //     vm.toString(expectedBalance1),
-        //     vm.toString(swapChange1),
-        //     vm.toString(rebalanceChange1)
-        // );
+        int256 actualBalance0 = int256(tvl0);
+        int256 actualBalance1 = int256(tvl1);
 
-        // int256 actualBalance0 = int256(tvl0);
-        // int256 actualBalance1 = int256(tvl1);
+        assertApproxEqAbs(expectedBalance0, actualBalance0, _iteration);
+        assertApproxEqAbs(expectedBalance1, actualBalance1, _iteration);
 
-        // assertApproxEqAbs(expectedBalance0, actualBalance0, _iteration);
-        // assertApproxEqAbs(expectedBalance1, actualBalance1, _iteration);
+        uint256 expectedShares = initialShares;
+        for (uint256 i = 0; i < depositors.length; i++) {
+            expectedShares += depositedShares[i];
+        }
+        for (uint256 i = 0; i < depositors.length; i++) {
+            expectedShares -= withdrawnShares[i];
+        }
+        assertEq(_wrapper.totalSupply(), expectedShares, "Total supply is incorrect");
+    }
+
+    function finalValidation() internal {
+        validateState();
+        (uint160 sqrtPriceX96,,,,,) = pool.slot0();
+        uint256 priceX96 = Math.mulDiv(sqrtPriceX96, sqrtPriceX96, Q96);
+        (uint256 tvl0, uint256 tvl1,) = calculateTvl();
+        uint256 value = Math.mulDiv(tvl0, priceX96, Q96) + tvl1;
+        uint256 valueBefore = Math.mulDiv(initialBalance0, priceX96, Q96) + initialBalance1;
+        assertLe(value, valueBefore, "Final TVL is greater than initial TVL");
     }
 
     function() internal[] allTransitions = [
@@ -437,7 +442,7 @@ contract SolvencyRunner is Test, DeployScript {
             validateState();
         }
         finalize();
-        validateState();
+        finalValidation();
     }
 
     function testSolvencyRunner() internal pure {}
