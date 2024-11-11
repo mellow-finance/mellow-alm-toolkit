@@ -73,8 +73,8 @@ contract SolvencyRunner is Test, DeployScript {
         (initialBalance0, initialBalance1,) = calculateTvl();
     }
 
-    function _getRoundings(uint256 amount) internal pure returns (uint256) {
-        return Math.ceilDiv(amount, ROUNDING_ERROR);
+    function applyRoundings(uint256 amount) internal pure returns (uint256) {
+        return amount - Math.ceilDiv(amount, ROUNDING_ERROR);
     }
 
     function calculateTvl()
@@ -117,8 +117,7 @@ contract SolvencyRunner is Test, DeployScript {
         (uint256 totalAmount0, uint256 totalAmount1, uint256 totalSupply) = calculateTvl();
         uint256 amount0 = totalAmount0 * lpAmount / totalSupply;
         uint256 amount1 = totalAmount1 * lpAmount / totalSupply;
-        amount0 += _getRoundings(amount0);
-        amount1 += _getRoundings(amount1);
+        lpAmount = applyRoundings(lpAmount);
 
         deal(address(token0), user, amount0);
         deal(address(token1), user, amount1);
@@ -153,10 +152,10 @@ contract SolvencyRunner is Test, DeployScript {
 
     function _withdraw(uint256 userIndex, uint256 lpAmount) internal {
         (uint256 totalAmount0, uint256 totalAmount1, uint256 totalSupply) = calculateTvl();
-        uint256 minAmount0 = totalAmount0 * lpAmount / totalSupply; // 0.05% slippage due to roundings
+        uint256 minAmount0 = totalAmount0 * lpAmount / totalSupply;
         uint256 minAmount1 = totalAmount1 * lpAmount / totalSupply;
-        minAmount0 -= _getRoundings(minAmount0);
-        minAmount1 -= _getRoundings(minAmount1);
+        minAmount0 = applyRoundings(minAmount0);
+        minAmount1 = applyRoundings(minAmount1);
         address user = depositors[userIndex];
         vm.prank(user);
         (uint256 amount0, uint256 amount1, uint256 actualLpAmount) =

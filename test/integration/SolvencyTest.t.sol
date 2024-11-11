@@ -7,7 +7,7 @@ contract IntegrationTest is SolvencyRunner {
     using SafeERC20 for IERC20;
     using RandomLib for RandomLib.Storage;
 
-    function setUp() external {
+    function _setup(bool isPulse) internal {
         CoreDeploymentParams memory coreParams = Constants.getDeploymentParams();
         vm.startPrank(coreParams.deployer);
         CoreDeployment memory contracts = deployCore(coreParams);
@@ -15,14 +15,23 @@ contract IntegrationTest is SolvencyRunner {
 
         IVeloDeployFactory.DeployParams memory params;
         params.slippageD9 = 1e9 / 100 / 100; // 0.01%
-        params.strategyParams = IPulseStrategyModule.StrategyParams({
-            strategyType: IPulseStrategyModule.StrategyType.LazySyncing,
-            tickNeighborhood: 0, // Neighborhood of ticks to consider for rebalancing
-            tickSpacing: 1, // tickSpacing of the corresponding amm pool
-            width: 50, // Width of the interval
-            maxLiquidityRatioDeviationX96: 0 // The maximum allowed deviation of the liquidity ratio for lower position.
-        });
-
+        if (isPulse) {
+            params.strategyParams = IPulseStrategyModule.StrategyParams({
+                strategyType: IPulseStrategyModule.StrategyType.LazySyncing,
+                tickNeighborhood: 0, // Neighborhood of ticks to consider for rebalancing
+                tickSpacing: 1, // tickSpacing of the corresponding amm pool
+                width: 50, // Width of the interval
+                maxLiquidityRatioDeviationX96: 0 // The maximum allowed deviation of the liquidity ratio for lower position.
+            });
+        } else {
+            params.strategyParams = IPulseStrategyModule.StrategyParams({
+                strategyType: IPulseStrategyModule.StrategyType.Tamper,
+                tickNeighborhood: 0, // Neighborhood of ticks to consider for rebalancing
+                tickSpacing: 1, // tickSpacing of the corresponding amm pool
+                width: 50, // Width of the interval
+                maxLiquidityRatioDeviationX96: uint256(2) ** 96 / 100 // The maximum allowed deviation of the liquidity ratio for lower position.
+            });
+        }
         params.securityParams =
             IVeloOracle.SecurityParams({lookback: 100, maxAge: 5 days, maxAllowedDelta: 10});
 
@@ -47,12 +56,20 @@ contract IntegrationTest is SolvencyRunner {
         __SolvencyRunner_init(contracts.core, wrapper);
     }
 
-    function testSolvency() external {
+    function testSolvencyPulse() external {
+        _setup(true);
+        rnd.seed = 4076137254;
+        _runSolvency(211, 125);
+    }
+
+    function testSolvencyTamper() external {
+        _setup(false);
         rnd.seed = 4076137254;
         _runSolvency(211, 125);
     }
 
     function testFuzz_FullSolvency(uint256 seed_, uint8 length, uint8 mask) external {
+        _setup(false);
         rnd.seed = seed_;
         _runSolvency(Math.min(uint256(length), 50), uint256(mask));
     }

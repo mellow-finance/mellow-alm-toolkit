@@ -665,11 +665,11 @@ contract PulseStrategyModuleTestV2 is Fixture {
     function testCalculateTargetOriginalTSCoverage() external {
         IPulseStrategyModule.StrategyParams memory params;
 
-        params.strategyType =  IPulseStrategyModule.StrategyType.Original;
+        params.strategyType = IPulseStrategyModule.StrategyType.Original;
         params.tickNeighborhood = 0;
         params.tickSpacing = 1;
         params.width = 200;
-        params.maxLiquidityRatioDeviationX96 = Q96-1;
+        params.maxLiquidityRatioDeviationX96 = Q96 - 1;
         // just to cover 76-77 lines at src/modules/strategies/PulseStrategyModule.sol
         // becasue it actually could not happen
         pulseStrategyModule.calculateCenteredPosition(TickMath.getSqrtRatioAtTick(300), 301, 200, 1);

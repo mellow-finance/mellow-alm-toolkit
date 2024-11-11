@@ -116,7 +116,7 @@ contract Unit is Fixture {
         );
 
         (positionId,) = _depositCore(pool, address(lpWrapper), address(lpWrapper));
-        
+
         vm.prank(params.mellowAdmin);
         lpWrapper.initialize(
             positionId,
@@ -350,7 +350,7 @@ contract Unit is Fixture {
         lpWrapper.deposit(
             1 ether, 1 ether, 0.1 ether, Constants.OPTIMISM_DEPLOYER, type(uint256).max
         );
-        lpWrapper.withdraw(type(uint256).max, 0,0,Constants.OPTIMISM_DEPLOYER, type(uint256).max);
+        lpWrapper.withdraw(type(uint256).max, 0, 0, Constants.OPTIMISM_DEPLOYER, type(uint256).max);
         skip(1 seconds);
         assertEq(IVeloFarm(lpWrapper).calculateEarnedRewards(Constants.OPTIMISM_DEPLOYER), 0);
         IERC20(pool.token0()).approve(address(lpWrapper), 1 ether);
