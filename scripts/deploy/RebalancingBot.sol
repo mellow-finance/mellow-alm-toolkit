@@ -93,10 +93,7 @@ contract RebalancingBot is IRebalanceCallback {
             _pullLiquidity(info.ammPositionIds[i]);
         }
 
-        if (data.length == 0x20) {
-            uint256 tokenIdsLength = abi.decode(data, (uint256));
-            return new uint256[](tokenIdsLength);
-        } else if (data.length > 0x100) {
+        if (data.length != 0) {
             SwapData[] memory swaps = abi.decode(data, (SwapData[]));
             for (uint256 i = 0; i < swaps.length; i++) {
                 Address.functionCall(swaps[i].target, swaps[i].data);
@@ -106,9 +103,6 @@ contract RebalancingBot is IRebalanceCallback {
         uint256 length = target.lowerTicks.length;
         tokenIds = new uint256[](length);
         for (uint256 i = 0; i < length; i++) {
-            if (data.length == 0x40) {
-                target.minLiquidities[i] /= 2;
-            }
             tokenIds[i] = _mint(
                 info.pool,
                 target.lowerTicks[i],
