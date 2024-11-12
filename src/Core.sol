@@ -352,8 +352,6 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         return _protocolParams;
     }
 
-    /// ---------------------- EXTERNAL PURE FUNCTIONS ----------------------
-
     /// @inheritdoc IERC721Receiver
     function onERC721Received(address, address, uint256, bytes calldata)
         external
@@ -362,8 +360,6 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     {
         return IERC721Receiver.onERC721Received.selector;
     }
-
-    /// ---------------------- PUBLIC VIEW FUNCTIONS ----------------------
 
     /// @inheritdoc ICore
     function positionCount() public view override returns (uint256) {
@@ -484,8 +480,6 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
             targetCapitalInToken1X96 += Math.mulDiv(amount0, priceX96, Q96) + amount1;
         }
     }
-
-    /// ---------------------- PRIVATE PURE FUNCTIONS ----------------------
 
     function _validateTarget(TargetPositionInfo memory target) private pure {
         uint256 n = target.liquidityRatiosX96.length;
