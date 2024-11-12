@@ -18,7 +18,7 @@ contract VoterMock {
     function test() internal pure {}
 }
 
-contract GuageMock {
+contract GaugeMock {
     address public immutable pool;
     VoterMock public immutable voter;
 

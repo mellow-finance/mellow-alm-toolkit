@@ -7,7 +7,7 @@ interface IRebalanceCallback {
     /**
      * @dev Executes a callback function for rebalancing.
      * @param data The data to be passed to the callback function.
-     * @param target An array of target position information.
+     * @param target The target position information.
      * @return newAmmPositionIds An array of new AMM position IDs.
      */
     function call(

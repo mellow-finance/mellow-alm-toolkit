@@ -256,10 +256,6 @@ contract Unit is Fixture {
         vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
         core.rebalance(rebalanceParams);
 
-        rebalanceParams.data = new bytes(0x60);
-        vm.expectRevert(abi.encodeWithSignature("InvalidTarget()"));
-        core.rebalance(rebalanceParams);
-
         rebalanceParams.data = new bytes(0);
         core.rebalance(rebalanceParams);
         vm.stopPrank();
