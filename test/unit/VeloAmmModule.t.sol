@@ -102,7 +102,7 @@ contract Unit is Fixture {
             pool,
             Constants.OPTIMISM_DEPLOYER
         );
-        (uint160 sqrtPriceX96, int24 tick,,,,) = pool.slot0();
+        (uint160 sqrtPriceX96,,,,,) = pool.slot0();
 
         {
             (uint256 amount0, uint256 amount1) =
@@ -115,7 +115,7 @@ contract Unit is Fixture {
             assertEq(amount1, expected1);
         }
 
-        (, tick,,,,) = pool.slot0();
+        (, int24 tick,,,,) = pool.slot0();
         for (int24 i = 0; i < 10; i++) {
             (sqrtPriceX96,,,,,) = pool.slot0();
 
@@ -257,7 +257,7 @@ contract Unit is Fixture {
                 abi.encode(
                     IVeloAmmModule.CallbackParams({
                         farm: address(0),
-                        gauge: address(new GuageMock(address(pool)))
+                        gauge: address(new GaugeMock(address(pool)))
                     })
                 ),
                 defaultProtocolParams
@@ -308,7 +308,7 @@ contract Unit is Fixture {
             abi.encode(IVeloAmmModule.CallbackParams({farm: address(1), gauge: address(0)}))
         );
 
-        address wrongGuauge = address(new GuageMock(address(pool)));
+        address wrongGuauge = address(new GaugeMock(address(pool)));
         vm.expectRevert(abi.encodeWithSignature("InvalidGauge()"));
         module.validateCallbackParams(
             abi.encode(IVeloAmmModule.CallbackParams({farm: address(1), gauge: wrongGuauge}))

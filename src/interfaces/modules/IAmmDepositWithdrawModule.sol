@@ -15,6 +15,8 @@ interface IAmmDepositWithdrawModule {
      * @param amount0 The amount of token0 to deposit.
      * @param amount1 The amount of token1 to deposit.
      * @param from The address from which the tokens will be transferred.
+     * @param token0 The address of the token0 to deposit.
+     * @param token1 The address of the token1 to deposit.
      * @return actualAmount0 The actual amount of token0 that was deposited.
      * @return actualAmount1 The actual amount of token1 that was deposited.
      *

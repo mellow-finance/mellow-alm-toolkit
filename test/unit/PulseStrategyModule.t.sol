@@ -662,7 +662,7 @@ contract PulseStrategyModuleTestV2 is Fixture {
             [1, 3]
         */
 
-    function testCalculateTargetOriginalTSCoverage() external {
+    function testCalculateTargetOriginalTSCoverage() external view {
         IPulseStrategyModule.StrategyParams memory params;
 
         params.strategyType = IPulseStrategyModule.StrategyType.Original;

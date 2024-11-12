@@ -104,6 +104,7 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
     function removeWrapperForPool(address pool) external {
         _requireAdmin();
         delete poolToWrapper[pool];
+        emit WrapperRemoved(pool, msg.sender);
     }
 
     /// @inheritdoc IVeloDeployFactory
@@ -113,21 +114,24 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
             revert AddressZero();
         }
         lpWrapperAdmin = lpWrapperAdmin_;
+        emit LpWrapperAdminSet(lpWrapperAdmin_, msg.sender);
     }
 
     /// @inheritdoc IVeloDeployFactory
     function setLpWrapperManager(address lpWrapperManager_) external {
         _requireAdmin();
         lpWrapperManager = lpWrapperManager_;
+        emit LpWrapperManagerSet(lpWrapperManager_, msg.sender);
     }
 
     /// @inheritdoc IVeloDeployFactory
     function setMinInitialTotalSupply(uint256 minInitialTotalSupply_) external {
         _requireAdmin();
-        if (minInitialTotalSupply_ == 0) {
+        if (minInitialTotalSupply_ == 0 || minInitialTotalSupply_ > 1 ether) {
             revert InvalidParams();
         }
         minInitialTotalSupply = minInitialTotalSupply_;
+        emit MinInitialTotalSupplySet(minInitialTotalSupply_, msg.sender);
     }
 
     /// ---------------------- PUBLIC VIEW FUNCTIONS ----------------------
