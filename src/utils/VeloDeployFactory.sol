@@ -124,7 +124,7 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
     /// @inheritdoc IVeloDeployFactory
     function setMinInitialTotalSupply(uint256 minInitialTotalSupply_) external {
         _requireAdmin();
-        if (minInitialTotalSupply_ == 0) {
+        if (minInitialTotalSupply_ == 0 || minInitialTotalSupply_ > 1 ether) {
             revert InvalidParams();
         }
         minInitialTotalSupply = minInitialTotalSupply_;

@@ -90,8 +90,12 @@ contract Unit is Fixture {
         vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
         contracts.deployFactory.setMinInitialTotalSupply(0);
 
-        contracts.deployFactory.setMinInitialTotalSupply(10 ** 20);
-        assertTrue(contracts.deployFactory.minInitialTotalSupply() == 10 ** 20);
+        vm.startPrank(params.mellowAdmin);
+        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        contracts.deployFactory.setMinInitialTotalSupply(1 ether + 1);
+
+        contracts.deployFactory.setMinInitialTotalSupply(10 ** 18);
+        assertTrue(contracts.deployFactory.minInitialTotalSupply() == 10 ** 18);
     }
 
     function testCreateStrategyRevert() public {
