@@ -92,8 +92,13 @@ contract Unit is Fixture {
             )
         );
         vm.startPrank(Constants.OPTIMISM_DEPLOYER);
-        (, int24 spotTick,, uint16 observationCardinality, uint16 observationCardinalityNext,) =
-            pool.slot0();
+        (
+            ,
+            int24 spotTick,
+            , /* uint16 observationCardinality */
+            , /* uint16 observationCardinalityNext */
+            ,
+        ) = pool.slot0();
         movePrice(pool, TickMath.getSqrtRatioAtTick(spotTick + 100));
         vm.stopPrank();
         vm.expectRevert(abi.encodeWithSignature("PriceManipulationDetected()"));

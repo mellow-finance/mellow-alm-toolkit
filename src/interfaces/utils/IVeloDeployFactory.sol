@@ -49,6 +49,34 @@ interface IVeloDeployFactory is IAccessControlEnumerable {
     event StrategyCreated(StrategyCreatedParams params);
 
     /**
+     * @notice Emitted when
+     * @param pool The address of the pool.
+     * @param sender The address of the sender.
+     */
+    event WrapperRemoved(address indexed pool, address indexed sender);
+
+    /**
+     * @notice Emitted when the LP wrapper admin address is updated.
+     * @param lpWrapperAdmin The new LP wrapper admin address.
+     * @param sender The address of the sender.
+     */
+    event LpWrapperAdminSet(address indexed lpWrapperAdmin, address indexed sender);
+
+    /**
+     * @notice Emitted when the LP wrapper manager address is updated.
+     * @param lpWrapperManager The new LP wrapper manager address.
+     * @param sender The address of the sender.
+     */
+    event LpWrapperManagerSet(address indexed lpWrapperManager, address indexed sender);
+
+    /**
+     * @notice Emitted when the minimum initial total supply is updated.
+     * @param minInitialTotalSupply The new minimum initial total supply.
+     * @param sender The address of the sender.
+     */
+    event MinInitialTotalSupplySet(uint256 indexed minInitialTotalSupply, address indexed sender);
+
+    /**
      * @notice Parameters for deploying a new strategy.
      * @param slippageD9 Slippage tolerance with 9 decimals, affecting strategy operations.
      * @param strategyParams The strategy parameters defining behavior and thresholds.

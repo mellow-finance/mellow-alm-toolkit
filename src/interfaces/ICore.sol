@@ -44,6 +44,31 @@ interface ICore is IERC721Receiver, IAccessControlEnumerable {
     event Rebalance(RebalanceEventParams rebalanceEventParams);
 
     /**
+     * @notice Emitted when the protocol parameters are set.
+     * @param protocolParams_ The new protocol parameters.
+     * @param sender The address of the sender.
+     */
+    event ProtocolParamsSet(bytes protocolParams_, address sender);
+
+    /**
+     * @notice Emitted when the position parameters are set.
+     * @param id The ID of the position.
+     * @param slippageD9 The slippage of the position.
+     * @param callbackParams The callback parameters of the position.
+     * @param strategyParams The strategy parameters of the position.
+     * @param securityParams The security parameters of the position.
+     * @param sender The address of the sender.
+     */
+    event PositionParamsSet(
+        uint256 id,
+        uint32 slippageD9,
+        bytes callbackParams,
+        bytes strategyParams,
+        bytes securityParams,
+        address sender
+    );
+
+    /**
      * @title ManagedPositionInfo Structure
      * @dev This structure holds information about a managed position within a liquidity management system.
      * It captures various parameters crucial for the operation, management, and strategic decision-making

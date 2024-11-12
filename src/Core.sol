@@ -286,6 +286,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         _requireAdmin();
         ammModule.validateProtocolParams(params);
         _protocolParams = params;
+        emit ProtocolParamsSet(params, msg.sender);
     }
 
     /// @inheritdoc ICore
@@ -338,6 +339,9 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         info.securityParams = securityParams;
         info.slippageD9 = slippageD9;
         _positions[id] = info;
+        emit PositionParamsSet(
+            id, slippageD9, callbackParams, strategyParams, securityParams, msg.sender
+        );
     }
 
     /// ---------------------- EXTERNAL VIEW FUNCTIONS ----------------------
