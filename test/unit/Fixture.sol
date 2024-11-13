@@ -5,7 +5,7 @@ import "../Imports.sol";
 import "scripts/deploy/Constants.sol";
 
 contract VeloFarmMock {
-    function distribute(uint256 amount) external {}
+    function distribute(uint256 amount, address reward) external {}
 
     function test() internal pure {}
 }

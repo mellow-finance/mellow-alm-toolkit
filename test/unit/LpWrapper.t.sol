@@ -439,7 +439,7 @@ contract Unit is Fixture {
         uint256 totalSupplyAfter = lpWrapper.totalSupply();
 
         vm.expectRevert(abi.encodeWithSignature("InvalidDistributor()"));
-        IVeloFarm(lpWrapper).distribute(1 ether);
+        IVeloFarm(lpWrapper).distribute(1 ether, rewardToken);
 
         skip(1 hours);
 

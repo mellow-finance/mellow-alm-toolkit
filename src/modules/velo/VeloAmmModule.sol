@@ -159,9 +159,9 @@ contract VeloAmmModule is IVeloAmmModule {
         ProtocolParams memory protocolParams_ = abi.decode(protocolParams, (ProtocolParams));
         address gauge = callbackParams_.gauge;
         uint256 balance;
+        IERC20 token = IERC20(ICLGauge(gauge).rewardToken());
         if (_isStaked(gauge, tokenId)) {
             ICLGauge(gauge).getReward(tokenId);
-            IERC20 token = IERC20(ICLGauge(gauge).rewardToken());
             balance = token.balanceOf(address(this));
             if (balance > 0) {
                 uint256 protocolReward = Math.mulDiv(protocolParams_.feeD9, balance, D9);
@@ -177,7 +177,7 @@ contract VeloAmmModule is IVeloAmmModule {
             }
         }
         // we want to provide this information to the farm anyway, even if we don't have any rewards to distribute
-        IVeloFarm(callbackParams_.farm).distribute(balance);
+        IVeloFarm(callbackParams_.farm).distribute(balance, address(token));
     }
 
     /// ---------------------- PUBLIC VIEW FUNCTIONS ----------------------

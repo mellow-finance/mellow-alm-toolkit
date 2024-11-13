@@ -243,6 +243,13 @@ interface ICore is IERC721Receiver, IAccessControlEnumerable {
     error InvalidTarget();
 
     /**
+     * @dev Custom error for signaling that amounts returned from a function are insufficient.
+     * This error is used when a function returns an amount that is below the expected or required threshold,
+     * indicating that the operation did not produce the necessary or anticipated results.
+     */
+    error InsufficientAmount();
+
+    /**
      * @dev Returns the address of the AMM module.
      * @return address of the AMM module.
      */
@@ -352,11 +359,19 @@ interface ICore is IERC721Receiver, IAccessControlEnumerable {
      * @param tokenId The token ID associated with the position.
      * @param amount0 The amount of token0 to deposit.
      * @param amount1 The amount of token1 to deposit.
-     * @return The actual amounts of token0 and token1 deposited.
+     * @param minAmount0 The minimum amount of token0 to deposit.
+     * @param minAmount1 The minimum amount of token1 to deposit.
+     * @return actualAmount0 The actual amount of token0 deposited.
+     * @return actualAmount1 The actual amount of token1 deposited.
      */
-    function directDeposit(uint256 id, uint256 tokenId, uint256 amount0, uint256 amount1)
-        external
-        returns (uint256, uint256);
+    function directDeposit(
+        uint256 id,
+        uint256 tokenId,
+        uint256 amount0,
+        uint256 amount1,
+        uint256 minAmount0,
+        uint256 minAmount1
+    ) external returns (uint256 actualAmount0, uint256 actualAmount1);
 
     /**
      * @notice Withdraws a specified amount of liquidity from a position directly.
@@ -364,11 +379,19 @@ interface ICore is IERC721Receiver, IAccessControlEnumerable {
      * @param tokenId The token ID associated with the position.
      * @param liquidity The amount of liquidity to withdraw from the position.
      * @param to The address to which the withdrawn tokens should be sent.
-     * @return The actual amounts of token0 and token1 withdrawn.
+     * @param minAmount0 The minimum amount of token0 to withdraw.
+     * @param minAmount1 The minimum amount of token1 to withdraw.
+     * @return actualAmount0 The actual amount of token0 withdrawn.
+     * @return actualAmount1 The actual amount of token1 withdrawn.
      */
-    function directWithdraw(uint256 id, uint256 tokenId, uint256 liquidity, address to)
-        external
-        returns (uint256, uint256);
+    function directWithdraw(
+        uint256 id,
+        uint256 tokenId,
+        uint256 liquidity,
+        address to,
+        uint256 minAmount0,
+        uint256 minAmount1
+    ) external returns (uint256 actualAmount0, uint256 actualAmount1);
 
     /**
      * @dev Deposits multiple tokens into the contract and creates new ManagedPosition.

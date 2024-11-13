@@ -324,8 +324,9 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
             if (positionsBefore[i].liquidity == 0) {
                 continue;
             }
-            (uint256 amount0_, uint256 amount1_) =
-                core.directDeposit(positionId, info.ammPositionIds[i], amounts0[i], amounts1[i]);
+            (uint256 amount0_, uint256 amount1_) = core.directDeposit(
+                positionId, info.ammPositionIds[i], amounts0[i], amounts1[i], 0, 0
+            );
             actualAmount0 += amount0_;
             actualAmount1 += amount1_;
         }
@@ -353,7 +354,7 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
             }
 
             (uint256 actualAmount0, uint256 actualAmount1) =
-                core.directWithdraw(positionId, ammPositionIds[i], liquidity, to);
+                core.directWithdraw(positionId, ammPositionIds[i], liquidity, to, 0, 0);
 
             amount0 += actualAmount0;
             amount1 += actualAmount1;

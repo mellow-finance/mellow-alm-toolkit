@@ -45,8 +45,8 @@ abstract contract VeloFarm is IVeloFarm, ERC20Upgradeable, ReentrancyGuard {
     }
 
     /// @inheritdoc IVeloFarm
-    function distribute(uint256 amount) external {
-        if (_msgSender() != rewardDistributor) {
+    function distribute(uint256 amount, address rewardToken_) external {
+        if (_msgSender() != rewardDistributor || rewardToken_ != rewardToken) {
             revert InvalidDistributor();
         }
 

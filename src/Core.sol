@@ -143,10 +143,14 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     }
 
     /// @inheritdoc ICore
-    function directDeposit(uint256 id, uint256 tokenId, uint256 amount0, uint256 amount1)
-        external
-        returns (uint256, uint256)
-    {
+    function directDeposit(
+        uint256 id,
+        uint256 tokenId,
+        uint256 amount0,
+        uint256 amount1,
+        uint256 minAmount0,
+        uint256 minAmount1
+    ) external returns (uint256 actualAmount0, uint256 actualAmount1) {
         ManagedPositionInfo memory info = _positions[id];
         if (info.owner != msg.sender) {
             revert Forbidden();
@@ -180,15 +184,22 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         if (response.length != 0x40) {
             revert InvalidLength();
         }
+        (actualAmount0, actualAmount1) = abi.decode(response, (uint256, uint256));
+        if (actualAmount0 < minAmount0 || actualAmount1 < minAmount1) {
+            revert InsufficientAmount();
+        }
         _afterRebalance(tokenId, info.callbackParams, protocolParams_);
-        return abi.decode(response, (uint256, uint256));
     }
 
     /// @inheritdoc ICore
-    function directWithdraw(uint256 id, uint256 tokenId, uint256 liquidity, address to)
-        external
-        returns (uint256, uint256)
-    {
+    function directWithdraw(
+        uint256 id,
+        uint256 tokenId,
+        uint256 liquidity,
+        address to,
+        uint256 minAmount0,
+        uint256 minAmount1
+    ) external returns (uint256 actualAmount0, uint256 actualAmount1) {
         ManagedPositionInfo memory info = _positions[id];
         if (info.owner != msg.sender) {
             revert Forbidden();
@@ -215,10 +226,12 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         if (response.length != 0x40) {
             revert InvalidLength();
         }
+        (actualAmount0, actualAmount1) = abi.decode(response, (uint256, uint256));
+        if (actualAmount0 < minAmount0 || actualAmount1 < minAmount1) {
+            revert InsufficientAmount();
+        }
 
         _afterRebalance(tokenId, info.callbackParams, protocolParams_);
-
-        return abi.decode(response, (uint256, uint256));
     }
 
     /// @inheritdoc ICore
