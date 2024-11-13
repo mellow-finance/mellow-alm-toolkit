@@ -150,7 +150,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         uint256 amount1,
         uint256 minAmount0,
         uint256 minAmount1
-    ) external returns (uint256 actualAmount0, uint256 actualAmount1) {
+    ) external nonReentrant returns (uint256 actualAmount0, uint256 actualAmount1) {
         ManagedPositionInfo memory info = _positions[id];
         if (info.owner != msg.sender) {
             revert Forbidden();
@@ -199,7 +199,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         address to,
         uint256 minAmount0,
         uint256 minAmount1
-    ) external returns (uint256 actualAmount0, uint256 actualAmount1) {
+    ) external nonReentrant returns (uint256 actualAmount0, uint256 actualAmount1) {
         ManagedPositionInfo memory info = _positions[id];
         if (info.owner != msg.sender) {
             revert Forbidden();

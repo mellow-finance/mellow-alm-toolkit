@@ -276,32 +276,34 @@ contract Unit is Fixture {
         IERC20(pool.token0()).approve(address(lpWrapper), 1010000 ether);
         IERC20(pool.token1()).approve(address(lpWrapper), 1010000 ether);
 
-        vm.expectRevert(abi.encodeWithSignature("InsufficientLpAmount()"));
+        vm.expectRevert(abi.encodeWithSignature("InsufficientAmounts()"));
         lpWrapper.deposit(
             1 ether, 1 ether, 100 ether, Constants.OPTIMISM_DEPLOYER, type(uint256).max
         );
 
         vm.expectRevert(abi.encodeWithSignature("Deadline()"));
-        lpWrapper.deposit(1 ether, 1 ether, 0, Constants.OPTIMISM_DEPLOYER, block.timestamp - 1);
+        lpWrapper.deposit(
+            1 ether, 1 ether, 0.99 ether, Constants.OPTIMISM_DEPLOYER, block.timestamp - 1
+        );
 
-        vm.expectRevert(abi.encodeWithSignature("InsufficientAmounts()"));
+        vm.expectRevert(abi.encodeWithSignature("InsufficientLpAmount()"));
         lpWrapper.deposit(0, 0, 0, Constants.OPTIMISM_DEPLOYER, type(uint256).max);
 
         vm.expectRevert(abi.encodeWithSignature("TotalSupplyLimitReached()"));
         lpWrapper.deposit(
-            100000 ether, 100000 ether, 0, Constants.OPTIMISM_DEPLOYER, type(uint256).max
+            100000 ether, 100000 ether, 99999 ether, Constants.OPTIMISM_DEPLOYER, type(uint256).max
         );
 
         uint256 totalSupplyBefore = lpWrapper.totalSupply();
         IAmmModule.AmmPosition memory positionBefore = ammModule.getAmmPosition(tokenId);
 
         (uint256 amount0, uint256 amount1, uint256 lpAmount) = lpWrapper.deposit(
-            1 ether, 1 ether, 0.999 ether, Constants.OPTIMISM_DEPLOYER, type(uint256).max
+            1 ether, 1 ether, 1 ether, Constants.OPTIMISM_DEPLOYER, type(uint256).max
         );
 
-        assertTrue(amount0 >= 6.427e14);
-        assertTrue(amount1 >= 0.99 ether);
-        assertTrue(lpAmount >= 0.999 ether);
+        assertGe(amount0, 6.427e14, "amount0");
+        assertGe(amount1, 0.99 ether, "amount1");
+        assertGe(lpAmount, 0.999 ether, "lpAmount");
         assertEq(lpWrapper.balanceOf(Constants.OPTIMISM_DEPLOYER), lpAmount);
 
         uint256 totalSupplyAfter = lpWrapper.totalSupply();
@@ -326,10 +328,37 @@ contract Unit is Fixture {
             );
         }
 
-        vm.expectRevert(abi.encodeWithSignature("InsufficientLpAmount()"));
+        vm.expectRevert(abi.encodeWithSignature("InsufficientAmounts()"));
         lpWrapper.deposit(
             1 ether, 1 ether, 100 ether, Constants.OPTIMISM_DEPLOYER, type(uint256).max
         );
+
+        vm.stopPrank();
+    }
+
+    function testMint() external {
+        vm.startPrank(Constants.OPTIMISM_DEPLOYER);
+        deal(pool.token0(), Constants.OPTIMISM_DEPLOYER, 1010000 ether);
+        deal(pool.token1(), Constants.OPTIMISM_DEPLOYER, 1010000 ether);
+
+        IERC20(pool.token0()).approve(address(lpWrapper), 1010000 ether);
+        IERC20(pool.token1()).approve(address(lpWrapper), 1010000 ether);
+
+        LpWrapper wrapper = LpWrapper(address(lpWrapper));
+
+        (uint256 amount0, uint256 amount1) = wrapper.previewMint(100 ether);
+
+        (uint256 actualAmount0, uint256 actualAmount1, uint256 actualLpAmount) = wrapper.mint(
+            LpWrapper.MintParams({
+                lpAmount: 100 ether,
+                maxAmount0: amount0,
+                maxAmount1: amount1,
+                recipient: Constants.OPTIMISM_DEPLOYER,
+                deadline: type(uint256).max
+            })
+        );
+        console2.log(amount0, amount1);
+        console2.log(actualAmount0, actualAmount1, actualLpAmount);
 
         vm.stopPrank();
     }
@@ -434,7 +463,9 @@ contract Unit is Fixture {
 
         uint256 totalSupplyBefore = lpWrapper.totalSupply();
 
-        lpWrapper.deposit(1 ether, 1 ether, 0, Constants.OPTIMISM_DEPLOYER, type(uint256).max);
+        lpWrapper.deposit(
+            1 ether, 1 ether, 0.99 ether, Constants.OPTIMISM_DEPLOYER, type(uint256).max
+        );
         vm.stopPrank();
         uint256 totalSupplyAfter = lpWrapper.totalSupply();
 

@@ -161,8 +161,10 @@ contract VeloAmmModule is IVeloAmmModule {
         uint256 balance;
         IERC20 token = IERC20(ICLGauge(gauge).rewardToken());
         if (_isStaked(gauge, tokenId)) {
+            address this_ = address(this);
+            balance = token.balanceOf(this_);
             ICLGauge(gauge).getReward(tokenId);
-            balance = token.balanceOf(address(this));
+            balance = token.balanceOf(this_) - balance;
             if (balance > 0) {
                 uint256 protocolReward = Math.mulDiv(protocolParams_.feeD9, balance, D9);
 

@@ -69,7 +69,13 @@ contract IntegrationTest is Test, DeployScript {
 
         uint256 n = 20;
         for (uint256 i = 0; i < n; i++) {
-            wstethWeth1Wrapper.deposit(wstethAmount / n, wethAmount / n, 0, user, block.timestamp);
+            wstethWeth1Wrapper.deposit(
+                wstethAmount / n,
+                wethAmount / n,
+                Math.min(wstethAmount, wethAmount) / n * 99 / 100,
+                user,
+                block.timestamp
+            );
             skip(1 hours);
         }
         if (true) {

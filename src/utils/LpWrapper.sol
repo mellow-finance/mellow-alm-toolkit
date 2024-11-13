@@ -81,15 +81,6 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
 
     /// ---------------------- EXTERNAL MUTATING FUNCTIONS ----------------------
 
-    function getAmountsForLiquidityCeil(
-        uint256 liquidity,
-        uint160 sqrtPriceX96,
-        uint256 sqrtLowerPriceX96,
-        uint160 sqrtUpperPriceX96
-    ) public view returns (uint256 amount0, uint256 amount1) {
-        // TODO:
-    }
-
     struct MintParams {
         uint256 lpAmount;
         uint256 maxAmount0;
@@ -98,13 +89,54 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
         uint256 deadline;
     }
 
-    function mint(MintParams calldata mintParams)
+    // view function for UI
+    function previewMint(uint256 lpAmount)
         external
+        view
+        returns (uint256 amount0, uint256 amount1)
+    {
+        ICore.ManagedPositionInfo memory info = core.managedPositionAt(positionId);
+        uint256 n = info.ammPositionIds.length;
+        uint256 totalSupply_ = totalSupply();
+        (uint160 sqrtPriceX96,) = oracle.getOraclePrice(info.pool);
+        IAmmModule.AmmPosition[] memory positions = new IAmmModule.AmmPosition[](n);
+        for (uint256 i = 0; i < n; i++) {
+            positions[i] = ammModule.getAmmPosition(info.ammPositionIds[i]);
+            (uint256 amount0_, uint256 amount1_) =
+                calculateAmountsForLp(lpAmount, totalSupply_, positions[i], sqrtPriceX96);
+            amount0 += amount0_;
+            amount1 += amount1_;
+        }
+    }
+
+    function calculateAmountsForLp(
+        uint256 lpAmount,
+        uint256 totalSupply_,
+        IAmmModule.AmmPosition memory position,
+        uint160 sqrtPriceX96
+    ) public view returns (uint256 amount0, uint256 amount1) {
+        uint256 requiredLiquidity =
+            lpAmount.mulDiv(position.liquidity, totalSupply_, Math.Rounding.Ceil);
+        if (requiredLiquidity > type(uint128).max) {
+            revert TotalSupplyLimitReached();
+        }
+        (amount0, amount1) = ammModule.getAmountsForLiquidity(
+            type(uint128).max, sqrtPriceX96, position.tickLower, position.tickUpper
+        );
+        amount0 = amount0.mulDiv(requiredLiquidity, type(uint128).max, Math.Rounding.Ceil);
+        amount1 = amount1.mulDiv(requiredLiquidity, type(uint128).max, Math.Rounding.Ceil);
+    }
+
+    function mint(MintParams memory mintParams)
+        public
         nonReentrant
         returns (uint256 actualAmount0, uint256 actualAmount1, uint256 actualLpAmount)
     {
         if (block.timestamp > mintParams.deadline) {
             revert Deadline();
+        }
+        if (mintParams.lpAmount == 0) {
+            revert InsufficientLpAmount();
         }
         ICore.ManagedPositionInfo memory info = core.managedPositionAt(positionId);
         uint256 n = info.ammPositionIds.length;
@@ -115,20 +147,12 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
         IAmmModule.AmmPosition[] memory positions = new IAmmModule.AmmPosition[](n);
         for (uint256 i = 0; i < n; i++) {
             positions[i] = ammModule.getAmmPosition(info.ammPositionIds[i]);
-            uint256 requiredLiquidity = Math.mulDiv(
-                mintParams.lpAmount, positions[i].liquidity, totalSupply_, Math.Rounding.Ceil
-            );
-            if (requiredLiquidity > type(uint128).max) {
-                revert TotalSupplyLimitReached();
-            }
-            (amounts0[i], amounts1[i]) = getAmountsForLiquidityCeil(
-                uint128(requiredLiquidity),
-                sqrtPriceX96,
-                TickMath.getSqrtRatioAtTick(positions[i].tickLower),
-                TickMath.getSqrtRatioAtTick(positions[i].tickUpper)
-            );
-            actualAmount0 += amounts0[i];
-            actualAmount1 += amounts1[i];
+            (uint256 amount0, uint256 amount1) =
+                calculateAmountsForLp(mintParams.lpAmount, totalSupply_, positions[i], sqrtPriceX96);
+            amounts0[i] = amount0;
+            amounts1[i] = amount1;
+            actualAmount0 += amount0;
+            actualAmount1 += amount1;
         }
         if (actualAmount0 > mintParams.maxAmount0 || actualAmount1 > mintParams.maxAmount1) {
             revert InsufficientAmounts();
@@ -176,83 +200,16 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
         uint256 minLpAmount,
         address to,
         uint256 deadline
-    )
-        external
-        nonReentrant
-        returns (uint256 actualAmount0, uint256 actualAmount1, uint256 lpAmount)
-    {
-        if (block.timestamp > deadline) {
-            revert Deadline();
-        }
-        ICore.ManagedPositionInfo memory info = core.managedPositionAt(positionId);
-
-        uint256 n = info.ammPositionIds.length;
-        IAmmModule.AmmPosition[] memory positionsBefore = new IAmmModule.AmmPosition[](n);
-        uint256 liquidity = 0;
-        for (uint256 i = 0; i < n; i++) {
-            positionsBefore[i] = ammModule.getAmmPosition(info.ammPositionIds[i]);
-            liquidity =
-                liquidity < positionsBefore[i].liquidity ? positionsBefore[i].liquidity : liquidity;
-        }
-        if (liquidity == 0 || amount0 == 0 && amount1 == 0) {
-            revert InsufficientAmounts();
-        }
-        {
-            uint256[] memory amounts0 = new uint256[](n);
-            uint256[] memory amounts1 = new uint256[](n);
-            {
-                uint128 liquidityMultiplier = uint128(type(uint128).max / liquidity);
-                (uint160 sqrtPriceX96,) = oracle.getOraclePrice(info.pool);
-                for (uint256 i = 0; i < n; i++) {
-                    if (positionsBefore[i].liquidity == 0) {
-                        continue;
-                    }
-                    (amounts0[i], amounts1[i]) = ammModule.getAmountsForLiquidity(
-                        positionsBefore[i].liquidity * liquidityMultiplier,
-                        sqrtPriceX96,
-                        positionsBefore[i].tickLower,
-                        positionsBefore[i].tickUpper
-                    );
-                    actualAmount0 += amounts0[i];
-                    actualAmount1 += amounts1[i];
-                }
-            }
-            for (uint256 i = 0; i < n; i++) {
-                if (actualAmount0 != 0) {
-                    amounts0[i] = amounts0[i].mulDiv(amount0, actualAmount0);
-                }
-                if (actualAmount1 != 0) {
-                    amounts1[i] = amounts1[i].mulDiv(amount1, actualAmount1);
-                }
-            }
-            (actualAmount0, actualAmount1) =
-                _directDeposit(amount0, amount1, amounts0, amounts1, positionsBefore, info);
-        }
-
-        uint256 totalSupply_ = totalSupply();
-        IAmmModule.AmmPosition memory positionsAfter;
-        lpAmount = type(uint256).max;
-        for (uint256 i = 0; i < n; i++) {
-            positionsAfter = ammModule.getAmmPosition(info.ammPositionIds[i]);
-            if (positionsBefore[i].liquidity == 0) {
-                continue;
-            }
-            uint256 lpAmount_ = totalSupply_.mulDiv(
-                positionsAfter.liquidity - positionsBefore[i].liquidity,
-                positionsBefore[i].liquidity
-            );
-            lpAmount = lpAmount < lpAmount_ ? lpAmount : lpAmount_;
-        }
-
-        if (lpAmount == 0 || lpAmount < minLpAmount) {
-            revert InsufficientLpAmount();
-        }
-        if (totalSupply_ + lpAmount > totalSupplyLimit) {
-            revert TotalSupplyLimitReached();
-        }
-        _mint(to, lpAmount);
-
-        emit Deposit(_msgSender(), to, pool, actualAmount0, actualAmount1, lpAmount, totalSupply());
+    ) external returns (uint256, uint256, uint256) {
+        return mint(
+            MintParams({
+                lpAmount: minLpAmount,
+                maxAmount0: amount0,
+                maxAmount1: amount1,
+                recipient: to,
+                deadline: deadline
+            })
+        );
     }
 
     /// @inheritdoc ILpWrapper
