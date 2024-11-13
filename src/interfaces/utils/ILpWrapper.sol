@@ -36,6 +36,8 @@ interface ILpWrapper is IVeloFarm, IAccessControlEnumerable, IERC20 {
      */
     error TotalSupplyLimitReached();
 
+    error LiquidityOverflow();
+
     /**
      * @notice Emitted when a deposit is made into the `LpWrapper`.
      * @param sender The address initiating the deposit.

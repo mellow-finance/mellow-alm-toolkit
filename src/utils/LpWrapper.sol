@@ -117,8 +117,10 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
     ) public view returns (uint256 amount0, uint256 amount1) {
         uint256 requiredLiquidity =
             lpAmount.mulDiv(position.liquidity, totalSupply_, Math.Rounding.Ceil);
-        if (requiredLiquidity > type(uint128).max) {
-            revert TotalSupplyLimitReached();
+        uint256 maxTheoreticalLiquidity =
+            type(uint128).max / uint24(position.tickUpper - position.tickLower);
+        if (requiredLiquidity > maxTheoreticalLiquidity) {
+            revert LiquidityOverflow();
         }
         (amount0, amount1) = ammModule.getAmountsForLiquidity(
             type(uint128).max, sqrtPriceX96, position.tickLower, position.tickUpper

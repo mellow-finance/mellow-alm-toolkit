@@ -337,29 +337,37 @@ contract Unit is Fixture {
     }
 
     function testMint() external {
-        vm.startPrank(Constants.OPTIMISM_DEPLOYER);
-        deal(pool.token0(), Constants.OPTIMISM_DEPLOYER, 1010000 ether);
-        deal(pool.token1(), Constants.OPTIMISM_DEPLOYER, 1010000 ether);
+        vm.prank(Constants.OPTIMISM_LP_WRAPPER_ADMIN);
+        lpWrapper.setTotalSupplyLimit(type(uint256).max);
 
-        IERC20(pool.token0()).approve(address(lpWrapper), 1010000 ether);
-        IERC20(pool.token1()).approve(address(lpWrapper), 1010000 ether);
+        uint256 inf = 1e15 ether;
+
+        vm.startPrank(Constants.OPTIMISM_DEPLOYER);
+        deal(pool.token0(), Constants.OPTIMISM_DEPLOYER, inf);
+        deal(pool.token1(), Constants.OPTIMISM_DEPLOYER, inf);
+
+        IERC20(pool.token0()).approve(address(lpWrapper), inf);
+        IERC20(pool.token1()).approve(address(lpWrapper), inf);
 
         LpWrapper wrapper = LpWrapper(address(lpWrapper));
-
-        (uint256 amount0, uint256 amount1) = wrapper.previewMint(100 ether);
-
-        (uint256 actualAmount0, uint256 actualAmount1, uint256 actualLpAmount) = wrapper.mint(
-            LpWrapper.MintParams({
-                lpAmount: 100 ether,
-                maxAmount0: amount0,
-                maxAmount1: amount1,
-                recipient: Constants.OPTIMISM_DEPLOYER,
-                deadline: type(uint256).max
-            })
-        );
-        console2.log(amount0, amount1);
-        console2.log(actualAmount0, actualAmount1, actualLpAmount);
-
+        for (uint256 lpAmount = 1 wei; lpAmount < inf / 2; lpAmount *= 81) {
+            (uint256 amount0, uint256 amount1) = wrapper.previewMint(lpAmount);
+            (uint256 actualAmount0, uint256 actualAmount1, uint256 actualLpAmount) = wrapper.mint(
+                LpWrapper.MintParams({
+                    lpAmount: lpAmount,
+                    maxAmount0: amount0,
+                    maxAmount1: amount1,
+                    recipient: Constants.OPTIMISM_DEPLOYER,
+                    deadline: type(uint256).max
+                })
+            );
+            console2.log(
+                "Delats: d0, d1, dLP:",
+                amount0 - actualAmount0,
+                amount1 - actualAmount1,
+                actualLpAmount - lpAmount
+            );
+        }
         vm.stopPrank();
     }
 
