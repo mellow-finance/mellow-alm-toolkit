@@ -36,12 +36,12 @@ interface IVeloAmmModule is IAmmModule {
 
     /**
      * @dev Struct representing callback parameters for operations associated with the Velo protocol.
-     * @param farm Address of the Synthetix farm contract. It acts as a central hub for yield farming activities, interfacing directly
+     * @param farm Address of the VeloFarm contract. It acts as a central hub for yield farming activities, interfacing directly
      * with users and other contracts to manage and allocate yield farming rewards based on defined criteria.
      * @param gauge Address of the Velo gauge contract.
      */
     struct CallbackParams {
-        address farm; // Synthetix farm contract address for yield farming operations
+        address farm; // VeloFarm contract address for yield farming operations
         address gauge; // Velo gauge contract address
     }
 

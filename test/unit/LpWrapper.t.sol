@@ -349,11 +349,10 @@ contract Unit is Fixture {
         IERC20(pool.token0()).approve(address(lpWrapper), inf);
         IERC20(pool.token1()).approve(address(lpWrapper), inf);
 
-        LpWrapper wrapper = LpWrapper(address(lpWrapper));
         for (uint256 lpAmount = 1 wei; lpAmount < inf / 2; lpAmount *= 81) {
-            (uint256 amount0, uint256 amount1) = wrapper.previewMint(lpAmount);
-            (uint256 actualAmount0, uint256 actualAmount1, uint256 actualLpAmount) = wrapper.mint(
-                LpWrapper.MintParams({
+            (uint256 amount0, uint256 amount1) = lpWrapper.previewMint(lpAmount);
+            (uint256 actualAmount0, uint256 actualAmount1, uint256 actualLpAmount) = lpWrapper.mint(
+                ILpWrapper.MintParams({
                     lpAmount: lpAmount,
                     maxAmount0: amount0,
                     maxAmount1: amount1,
