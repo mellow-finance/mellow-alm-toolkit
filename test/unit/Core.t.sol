@@ -206,7 +206,7 @@ contract Unit is Fixture {
         ICore core = contracts.core;
         ICore.RebalanceParams memory rebalanceParams;
         rebalanceParams.id = 0;
-        rebalanceParams.callback = address(new RebalancingBot(positionManager));
+        rebalanceParams.callback = address(new RebalancingBotMock(positionManager));
         rebalanceParams.data = new bytes(0); // count of position, if empty - ignore
 
         vm.expectRevert(abi.encodeWithSignature("Forbidden()"));
