@@ -10,6 +10,8 @@
     "coverage": "forge coverage -vv --fork-url $(grep OPTIMISM_RPC .env | cut -d '=' -f2,3,4,5) --gas-limit 1000000000000000 --fork-block-number 126785000",
     "coverage:report": "forge coverage -vv --fork-url $(grep OPTIMISM_RPC .env | cut -d '=' -f2,3,4,5) --gas-limit 1000000000000000 --fork-block-number 126785000 --report lcov && genhtml lcov.info --rc derive_function_end_line=0 -o report --branch-coverage && rm lcov.info",
     "sizes": "forge build --sizes --force",
+    "deploy:base:operator-contract": "forge script --use 0.8.25 scripts/deploy/DeployOperatorContract.s.sol:Deploy --rpc-url $(grep BASE_RPC .env | cut -d '=' -f2,3,4,5) --broadcast --slow -vvvv --verify --etherscan-api-key $(grep ETHERSCAN_API_KEY .env | cut -d '=' -f2)",
+    "deploy:optimism:operator-contract": "forge script --use 0.8.25 scripts/deploy/DeployOperatorContract.s.sol:Deploy --rpc-url $(grep OPTIMISM_RPC .env | cut -d '=' -f2,3,4,5) --broadcast --slow -vvvv --verify --etherscan-api-key $(grep ETHERSCAN_API_KEY .env | cut -d '=' -f2)",
     "compile": "forge build"
   }
 }
