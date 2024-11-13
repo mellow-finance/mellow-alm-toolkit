@@ -28,9 +28,10 @@ interface IAmmModule {
 
     /**
      * @dev Validates callback parameters.
+     * @param pool The address of the pool for which the callback is being validated.
      * @param params The callback parameters to be validated.
      */
-    function validateCallbackParams(bytes memory params) external view;
+    function validateCallbackParams(address pool, bytes memory params) external view;
 
     /**
      * @dev Calculates token amounts for a given liquidity amount in a position.

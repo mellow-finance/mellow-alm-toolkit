@@ -82,7 +82,7 @@ contract VeloAmmModule is IVeloAmmModule {
     /// ---------------------- EXTERNAL VIEW FUNCTIONS ----------------------
 
     /// @inheritdoc IAmmModule
-    function validateCallbackParams(bytes memory params) external view {
+    function validateCallbackParams(address pool_, bytes memory params) external view {
         if (params.length != 0x40) {
             revert InvalidLength();
         }
@@ -91,8 +91,7 @@ contract VeloAmmModule is IVeloAmmModule {
         if (params_.farm == address(0) || params_.gauge == address(0)) {
             revert AddressZero();
         }
-        ICLPool pool = ICLGauge(params_.gauge).pool();
-        if (!isPool(address(pool)) || pool.gauge() != params_.gauge) {
+        if (ICLPool(pool_).gauge() != params_.gauge) {
             revert InvalidGauge();
         }
     }

@@ -410,7 +410,7 @@ contract Unit is Fixture {
         core.deposit(depositParams);
 
         depositParams.ammPositionIds[0] = tokenId2;
-        vm.expectRevert(bytes("PM"));
+        vm.expectRevert(abi.encodeWithSignature("InvalidGauge()"));
         core.deposit(depositParams);
 
         depositParams.ammPositionIds[0] = tokenId;

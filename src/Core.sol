@@ -69,47 +69,27 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     }
 
     /// @inheritdoc ICore
-    function deposit(DepositParams memory params)
+    function deposit(DepositParams calldata params)
         external
         override
         nonReentrant
         returns (uint256 id)
     {
-        ammModule.validateCallbackParams(params.callbackParams);
+        address pool = _getPoolAndValidate(params.ammPositionIds);
+        ammModule.validateCallbackParams(pool, params.callbackParams);
         strategyModule.validateStrategyParams(params.strategyParams);
         oracle.validateSecurityParams(params.securityParams);
         if (params.slippageD9 > D9 / 4 || params.slippageD9 == 0 || params.owner == address(0)) {
             revert InvalidParams();
         }
 
-        address pool;
         bytes memory protocolParams_ = _protocolParams;
-        bool hasLiquidity = false;
         for (uint256 i = 0; i < params.ammPositionIds.length; i++) {
             uint256 tokenId = params.ammPositionIds[i];
-            if (tokenId == 0) {
-                revert InvalidParams();
-            }
-            IAmmModule.AmmPosition memory position_ = ammModule.getAmmPosition(tokenId);
-            if (position_.liquidity != 0) {
-                hasLiquidity = true;
-            }
-            address pool_ =
-                ammModule.getPool(position_.token0, position_.token1, position_.property);
-            if (pool_ == address(0)) {
-                revert InvalidParams();
-            }
-            if (i == 0) {
-                pool = pool_;
-            } else if (pool != pool_) {
-                revert InvalidParams();
-            }
             _transferFrom(msg.sender, address(this), tokenId);
             _afterRebalance(tokenId, params.callbackParams, protocolParams_);
         }
-        if (!hasLiquidity) {
-            revert InvalidParams();
-        }
+
         id = _positions.length;
         _userIds[params.owner].add(id);
         _positions.push(
@@ -341,7 +321,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         if (info.owner != msg.sender) {
             revert Forbidden();
         }
-        ammModule.validateCallbackParams(callbackParams);
+        ammModule.validateCallbackParams(info.pool, callbackParams);
         strategyModule.validateStrategyParams(strategyParams);
         oracle.validateSecurityParams(securityParams);
         if (slippageD9 > D9 / 4 || slippageD9 == 0) {
@@ -495,6 +475,37 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
                 target.upperTicks[j]
             );
             targetCapitalInToken1X96 += Math.mulDiv(amount0, priceX96, Q96) + amount1;
+        }
+    }
+
+    function _getPoolAndValidate(uint256[] calldata ammPositionIds)
+        private
+        view
+        returns (address pool)
+    {
+        bool hasLiquidity = false;
+        IAmmModule.AmmPosition memory position;
+        for (uint256 i = 0; i < ammPositionIds.length; i++) {
+            uint256 tokenId = ammPositionIds[i];
+            if (tokenId == 0) {
+                revert InvalidParams();
+            }
+            position = ammModule.getAmmPosition(tokenId);
+            if (position.liquidity != 0) {
+                hasLiquidity = true;
+            }
+            address pool_ = ammModule.getPool(position.token0, position.token1, position.property);
+            if (pool_ == address(0)) {
+                revert InvalidParams();
+            }
+            if (i == 0) {
+                pool = pool_;
+            } else if (pool != pool_) {
+                revert InvalidParams();
+            }
+        }
+        if (!hasLiquidity) {
+            revert InvalidParams();
         }
     }
 
