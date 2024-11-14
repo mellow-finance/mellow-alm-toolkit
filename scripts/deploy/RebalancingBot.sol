@@ -39,6 +39,8 @@ contract RebalancingBot is IRebalanceCallback {
                 amount1Max: type(uint128).max
             })
         );
+        // сделать burn позиции
+        // PositionManager.burn?
     }
 
     function _mint(address pool_, int24 tickLower, int24 tickUpper, uint128 liquidity)

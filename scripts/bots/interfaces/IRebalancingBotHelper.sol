@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.25;
 
-import "../external/velo/ICLPool.sol";
-import "../external/velo/INonfungiblePositionManager.sol";
+import "../../../src/interfaces/ICore.sol";
 
 interface IRebalancingBotHelper {
     struct SwapQuoteParams {
@@ -22,11 +21,14 @@ interface IRebalancingBotHelper {
 
     /// @dev return current positionId for @param pool
     function poolManagedPositionInfo(address pool)
-        public
+        external
         view
         returns (uint256 positionId, ICore.ManagedPositionInfo memory managedPositionInfo);
 
     /// @dev returns flags, true if rebalance is necessary for @param pool
-    function needRebalancePosition(address pool) public view returns (bool isRebalanceRequired);
+    function needRebalancePosition(address pool)
+        external
+        view
+        returns (bool isRebalanceRequired);
 
 }

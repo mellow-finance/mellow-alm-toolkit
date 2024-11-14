@@ -8,9 +8,10 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {TickMath} from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import {LiquidityAmounts} from "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 
-import "../interfaces/bots/IPulseVeloBotLazy.sol";
-import "../interfaces/utils/IVeloDeployFactory.sol";
-import "../modules/strategies/PulseStrategyModule.sol";
+import "../bots/interfaces/IRebalancingBotHelper.sol";
+import "../../src/interfaces/utils/IVeloDeployFactory.sol";
+import "../../src/modules/strategies/PulseStrategyModule.sol";
+
 
 contract RebalancingBotHelper is IRebalancingBotHelper {
     using SafeERC20 for IERC20;
@@ -35,7 +36,7 @@ contract RebalancingBotHelper is IRebalancingBotHelper {
 
     /// @dev returns quotes for swap
     /// @param pool address of Pool
-    /// @param priceTargetX96 actual price of exchange token0<->token1: 2^96 * amountOut/amountIn
+    /// @param priceTargetX96 actual price of exchange tokenIn<->tokenOut: 2^96 * amountOut/amountIn
     /// @return swapQuoteParams contains ecessery amountIn amd amountOut to swap for desired target position
     function necessarySwapAmountForMint(address pool, uint256 priceTargetX96)
         external
@@ -71,24 +72,20 @@ contract RebalancingBotHelper is IRebalancingBotHelper {
         view
         returns (uint256 positionId, ICore.ManagedPositionInfo memory managedPositionInfo)
     {
-        ILpWrapper lpWrapper = ILpWrapper(fatory.poolToWrapper(pool));
+        ILpWrapper lpWrapper = ILpWrapper(factory.poolToWrapper(pool));
         positionId = lpWrapper.positionId();
         managedPositionInfo = core.managedPositionAt(positionId);
     }
 
     /// @dev returns flags, true if rebalance is necessery for @param pool
-    function needRebalancePosition(address pool) public view returns (bool isRebalanceRequired) {
+    function needRebalancePosition(address pool)
+        public
+        view
+        returns (bool isRebalanceRequired)
+    {
         (, ICore.ManagedPositionInfo memory managedPositionInfo) = poolManagedPositionInfo(pool);
-
-        uint256 tokenId = managedPositionInfo.ammPositionIds[0];
-        (,,,,, int24 tickLower, int24 tickUpper,,,,,) = positionManager.positions(tokenId);
-        (uint160 sqrtPriceX96, int24 tick,,,,) = ICLPool(pool).slot0();
-
-        IPulseStrategyModule.StrategyParams memory params =
-            abi.decode(managedPositionInfo.strategyParams, (IPulseStrategyModule.StrategyParams));
-
-        (isRebalanceRequired,) =
-            PulseStrategyLibrary.calculateTarget(sqrtPriceX96, tick, tickLower, tickUpper, params);
+        (isRebalanceRequired,) = strategyModule.getTargets(managedPositionInfo,
+            core.ammModule(), core.oracle());
     }
 
     /**

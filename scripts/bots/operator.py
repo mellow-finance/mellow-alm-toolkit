@@ -115,7 +115,7 @@ class Operator:
             print(f"pool {pool} needs rebalance: {needRebalance}")
             if needRebalance:
                 swapInfo = self.bot.functions.necessarySwapAmountForMint(pool, 0).call()
-                tokenIn = swapInfo[0]
+                tokenIn = swapInfo[0] # реальная цена свопа
                 tokenOut = swapInfo[1]
                 amountIn = swapInfo[2]
                 print(pool, "swapInfo", swapInfo)
@@ -127,7 +127,8 @@ class Operator:
                             expectedAmountOut = int(swapData[1].expectedAmount)
 
                             priceX96 = (Q96 * Decimal(expectedAmountOut))/Decimal(amountIn)
-
+                            # подсчет финальных данных
+                            # передавать и адрес кора в метод
                             swapInfo = self.bot.functions.necessarySwapAmountForMint(pool, int(priceX96)).call()
                             print(pool, "swapInfo", swapInfo)
 

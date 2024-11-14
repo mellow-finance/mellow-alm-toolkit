@@ -2,6 +2,7 @@
 pragma solidity 0.8.25;
 
 import "./DeployScript.sol";
+import "./RebalancingBotHelper.sol";
 import "./RebalancingBot.sol";
 
 library Constants {
