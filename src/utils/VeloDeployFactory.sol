@@ -298,4 +298,16 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
             amount1: params.maxAmount1
         });
     }
+
+    receive() external payable {}
+
+    function claim(address token) external {
+        _requireAtLeastOperator();
+        address sender = msg.sender;
+        if (token == address(0)) {
+            Address.sendValue(payable(sender), address(this).balance);
+        } else {
+            IERC20(token).safeTransfer(sender, IERC20(token).balanceOf(address(this)));
+        }
+    }
 }
