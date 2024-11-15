@@ -127,14 +127,28 @@ contract SolvencyRunner is Test, DeployScript {
         token1.safeIncreaseAllowance(address(_wrapper), amount1);
         if (lpAmount + _wrapper.totalSupply() > _wrapper.totalSupplyLimit()) {
             vm.expectRevert(bytes4(keccak256("TotalSupplyLimitReached()")));
-            _wrapper.deposit(amount0, amount1, lpAmount, user, type(uint256).max);
+            _wrapper.mint(
+                ILpWrapper.MintParams({
+                    lpAmount: lpAmount,
+                    amount0Max: amount0,
+                    amount1Max: amount1,
+                    recipient: user,
+                    deadline: type(uint256).max
+                })
+            );
 
             token0.forceApprove(address(_wrapper), 0);
             token1.forceApprove(address(_wrapper), 0);
         } else {
-            (uint256 actualAmount0, uint256 actualAmount1, uint256 actualLpAmount) =
-                _wrapper.deposit(amount0, amount1, lpAmount, user, type(uint256).max);
-
+            (uint256 actualAmount0, uint256 actualAmount1, uint256 actualLpAmount) = _wrapper.mint(
+                ILpWrapper.MintParams({
+                    lpAmount: lpAmount,
+                    amount0Max: amount0,
+                    amount1Max: amount1,
+                    recipient: user,
+                    deadline: type(uint256).max
+                })
+            );
             depositedAmounts0[userIndex] += actualAmount0;
             depositedAmounts1[userIndex] += actualAmount1;
             depositedShares[userIndex] += actualLpAmount;

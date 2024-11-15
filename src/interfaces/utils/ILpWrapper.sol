@@ -17,19 +17,21 @@ import "@openzeppelin/contracts/access/extensions/IAccessControlEnumerable.sol";
  */
 interface ILpWrapper is IVeloFarm, IAccessControlEnumerable, IERC20 {
     /**
-     * @notice Struct containing parameters for minting LP tokens.
-     * @param lpAmount The amount of LP tokens to mint.
-     * @param maxAmount0 The maximum amount of token0 to deposit.
-     * @param maxAmount1 The maximum amount of token1 to deposit.
-     * @param recipient The address to receive the minted LP tokens.
-     * @param deadline The timestamp by which the mint operation must be executed.
+     * @notice Defines the parameters required for minting LP tokens.
+     * @dev The actual amount of LP tokens minted may exceed the specified `lpAmount` due to roundings.
+     *      Ensure sufficient allowances and balances for `amount0Max` and `amount1Max`.
+     * @param lpAmount The target amount of LP tokens to mint (subject to roundings).
+     * @param amount0Max The maximum amount of token0 that can be deposited.
+     * @param amount1Max The maximum amount of token1 that can be deposited.
+     * @param recipient The address that will receive the minted LP tokens.
+     * @param deadline The latest timestamp by which the minting operation must be completed.
      */
     struct MintParams {
-        uint256 lpAmount;
-        uint256 maxAmount0;
-        uint256 maxAmount1;
-        address recipient;
-        uint256 deadline;
+        uint256 lpAmount; // Target LP tokens to mint
+        uint256 amount0Max; // Max depositable amount of token0
+        uint256 amount1Max; // Max depositable amount of token1
+        address recipient; // Recipient of minted LP tokens
+        uint256 deadline; // Expiry timestamp for minting
     }
 
     /**
@@ -205,25 +207,6 @@ interface ILpWrapper is IVeloFarm, IAccessControlEnumerable, IERC20 {
         string memory name_,
         string memory symbol_
     ) external;
-
-    /**
-     * @dev Deposits specified amounts of tokens into corresponding managed position and mints LP tokens to the specified address.
-     * @param amount0 Amount of token0 to deposit.
-     * @param amount1 Amount of token1 to deposit.
-     * @param minLpAmount Minimum amount of LP tokens required to be minted.
-     * @param to Address to receive the minted LP tokens.
-     * @param deadline Timestamp by which the deposit operation must be executed.
-     * @return actualAmount0 Actual amount of token0 deposited.
-     * @return actualAmount1 Actual amount of token1 deposited.
-     * @return lpAmount Amount of LP tokens minted.
-     */
-    function deposit(
-        uint256 amount0,
-        uint256 amount1,
-        uint256 minLpAmount,
-        address to,
-        uint256 deadline
-    ) external returns (uint256 actualAmount0, uint256 actualAmount1, uint256 lpAmount);
 
     /**
      * @dev Burns LP tokens and transfers the underlying assets to the specified address.

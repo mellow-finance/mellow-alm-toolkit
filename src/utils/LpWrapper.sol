@@ -109,7 +109,7 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
             actualAmount0 += amount0;
             actualAmount1 += amount1;
         }
-        if (actualAmount0 > mintParams.maxAmount0 || actualAmount1 > mintParams.maxAmount1) {
+        if (actualAmount0 > mintParams.amount0Max || actualAmount1 > mintParams.amount1Max) {
             revert InsufficientAmounts();
         }
 
@@ -145,26 +145,6 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
             actualAmount1,
             actualLpAmount,
             totalSupply()
-        );
-    }
-
-    // TODO: remove this function
-    /// @inheritdoc ILpWrapper
-    function deposit(
-        uint256 amount0,
-        uint256 amount1,
-        uint256 minLpAmount,
-        address to,
-        uint256 deadline
-    ) external returns (uint256, uint256, uint256) {
-        return mint(
-            MintParams({
-                lpAmount: minLpAmount,
-                maxAmount0: amount0,
-                maxAmount1: amount1,
-                recipient: to,
-                deadline: deadline
-            })
         );
     }
 

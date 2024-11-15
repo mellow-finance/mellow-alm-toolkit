@@ -113,12 +113,14 @@ contract IntegrationTest is Test, DeployScript {
 
         uint256 n = 20;
         for (uint256 i = 0; i < n; i++) {
-            wstethWeth1Wrapper.deposit(
-                wstethAmount / n,
-                wethAmount / n,
-                Math.min(wstethAmount, wethAmount) / n * 99 / 100,
-                user,
-                block.timestamp
+            wstethWeth1Wrapper.mint(
+                ILpWrapper.MintParams({
+                    lpAmount: Math.min(wstethAmount, wethAmount) / n * 99 / 100,
+                    amount0Max: wstethAmount / n,
+                    amount1Max: wethAmount / n,
+                    recipient: user,
+                    deadline: block.timestamp
+                })
             );
             skip(1 hours);
         }
