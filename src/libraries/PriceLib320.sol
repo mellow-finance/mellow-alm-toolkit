@@ -9,34 +9,50 @@ library PriceLib320 {
         pure
         returns (uint256 amount1)
     {
-        uint64 hi = uint64(sqrtPriceX96 >> 96);
-        uint96 lo = uint96(sqrtPriceX96);
+        // Shortcut for common case where amount0 is small
+        if (amount0 <= type(uint96).max) {
+            return Math.mulDiv(amount0 * sqrtPriceX96, sqrtPriceX96, 1 << 192);
+        }
 
-        if (hi == 0) {
+        // Split sqrtPriceX96 into high and low components
+        uint64 top64Bits = uint64(sqrtPriceX96 >> 96);
+        uint96 bottom96Bits = uint96(sqrtPriceX96);
+
+        // If top 64 bits are zero, use a simplified computation
+        if (top64Bits == 0) {
             unchecked {
-                return Math.mulDiv(amount0, lo ** 2, 1 << 192);
+                return Math.mulDiv(amount0, bottom96Bits ** 2, 1 << 192);
             }
         }
 
-        uint128 hi_sq = uint128(hi) ** 2;
-        uint192 lo_sq = uint192(lo) ** 2;
-        uint160 hi_lo = uint160(hi) * lo;
+        // Calculate intermediate values
+        uint192 bottomSqr = uint192(bottom96Bits) ** 2;
+        uint160 topBottom = uint160(top64Bits) * bottom96Bits;
 
-        // overflow only in case if (amount0 * sqrtPriceX96 ** 2 >> 192) > type(uint256).max
-        amount1 = amount0 * hi_sq;
-        amount1 += Math.mulDiv(amount0, hi_lo, 1 << 96);
-        amount1 += Math.mulDiv(amount0, lo_sq, 1 << 192);
+        // Calculate amount1, avoiding overflow
+        amount1 = amount0 * uint256(top64Bits) ** 2; // Main term
+        amount1 += Math.mulDiv(amount0, topBottom, 1 << 95); // Cross term
+        amount1 += Math.mulDiv(amount0, bottomSqr, 1 << 192); // Bottom term
 
+        uint192 remainder;
         unchecked {
-            uint96 remainder0 = uint96(amount0) * uint96(hi_lo);
-            uint96 amount0_mid = uint96(uint192(amount0) >> 96);
-            uint96 amount0_lo = uint96(amount0);
-            uint96 lo_sq_lo = uint96(lo_sq);
-            uint96 lo_sq_mid = uint96(lo_sq >> 96);
-            uint96 remainder1 = (amount0_mid * lo_sq_lo + amount0_lo * lo_sq_mid);
-            uint96 remainder2 = uint96(uint192(amount0_lo) * lo_sq_lo);
-            uint192 remainder = uint192(remainder0) * 2 + uint192(remainder1) + uint192(remainder2);
-            amount1 += remainder >> 96;
+            // Compute the remainder from cross terms
+            remainder = uint96(amount0) * uint96(topBottom) << 1;
+
+            uint96 amount0Lowest96Bits = uint96(amount0);
+            uint96 bottomSqrBottom96Bits = uint96(bottomSqr);
+
+            remainder += uint96(
+                uint96(uint192(amount0) >> 96) * bottomSqrBottom96Bits
+                    + amount0Lowest96Bits * uint96(bottomSqr >> 96)
+            );
+            remainder += uint96(uint192(amount0Lowest96Bits) * bottomSqrBottom96Bits);
         }
+
+        // Add remainder to amount1
+        amount1 += remainder >> 96;
+
+        // Return the final computed amount
+        return amount1;
     }
 }
