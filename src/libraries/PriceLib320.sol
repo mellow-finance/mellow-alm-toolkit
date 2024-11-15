@@ -40,26 +40,17 @@ library PriceLib320 {
         amount1 += Math.mulDiv(amount0, bottomSqr, Q192);
 
         // Compute the remainder, which represents additional precision from the least significant terms.
-        uint192 remainder;
+        uint256 remainder;
         unchecked {
             // Calculate remainder based on cross terms involving the top and bottom parts of amount0 and sqrtPriceX96
-            remainder = uint96(amount0) * uint96(topBottom) << 1;
+            remainder = uint256(uint96(amount0 * topBottom << 1)) << 96;
 
-            uint96 amount0Lowest96Bits = uint96(amount0);
-            uint96 bottomSqrBottom96Bits = uint96(bottomSqr);
+            uint192 amount0Bottom96Bits = uint96(amount0);
+            uint192 amount0Mid96Bits = uint192(amount0) - amount0Bottom96Bits;
 
-            // Add contributions from cross terms between higher and lower bits of amount0 and bottomSqr
-            remainder += uint96(
-                uint96(uint192(amount0) >> 96) * bottomSqrBottom96Bits
-                    + amount0Lowest96Bits * uint96(bottomSqr >> 96)
-            );
-            remainder += uint96(uint192(amount0Lowest96Bits) * bottomSqrBottom96Bits);
+            remainder += amount0Mid96Bits * uint96(bottomSqr) + amount0Bottom96Bits * bottomSqr;
         }
 
-        // Add the remainder to the main computation, scaled appropriately.
-        amount1 += remainder >> 96;
-
-        // Return the final computed amount.
-        return amount1;
+        amount1 += remainder >> 192;
     }
 }
