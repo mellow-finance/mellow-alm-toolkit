@@ -12,8 +12,6 @@ library PriceLib320 {
         pure
         returns (uint256 amount1)
     {
-        // Fast path: If amount0 is small enough to fit within 96 bits,
-        // use a simpler computation that avoids unnecessary overhead.
         unchecked {
             if (sqrtPriceX96 < type(uint128).max) {
                 return Math.mulDiv(amount0, uint256(sqrtPriceX96) * sqrtPriceX96, Q192);
@@ -30,22 +28,19 @@ library PriceLib320 {
         uint160 topBottom = uint160(top64Bits) * bottom96Bits;
 
         // NOTE: Possible overflow for the case where amount1 is large than type(uint256).max
-        amount1 = amount0 * uint256(top64Bits) * top64Bits;
-        amount1 += Math.mulDiv(amount0, topBottom, Q95);
-        amount1 += Math.mulDiv(amount0, bottomSqr, Q192);
+        amount1 = amount0 * top64Bits * top64Bits + Math.mulDiv(amount0, topBottom, Q95)
+            + Math.mulDiv(amount0, bottomSqr, Q192);
 
-        // Compute the remainder, which represents additional precision from the least significant terms.
-        uint256 remainder;
         unchecked {
-            // Calculate remainder based on cross terms involving the top and bottom parts of amount0 and sqrtPriceX96
-            remainder = uint192(amount0 * topBottom << 97);
-            remainder += uint192(amount0 & 0xffffffffffffffffffffffff000000000000000000000000)
-                * uint96(bottomSqr) + uint96(amount0) * bottomSqr;
-
-            if (remainder < Q192) {
+            if (
+                (type(uint192).max ^ uint192(amount0 * topBottom << 97))
+                    >= uint192(amount0 & 0xffffffffffffffffffffffff000000000000000000000000)
+                        * uint96(bottomSqr) + uint96(amount0) * bottomSqr
+            ) {
                 return amount1;
             }
         }
+        // NOTE: Possible overflow for the case where amount1 is large than type(uint256).max
         return amount1 + 1;
     }
 }

@@ -5,26 +5,6 @@ import "../../src/libraries/PriceLib320.sol";
 import "./Fixture.sol";
 
 contract Unit is Fixture {
-    function testGasTest() external {
-        uint256 amount = 1241241234111 + block.timestamp;
-
-        {
-            uint256 gas = gasleft();
-            uint256 sqr = amount ** 2;
-            console2.log(sqr, gas - gasleft());
-        }
-    }
-
-    function testGasTest2() external {
-        uint256 amount = 1241241234111 + block.timestamp;
-
-        {
-            uint256 gas = gasleft();
-            uint256 sqr = amount * amount;
-            console2.log(sqr, gas - gasleft());
-        }
-    }
-
     function testPriceLib320() external {
         {
             uint160 sqrtPriceX96 = 4295128739;
