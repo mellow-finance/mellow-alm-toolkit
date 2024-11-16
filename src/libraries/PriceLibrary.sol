@@ -3,10 +3,15 @@ pragma solidity 0.8.25;
 
 import "@openzeppelin/contracts/utils/math/Math.sol";
 
-library PriceLib320 {
+library PriceLibrary {
     uint256 private constant Q192 = 1 << 192;
     uint256 private constant Q190 = 1 << 190;
 
+    /// @notice Converts `amount0` to `amount1` using the given square root price in Q96 fixed-point format (`sqrtPriceX96`).
+    /// @dev Ensures there is no precision loss during the conversion. Reverts if the result exceeds `type(uint256).max`.
+    /// @param amount0 The input amount to be converted.
+    /// @param sqrtPriceX96 The square root of the price ratio in Q96 fixed-point format.
+    /// @return amount1 The equivalent amount in the other token's denomination.
     function convertBySqrtPriceX96(uint256 amount0, uint160 sqrtPriceX96)
         internal
         pure

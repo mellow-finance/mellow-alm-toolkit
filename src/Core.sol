@@ -3,7 +3,7 @@ pragma solidity 0.8.25;
 
 import "./interfaces/ICore.sol";
 
-import "./libraries/PriceLib320.sol";
+import "./libraries/PriceLibrary.sol";
 import "./utils/DefaultAccessControl.sol";
 
 contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
@@ -385,7 +385,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
             uint256 tokenId = info.ammPositionIds[i];
             (uint256 amount0, uint256 amount1) =
                 ammModule.tvl(tokenId, sqrtPriceX96, info.callbackParams, protocolParams_);
-            capitalInToken1 += PriceLib320.convertBySqrtPriceX96(amount0, sqrtPriceX96) + amount1;
+            capitalInToken1 += PriceLibrary.convertBySqrtPriceX96(amount0, sqrtPriceX96) + amount1;
             _beforeRebalance(tokenId, info.callbackParams, protocolParams_);
             _transferFrom(address(this), params.callback, tokenId);
         }
@@ -474,7 +474,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
                 target.upperTicks[j]
             );
             targetCapitalInToken1X96 +=
-                PriceLib320.convertBySqrtPriceX96(amount0, sqrtPriceX96) + amount1;
+                PriceLibrary.convertBySqrtPriceX96(amount0, sqrtPriceX96) + amount1;
         }
     }
 
