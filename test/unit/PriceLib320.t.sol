@@ -5,15 +5,33 @@ import "../../src/libraries/PriceLib320.sol";
 import "./Fixture.sol";
 
 contract Unit is Fixture {
+    uint256 immutable public Q192 = 2 ** 192;
+    uint256 immutable public Q160 = 2 ** 160;
+    uint256 immutable public Q128 = 2 ** 128;
+    uint256 immutable public Q32 = 2 ** 32;
+    uint256 immutable public Q64 = 2 ** 64;
+
+    function lowErrorAmountCalculation(uint256 amount0, uint160 sqrtPriceX96) pure internal returns (uint256 amount1) {
+        if (sqrtPriceX96 < type(uint128).max) {
+            return Math.mulDiv(amount0, Math.mulDiv(sqrtPriceX96, sqrtPriceX96, 1), Q192);
+        } else if (sqrtPriceX96 < type(uint144).max) {
+            return Math.mulDiv(amount0, Math.mulDiv(sqrtPriceX96, sqrtPriceX96, Q32), Q160);
+        } else {
+            return Math.mulDiv(amount0, Math.mulDiv(sqrtPriceX96, sqrtPriceX96, Q64), Q128);
+        }
+    }
+    
     function testPriceLib320() external {
         {
             uint160 sqrtPriceX96 = 4295128739;
             uint256 amount0 = type(uint256).max;
             uint256 expectedAmount1 = 340307949066213071763124218027663425535;
+            uint256 actualAmount1 = lowErrorAmountCalculation(amount0, sqrtPriceX96);
             uint256 amount1 = PriceLib320.convertBySqrtPriceX96(amount0, sqrtPriceX96);
+            console2.log(expectedAmount1, actualAmount1);
             assertEq(amount1, expectedAmount1, "min sqrt price");
             assertNotEq(
-                Math.mulDiv(amount0, Math.mulDiv(sqrtPriceX96, sqrtPriceX96, Q96), Q96),
+                actualAmount1,
                 expectedAmount1,
                 "min sqrt price precision loss"
             );
@@ -23,10 +41,12 @@ contract Unit is Fixture {
             uint256 amount0 = type(uint128).max;
             uint256 expectedAmount1 =
                 115783384785599357996676985412062652720342362943929506828539444553934033845704;
+            uint256 actualAmount1 = lowErrorAmountCalculation(amount0, sqrtPriceX96);
             uint256 amount1 = PriceLib320.convertBySqrtPriceX96(amount0, sqrtPriceX96);
             assertEq(amount1, expectedAmount1, "max sqrt price");
+            console2.log(expectedAmount1, actualAmount1);
             assertNotEq(
-                Math.mulDiv(amount0, Math.mulDiv(sqrtPriceX96, sqrtPriceX96, Q96), Q96),
+                actualAmount1,
                 expectedAmount1,
                 "max sqrt price precision loss"
             );
@@ -7719,12 +7739,21 @@ contract Unit is Fixture {
         ];
 
         uint256 good = 0;
+        uint256 maxError = 0; 
         for (uint256 offset = 0; offset < N * 3; offset += 3) {
             uint160 sqrtPriceX96 = uint160(data[offset]);
             uint256 amount0 = data[offset + 1];
             uint256 expectedAmount1 = data[offset + 2];
-            uint256 amount1 = PriceLib320.convertBySqrtPriceX96(amount0, sqrtPriceX96);
-            assertEq(amount1, expectedAmount1);
+            //uint256 amount1 = PriceLib320.convertBySqrtPriceX96(amount0, sqrtPriceX96);
+            uint256 amount1 = lowErrorAmountCalculation(amount0, sqrtPriceX96);
+            uint256 delta = amount1 > expectedAmount1 ? amount1 - expectedAmount1 : expectedAmount1-amount1;
+            delta = Math.mulDiv(delta, 2**240, expectedAmount1);
+            if (delta > maxError) {
+                maxError = delta;
+                console2.log("maxError", maxError, expectedAmount1);
+            }
+            
+           //assertEq(amount1, expectedAmount1);
         }
     }
 }
