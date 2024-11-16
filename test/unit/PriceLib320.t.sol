@@ -31,6 +31,14 @@ contract Unit is Fixture {
                 "max sqrt price precision loss"
             );
         }
+
+        {
+            uint160 sqrtPriceX96 = 1 << 128;
+            uint256 amount0 = type(uint64).max;
+            uint256 expectedAmount1 = Math.mulDiv(sqrtPriceX96 * amount0, sqrtPriceX96, 1 << 192);
+            uint256 amount1 = PriceLib320.convertBySqrtPriceX96(amount0, sqrtPriceX96);
+            assertEq(amount1, expectedAmount1, "edge case");
+        }
     }
 
     function testPriceLib320Randomized() external {
