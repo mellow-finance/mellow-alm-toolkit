@@ -15,20 +15,20 @@ library PriceLib320 {
         // use a simpler computation that avoids unnecessary overhead.
         unchecked {
             if (sqrtPriceX96 < type(uint128).max) {
-                return Math.mulDiv(amount0, uint256(sqrtPriceX96) ** 2, Q192);
+                return Math.mulDiv(amount0, uint256(sqrtPriceX96) * sqrtPriceX96, Q192);
             }
-            if ((amount0 * sqrtPriceX96) / sqrtPriceX96 == amount0) {
+            if (amount0 < type(uint128).max && (amount0 * sqrtPriceX96) / sqrtPriceX96 == amount0) {
                 return Math.mulDiv(amount0 * sqrtPriceX96, sqrtPriceX96, Q192);
             }
         }
 
         uint64 top64Bits = uint64(sqrtPriceX96 >> 96);
         uint96 bottom96Bits = uint96(sqrtPriceX96);
-        uint192 bottomSqr = uint192(bottom96Bits) ** 2;
+        uint192 bottomSqr = uint192(bottom96Bits) * bottom96Bits;
         uint160 topBottom = uint160(top64Bits) * bottom96Bits;
 
         // NOTE: Possible overflow for the case where amount1 is large than type(uint256).max
-        amount1 = amount0 * uint256(top64Bits) ** 2;
+        amount1 = amount0 * uint256(top64Bits) * top64Bits;
         amount1 += Math.mulDiv(amount0, topBottom, 1 << 95);
         amount1 += Math.mulDiv(amount0, bottomSqr, Q192);
 
