@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 library PriceLib320 {
     uint256 private constant Q95 = 1 << 95;
     uint256 private constant Q192 = 1 << 192;
+    uint256 private constant Q190 = 1 << 190;
 
     function convertBySqrtPriceX96(uint256 amount0, uint160 sqrtPriceX96)
         internal
@@ -28,19 +29,22 @@ library PriceLib320 {
         uint160 topBottom = uint160(top64Bits) * bottom96Bits;
 
         // NOTE: Possible overflow for the case where amount1 is large than type(uint256).max
-        amount1 = amount0 * top64Bits * top64Bits + Math.mulDiv(amount0, topBottom, Q95)
-            + Math.mulDiv(amount0, bottomSqr, Q192);
+        uint256 term1 = (uint256(topBottom) << 95) + (bottomSqr >> 2);
+        uint8 term2 = uint8(bottomSqr & 3);
+        amount1 = amount0 * top64Bits * top64Bits + Math.mulDiv(amount0, term1, Q190);
+
+        if (term2 & 1 == 1) {
+            amount1 += amount0 >> 192;
+        }
+        if (term2 & 2 == 2) {
+            amount1 += amount0 >> 191;
+        }
 
         unchecked {
-            if (
-                (type(uint192).max ^ uint192(amount0 * topBottom << 97))
-                    >= uint192(amount0 & 0xffffffffffffffffffffffff000000000000000000000000)
-                        * uint96(bottomSqr) + uint96(amount0) * bottomSqr
-            ) {
+            if (type(uint192).max ^ (uint192(amount0 * term1) << 2) >= uint192(amount0) * term2) {
                 return amount1;
             }
         }
-        // NOTE: Possible overflow for the case where amount1 is large than type(uint256).max
         return amount1 + 1;
     }
 }
