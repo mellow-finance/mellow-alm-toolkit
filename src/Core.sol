@@ -9,10 +9,10 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     using EnumerableSet for EnumerableSet.UintSet;
     using SafeERC20 for IERC20;
 
-    uint256 private constant D9 = 1e9;
-    uint256 private constant Q96 = 1 << 96;
-    uint256 private constant Q192 = 1 << 192;
-    uint256 private constant Q248 = 1 << 248;
+    uint256 private constant D9 = 1000000000;
+    uint256 private constant Q96 = 0x1000000000000000000000000;
+    uint256 private constant Q128 = 0x100000000000000000000000000000000;
+    uint256 private constant Q192 = 0x1000000000000000000000000000000000000000000000000;
 
     address public immutable weth;
 
@@ -462,15 +462,17 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
 
     /// ---------------------- PRIVATE VIEW FUNCTIONS ----------------------
 
-    function _calculateCapital(uint256 amount0, uint256 amount1, uint160 sqrtPriceX96)
+    function _calculateCapital(uint256 amount0, uint256 amount1, uint256 sqrtPriceX96)
         internal
         pure
         returns (uint256)
     {
-        if (sqrtPriceX96 < type(uint128).max) {
-            return Math.mulDiv(amount0, uint256(sqrtPriceX96) * sqrtPriceX96, Q192) + amount1;
+        if (sqrtPriceX96 < Q128) {
+            return Math.mulDiv(amount0, sqrtPriceX96 * sqrtPriceX96, Q192) + amount1;
         } else {
-            return Math.mulDiv(Math.mulDiv(amount1, Q96, sqrtPriceX96), Q96, sqrtPriceX96) + amount0;
+            uint256 term = (sqrtPriceX96 >> 128) + (uint128(sqrtPriceX96) != 0 ? 1 : 0);
+            sqrtPriceX96 /= term;
+            return Math.mulDiv(amount0 * term, sqrtPriceX96 * sqrtPriceX96, Q192 / term) + amount1;
         }
     }
 
