@@ -3,15 +3,16 @@ pragma solidity 0.8.25;
 
 import "./interfaces/ICore.sol";
 
-import "./libraries/PriceLibrary.sol";
 import "./utils/DefaultAccessControl.sol";
 
 contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     using EnumerableSet for EnumerableSet.UintSet;
     using SafeERC20 for IERC20;
 
-    uint256 public constant D9 = 1e9;
-    uint256 public constant Q96 = 2 ** 96;
+    uint256 private constant D9 = 1e9;
+    uint256 private constant Q96 = 1 << 96;
+    uint256 private constant Q192 = 1 << 192;
+    uint256 private constant Q248 = 1 << 248;
 
     address public immutable weth;
 
@@ -232,14 +233,14 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
 
         (uint160 sqrtPriceX96,) = oracle.getOraclePrice(info.pool);
         bytes memory protocolParams_ = _protocolParams;
-        uint256 capitalInToken1 = _preprocess(params, info, protocolParams_, sqrtPriceX96);
-        uint256 targetCapitalInToken1X96 = _calculateTargetCapitalX96(target, sqrtPriceX96);
+        uint256 capital = _preprocess(params, info, protocolParams_, sqrtPriceX96);
+        uint256 targetCapitalX96 = _calculateTargetCapitalX96(target, sqrtPriceX96);
 
         uint256 length = target.liquidityRatiosX96.length;
         target.minLiquidities = new uint256[](length);
         for (uint256 i = 0; i < length; i++) {
             target.minLiquidities[i] =
-                Math.mulDiv(target.liquidityRatiosX96[i], capitalInToken1, targetCapitalInToken1X96);
+                Math.mulDiv(target.liquidityRatiosX96[i], capital, targetCapitalX96);
             target.minLiquidities[i] =
                 Math.mulDiv(target.minLiquidities[i], D9 - info.slippageD9, D9);
         }
@@ -380,12 +381,12 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         ManagedPositionInfo memory info,
         bytes memory protocolParams_,
         uint160 sqrtPriceX96
-    ) private returns (uint256 capitalInToken1) {
+    ) private returns (uint256 capital) {
         for (uint256 i = 0; i < info.ammPositionIds.length; i++) {
             uint256 tokenId = info.ammPositionIds[i];
             (uint256 amount0, uint256 amount1) =
                 ammModule.tvl(tokenId, sqrtPriceX96, info.callbackParams, protocolParams_);
-            capitalInToken1 += PriceLibrary.convertBySqrtPriceX96(amount0, sqrtPriceX96) + amount1;
+            capital += _calculateCapital(amount0, amount1, sqrtPriceX96);
             _beforeRebalance(tokenId, info.callbackParams, protocolParams_);
             _transferFrom(address(this), params.callback, tokenId);
         }
@@ -461,10 +462,23 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
 
     /// ---------------------- PRIVATE VIEW FUNCTIONS ----------------------
 
+    function _calculateCapital(uint256 amount0, uint256 amount1, uint160 sqrtPriceX96)
+        internal
+        pure
+        returns (uint256)
+    {
+        if (sqrtPriceX96 < type(uint128).max) {
+            return Math.mulDiv(amount0, uint256(sqrtPriceX96) * sqrtPriceX96, Q192) + amount1;
+        } else {
+            uint256 revSqrtPriceX96 = Q192 / sqrtPriceX96;
+            return Math.mulDiv(amount1, revSqrtPriceX96 * revSqrtPriceX96, Q192) + amount0;
+        }
+    }
+
     function _calculateTargetCapitalX96(TargetPositionInfo memory target, uint160 sqrtPriceX96)
         private
         view
-        returns (uint256 targetCapitalInToken1X96)
+        returns (uint256 capitalX96)
     {
         for (uint256 j = 0; j < target.lowerTicks.length; j++) {
             (uint256 amount0, uint256 amount1) = ammModule.getAmountsForLiquidity(
@@ -473,8 +487,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
                 target.lowerTicks[j],
                 target.upperTicks[j]
             );
-            targetCapitalInToken1X96 +=
-                PriceLibrary.convertBySqrtPriceX96(amount0, sqrtPriceX96) + amount1;
+            capitalX96 += _calculateCapital(amount0, amount1, sqrtPriceX96);
         }
     }
 
