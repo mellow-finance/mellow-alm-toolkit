@@ -470,8 +470,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         if (sqrtPriceX96 < type(uint128).max) {
             return Math.mulDiv(amount0, uint256(sqrtPriceX96) * sqrtPriceX96, Q192) + amount1;
         } else {
-            uint256 revSqrtPriceX96 = Q192 / sqrtPriceX96;
-            return Math.mulDiv(amount1, revSqrtPriceX96 * revSqrtPriceX96, Q192) + amount0;
+            return Math.mulDiv(Math.mulDiv(amount1, Q96, sqrtPriceX96), Q96, sqrtPriceX96) + amount0;
         }
     }
 
