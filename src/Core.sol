@@ -470,7 +470,14 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         if (sqrtPriceX96 < Q128) {
             return Math.mulDiv(amount0, sqrtPriceX96 * sqrtPriceX96, Q192) + amount1;
         } else {
-            uint256 term = (sqrtPriceX96 >> 128) + (uint128(sqrtPriceX96) != 0 ? 1 : 0);
+            /*
+                During the calculations below, the following holds true:
+                 - `term` is always greater than 1.
+                 - the new `sqrtPriceX96` is guaranteed to lie within the range `[Q128 / 2, Q128 - 1]`.
+                 - `amount0 * term` might trigger a revert due to overflow, but this will only occur if 
+                    `Math.mulDiv(amount0, priceX96, Q96)` would also result in an overflow.
+            */
+            uint256 term = Math.ceilDiv(sqrtPriceX96, Q128);
             sqrtPriceX96 /= term;
             return Math.mulDiv(amount0 * term, sqrtPriceX96 * sqrtPriceX96, Q192 / term) + amount1;
         }
