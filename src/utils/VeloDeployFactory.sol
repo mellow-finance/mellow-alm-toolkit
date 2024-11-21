@@ -244,7 +244,6 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
             strategyCreatedParams.ammPosition[i] =
                 core.ammModule().getAmmPosition(position.ammPositionIds[i]);
         }
-        strategyCreatedParams.ammPosition;
 
         emit StrategyCreated(strategyCreatedParams);
     }
@@ -256,7 +255,8 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
         view
         returns (MintInfo[] memory mintInfo)
     {
-        (uint160 sqrtPriceX96, int24 tick,,,,) = params.pool.slot0();
+        (uint160 sqrtPriceX96,,,,,) = params.pool.slot0();
+        int24 tick = TickMath.getTickAtSqrtRatio(sqrtPriceX96);
         (, ICore.TargetPositionInfo memory target) = strategyModule.calculateTargetTamper(
             sqrtPriceX96, tick, new IAmmModule.AmmPosition[](0), params.strategyParams
         );
@@ -297,7 +297,8 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
         view
         returns (MintInfo[] memory mintInfo)
     {
-        (uint160 sqrtPriceX96, int24 tick,,,,) = params.pool.slot0();
+        (uint160 sqrtPriceX96,,,,,) = params.pool.slot0();
+        int24 tick = TickMath.getTickAtSqrtRatio(sqrtPriceX96);
         (, ICore.TargetPositionInfo memory target) = strategyModule.calculateTargetPulse(
             sqrtPriceX96, tick, new IAmmModule.AmmPosition[](0), params.strategyParams
         );
