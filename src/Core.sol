@@ -2,16 +2,17 @@
 pragma solidity 0.8.25;
 
 import "./interfaces/ICore.sol";
+
 import "./utils/DefaultAccessControl.sol";
 
 contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     using EnumerableSet for EnumerableSet.UintSet;
     using SafeERC20 for IERC20;
 
-    uint256 public constant D9 = 1e9;
-    uint256 public constant Q64 = 2 ** 64;
-    uint256 public constant Q96 = 2 ** 96;
-    uint256 public constant Q128 = 2 ** 128;
+    uint256 private constant D9 = 1000000000;
+    uint256 private constant Q96 = 0x1000000000000000000000000;
+    uint256 private constant Q128 = 0x100000000000000000000000000000000;
+    uint256 private constant Q192 = 0x1000000000000000000000000000000000000000000000000;
 
     address public immutable weth;
 
@@ -231,18 +232,15 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         _validateTarget(target);
 
         (uint160 sqrtPriceX96,) = oracle.getOraclePrice(info.pool);
-        uint256 priceX128 = Math.mulDiv(sqrtPriceX96, sqrtPriceX96, Q64);
         bytes memory protocolParams_ = _protocolParams;
-        uint256 capitalInToken1 =
-            _preprocess(params, info, protocolParams_, sqrtPriceX96, priceX128);
-        uint256 targetCapitalInToken1X96 =
-            _calculateTargetCapitalX96(target, sqrtPriceX96, priceX128);
+        uint256 capital = _preprocess(params, info, protocolParams_, sqrtPriceX96);
+        uint256 targetCapitalX96 = _calculateTargetCapitalX96(target, sqrtPriceX96);
 
         uint256 length = target.liquidityRatiosX96.length;
         target.minLiquidities = new uint256[](length);
         for (uint256 i = 0; i < length; i++) {
             target.minLiquidities[i] =
-                Math.mulDiv(target.liquidityRatiosX96[i], capitalInToken1, targetCapitalInToken1X96);
+                Math.mulDiv(target.liquidityRatiosX96[i], capital, targetCapitalX96);
             target.minLiquidities[i] =
                 Math.mulDiv(target.minLiquidities[i], D9 - info.slippageD9, D9);
         }
@@ -382,14 +380,13 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         RebalanceParams memory params,
         ManagedPositionInfo memory info,
         bytes memory protocolParams_,
-        uint160 sqrtPriceX96,
-        uint256 priceX128
-    ) private returns (uint256 capitalInToken1) {
+        uint160 sqrtPriceX96
+    ) private returns (uint256 capital) {
         for (uint256 i = 0; i < info.ammPositionIds.length; i++) {
             uint256 tokenId = info.ammPositionIds[i];
             (uint256 amount0, uint256 amount1) =
                 ammModule.tvl(tokenId, sqrtPriceX96, info.callbackParams, protocolParams_);
-            capitalInToken1 += Math.mulDiv(amount0, priceX128, Q128) + amount1;
+            capital += _calculateCapital(amount0, amount1, sqrtPriceX96);
             _beforeRebalance(tokenId, info.callbackParams, protocolParams_);
             _transferFrom(address(this), params.callback, tokenId);
         }
@@ -465,11 +462,32 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
 
     /// ---------------------- PRIVATE VIEW FUNCTIONS ----------------------
 
-    function _calculateTargetCapitalX96(
-        TargetPositionInfo memory target,
-        uint160 sqrtPriceX96,
-        uint256 priceX128
-    ) private view returns (uint256 targetCapitalInToken1X96) {
+    function _calculateCapital(uint256 amount0, uint256 amount1, uint256 sqrtPriceX96)
+        internal
+        pure
+        returns (uint256)
+    {
+        if (sqrtPriceX96 < Q128) {
+            return Math.mulDiv(amount0, sqrtPriceX96 * sqrtPriceX96, Q192) + amount1;
+        } else {
+            /*
+                During the calculations below, the following holds true:
+                 - `term` is always greater than 1.
+                 - the new `sqrtPriceX96` is guaranteed to lie within the range `[Q128 / 2, Q128 - 1]`.
+                 - `amount0 * term` might trigger a revert due to overflow, but this will only occur if 
+                    `Math.mulDiv(amount0, priceX96, Q96)` would also result in an overflow.
+            */
+            uint256 term = Math.ceilDiv(sqrtPriceX96, Q128);
+            sqrtPriceX96 /= term;
+            return Math.mulDiv(amount0 * term, sqrtPriceX96 * sqrtPriceX96, Q192 / term) + amount1;
+        }
+    }
+
+    function _calculateTargetCapitalX96(TargetPositionInfo memory target, uint160 sqrtPriceX96)
+        private
+        view
+        returns (uint256 capitalX96)
+    {
         for (uint256 j = 0; j < target.lowerTicks.length; j++) {
             (uint256 amount0, uint256 amount1) = ammModule.getAmountsForLiquidity(
                 uint128(target.liquidityRatiosX96[j]),
@@ -477,7 +495,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
                 target.lowerTicks[j],
                 target.upperTicks[j]
             );
-            targetCapitalInToken1X96 += Math.mulDiv(amount0, priceX128, Q128) + amount1;
+            capitalX96 += _calculateCapital(amount0, amount1, sqrtPriceX96);
         }
     }
 
