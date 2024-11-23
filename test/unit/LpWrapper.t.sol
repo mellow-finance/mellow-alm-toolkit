@@ -22,6 +22,122 @@ contract Unit is Fixture {
         (lpWrapper, deployParams) = deployLpWrapper(pool, contracts);
     }
 
+    using Math for uint256;
+
+    function getAmounts(
+        uint160 sqrtRatioX96,
+        uint160 sqrtRatioAX96,
+        uint160 sqrtRatioBX96,
+        uint128 liquidity
+    ) internal pure returns (uint256 amount0, uint256 amount1) {
+        if (sqrtRatioX96 < sqrtRatioBX96) {
+            uint256 temp = Math.max(sqrtRatioAX96, sqrtRatioX96);
+
+            amount0 = Math.mulDiv(
+                liquidity,
+                sqrtRatioBX96 - temp,
+                Math.mulDiv(temp, sqrtRatioBX96, Q96),
+                Math.Rounding.Ceil
+            );
+        }
+
+        if (sqrtRatioX96 > sqrtRatioAX96) {
+            amount1 = Math.mulDiv(
+                liquidity,
+                Math.min(sqrtRatioX96, sqrtRatioBX96) - sqrtRatioAX96,
+                Q96,
+                Math.Rounding.Ceil
+            );
+        }
+    }
+
+    function checkCalculations(
+        uint160 sqrtRatioX96,
+        uint160 sqrtRatioAX96,
+        uint160 sqrtRatioBX96,
+        uint128 liquidity
+    ) internal {
+        if (sqrtRatioAX96 > sqrtRatioBX96) {
+            (sqrtRatioAX96, sqrtRatioBX96) = (sqrtRatioBX96, sqrtRatioAX96);
+        }
+
+        (uint256 amount0, uint256 amount1) =
+            getAmounts(sqrtRatioX96, sqrtRatioAX96, sqrtRatioBX96, liquidity);
+
+        uint256 actualLiquidity = LiquidityAmounts.getLiquidityForAmounts(
+            sqrtRatioX96, sqrtRatioAX96, sqrtRatioBX96, amount0, amount1
+        );
+        assertLe(liquidity, actualLiquidity, "liquidity <= actualLiquidity");
+    }
+
+    bytes32 seed_;
+
+    function rnd() internal returns (uint256) {
+        seed_ = keccak256(abi.encodePacked(seed_));
+        return uint256(seed_);
+    }
+
+    function testUniMathEdgeCases() external {
+        uint128 l = type(uint128).max / 2;
+        checkCalculations(
+            (TickMath.MIN_SQRT_RATIO + TickMath.MAX_SQRT_RATIO) / 2,
+            TickMath.MIN_SQRT_RATIO,
+            TickMath.MAX_SQRT_RATIO,
+            l
+        );
+        checkCalculations(
+            TickMath.MIN_SQRT_RATIO, TickMath.MIN_SQRT_RATIO, TickMath.MAX_SQRT_RATIO, l
+        );
+        checkCalculations(
+            TickMath.MAX_SQRT_RATIO, TickMath.MIN_SQRT_RATIO, TickMath.MAX_SQRT_RATIO, l
+        );
+
+        checkCalculations(
+            TickMath.MIN_SQRT_RATIO, TickMath.MIN_SQRT_RATIO, TickMath.MAX_SQRT_RATIO, 1
+        );
+        checkCalculations(
+            TickMath.MIN_SQRT_RATIO, TickMath.MIN_SQRT_RATIO, TickMath.MAX_SQRT_RATIO, 1
+        );
+        checkCalculations(
+            TickMath.getSqrtRatioAtTick(TickMath.MAX_TICK - 1),
+            TickMath.getSqrtRatioAtTick(TickMath.MAX_TICK - 1),
+            TickMath.MAX_SQRT_RATIO,
+            l
+        );
+
+        checkCalculations(
+            TickMath.getSqrtRatioAtTick(TickMath.MAX_TICK - 1),
+            TickMath.getSqrtRatioAtTick(TickMath.MAX_TICK - 1),
+            TickMath.MAX_SQRT_RATIO,
+            1
+        );
+        checkCalculations(
+            TickMath.MIN_SQRT_RATIO, TickMath.MIN_SQRT_RATIO, 18446050707367246063 + 1000, l
+        );
+        checkCalculations(
+            TickMath.MIN_SQRT_RATIO, TickMath.MIN_SQRT_RATIO, 18446050707367246063 + 1000, 1
+        );
+    }
+
+    function testUniMath() external {
+        seed_ = bytes32(uint256(123));
+        for (uint256 itr = 0; itr < 1e3; itr++) {
+            uint128 liquidity = uint128((rnd() % 1e15) + 1e9);
+            uint160 sqrtRatioAX96 = uint160(
+                rnd() % (TickMath.MAX_SQRT_RATIO - TickMath.MIN_SQRT_RATIO + 1)
+            ) + TickMath.MIN_SQRT_RATIO;
+            uint160 sqrtRatioBX96 = uint160(
+                rnd() % (TickMath.MAX_SQRT_RATIO - TickMath.MIN_SQRT_RATIO + 1)
+            ) + TickMath.MIN_SQRT_RATIO;
+            if (sqrtRatioAX96 > sqrtRatioBX96) {
+                (sqrtRatioAX96, sqrtRatioBX96) = (sqrtRatioBX96, sqrtRatioAX96);
+            }
+            uint160 sqrtRatioX96 =
+                uint160(rnd() % (sqrtRatioBX96 - sqrtRatioAX96 + 1)) + sqrtRatioAX96;
+            checkCalculations(sqrtRatioX96, sqrtRatioAX96, sqrtRatioBX96, liquidity);
+        }
+    }
+
     function _mint(ICLPool pool_, int24 width, address owner) private returns (uint256 tokenId) {
         (, int24 tick,,,,) = pool_.slot0();
         int24 tickSpacing = pool_.tickSpacing();

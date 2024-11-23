@@ -302,18 +302,26 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
         uint256 lpAmount,
         uint256 totalSupply_,
         IAmmModule.AmmPosition memory position,
-        uint160 sqrtPriceX96
-    ) public view returns (uint256 amount0, uint256 amount1) {
-        uint256 requiredLiquidity =
-            lpAmount.mulDiv(position.liquidity, totalSupply_, Math.Rounding.Ceil);
-        if (requiredLiquidity > type(uint128).max) {
+        uint160 sqrtRatioX96
+    ) public pure returns (uint256 amount0, uint256 amount1) {
+        uint256 liquidity = lpAmount.mulDiv(position.liquidity, totalSupply_, Math.Rounding.Ceil);
+        if (liquidity > type(uint128).max) {
             revert LiquidityOverflow();
         }
-        (amount0, amount1) = ammModule.getAmountsForLiquidity(
-            type(uint128).max, sqrtPriceX96, position.tickLower, position.tickUpper
-        );
-        amount0 = amount0.mulDiv(requiredLiquidity, type(uint128).max, Math.Rounding.Ceil);
-        amount1 = amount1.mulDiv(requiredLiquidity, type(uint128).max, Math.Rounding.Ceil);
+        uint256 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(position.tickLower);
+        uint256 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(position.tickUpper);
+        if (sqrtRatioX96 < sqrtRatioBX96) {
+            uint256 temp = sqrtRatioAX96.max(sqrtRatioX96);
+            amount0 = liquidity.mulDiv(
+                sqrtRatioBX96 - temp, temp.mulDiv(sqrtRatioBX96, Q96), Math.Rounding.Ceil
+            );
+        }
+
+        if (sqrtRatioX96 > sqrtRatioAX96) {
+            amount1 = liquidity.mulDiv(
+                sqrtRatioBX96.min(sqrtRatioX96) - sqrtRatioAX96, Q96, Math.Rounding.Ceil
+            );
+        }
     }
 
     /// ---------------------- INTERNAL MUTABLE FUNCTIONS ----------------------
