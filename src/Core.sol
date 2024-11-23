@@ -477,7 +477,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
                  - `amount0 * term` might trigger a revert due to overflow, but this will only occur if 
                     `Math.mulDiv(amount0, priceX96, Q96)` would also result in an overflow.
             */
-            uint256 term = Math.ceilDiv(sqrtPriceX96, Q128);
+            uint256 term = Math.ceilDiv(sqrtPriceX96, Q128 - 1);
             sqrtPriceX96 /= term;
             return Math.mulDiv(amount0 * term, sqrtPriceX96 * sqrtPriceX96, Q192 / term) + amount1;
         }
