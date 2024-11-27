@@ -10,6 +10,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     uint256 private constant D9 = 1000000000;
+    uint256 private constant Q64 = 0x10000000000000000;
     uint256 private constant Q96 = 0x1000000000000000000000000;
     uint256 private constant Q128 = 0x100000000000000000000000000000000;
     uint256 private constant Q192 = 0x1000000000000000000000000000000000000000000000000;
@@ -470,16 +471,8 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         if (sqrtPriceX96 < Q128) {
             return Math.mulDiv(amount0, sqrtPriceX96 * sqrtPriceX96, Q192) + amount1;
         } else {
-            /*
-                During the calculations below, the following holds true:
-                 - `term` is always greater than 1.
-                 - the new `sqrtPriceX96` is guaranteed to lie within the range `[Q128 / 2, Q128 - 1]`.
-                 - `amount0 * term` might trigger a revert due to overflow, but this will only occur if 
-                    `Math.mulDiv(amount0, priceX96, Q96)` would also result in an overflow.
-            */
-            uint256 term = Math.ceilDiv(sqrtPriceX96, Q128 - 1);
-            sqrtPriceX96 /= term;
-            return Math.mulDiv(amount0 * term, sqrtPriceX96 * sqrtPriceX96, Q192 / term) + amount1;
+            uint256 priceX128 = Math.mulDiv(sqrtPriceX96, sqrtPriceX96, Q64);
+            return Math.mulDiv(amount0, priceX128, Q128) + amount1;
         }
     }
 
