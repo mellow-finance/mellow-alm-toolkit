@@ -10,7 +10,6 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
     using Math for uint256;
 
     uint256 public constant D9 = 1e9;
-    uint256 private constant Q64 = 0x10000000000000000;
 
     /// @inheritdoc ILpWrapper
     address public immutable positionManager;
