@@ -43,6 +43,19 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
 
     /// ---------------------- EXTERNAL MUTATING FUNCTIONS ----------------------
 
+    receive() external payable {}
+
+    /// @inheritdoc IVeloDeployFactory
+    function claim(address token) external {
+        _requireAtLeastOperator();
+        address sender = msg.sender;
+        if (token == address(0)) {
+            Address.sendValue(payable(sender), address(this).balance);
+        } else {
+            IERC20(token).safeTransfer(sender, IERC20(token).balanceOf(address(this)));
+        }
+    }
+
     /// @inheritdoc IVeloDeployFactory
     function createStrategy(DeployParams calldata params) external returns (ILpWrapper lpWrapper) {
         _requireAtLeastOperator();
@@ -134,7 +147,7 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
         emit MinInitialTotalSupplySet(minInitialTotalSupply_, msg.sender);
     }
 
-    /// ---------------------- PUBLIC VIEW FUNCTIONS ----------------------
+    /// ---------------------- EXTERNAL VIEW FUNCTIONS ----------------------
 
     /// @inheritdoc IVeloDeployFactory
     function configureNameAndSymbol(ICLPool pool)
@@ -157,10 +170,10 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
         symbol = string(abi.encodePacked(factorySymbol, suffix));
     }
 
-    /// ----------------  INTERNAL MUTABLE FUNCTIONS  ----------------
+    /// ----------------  PRIVATE MUTABLE FUNCTIONS  ----------------
 
     function _create(address depositor, PoolStrategyParameter memory params)
-        internal
+        private
         returns (uint256[] memory tokenIds)
     {
         ICLPool pool = params.pool;
@@ -204,8 +217,6 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
         }
     }
 
-    /// ----------------  PRIVATE MUTABLE FUNCTIONS  ----------------
-
     function _handleToken(address depositor, IERC20 token, uint256 amount) private {
         address this_ = address(this);
         uint256 balance = token.balanceOf(this_);
@@ -233,7 +244,6 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
             strategyCreatedParams.ammPosition[i] =
                 core.ammModule().getAmmPosition(position.ammPositionIds[i]);
         }
-        strategyCreatedParams.ammPosition;
 
         emit StrategyCreated(strategyCreatedParams);
     }
@@ -245,7 +255,8 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
         view
         returns (MintInfo[] memory mintInfo)
     {
-        (uint160 sqrtPriceX96, int24 tick,,,,) = params.pool.slot0();
+        (uint160 sqrtPriceX96,,,,,) = params.pool.slot0();
+        int24 tick = TickMath.getTickAtSqrtRatio(sqrtPriceX96);
         (, ICore.TargetPositionInfo memory target) = strategyModule.calculateTargetTamper(
             sqrtPriceX96, tick, new IAmmModule.AmmPosition[](0), params.strategyParams
         );
@@ -286,7 +297,8 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
         view
         returns (MintInfo[] memory mintInfo)
     {
-        (uint160 sqrtPriceX96, int24 tick,,,,) = params.pool.slot0();
+        (uint160 sqrtPriceX96,,,,,) = params.pool.slot0();
+        int24 tick = TickMath.getTickAtSqrtRatio(sqrtPriceX96);
         (, ICore.TargetPositionInfo memory target) = strategyModule.calculateTargetPulse(
             sqrtPriceX96, tick, new IAmmModule.AmmPosition[](0), params.strategyParams
         );

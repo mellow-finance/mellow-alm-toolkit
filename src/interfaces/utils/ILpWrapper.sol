@@ -17,6 +17,24 @@ import "@openzeppelin/contracts/access/extensions/IAccessControlEnumerable.sol";
  */
 interface ILpWrapper is IVeloFarm, IAccessControlEnumerable, IERC20 {
     /**
+     * @notice Defines the parameters required for minting LP tokens.
+     * @dev The actual amount of LP tokens minted may exceed the specified `lpAmount` due to roundings.
+     *      Ensure sufficient allowances and balances for `amount0Max` and `amount1Max`.
+     * @param lpAmount The target amount of LP tokens to mint (subject to roundings).
+     * @param amount0Max The maximum amount of token0 that can be deposited.
+     * @param amount1Max The maximum amount of token1 that can be deposited.
+     * @param recipient The address that will receive the minted LP tokens.
+     * @param deadline The latest timestamp by which the minting operation must be completed.
+     */
+    struct MintParams {
+        uint256 lpAmount; // Target LP tokens to mint
+        uint256 amount0Max; // Max depositable amount of token0
+        uint256 amount1Max; // Max depositable amount of token1
+        address recipient; // Recipient of minted LP tokens
+        uint256 deadline; // Expiry timestamp for minting
+    }
+
+    /**
      * @notice Thrown when provided amounts are insufficient to execute the operation.
      */
     error InsufficientAmounts();
@@ -35,6 +53,8 @@ interface ILpWrapper is IVeloFarm, IAccessControlEnumerable, IERC20 {
      * @notice Thrown when the liquidity amount exceeds the total supply limit.
      */
     error TotalSupplyLimitReached();
+
+    error LiquidityOverflow();
 
     /**
      * @notice Emitted when a deposit is made into the `LpWrapper`.
@@ -101,39 +121,6 @@ interface ILpWrapper is IVeloFarm, IAccessControlEnumerable, IERC20 {
     );
 
     /**
-     * @notice Stores data related to a specific liquidity position.
-     * @dev This struct holds detailed information on the parameters and state of a liquidity position within a pool.
-     * @param tokenId The unique identifier of the position.
-     * @param nonce A nonce used for position uniqueness and tracking changes.
-     * @param operator The address authorized to manage or operate this position.
-     * @param token0 The address of the first token in the pair (token0).
-     * @param token1 The address of the second token in the pair (token1).
-     * @param tickSpacing The tick spacing of the pool, representing the minimum tick interval.
-     * @param tickLower The lower bound tick of the position’s range.
-     * @param tickUpper The upper bound tick of the position’s range.
-     * @param liquidity The amount of liquidity provided by this position.
-     * @param feeGrowthInside0LastX128 The last recorded fee growth for token0 inside the position’s tick range, in Q128 format.
-     * @param feeGrowthInside1LastX128 The last recorded fee growth for token1 inside the position’s tick range, in Q128 format.
-     * @param tokensOwed0 The amount of token0 owed to the position due to earned fees.
-     * @param tokensOwed1 The amount of token1 owed to the position due to earned fees.
-     */
-    struct PositionData {
-        uint256 tokenId;
-        uint96 nonce;
-        address operator;
-        address token0;
-        address token1;
-        int24 tickSpacing;
-        int24 tickLower;
-        int24 tickUpper;
-        uint128 liquidity;
-        uint256 feeGrowthInside0LastX128;
-        uint256 feeGrowthInside1LastX128;
-        uint128 tokensOwed0;
-        uint128 tokensOwed1;
-    }
-
-    /**
      * @dev Returns corresponding position info
      * @return data - PositionData struct containing the position's data
      */
@@ -183,6 +170,22 @@ interface ILpWrapper is IVeloFarm, IAccessControlEnumerable, IERC20 {
      */
     function totalSupplyLimit() external view returns (uint256);
 
+    function previewMint(uint256 lpAmount)
+        external
+        view
+        returns (uint256 amount0, uint256 amount1);
+
+    function calculateAmountsForLp(
+        uint256 lpAmount,
+        uint256 totalSupply_,
+        IAmmModule.AmmPosition memory position,
+        uint160 sqrtPriceX96
+    ) external view returns (uint256 amount0, uint256 amount1);
+
+    function mint(MintParams memory mintParams)
+        external
+        returns (uint256 actualAmount0, uint256 actualAmount1, uint256 actualLpAmount);
+
     /**
      * @notice Initializes the contract with the specified configuration parameters.
      * @dev This function sets up initial values for the position ID, total supply, supply limit, and assigns administrative roles.
@@ -204,25 +207,6 @@ interface ILpWrapper is IVeloFarm, IAccessControlEnumerable, IERC20 {
         string memory name_,
         string memory symbol_
     ) external;
-
-    /**
-     * @dev Deposits specified amounts of tokens into corresponding managed position and mints LP tokens to the specified address.
-     * @param amount0 Amount of token0 to deposit.
-     * @param amount1 Amount of token1 to deposit.
-     * @param minLpAmount Minimum amount of LP tokens required to be minted.
-     * @param to Address to receive the minted LP tokens.
-     * @param deadline Timestamp by which the deposit operation must be executed.
-     * @return actualAmount0 Actual amount of token0 deposited.
-     * @return actualAmount1 Actual amount of token1 deposited.
-     * @return lpAmount Amount of LP tokens minted.
-     */
-    function deposit(
-        uint256 amount0,
-        uint256 amount1,
-        uint256 minLpAmount,
-        address to,
-        uint256 deadline
-    ) external returns (uint256 actualAmount0, uint256 actualAmount1, uint256 lpAmount);
 
     /**
      * @dev Burns LP tokens and transfers the underlying assets to the specified address.
@@ -324,8 +308,6 @@ interface ILpWrapper is IVeloFarm, IAccessControlEnumerable, IERC20 {
      * @dev This function is used to perform an empty rebalance for a specific position.
      * @notice This function calls the `beforeRebalance` and `afterRebalance` functions of the `IAmmModule` contract for each tokenId of the position.
      * @notice If any of the delegate calls fail, the function will revert.
-     * Requirements:
-     * - Caller must have the OPERATOR role.
      */
     function emptyRebalance() external;
 

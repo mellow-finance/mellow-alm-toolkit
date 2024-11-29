@@ -62,17 +62,22 @@ contract Unit is Fixture {
         deal(pool.token1(), info.owner, 10 ether);
 
         vm.expectRevert(abi.encodeWithSignature("Forbidden()"));
-        core.directDeposit(positionId, tokenId, 1 ether, 1 ether);
+        core.directDeposit(positionId, tokenId, 1 ether, 1 ether, 0, 0);
 
         vm.startPrank(info.owner);
 
         vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
-        core.directDeposit(positionId, tokenId + 1, 1 ether, 1 ether);
+        core.directDeposit(positionId, tokenId + 1, 1 ether, 1 ether, 0, 0);
 
         IERC20(pool.token0()).approve(address(core), 1 ether);
         IERC20(pool.token1()).approve(address(core), 1 ether);
 
-        core.directDeposit(positionId, tokenId, 1 ether, 1 ether);
+        vm.expectRevert(abi.encodeWithSignature("InsufficientAmount()"));
+        core.directDeposit(positionId, tokenId, 1 ether, 1 ether, 2 ether, 0);
+        vm.expectRevert(abi.encodeWithSignature("InsufficientAmount()"));
+        core.directDeposit(positionId, tokenId, 1 ether, 1 ether, 0, 2 ether);
+
+        core.directDeposit(positionId, tokenId, 1 ether, 1 ether, 0, 0);
     }
 
     function testDirectDepositWithdrawRevert() public {
@@ -149,16 +154,18 @@ contract Unit is Fixture {
         IERC20(pool.token1()).approve(address(coreBroken), 1 ether);
 
         vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
-        coreBroken.directDeposit(positionId, tokenId, specificValueRevert, 1 ether);
+        coreBroken.directDeposit(positionId, tokenId, specificValueRevert, 1 ether, 0, 0);
 
-        coreBroken.directDeposit(positionId, tokenId, 1 ether, 1 ether);
+        coreBroken.directDeposit(positionId, tokenId, 1 ether, 1 ether, 0, 0);
 
         vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
         coreBroken.directWithdraw(
-            positionId, tokenId, specificValueRevert, Constants.OPTIMISM_DEPLOYER
+            positionId, tokenId, specificValueRevert, Constants.OPTIMISM_DEPLOYER, 0, 0
         );
 
-        coreBroken.directWithdraw(positionId, tokenId, 1 ether / 2, Constants.OPTIMISM_DEPLOYER);
+        coreBroken.directWithdraw(
+            positionId, tokenId, 1 ether / 2, Constants.OPTIMISM_DEPLOYER, 0, 0
+        );
     }
 
     function testDirectWithdraw() public {
@@ -169,27 +176,37 @@ contract Unit is Fixture {
         IVeloAmmModule.AmmPosition memory position = contracts.ammModule.getAmmPosition(tokenId);
 
         vm.expectRevert(abi.encodeWithSignature("Forbidden()"));
-        core.directWithdraw(positionId, tokenId, position.liquidity, address(this));
+        core.directWithdraw(positionId, tokenId, position.liquidity, address(this), 0, 0);
 
         vm.startPrank(info.owner);
 
         vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
-        core.directWithdraw(positionId, tokenId + 1, position.liquidity, address(this));
+        core.directWithdraw(positionId, tokenId + 1, position.liquidity, address(this), 0, 0);
 
         vm.expectRevert(abi.encodeWithSignature("FailedCall()"));
-        core.directWithdraw(positionId, tokenId, position.liquidity + 1, address(this));
+        core.directWithdraw(positionId, tokenId, position.liquidity + 1, address(this), 0, 0);
 
         vm.expectRevert(bytes("NP"));
-        core.directWithdraw(positionId, tokenId, position.liquidity, info.owner);
+        core.directWithdraw(positionId, tokenId, position.liquidity, info.owner, 0, 0);
 
-        core.directWithdraw(positionId, tokenId, position.liquidity / 2, info.owner);
+        vm.expectRevert(abi.encodeWithSignature("InsufficientAmount()"));
+        core.directWithdraw(
+            positionId, tokenId, position.liquidity / 2, info.owner, type(uint256).max, 0
+        );
+
+        vm.expectRevert(abi.encodeWithSignature("InsufficientAmount()"));
+        core.directWithdraw(
+            positionId, tokenId, position.liquidity / 2, info.owner, 0, type(uint256).max
+        );
+
+        core.directWithdraw(positionId, tokenId, position.liquidity / 2, info.owner, 0, 0);
     }
 
     function testRebalance() public {
         ICore core = contracts.core;
         ICore.RebalanceParams memory rebalanceParams;
         rebalanceParams.id = 0;
-        rebalanceParams.callback = address(new RebalancingBot(positionManager));
+        rebalanceParams.callback = address(new RebalancingBotMock(positionManager));
         rebalanceParams.data = new bytes(0); // count of position, if empty - ignore
 
         vm.expectRevert(abi.encodeWithSignature("Forbidden()"));
@@ -224,7 +241,7 @@ contract Unit is Fixture {
         });
 
         deployParams_.securityParams =
-            IVeloOracle.SecurityParams({lookback: 1, maxAge: 1 seconds, maxAllowedDelta: 1000});
+            IVeloOracle.SecurityParams({lookback: 1, maxAge: 1 seconds, maxAllowedDelta: 10000});
 
         deployParams_.pool = pool;
         deployParams_.maxAmount0 = 100 ether;
@@ -393,7 +410,7 @@ contract Unit is Fixture {
         core.deposit(depositParams);
 
         depositParams.ammPositionIds[0] = tokenId2;
-        vm.expectRevert(bytes("PM"));
+        vm.expectRevert(abi.encodeWithSignature("InvalidGauge()"));
         core.deposit(depositParams);
 
         depositParams.ammPositionIds[0] = tokenId;

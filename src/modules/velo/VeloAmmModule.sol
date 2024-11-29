@@ -82,7 +82,7 @@ contract VeloAmmModule is IVeloAmmModule {
     /// ---------------------- EXTERNAL VIEW FUNCTIONS ----------------------
 
     /// @inheritdoc IAmmModule
-    function validateCallbackParams(bytes memory params) external view {
+    function validateCallbackParams(address pool_, bytes memory params) external view {
         if (params.length != 0x40) {
             revert InvalidLength();
         }
@@ -91,8 +91,7 @@ contract VeloAmmModule is IVeloAmmModule {
         if (params_.farm == address(0) || params_.gauge == address(0)) {
             revert AddressZero();
         }
-        ICLPool pool = ICLGauge(params_.gauge).pool();
-        if (!isPool(address(pool)) || pool.gauge() != params_.gauge) {
+        if (ICLPool(pool_).gauge() != params_.gauge) {
             revert InvalidGauge();
         }
     }
@@ -159,10 +158,12 @@ contract VeloAmmModule is IVeloAmmModule {
         ProtocolParams memory protocolParams_ = abi.decode(protocolParams, (ProtocolParams));
         address gauge = callbackParams_.gauge;
         uint256 balance;
+        IERC20 token = IERC20(ICLGauge(gauge).rewardToken());
         if (_isStaked(gauge, tokenId)) {
+            address this_ = address(this);
+            balance = token.balanceOf(this_);
             ICLGauge(gauge).getReward(tokenId);
-            IERC20 token = IERC20(ICLGauge(gauge).rewardToken());
-            balance = token.balanceOf(address(this));
+            balance = token.balanceOf(this_) - balance;
             if (balance > 0) {
                 uint256 protocolReward = Math.mulDiv(protocolParams_.feeD9, balance, D9);
 
@@ -177,7 +178,7 @@ contract VeloAmmModule is IVeloAmmModule {
             }
         }
         // we want to provide this information to the farm anyway, even if we don't have any rewards to distribute
-        IVeloFarm(callbackParams_.farm).distribute(balance);
+        IVeloFarm(callbackParams_.farm).distribute(balance, address(token));
     }
 
     /// ---------------------- PUBLIC VIEW FUNCTIONS ----------------------

@@ -28,9 +28,6 @@ contract VeloOracle is IVeloOracle {
             if (timestamp == 0) {
                 revert NotEnoughObservations();
             }
-            if (timestamp < minimalTimestamp) {
-                return;
-            }
             int24 tick = int24(
                 (nextCumulativeTick - tickCumulative) / int56(uint56(nextTimestamp - timestamp))
             );
@@ -38,6 +35,9 @@ contract VeloOracle is IVeloOracle {
             int24 delta = nextTick - tick;
             if (delta > maxAllowedDelta || delta < -maxAllowedDelta) {
                 revert PriceManipulationDetected();
+            }
+            if (timestamp < minimalTimestamp) {
+                return;
             }
             nextTick = tick;
         }

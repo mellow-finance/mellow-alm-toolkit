@@ -2,14 +2,18 @@
 pragma solidity 0.8.25;
 
 import "./interfaces/ICore.sol";
+
 import "./utils/DefaultAccessControl.sol";
 
 contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     using EnumerableSet for EnumerableSet.UintSet;
     using SafeERC20 for IERC20;
 
-    uint256 public constant D9 = 1e9;
-    uint256 public constant Q96 = 2 ** 96;
+    uint256 private constant D9 = 1000000000;
+    uint256 private constant Q64 = 0x10000000000000000;
+    uint256 private constant Q96 = 0x1000000000000000000000000;
+    uint256 private constant Q128 = 0x100000000000000000000000000000000;
+    uint256 private constant Q192 = 0x1000000000000000000000000000000000000000000000000;
 
     address public immutable weth;
 
@@ -69,47 +73,27 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     }
 
     /// @inheritdoc ICore
-    function deposit(DepositParams memory params)
+    function deposit(DepositParams calldata params)
         external
         override
         nonReentrant
         returns (uint256 id)
     {
-        ammModule.validateCallbackParams(params.callbackParams);
+        address pool = _getPoolAndValidate(params.ammPositionIds);
+        ammModule.validateCallbackParams(pool, params.callbackParams);
         strategyModule.validateStrategyParams(params.strategyParams);
         oracle.validateSecurityParams(params.securityParams);
         if (params.slippageD9 > D9 / 4 || params.slippageD9 == 0 || params.owner == address(0)) {
             revert InvalidParams();
         }
 
-        address pool;
         bytes memory protocolParams_ = _protocolParams;
-        bool hasLiquidity = false;
         for (uint256 i = 0; i < params.ammPositionIds.length; i++) {
             uint256 tokenId = params.ammPositionIds[i];
-            if (tokenId == 0) {
-                revert InvalidParams();
-            }
-            IAmmModule.AmmPosition memory position_ = ammModule.getAmmPosition(tokenId);
-            if (position_.liquidity != 0) {
-                hasLiquidity = true;
-            }
-            address pool_ =
-                ammModule.getPool(position_.token0, position_.token1, position_.property);
-            if (pool_ == address(0)) {
-                revert InvalidParams();
-            }
-            if (i == 0) {
-                pool = pool_;
-            } else if (pool != pool_) {
-                revert InvalidParams();
-            }
             _transferFrom(msg.sender, address(this), tokenId);
             _afterRebalance(tokenId, params.callbackParams, protocolParams_);
         }
-        if (!hasLiquidity) {
-            revert InvalidParams();
-        }
+
         id = _positions.length;
         _userIds[params.owner].add(id);
         _positions.push(
@@ -143,10 +127,14 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     }
 
     /// @inheritdoc ICore
-    function directDeposit(uint256 id, uint256 tokenId, uint256 amount0, uint256 amount1)
-        external
-        returns (uint256, uint256)
-    {
+    function directDeposit(
+        uint256 id,
+        uint256 tokenId,
+        uint256 amount0,
+        uint256 amount1,
+        uint256 minAmount0,
+        uint256 minAmount1
+    ) external nonReentrant returns (uint256 actualAmount0, uint256 actualAmount1) {
         ManagedPositionInfo memory info = _positions[id];
         if (info.owner != msg.sender) {
             revert Forbidden();
@@ -180,15 +168,22 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         if (response.length != 0x40) {
             revert InvalidLength();
         }
+        (actualAmount0, actualAmount1) = abi.decode(response, (uint256, uint256));
+        if (actualAmount0 < minAmount0 || actualAmount1 < minAmount1) {
+            revert InsufficientAmount();
+        }
         _afterRebalance(tokenId, info.callbackParams, protocolParams_);
-        return abi.decode(response, (uint256, uint256));
     }
 
     /// @inheritdoc ICore
-    function directWithdraw(uint256 id, uint256 tokenId, uint256 liquidity, address to)
-        external
-        returns (uint256, uint256)
-    {
+    function directWithdraw(
+        uint256 id,
+        uint256 tokenId,
+        uint256 liquidity,
+        address to,
+        uint256 minAmount0,
+        uint256 minAmount1
+    ) external nonReentrant returns (uint256 actualAmount0, uint256 actualAmount1) {
         ManagedPositionInfo memory info = _positions[id];
         if (info.owner != msg.sender) {
             revert Forbidden();
@@ -215,10 +210,12 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         if (response.length != 0x40) {
             revert InvalidLength();
         }
+        (actualAmount0, actualAmount1) = abi.decode(response, (uint256, uint256));
+        if (actualAmount0 < minAmount0 || actualAmount1 < minAmount1) {
+            revert InsufficientAmount();
+        }
 
         _afterRebalance(tokenId, info.callbackParams, protocolParams_);
-
-        return abi.decode(response, (uint256, uint256));
     }
 
     /// @inheritdoc ICore
@@ -236,17 +233,15 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         _validateTarget(target);
 
         (uint160 sqrtPriceX96,) = oracle.getOraclePrice(info.pool);
-        uint256 priceX96 = Math.mulDiv(sqrtPriceX96, sqrtPriceX96, Q96);
         bytes memory protocolParams_ = _protocolParams;
-        uint256 capitalInToken1 = _preprocess(params, info, protocolParams_, sqrtPriceX96, priceX96);
-        uint256 targetCapitalInToken1X96 =
-            _calculateTargetCapitalX96(target, sqrtPriceX96, priceX96);
+        uint256 capital = _preprocess(params, info, protocolParams_, sqrtPriceX96);
+        uint256 targetCapitalX96 = _calculateTargetCapitalX96(target, sqrtPriceX96);
 
         uint256 length = target.liquidityRatiosX96.length;
         target.minLiquidities = new uint256[](length);
         for (uint256 i = 0; i < length; i++) {
             target.minLiquidities[i] =
-                Math.mulDiv(target.liquidityRatiosX96[i], capitalInToken1, targetCapitalInToken1X96);
+                Math.mulDiv(target.liquidityRatiosX96[i], capital, targetCapitalX96);
             target.minLiquidities[i] =
                 Math.mulDiv(target.minLiquidities[i], D9 - info.slippageD9, D9);
         }
@@ -328,7 +323,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         if (info.owner != msg.sender) {
             revert Forbidden();
         }
-        ammModule.validateCallbackParams(callbackParams);
+        ammModule.validateCallbackParams(info.pool, callbackParams);
         strategyModule.validateStrategyParams(strategyParams);
         oracle.validateSecurityParams(securityParams);
         if (slippageD9 > D9 / 4 || slippageD9 == 0) {
@@ -386,14 +381,13 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         RebalanceParams memory params,
         ManagedPositionInfo memory info,
         bytes memory protocolParams_,
-        uint160 sqrtPriceX96,
-        uint256 priceX96
-    ) private returns (uint256 capitalInToken1) {
+        uint160 sqrtPriceX96
+    ) private returns (uint256 capital) {
         for (uint256 i = 0; i < info.ammPositionIds.length; i++) {
             uint256 tokenId = info.ammPositionIds[i];
             (uint256 amount0, uint256 amount1) =
                 ammModule.tvl(tokenId, sqrtPriceX96, info.callbackParams, protocolParams_);
-            capitalInToken1 += Math.mulDiv(amount0, priceX96, Q96) + amount1;
+            capital += _calculateCapital(amount0, amount1, sqrtPriceX96);
             _beforeRebalance(tokenId, info.callbackParams, protocolParams_);
             _transferFrom(address(this), params.callback, tokenId);
         }
@@ -469,11 +463,24 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
 
     /// ---------------------- PRIVATE VIEW FUNCTIONS ----------------------
 
-    function _calculateTargetCapitalX96(
-        TargetPositionInfo memory target,
-        uint160 sqrtPriceX96,
-        uint256 priceX96
-    ) private view returns (uint256 targetCapitalInToken1X96) {
+    function _calculateCapital(uint256 amount0, uint256 amount1, uint256 sqrtPriceX96)
+        internal
+        pure
+        returns (uint256)
+    {
+        if (sqrtPriceX96 < Q128) {
+            return Math.mulDiv(amount0, sqrtPriceX96 * sqrtPriceX96, Q192) + amount1;
+        } else {
+            uint256 priceX128 = Math.mulDiv(sqrtPriceX96, sqrtPriceX96, Q64);
+            return Math.mulDiv(amount0, priceX128, Q128) + amount1;
+        }
+    }
+
+    function _calculateTargetCapitalX96(TargetPositionInfo memory target, uint160 sqrtPriceX96)
+        private
+        view
+        returns (uint256 capitalX96)
+    {
         for (uint256 j = 0; j < target.lowerTicks.length; j++) {
             (uint256 amount0, uint256 amount1) = ammModule.getAmountsForLiquidity(
                 uint128(target.liquidityRatiosX96[j]),
@@ -481,7 +488,38 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
                 target.lowerTicks[j],
                 target.upperTicks[j]
             );
-            targetCapitalInToken1X96 += Math.mulDiv(amount0, priceX96, Q96) + amount1;
+            capitalX96 += _calculateCapital(amount0, amount1, sqrtPriceX96);
+        }
+    }
+
+    function _getPoolAndValidate(uint256[] calldata ammPositionIds)
+        private
+        view
+        returns (address pool)
+    {
+        bool hasLiquidity = false;
+        IAmmModule.AmmPosition memory position;
+        for (uint256 i = 0; i < ammPositionIds.length; i++) {
+            uint256 tokenId = ammPositionIds[i];
+            if (tokenId == 0) {
+                revert InvalidParams();
+            }
+            position = ammModule.getAmmPosition(tokenId);
+            if (position.liquidity != 0) {
+                hasLiquidity = true;
+            }
+            address pool_ = ammModule.getPool(position.token0, position.token1, position.property);
+            if (pool_ == address(0)) {
+                revert InvalidParams();
+            }
+            if (i == 0) {
+                pool = pool_;
+            } else if (pool != pool_) {
+                revert InvalidParams();
+            }
+        }
+        if (!hasLiquidity) {
+            revert InvalidParams();
         }
     }
 

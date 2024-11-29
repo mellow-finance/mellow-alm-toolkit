@@ -45,8 +45,9 @@ interface IVeloFarm {
      * @notice Distributes a specified amount of rewards to eligible recipients.
      * @dev This function triggers reward distribution and may only be called by an authorized distributor.
      * @param amount The amount of rewards to distribute.
+     * @param rewardToken_ The address of the token used for rewards by the reward distributor.
      */
-    function distribute(uint256 amount) external;
+    function distribute(uint256 amount, address rewardToken_) external;
 
     /**
      * @notice Retrieves the amount of rewards available for a specific recipient.

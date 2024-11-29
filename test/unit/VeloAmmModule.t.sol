@@ -301,23 +301,33 @@ contract Unit is Fixture {
     function testValidateCallbackParams() external {
         vm.expectRevert(abi.encodeWithSignature("AddressZero()"));
         module.validateCallbackParams(
+            address(0),
             abi.encode(IVeloAmmModule.CallbackParams({farm: address(0), gauge: address(0)}))
         );
         vm.expectRevert(abi.encodeWithSignature("AddressZero()"));
         module.validateCallbackParams(
+            address(0),
             abi.encode(IVeloAmmModule.CallbackParams({farm: address(1), gauge: address(0)}))
         );
 
         address wrongGuauge = address(new GaugeMock(address(pool)));
+        vm.expectRevert();
+        module.validateCallbackParams(
+            address(0),
+            abi.encode(IVeloAmmModule.CallbackParams({farm: address(1), gauge: wrongGuauge}))
+        );
+
         vm.expectRevert(abi.encodeWithSignature("InvalidGauge()"));
         module.validateCallbackParams(
+            address(pool),
             abi.encode(IVeloAmmModule.CallbackParams({farm: address(1), gauge: wrongGuauge}))
         );
 
         vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
-        module.validateCallbackParams(new bytes(123));
+        module.validateCallbackParams(address(0), new bytes(123));
 
         module.validateCallbackParams(
+            address(pool),
             abi.encode(
                 IVeloAmmModule.CallbackParams({farm: address(1), gauge: address(pool.gauge())})
             )

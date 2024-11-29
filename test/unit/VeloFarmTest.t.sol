@@ -41,7 +41,7 @@ contract MockVeloFarm is VeloFarm {
             IERC20(rewardToken).safeTransferFrom(user, address(this), rewards);
             totalDistributed += rewards;
         }
-        VeloFarm(address(this)).distribute(rewards);
+        VeloFarm(address(this)).distribute(rewards, rewardToken);
     }
 
     function doAndDone(address account) external returns (uint256) {

@@ -22,6 +22,122 @@ contract Unit is Fixture {
         (lpWrapper, deployParams) = deployLpWrapper(pool, contracts);
     }
 
+    using Math for uint256;
+
+    function getAmounts(
+        uint160 sqrtRatioX96,
+        uint160 sqrtRatioAX96,
+        uint160 sqrtRatioBX96,
+        uint128 liquidity
+    ) internal pure returns (uint256 amount0, uint256 amount1) {
+        if (sqrtRatioX96 < sqrtRatioBX96) {
+            uint256 temp = Math.max(sqrtRatioAX96, sqrtRatioX96);
+
+            amount0 = Math.mulDiv(
+                liquidity,
+                sqrtRatioBX96 - temp,
+                Math.mulDiv(temp, sqrtRatioBX96, Q96),
+                Math.Rounding.Ceil
+            );
+        }
+
+        if (sqrtRatioX96 > sqrtRatioAX96) {
+            amount1 = Math.mulDiv(
+                liquidity,
+                Math.min(sqrtRatioX96, sqrtRatioBX96) - sqrtRatioAX96,
+                Q96,
+                Math.Rounding.Ceil
+            );
+        }
+    }
+
+    function checkCalculations(
+        uint160 sqrtRatioX96,
+        uint160 sqrtRatioAX96,
+        uint160 sqrtRatioBX96,
+        uint128 liquidity
+    ) internal {
+        if (sqrtRatioAX96 > sqrtRatioBX96) {
+            (sqrtRatioAX96, sqrtRatioBX96) = (sqrtRatioBX96, sqrtRatioAX96);
+        }
+
+        (uint256 amount0, uint256 amount1) =
+            getAmounts(sqrtRatioX96, sqrtRatioAX96, sqrtRatioBX96, liquidity);
+
+        uint256 actualLiquidity = LiquidityAmounts.getLiquidityForAmounts(
+            sqrtRatioX96, sqrtRatioAX96, sqrtRatioBX96, amount0, amount1
+        );
+        assertLe(liquidity, actualLiquidity, "liquidity <= actualLiquidity");
+    }
+
+    bytes32 seed_;
+
+    function rnd() internal returns (uint256) {
+        seed_ = keccak256(abi.encodePacked(seed_));
+        return uint256(seed_);
+    }
+
+    function testUniMathEdgeCases() external {
+        uint128 l = type(uint128).max / 2;
+        checkCalculations(
+            (TickMath.MIN_SQRT_RATIO + TickMath.MAX_SQRT_RATIO) / 2,
+            TickMath.MIN_SQRT_RATIO,
+            TickMath.MAX_SQRT_RATIO,
+            l
+        );
+        checkCalculations(
+            TickMath.MIN_SQRT_RATIO, TickMath.MIN_SQRT_RATIO, TickMath.MAX_SQRT_RATIO, l
+        );
+        checkCalculations(
+            TickMath.MAX_SQRT_RATIO, TickMath.MIN_SQRT_RATIO, TickMath.MAX_SQRT_RATIO, l
+        );
+
+        checkCalculations(
+            TickMath.MIN_SQRT_RATIO, TickMath.MIN_SQRT_RATIO, TickMath.MAX_SQRT_RATIO, 1
+        );
+        checkCalculations(
+            TickMath.MIN_SQRT_RATIO, TickMath.MIN_SQRT_RATIO, TickMath.MAX_SQRT_RATIO, 1
+        );
+        checkCalculations(
+            TickMath.getSqrtRatioAtTick(TickMath.MAX_TICK - 1),
+            TickMath.getSqrtRatioAtTick(TickMath.MAX_TICK - 1),
+            TickMath.MAX_SQRT_RATIO,
+            l
+        );
+
+        checkCalculations(
+            TickMath.getSqrtRatioAtTick(TickMath.MAX_TICK - 1),
+            TickMath.getSqrtRatioAtTick(TickMath.MAX_TICK - 1),
+            TickMath.MAX_SQRT_RATIO,
+            1
+        );
+        checkCalculations(
+            TickMath.MIN_SQRT_RATIO, TickMath.MIN_SQRT_RATIO, 18446050707367246063 + 1000, l
+        );
+        checkCalculations(
+            TickMath.MIN_SQRT_RATIO, TickMath.MIN_SQRT_RATIO, 18446050707367246063 + 1000, 1
+        );
+    }
+
+    function testUniMath() external {
+        seed_ = bytes32(uint256(123));
+        for (uint256 itr = 0; itr < 1e3; itr++) {
+            uint128 liquidity = uint128((rnd() % 1e15) + 1e9);
+            uint160 sqrtRatioAX96 = uint160(
+                rnd() % (TickMath.MAX_SQRT_RATIO - TickMath.MIN_SQRT_RATIO + 1)
+            ) + TickMath.MIN_SQRT_RATIO;
+            uint160 sqrtRatioBX96 = uint160(
+                rnd() % (TickMath.MAX_SQRT_RATIO - TickMath.MIN_SQRT_RATIO + 1)
+            ) + TickMath.MIN_SQRT_RATIO;
+            if (sqrtRatioAX96 > sqrtRatioBX96) {
+                (sqrtRatioAX96, sqrtRatioBX96) = (sqrtRatioBX96, sqrtRatioAX96);
+            }
+            uint160 sqrtRatioX96 =
+                uint160(rnd() % (sqrtRatioBX96 - sqrtRatioAX96 + 1)) + sqrtRatioAX96;
+            checkCalculations(sqrtRatioX96, sqrtRatioAX96, sqrtRatioBX96, liquidity);
+        }
+    }
+
     function _mint(ICLPool pool_, int24 width, address owner) private returns (uint256 tokenId) {
         (, int24 tick,,,,) = pool_.slot0();
         int24 tickSpacing = pool_.tickSpacing();
@@ -276,32 +392,66 @@ contract Unit is Fixture {
         IERC20(pool.token0()).approve(address(lpWrapper), 1010000 ether);
         IERC20(pool.token1()).approve(address(lpWrapper), 1010000 ether);
 
-        vm.expectRevert(abi.encodeWithSignature("InsufficientLpAmount()"));
-        lpWrapper.deposit(
-            1 ether, 1 ether, 100 ether, Constants.OPTIMISM_DEPLOYER, type(uint256).max
+        vm.expectRevert(abi.encodeWithSignature("InsufficientAmounts()"));
+        lpWrapper.mint(
+            ILpWrapper.MintParams({
+                lpAmount: 100 ether,
+                amount0Max: 1 ether,
+                amount1Max: 1 ether,
+                recipient: Constants.OPTIMISM_DEPLOYER,
+                deadline: type(uint256).max
+            })
         );
 
         vm.expectRevert(abi.encodeWithSignature("Deadline()"));
-        lpWrapper.deposit(1 ether, 1 ether, 0, Constants.OPTIMISM_DEPLOYER, block.timestamp - 1);
+        lpWrapper.mint(
+            ILpWrapper.MintParams({
+                lpAmount: 0.99 ether,
+                amount0Max: 1 ether,
+                amount1Max: 1 ether,
+                recipient: Constants.OPTIMISM_DEPLOYER,
+                deadline: block.timestamp - 1
+            })
+        );
 
-        vm.expectRevert(abi.encodeWithSignature("InsufficientAmounts()"));
-        lpWrapper.deposit(0, 0, 0, Constants.OPTIMISM_DEPLOYER, type(uint256).max);
+        vm.expectRevert(abi.encodeWithSignature("InsufficientLpAmount()"));
+        lpWrapper.mint(
+            ILpWrapper.MintParams({
+                lpAmount: 0,
+                amount0Max: 1 ether,
+                amount1Max: 1 ether,
+                recipient: Constants.OPTIMISM_DEPLOYER,
+                deadline: block.timestamp
+            })
+        );
 
         vm.expectRevert(abi.encodeWithSignature("TotalSupplyLimitReached()"));
-        lpWrapper.deposit(
-            100000 ether, 100000 ether, 0, Constants.OPTIMISM_DEPLOYER, type(uint256).max
+        lpWrapper.mint(
+            ILpWrapper.MintParams({
+                lpAmount: 99999 ether,
+                amount0Max: 100000 ether,
+                amount1Max: 100000 ether,
+                recipient: Constants.OPTIMISM_DEPLOYER,
+                deadline: block.timestamp
+            })
         );
 
         uint256 totalSupplyBefore = lpWrapper.totalSupply();
         IAmmModule.AmmPosition memory positionBefore = ammModule.getAmmPosition(tokenId);
 
-        (uint256 amount0, uint256 amount1, uint256 lpAmount) = lpWrapper.deposit(
-            1 ether, 1 ether, 0.999 ether, Constants.OPTIMISM_DEPLOYER, type(uint256).max
+        (uint256 amount0, uint256 amount1, uint256 lpAmount) = lpWrapper.mint(
+            ILpWrapper.MintParams({
+                lpAmount: 1 ether,
+                amount0Max: 1 ether,
+                amount1Max: 1 ether,
+                recipient: Constants.OPTIMISM_DEPLOYER,
+                deadline: block.timestamp
+            })
         );
 
-        assertTrue(amount0 >= 6.427e14);
-        assertTrue(amount1 >= 0.99 ether);
-        assertTrue(lpAmount >= 0.999 ether);
+        assertGe(amount0, 6.427e14, "amount0");
+        assertGe(amount1, 0.99 ether, "amount1");
+        assertGe(lpAmount, 0.999 ether, "lpAmount");
         assertEq(lpWrapper.balanceOf(Constants.OPTIMISM_DEPLOYER), lpAmount);
 
         uint256 totalSupplyAfter = lpWrapper.totalSupply();
@@ -326,11 +476,51 @@ contract Unit is Fixture {
             );
         }
 
-        vm.expectRevert(abi.encodeWithSignature("InsufficientLpAmount()"));
-        lpWrapper.deposit(
-            1 ether, 1 ether, 100 ether, Constants.OPTIMISM_DEPLOYER, type(uint256).max
+        vm.expectRevert(abi.encodeWithSignature("InsufficientAmounts()"));
+        lpWrapper.mint(
+            ILpWrapper.MintParams({
+                lpAmount: 100 ether,
+                amount0Max: 1 ether,
+                amount1Max: 1 ether,
+                recipient: Constants.OPTIMISM_DEPLOYER,
+                deadline: block.timestamp
+            })
         );
 
+        vm.stopPrank();
+    }
+
+    function testMint() external {
+        vm.prank(Constants.OPTIMISM_LP_WRAPPER_ADMIN);
+        lpWrapper.setTotalSupplyLimit(type(uint256).max);
+
+        uint256 inf = 1e15 ether;
+
+        vm.startPrank(Constants.OPTIMISM_DEPLOYER);
+        deal(pool.token0(), Constants.OPTIMISM_DEPLOYER, inf);
+        deal(pool.token1(), Constants.OPTIMISM_DEPLOYER, inf);
+
+        IERC20(pool.token0()).approve(address(lpWrapper), inf);
+        IERC20(pool.token1()).approve(address(lpWrapper), inf);
+
+        for (uint256 lpAmount = 1 wei; lpAmount < inf / 2; lpAmount *= 81) {
+            (uint256 amount0, uint256 amount1) = lpWrapper.previewMint(lpAmount);
+            (uint256 actualAmount0, uint256 actualAmount1, uint256 actualLpAmount) = lpWrapper.mint(
+                ILpWrapper.MintParams({
+                    lpAmount: lpAmount,
+                    amount0Max: amount0,
+                    amount1Max: amount1,
+                    recipient: Constants.OPTIMISM_DEPLOYER,
+                    deadline: type(uint256).max
+                })
+            );
+            console2.log(
+                "Delats: d0, d1, dLP:",
+                amount0 - actualAmount0,
+                amount1 - actualAmount1,
+                actualLpAmount - lpAmount
+            );
+        }
         vm.stopPrank();
     }
 
@@ -347,16 +537,30 @@ contract Unit is Fixture {
         IERC20(pool.token0()).approve(address(lpWrapper), 1 ether);
         IERC20(pool.token1()).approve(address(lpWrapper), 1 ether);
 
-        lpWrapper.deposit(
-            1 ether, 1 ether, 0.1 ether, Constants.OPTIMISM_DEPLOYER, type(uint256).max
+        lpWrapper.mint(
+            ILpWrapper.MintParams({
+                lpAmount: 0.1 ether,
+                amount0Max: 1 ether,
+                amount1Max: 1 ether,
+                recipient: Constants.OPTIMISM_DEPLOYER,
+                deadline: block.timestamp
+            })
         );
+
         lpWrapper.withdraw(type(uint256).max, 0, 0, Constants.OPTIMISM_DEPLOYER, type(uint256).max);
         skip(1 seconds);
         assertEq(IVeloFarm(lpWrapper).calculateEarnedRewards(Constants.OPTIMISM_DEPLOYER), 0);
         IERC20(pool.token0()).approve(address(lpWrapper), 1 ether);
         IERC20(pool.token1()).approve(address(lpWrapper), 1 ether);
-        lpWrapper.deposit(
-            1 ether, 1 ether, 0.1 ether, Constants.OPTIMISM_DEPLOYER, type(uint256).max
+
+        lpWrapper.mint(
+            ILpWrapper.MintParams({
+                lpAmount: 0.1 ether,
+                amount0Max: 1 ether,
+                amount1Max: 1 ether,
+                recipient: Constants.OPTIMISM_DEPLOYER,
+                deadline: block.timestamp
+            })
         );
 
         uint256 totalSupplyBefore = lpWrapper.totalSupply();
@@ -434,12 +638,21 @@ contract Unit is Fixture {
 
         uint256 totalSupplyBefore = lpWrapper.totalSupply();
 
-        lpWrapper.deposit(1 ether, 1 ether, 0, Constants.OPTIMISM_DEPLOYER, type(uint256).max);
+        lpWrapper.mint(
+            ILpWrapper.MintParams({
+                lpAmount: 0.99 ether,
+                amount0Max: 1 ether,
+                amount1Max: 1 ether,
+                recipient: Constants.OPTIMISM_DEPLOYER,
+                deadline: block.timestamp
+            })
+        );
+
         vm.stopPrank();
         uint256 totalSupplyAfter = lpWrapper.totalSupply();
 
         vm.expectRevert(abi.encodeWithSignature("InvalidDistributor()"));
-        IVeloFarm(lpWrapper).distribute(1 ether);
+        IVeloFarm(lpWrapper).distribute(1 ether, rewardToken);
 
         skip(1 hours);
 

@@ -170,6 +170,15 @@ interface IVeloDeployFactory is IAccessControlEnumerable {
     function setMinInitialTotalSupply(uint256 minInitialTotalSupply_) external;
 
     /**
+     * @notice Allows the caller to claim any pending tokens.
+     * @dev If the specified token address is the zero address (address(0)),
+     *      the function transfers pending Ether (ETH) to the caller. Otherwise,
+     *      it transfers the pending tokens of the specified ERC20 token.
+     * @param token The address of the token to claim. Use address(0) to claim ETH.
+     */
+    function claim(address token) external;
+
+    /**
      * @notice Retrieves the name and symbol for a given pool's associated LP wrapper.
      * @param pool The address of the pool.
      * @return name The name of the LP wrapper.

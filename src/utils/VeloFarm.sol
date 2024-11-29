@@ -17,7 +17,7 @@ abstract contract VeloFarm is IVeloFarm, ERC20Upgradeable, ReentrancyGuard {
     mapping(address account => uint256 amount) public claimable;
     mapping(uint256 timestamp => uint256 index) public timestampToRewardRatesIndex;
     RewardRates[] public rewardRates;
-    bool private _isDistributeFunctionCalled;
+    uint256 private _isDistributeFunctionCalled;
 
     /// ---------------------- INITIALIZER FUNCTIONS ----------------------
 
@@ -35,6 +35,7 @@ abstract contract VeloFarm is IVeloFarm, ERC20Upgradeable, ReentrancyGuard {
         uint256 timestamp = block.timestamp;
         initializationTimestamp = timestamp;
         rewardRates.push(RewardRates(timestamp, 0));
+        _isDistributeFunctionCalled = 1;
     }
 
     /// ---------------------- EXTERNAL MUTATING FUNCTIONS ----------------------
@@ -45,12 +46,12 @@ abstract contract VeloFarm is IVeloFarm, ERC20Upgradeable, ReentrancyGuard {
     }
 
     /// @inheritdoc IVeloFarm
-    function distribute(uint256 amount) external {
-        if (_msgSender() != rewardDistributor) {
+    function distribute(uint256 amount, address rewardToken_) external {
+        if (_msgSender() != rewardDistributor || rewardToken_ != rewardToken) {
             revert InvalidDistributor();
         }
 
-        _isDistributeFunctionCalled = true;
+        _isDistributeFunctionCalled = 2;
         uint256 timestamp = block.timestamp;
         uint256 length = rewardRates.length;
         RewardRates memory prevRate = rewardRates[length - 1];
@@ -106,9 +107,9 @@ abstract contract VeloFarm is IVeloFarm, ERC20Upgradeable, ReentrancyGuard {
     /// ---------------------- INTERNAL MUTABLE FUNCTIONS ----------------------
 
     function _collectRewards() internal {
-        _isDistributeFunctionCalled = false;
+        _isDistributeFunctionCalled = 1;
         _collectRewardsImplementation();
-        if (!_isDistributeFunctionCalled) {
+        if (_isDistributeFunctionCalled != 2) {
             revert InvalidState();
         }
     }
@@ -121,8 +122,8 @@ abstract contract VeloFarm is IVeloFarm, ERC20Upgradeable, ReentrancyGuard {
         _modifyRewards(sender);
         amount = claimable[sender];
         if (amount != 0) {
-            IERC20(rewardToken).safeTransfer(recipient, amount);
             delete claimable[sender];
+            IERC20(rewardToken).safeTransfer(recipient, amount);
         }
     }
 
