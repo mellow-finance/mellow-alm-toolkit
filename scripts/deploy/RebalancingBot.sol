@@ -39,6 +39,9 @@ contract RebalancingBot is IRebalanceCallback {
                 amount1Max: type(uint128).max
             })
         );
+
+        // Burn position since it's empty after liquidity pull
+        positionManager.burn(tokenId);
     }
 
     function _mint(address pool_, int24 tickLower, int24 tickUpper, uint128 liquidity)

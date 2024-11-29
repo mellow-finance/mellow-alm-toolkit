@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.25;
 
-import "../external/velo/ICLPool.sol";
-import "../external/velo/INonfungiblePositionManager.sol";
-import "../utils/IRebalanceCallback.sol";
+// TO BE REMOVED, FIXED TO COMPILE THE CODE BASE
+import "src/interfaces/external/velo/ICLPool.sol";
+import "src/interfaces/external/velo/INonfungiblePositionManager.sol";
+import "src/interfaces/utils/IRebalanceCallback.sol";
 
 interface IPulseVeloBotLazy is IRebalanceCallback {
     struct SwapQuoteParams {
