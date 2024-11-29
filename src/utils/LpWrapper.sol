@@ -312,9 +312,12 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
         uint256 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(position.tickLower);
         uint256 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(position.tickUpper);
         if (sqrtRatioX96 < sqrtRatioBX96) {
-            uint256 temp = sqrtRatioAX96.max(sqrtRatioX96);
-            amount0 = liquidity.mulDiv(
-                (sqrtRatioBX96 - temp) << 32, temp.mulDiv(sqrtRatioBX96, Q64), Math.Rounding.Ceil
+            uint256 sqrtRatioAX96_ = sqrtRatioAX96.max(sqrtRatioX96);
+            amount0 = Math.ceilDiv(
+                (liquidity << 96).mulDiv(
+                    sqrtRatioBX96 - sqrtRatioAX96_, sqrtRatioBX96, Math.Rounding.Ceil
+                ),
+                sqrtRatioAX96_
             );
         }
 
