@@ -37,7 +37,7 @@ contract RebalancingBotHelper is IRebalancingBotHelper {
     /// @dev returns quotes for swap
     /// @param pool address of Pool
     /// @param priceTargetX96 actual price of exchange tokenIn<->tokenOut: 2^96 * amountOut/amountIn
-    /// @return swapQuoteParams contains ecessery amountIn amd amountOut to swap for desired target position
+    /// @return swapQuoteParams contains necessary amountIn amd amountOut to swap for desired target position
     function necessarySwapAmountForMint(address pool, uint256 priceTargetX96)
         external
         view
@@ -59,8 +59,8 @@ contract RebalancingBotHelper is IRebalancingBotHelper {
         if (!isRebalanceRequired) {
             return swapQuoteParams;
         }
-        require(target.lowerTicks.length == 1, "lowerTicks lenght");
-        require(target.upperTicks.length == 1, "upperTicks lenght");
+        require(target.lowerTicks.length == 1, "lowerTicks length");
+        require(target.upperTicks.length == 1, "upperTicks length");
 
         swapQuoteParams =
             _fitAmountInForTargetSwapPrice(priceTargetX96, managedPositionInfo, target);
@@ -77,7 +77,7 @@ contract RebalancingBotHelper is IRebalancingBotHelper {
         managedPositionInfo = core.managedPositionAt(positionId);
     }
 
-    /// @dev returns flags, true if rebalance is necessery for @param pool
+    /// @dev returns flags, true if rebalance is necessary for @param pool
     function needRebalancePosition(address pool)
         public
         view
@@ -91,7 +91,7 @@ contract RebalancingBotHelper is IRebalancingBotHelper {
     /**
      * @param priceTargetX96 relation 2^96 * amountOut/amountIn
      * @param managedPositionInfo struct with current managed position info
-     * @param target struct with tagret position info
+     * @param target struct with target position info
      */
     function _fitAmountInForTargetSwapPrice(
         uint256 priceTargetX96,
@@ -122,7 +122,7 @@ contract RebalancingBotHelper is IRebalancingBotHelper {
             priceTargetX96 = uint256(sqrtPriceX96).mulDiv(sqrtPriceX96, Q96);
         }
 
-        /// @dev amountIn = (relationTarget * anountInTotal - anountOutTotal)/(priceTarget + relationTarget)
+        /// @dev amountIn = (relationTarget * amountInTotal - amountOutTotal)/(priceTarget + relationTarget)
         uint256 priceDenominatorX96 = priceTargetX96 + relationTargetX96;
         swapQuoteParams.amountIn = amounts[tokenIdIn].mulDiv(relationTargetX96, priceDenominatorX96);
         swapQuoteParams.amountIn -= amounts[tokenIdOut].mulDiv(Q96, priceDenominatorX96);
@@ -135,13 +135,12 @@ contract RebalancingBotHelper is IRebalancingBotHelper {
      *
      * @param sqrtPriceX96 current sqrtPriceX96 at pool
      * @param managedPositionInfo struct with current managed position info
-     * @param target struct with tagret position info
+     * @param target struct with target position info
      * @return amount0 amount of token0 in current managed position
      * @return amount1 amount of token1 in current managed position
      * @return tokenIdIn index of input for swap token
      * @return relationTargetX96 relation between amount in target position: amountTargetOut/amountTargetIn
      */
-
     function _getTargetAmounts(
         uint160 sqrtPriceX96,
         ICore.ManagedPositionInfo memory managedPositionInfo,
@@ -159,21 +158,21 @@ contract RebalancingBotHelper is IRebalancingBotHelper {
             positionManager.positions(managedPositionInfo.ammPositionIds[0]);
 
         {
-            uint160 sqrtPricex96Lower = TickMath.getSqrtRatioAtTick(tickLower);
-            uint160 sqrtPricex96Upper = TickMath.getSqrtRatioAtTick(tickUpper);
+            uint160 sqrtPriceX96Lower = TickMath.getSqrtRatioAtTick(tickLower);
+            uint160 sqrtPriceX96Upper = TickMath.getSqrtRatioAtTick(tickUpper);
 
             /// @dev current amounts for current position
             (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
-                sqrtPriceX96, sqrtPricex96Lower, sqrtPricex96Upper, liquidity
+                sqrtPriceX96, sqrtPriceX96Lower, sqrtPriceX96Upper, liquidity
             );
 
             /// @dev check if position is active
-            if (sqrtPriceX96 <= sqrtPricex96Upper && sqrtPriceX96 >= sqrtPricex96Lower) {
+            if (sqrtPriceX96 <= sqrtPriceX96Upper && sqrtPriceX96 >= sqrtPriceX96Lower) {
                 return (amount0, amount1, 0, 0);
             }
 
             /// @dev index of input token for swap
-            tokenIdIn = sqrtPriceX96 > sqrtPricex96Upper ? 1 : 0;
+            tokenIdIn = sqrtPriceX96 > sqrtPriceX96Upper ? 1 : 0;
         }
 
         /// @dev current amounts for target position
