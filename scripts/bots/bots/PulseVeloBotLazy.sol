@@ -8,7 +8,7 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {TickMath} from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import {LiquidityAmounts} from "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 
-import "../interfaces/bots/IPulseVeloBotLazy.sol";
+import "./interfaces/IPulseVeloBotLazy.sol";
 import "../interfaces/utils/IVeloDeployFactory.sol";
 import "../modules/strategies/PulseStrategyModule.sol";
 
@@ -23,13 +23,13 @@ contract PulseVeloBotLazy is IPulseVeloBotLazy {
     INonfungiblePositionManager public immutable positionManager;
 
     ICore public immutable core;
-    IVeloDeployFactory public immutable fatory;
+    IVeloDeployFactory public immutable factory;
     IPulseStrategyModule public immutable strategyModule;
 
     constructor(address positionManager_, address core_, address fatory_) {
         positionManager = INonfungiblePositionManager(positionManager_);
         core = ICore(core_);
-        fatory = IVeloDeployFactory(fatory_);
+        factory = IVeloDeployFactory(fatory_);
         strategyModule = IPulseStrategyModule(address(core.strategyModule()));
     }
 
@@ -58,8 +58,8 @@ contract PulseVeloBotLazy is IPulseVeloBotLazy {
         if (!isRebalanceRequired) {
             return swapQuoteParams;
         }
-        require(target.lowerTicks.length == 1, "lowerTicks lenght");
-        require(target.upperTicks.length == 1, "upperTicks lenght");
+        require(target.lowerTicks.length == 1, "lowerTicks length");
+        require(target.upperTicks.length == 1, "upperTicks length");
 
         swapQuoteParams =
             _fitAmountInForTargetSwapPrice(priceTargetX96, managedPositionInfo, target);
@@ -71,12 +71,12 @@ contract PulseVeloBotLazy is IPulseVeloBotLazy {
         view
         returns (uint256 positionId, ICore.ManagedPositionInfo memory managedPositionInfo)
     {
-        ILpWrapper lpWrapper = ILpWrapper(fatory.poolToWrapper(pool));
+        ILpWrapper lpWrapper = ILpWrapper(factory.poolToWrapper(pool));
         positionId = lpWrapper.positionId();
         managedPositionInfo = core.managedPositionAt(positionId);
     }
 
-    /// @dev returns flags, true if rebalance is necessery for @param pool
+    /// @dev returns flags, true if rebalance is necessary for @param pool
     function needRebalancePosition(address pool) public view returns (bool isRebalanceRequired) {
         (, ICore.ManagedPositionInfo memory managedPositionInfo) = poolManagedPositionInfo(pool);
 
@@ -161,21 +161,21 @@ contract PulseVeloBotLazy is IPulseVeloBotLazy {
             positionManager.positions(managedPositionInfo.ammPositionIds[0]);
 
         {
-            uint160 sqrtPricex96Lower = TickMath.getSqrtRatioAtTick(tickLower);
-            uint160 sqrtPricex96Upper = TickMath.getSqrtRatioAtTick(tickUpper);
+            uint160 sqrtPriceX96Lower = TickMath.getSqrtRatioAtTick(tickLower);
+            uint160 sqrtPriceX96Upper = TickMath.getSqrtRatioAtTick(tickUpper);
 
             /// @dev current amounts for current position
             (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
-                sqrtPriceX96, sqrtPricex96Lower, sqrtPricex96Upper, liquidity
+                sqrtPriceX96, sqrtPriceX96Lower, sqrtPriceX96Upper, liquidity
             );
 
             /// @dev check if position is active
-            if (sqrtPriceX96 <= sqrtPricex96Upper && sqrtPriceX96 >= sqrtPricex96Lower) {
+            if (sqrtPriceX96 <= sqrtPriceX96Upper && sqrtPriceX96 >= sqrtPriceX96Lower) {
                 return (amount0, amount1, 0, 0);
             }
 
             /// @dev index of input token for swap
-            tokenIdIn = sqrtPriceX96 > sqrtPricex96Upper ? 1 : 0;
+            tokenIdIn = sqrtPriceX96 > sqrtPriceX96Upper ? 1 : 0;
         }
 
         /// @dev current amounts for target position

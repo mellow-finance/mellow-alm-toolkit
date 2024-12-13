@@ -20,6 +20,7 @@ contract RebalancingBot is IRebalanceCallback {
         PositionLibrary.Position memory position =
             PositionLibrary.getPosition(address(positionManager), tokenId);
         if (position.liquidity == 0) {
+            positionManager.burn(tokenId);
             return;
         }
         positionManager.decreaseLiquidity(

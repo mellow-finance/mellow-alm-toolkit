@@ -8,7 +8,7 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {TickMath} from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import {LiquidityAmounts} from "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 
-import "../interfaces/bots/IPulseVeloBot.sol";
+import "./interfaces/IPulseVeloBot.sol";
 import "forge-std/Test.sol";
 
 contract PulseVeloBot is IPulseVeloBot {
