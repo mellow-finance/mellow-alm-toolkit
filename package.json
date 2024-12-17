@@ -5,6 +5,7 @@
   "repository": "https://github.com/mellow-finance/mellow-alm-toolkit",
   "scripts": { 
     "prettier": "forge fmt && forge fmt ./scripts/**",
+    "deploy:base": "forge script --use 0.8.25 scripts/deploy/DeployScript.sol:Deploy --rpc-url $(grep BASE_RPC .env | cut -d '=' -f2) --etherscan-api-key $(grep API_KEY_BASE .env | cut -d '=' -f2,3,4,5) --broadcast --slow --verify -vvvv --evm-version shanghai",
     "deploy:optimism": "forge script --use 0.8.25 scripts/deploy/DeployScript.sol:Deploy --rpc-url $(grep OPTIMISM_RPC .env | cut -d '=' -f2) --etherscan-api-key $(grep API_KEY_OP .env | cut -d '=' -f2,3,4,5) --broadcast --slow --verify -vvvv --evm-version shanghai",
     "deploy:optimism:test": "forge script --use 0.8.25 scripts/deploy/DeployScript.sol:Deploy --rpc-url $(grep OPTIMISM_RPC .env | cut -d '=' -f2) --gas-limit 10000000000000000 --fork-block-number 129367980",
     "test": "forge test -vv --fork-url $(grep OPTIMISM_RPC .env | cut -d '=' -f2,3,4,5) --gas-limit 1000000000000000 --fork-block-number 126785000",
