@@ -153,6 +153,12 @@ contract Deploy is Script, DeployScript {
         console2.log("            VeloAmmModule: ", address(contracts.ammModule));
         console2.log("VeloDepositWithdrawModule: ", address(contracts.depositWithdrawModule));
         console2.log("               VeloOracle: ", address(contracts.oracle));
+        console2.log("                 Deployer: ", address(coreDeploymentParams.deployer));
+        console2.log("               Core Admin: ", address(coreDeploymentParams.mellowAdmin));
+        console2.log("            Core Operator: ", address(coreDeploymentParams.coreOperator));
+        console2.log("         Factory Operator: ", address(coreDeploymentParams.factoryOperator));
+        console2.log("     Core LpWrapper Admin: ", address(coreDeploymentParams.lpWrapperAdmin));
+        console2.log("   Core LpWrapper Manager: ", address(coreDeploymentParams.lpWrapperManager));
 
         require(OPERATOR == coreDeploymentParams.coreOperator);
         require(FACTORY_OPERATOR == coreDeploymentParams.factoryOperator);
@@ -169,11 +175,6 @@ contract Deploy is Script, DeployScript {
             PoolParameters.getPoolDeployParams(contracts);
 
         for (uint256 i = 0; i < params.length; i++) {
-            (,,, uint16 observationCardinality,,) = params[i].pool.slot0();
-            params[i].pool.increaseObservationCardinalityNext(100);
-            if (observationCardinality < params[i].securityParams.lookback) {
-                params[i].pool.increaseObservationCardinalityNext(params[i].securityParams.lookback);
-            }
             IERC20(params[i].pool.token0()).approve(
                 address(contracts.deployFactory), params[i].maxAmount0
             );

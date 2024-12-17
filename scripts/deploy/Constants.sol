@@ -72,6 +72,22 @@ library Constants {
                     feeD9: OPTIMISM_FEE_D9
                 })
             });
+/*             return DeployScript.CoreDeploymentParams({
+                deployer: TEST_OPTIMISM_DEPLOYER,
+                mellowAdmin: TEST_OPTIMISM_OPERATOR_ADMIN,
+                positionManager: BASE_POSITION_MANAGER,
+                isPoolSelector: BASE_IS_POOL_SELECTOR,
+                weth: BASE_WETH,
+                lpWrapperAdmin: TEST_OPTIMISM_OPERATOR_ADMIN,
+                lpWrapperManager: TEST_OPTIMISM_OPERATOR_ADMIN,
+                minInitialTotalSupply: OPTIMISM_MIN_INITIAL_TOTAL_SUPPLY,
+                factoryOperator: TEST_OPTIMISM_OPERATOR_ADMIN,
+                coreOperator: TEST_OPTIMISM_OPERATOR_ADMIN,
+                protocolParams: IVeloAmmModule.ProtocolParams({
+                    treasury: OPTIMISM_MELLOW_TREASURY,
+                    feeD9: OPTIMISM_FEE_D9
+                })
+            }); */
         }
         revert("Unsupported chain");
     }
