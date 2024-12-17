@@ -26,9 +26,5 @@ interface IRebalancingBotHelper {
         returns (uint256 positionId, ICore.ManagedPositionInfo memory managedPositionInfo);
 
     /// @dev returns flags, true if rebalance is necessary for @param pool
-    function needRebalancePosition(address pool)
-        external
-        view
-        returns (bool isRebalanceRequired);
-
+    function needRebalancePosition(address pool) external view returns (bool isRebalanceRequired);
 }

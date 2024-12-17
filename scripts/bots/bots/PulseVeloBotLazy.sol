@@ -8,9 +8,9 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {TickMath} from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import {LiquidityAmounts} from "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 
-import "./interfaces/IPulseVeloBotLazy.sol";
 import "../interfaces/utils/IVeloDeployFactory.sol";
 import "../modules/strategies/PulseStrategyModule.sol";
+import "./interfaces/IPulseVeloBotLazy.sol";
 
 contract PulseVeloBotLazy is IPulseVeloBotLazy {
     using SafeERC20 for IERC20;

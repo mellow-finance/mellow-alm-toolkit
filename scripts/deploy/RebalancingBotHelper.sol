@@ -8,10 +8,9 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {TickMath} from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import {LiquidityAmounts} from "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 
-import "../bots/interfaces/IRebalancingBotHelper.sol";
 import "../../src/interfaces/utils/IVeloDeployFactory.sol";
 import "../../src/modules/strategies/PulseStrategyModule.sol";
-
+import "../bots/interfaces/IRebalancingBotHelper.sol";
 
 contract RebalancingBotHelper is IRebalancingBotHelper {
     using SafeERC20 for IERC20;
@@ -78,14 +77,10 @@ contract RebalancingBotHelper is IRebalancingBotHelper {
     }
 
     /// @dev returns flags, true if rebalance is necessary for @param pool
-    function needRebalancePosition(address pool)
-        public
-        view
-        returns (bool isRebalanceRequired)
-    {
+    function needRebalancePosition(address pool) public view returns (bool isRebalanceRequired) {
         (, ICore.ManagedPositionInfo memory managedPositionInfo) = poolManagedPositionInfo(pool);
-        (isRebalanceRequired,) = strategyModule.getTargets(managedPositionInfo,
-            core.ammModule(), core.oracle());
+        (isRebalanceRequired,) =
+            strategyModule.getTargets(managedPositionInfo, core.ammModule(), core.oracle());
     }
 
     /**
