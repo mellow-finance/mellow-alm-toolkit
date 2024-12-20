@@ -7,7 +7,6 @@ contract DepositHelper {
     using SafeERC20 for IERC20;
 
     uint256 public constant SCALE = 1000 ether;
-    uint256 public constant ALLOWED_ERROR = 100 wei;
 
     struct DepositParams {
         address token0;
@@ -48,11 +47,11 @@ contract DepositHelper {
             revert ILpWrapper.InsufficientAmounts();
         }
 
-        if (amount0 > actualAmount0 + ALLOWED_ERROR) {
+        if (amount0 > actualAmount0) {
             IERC20(depositParams.token0).safeTransfer(msg.sender, amount0 - actualAmount0);
         }
 
-        if (amount1 > actualAmount1 + ALLOWED_ERROR) {
+        if (amount1 > actualAmount1) {
             IERC20(depositParams.token1).safeTransfer(msg.sender, amount1 - actualAmount1);
         }
     }
