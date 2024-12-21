@@ -11,6 +11,8 @@ import "../src/modules/strategies/PulseStrategyModule.sol";
 import "../src/modules/velo/VeloAmmModule.sol";
 import "../src/modules/velo/VeloDepositWithdrawModule.sol";
 import "../src/oracles/VeloOracle.sol";
+
+import "../src/utils/DepositHelper.sol";
 import "../src/utils/LpWrapper.sol";
 import "../src/utils/VeloDeployFactory.sol";
 

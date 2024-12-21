@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: BSL-1.1
 pragma solidity ^0.8.0;
 
+import "../../src/interfaces/external/velo/ISwapRouter.sol";
 import "./Fixture.sol";
 
 contract Unit is Fixture {
+    using RandomLib for RandomLib.Storage;
     using SafeERC20 for IERC20;
 
     int24 constant MAX_ALLOWED_DELTA = 100;
@@ -16,6 +18,7 @@ contract Unit is Fixture {
 
     DeployScript.CoreDeployment contracts;
     IVeloDeployFactory.DeployParams deployParams;
+    RandomLib.Storage internal _rnd;
 
     function setUp() external {
         contracts = deployContracts();
@@ -73,8 +76,7 @@ contract Unit is Fixture {
     bytes32 seed_;
 
     function rnd() internal returns (uint256) {
-        seed_ = keccak256(abi.encodePacked(seed_));
-        return uint256(seed_);
+        return _rnd.randInt(type(uint128).max);
     }
 
     function testUniMathEdgeCases() external {
@@ -487,6 +489,277 @@ contract Unit is Fixture {
             })
         );
 
+        vm.stopPrank();
+    }
+
+    function testFuzz_DepositWithHelper(uint256[] memory rndAmounts) external {
+        _runTestDepositWithHelper(rndAmounts);
+    }
+
+    function _runTestDepositWithHelper(uint256[] memory rndAmounts) internal {
+        vm.prank(Constants.OPTIMISM_LP_WRAPPER_ADMIN);
+        lpWrapper.setTotalSupplyLimit(1e15 ether);
+
+        uint256 inf = 1e15 ether;
+
+        vm.startPrank(Constants.OPTIMISM_DEPLOYER);
+        deal(pool.token0(), Constants.OPTIMISM_DEPLOYER, inf);
+        deal(pool.token1(), Constants.OPTIMISM_DEPLOYER, inf);
+
+        DepositHelper helper = new DepositHelper();
+        IERC20(pool.token0()).approve(address(helper), type(uint256).max);
+        IERC20(pool.token1()).approve(address(helper), type(uint256).max);
+        for (uint256 i = 0; i < Math.min(rndAmounts.length, 1000); i++) {
+            uint256 amount = Math.min(rndAmounts[i], 1e8 ether); // up to ~100m in one deposit
+            (uint256 amount0, uint256 amount1) = _rnd.randBool()
+                ? (amount, uint256(type(uint128).max))
+                : (uint256(type(uint128).max), amount);
+            (
+                uint256 actualAmount0,
+                uint256 actualAmount1,
+                uint256 actualLpAmount,
+                uint256 amount0Min,
+                uint256 amount1Min
+            ) = helper.previewDeposit(
+                lpWrapper,
+                amount0,
+                amount1,
+                5e6 // 0.5% for each token!
+            );
+
+            {
+                (
+                    uint256 actualAmount0__,
+                    uint256 actualAmount1__,
+                    uint256 actualLpAmount__,
+                    uint256 amount0Min__,
+                    uint256 amount1Min__
+                ) = helper.previewDeposit(
+                    lpWrapper,
+                    actualAmount0,
+                    actualAmount1,
+                    5e6 // 0.5% for each token!
+                );
+                assertEq(actualAmount0__, actualAmount0, "actualAmount0__ != actualAmount0");
+                assertEq(actualAmount1__, actualAmount1, "actualAmount1__ != actualAmount1");
+                assertEq(actualLpAmount__, actualLpAmount, "actualLpAmount__ != actualLpAmount");
+                assertEq(amount0Min__, amount0Min, "amount0Min__ != amount0Min");
+                assertEq(amount1Min__, amount1Min, "amount1Min__ != amount1Min");
+            }
+            if (actualLpAmount == 0) {
+                continue;
+            }
+            if (amount0 != type(uint128).max) {
+                assertApproxEqAbs(amount0, actualAmount0, amount0 / 1 gwei + 1, "amount0");
+            }
+            if (amount1 != type(uint128).max) {
+                assertApproxEqAbs(amount1, actualAmount1, amount1 / 1 gwei + 1, "amount1");
+            }
+            (uint256 actualAmount0_, uint256 actualAmount1_, uint256 actualLpAmount_) = helper
+                .deposit(
+                DepositHelper.DepositParams({
+                    token0: pool.token0(),
+                    token1: pool.token1(),
+                    wrapper: lpWrapper,
+                    recipient: Constants.OPTIMISM_DEPLOYER,
+                    amount0Desired: actualAmount0,
+                    amount1Desired: actualAmount1,
+                    amount0Min: amount0Min,
+                    amount1Min: amount1Min,
+                    deadline: type(uint256).max
+                })
+            );
+            assertApproxEqAbs(actualAmount0_, actualAmount0, 1, "actualAmount0");
+            assertApproxEqAbs(actualAmount1_, actualAmount1, 1, "actualAmount1");
+            assertApproxEqAbs(actualLpAmount_, actualLpAmount, 1, "actualLpAmount");
+            if (failed()) {
+                revert();
+            }
+        }
+
+        vm.stopPrank();
+    }
+
+    function testDepositWithHelperSlippageCase() external {
+        vm.prank(Constants.OPTIMISM_LP_WRAPPER_ADMIN);
+        lpWrapper.setTotalSupplyLimit(1e15 ether);
+
+        uint256 inf = 1e15 ether;
+
+        vm.startPrank(Constants.OPTIMISM_DEPLOYER);
+        deal(pool.token0(), Constants.OPTIMISM_DEPLOYER, inf);
+        deal(pool.token1(), Constants.OPTIMISM_DEPLOYER, inf);
+
+        DepositHelper helper = new DepositHelper();
+        IERC20(pool.token0()).approve(address(helper), type(uint256).max);
+        IERC20(pool.token1()).approve(address(helper), type(uint256).max);
+        uint256 amount0 = _rnd.randInt(1 ether);
+        uint256 amount1 = type(uint128).max;
+
+        (
+            uint256 actualAmount0,
+            uint256 actualAmount1,
+            uint256 actualLpAmount,
+            uint256 amount0Min,
+            uint256 amount1Min
+        ) = helper.previewDeposit(
+            lpWrapper,
+            amount0,
+            amount1,
+            5e6 // 0.5% for each token!
+        );
+        if (amount0 != type(uint128).max) {
+            assertApproxEqAbs(amount0, actualAmount0, amount0 / 1 gwei + 1, "amount0");
+        }
+        if (amount1 != type(uint128).max) {
+            assertApproxEqAbs(amount1, actualAmount1, amount1 / 1 gwei + 1, "amount1");
+        }
+
+        vm.stopPrank();
+        address token0 = pool.token0();
+        address token1 = pool.token1();
+
+        // swap
+        {
+            ISwapRouter swapRouter = ISwapRouter(Constants.OPTIMISM_SWAP_ROUTER);
+            address swapper = _rnd.randAddress();
+            ISwapRouter.ExactOutputSingleParams memory params = ISwapRouter.ExactOutputSingleParams({
+                tokenIn: pool.token0(),
+                tokenOut: pool.token1(),
+                tickSpacing: pool.tickSpacing(),
+                recipient: swapper,
+                deadline: type(uint256).max,
+                amountOut: IERC20(token1).balanceOf(address(pool)) >> 1,
+                amountInMaximum: type(uint128).max,
+                sqrtPriceLimitX96: 0
+            });
+
+            deal(params.tokenIn, swapper, params.amountInMaximum);
+            vm.startPrank(swapper);
+            IERC20(params.tokenIn).forceApprove(address(swapRouter), params.amountInMaximum);
+            swapRouter.exactOutputSingle(params);
+            vm.stopPrank();
+        }
+
+        vm.startPrank(Constants.OPTIMISM_DEPLOYER);
+        {
+            (, uint256 actualAmount1__, uint256 actualLpAmount__,, uint256 amount1Min__) = helper
+                .previewDeposit(
+                lpWrapper,
+                amount0,
+                amount1,
+                5e6 // 0.5% for each token!
+            );
+            assertNotEq(actualAmount1__, actualAmount1);
+            assertNotEq(actualLpAmount__, actualLpAmount);
+            assertNotEq(amount1Min__, amount1Min);
+        }
+
+        vm.expectRevert(abi.encodeWithSignature("InsufficientAmounts()"));
+        helper.deposit(
+            DepositHelper.DepositParams({
+                token0: token0,
+                token1: token1,
+                wrapper: lpWrapper,
+                recipient: Constants.OPTIMISM_DEPLOYER,
+                amount0Desired: actualAmount0,
+                amount1Desired: actualAmount1,
+                amount0Min: amount0Min,
+                amount1Min: amount1Min,
+                deadline: type(uint256).max
+            })
+        );
+        vm.stopPrank();
+    }
+
+    function testDepositWithHelperLowSlippageCase() external {
+        vm.prank(Constants.OPTIMISM_LP_WRAPPER_ADMIN);
+        lpWrapper.setTotalSupplyLimit(1e15 ether);
+
+        uint256 inf = 1e15 ether;
+
+        vm.startPrank(Constants.OPTIMISM_DEPLOYER);
+        deal(pool.token0(), Constants.OPTIMISM_DEPLOYER, inf);
+        deal(pool.token1(), Constants.OPTIMISM_DEPLOYER, inf);
+
+        DepositHelper helper = new DepositHelper();
+        IERC20(pool.token0()).approve(address(helper), type(uint256).max);
+        IERC20(pool.token1()).approve(address(helper), type(uint256).max);
+        uint256 amount0 = _rnd.randInt(1 ether);
+        uint256 amount1 = type(uint128).max;
+
+        (
+            uint256 actualAmount0,
+            uint256 actualAmount1,
+            uint256 actualLpAmount,
+            uint256 amount0Min,
+            uint256 amount1Min
+        ) = helper.previewDeposit(
+            lpWrapper,
+            amount0,
+            amount1,
+            5e6 // 0.5% for each token!
+        );
+        if (amount0 != type(uint128).max) {
+            assertApproxEqAbs(amount0, actualAmount0, amount0 / 1 gwei + 1, "amount0");
+        }
+        if (amount1 != type(uint128).max) {
+            assertApproxEqAbs(amount1, actualAmount1, amount1 / 1 gwei + 1, "amount1");
+        }
+
+        vm.stopPrank();
+        address token0 = pool.token0();
+        address token1 = pool.token1();
+
+        // swap
+        {
+            ISwapRouter swapRouter = ISwapRouter(Constants.OPTIMISM_SWAP_ROUTER);
+            address swapper = _rnd.randAddress();
+            ISwapRouter.ExactOutputSingleParams memory params = ISwapRouter.ExactOutputSingleParams({
+                tokenIn: pool.token0(),
+                tokenOut: pool.token1(),
+                tickSpacing: pool.tickSpacing(),
+                recipient: swapper,
+                deadline: type(uint256).max,
+                amountOut: 1 ether,
+                amountInMaximum: type(uint128).max,
+                sqrtPriceLimitX96: 0
+            });
+
+            deal(params.tokenIn, swapper, params.amountInMaximum);
+            vm.startPrank(swapper);
+            IERC20(params.tokenIn).forceApprove(address(swapRouter), params.amountInMaximum);
+            swapRouter.exactOutputSingle(params);
+            vm.stopPrank();
+        }
+
+        vm.startPrank(Constants.OPTIMISM_DEPLOYER);
+        {
+            (, uint256 actualAmount1__, uint256 actualLpAmount__,, uint256 amount1Min__) = helper
+                .previewDeposit(
+                lpWrapper,
+                amount0,
+                amount1,
+                5e6 // 0.5% for each token!
+            );
+            assertNotEq(actualAmount1__, actualAmount1);
+            assertNotEq(actualLpAmount__, actualLpAmount);
+            assertNotEq(amount1Min__, amount1Min);
+        }
+
+        helper.deposit(
+            DepositHelper.DepositParams({
+                token0: token0,
+                token1: token1,
+                wrapper: lpWrapper,
+                recipient: Constants.OPTIMISM_DEPLOYER,
+                amount0Desired: actualAmount0,
+                amount1Desired: actualAmount1,
+                amount0Min: amount0Min,
+                amount1Min: amount1Min,
+                deadline: type(uint256).max
+            })
+        );
         vm.stopPrank();
     }
 
