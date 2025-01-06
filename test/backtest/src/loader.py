@@ -52,12 +52,12 @@ POOLS = {
         13954872,
         BASE_CHAIN_ID
     ],
-    "EURC_USDC_BASE": [
+    "EURC-USDC_BASE": [
         "0xc5E51044eB7318950B1aFb044FccFb25782C48c1",
         21861234,
         BASE_CHAIN_ID
     ],
-    "WETH_CBBTC_BASE": [
+    "WETH-CBBTC_BASE": [
         "0x70aCDF2Ad0bf2402C957154f944c19Ef4e1cbAE1",
         19347433,
         BASE_CHAIN_ID
@@ -87,8 +87,8 @@ BLOCK_DURATION = {
 }
 
 BLOCK_WRITE_INTERVAL= {
-    OPT_CHAIN_ID: 10000,
-    BASE_CHAIN_ID: 10000
+    OPT_CHAIN_ID: 1000,
+    BASE_CHAIN_ID: 1000
 }
 
 class SwapTransaction:
@@ -125,7 +125,7 @@ class SwapLogLoader:
         self.__connect()
         
         self.endBlock = self.rpc.eth.block_number
-        self.path = 'data/' + self.chainId + "/" + self.poolAddress + "/" 
+        self.path = '../data/' + self.chainId + "/" + self.poolAddress + "/" 
         os.makedirs(self.path, exist_ok=True)
         self.part = 1
         with open(self.abiFile) as f:
@@ -151,8 +151,8 @@ class SwapLogLoader:
             self.rpcUrl = os.getenv('BASE_RPC')
             self.logBatch = 20000
 
-        self.abiErc20File = './abi/erc20.json'
-        self.abiFile = "./abi/velodrom_abi.json"
+        self.abiErc20File = '../abi/erc20.json'
+        self.abiFile = "../abi/velodrom_abi.json"
 
     def __getTokenDecimals(self):
         with open(self.abiErc20File) as f:

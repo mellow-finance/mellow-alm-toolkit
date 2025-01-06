@@ -7,15 +7,9 @@ getcontext().prec = 50
 import pandas as pd
 import position as P
 import oracle as O
-#from self.position import tick_to_sqrtPrice, sqrtPrice_to_tick, Q96
 
 OPT_CHAIN_ID = '10'
 BASE_CHAIN_ID = '8453'
-
-BLOCK_WRITE_INTERVAL = {
-    OPT_CHAIN_ID: 10000,
-    BASE_CHAIN_ID: 10000
-}
 
 class TamperSimulator:
     def __init__(self, pool):
@@ -29,7 +23,7 @@ class TamperSimulator:
     def get_target(self, sqrtPrice, tickLower, tickUpper, width):
         half = width//2
         if tickLower == tickUpper:
-            return self.position.calc_centered(sqrtPrice, half)
+            return self.position.calc_centered(sqrtPrice, width)
         else:
             sqrtPriceLower = P.tick_to_sqrtPrice(tickLower)
             sqrtPriceUpper = P.tick_to_sqrtPrice(tickUpper)
@@ -42,12 +36,12 @@ class TamperSimulator:
                 return tickLower+half, tickUpper+half
             
     def get_left(self, tickLower, tickUpper, width):
-        half = width/2
-        return tickLower-half, tickUpper-half
+        shift = width/4
+        return tickLower-shift, tickUpper-shift
     
     def get_right(self, tickLower, tickUpper, width):
-        half = width/2
-        return tickLower+half, tickUpper+half
+        shift = width/4
+        return tickLower+shift, tickUpper+shift
     
     def get_liquidity_ratio(self, sqrtPrice, sqrtPriceLower, sqrtPriceUpper):
         half = (sqrtPriceUpper-sqrtPriceLower)/2
@@ -89,14 +83,17 @@ class TamperSimulator:
 
         return (sqrtPriceUpperL-sqrtPriceLowerL)/(sqrtPriceUpperR-sqrtPriceLowerR)
     
-   #def get_swap_share(self, sqrtPrice, sqrtPriceLower, sqrtPriceUpper, to_left):
-   #    half = (sqrtPriceUpper-sqrtPriceLower)/3
-   #    share = Decimal(0)
-   #    if to_left:
-   #        share = ()#((sqrtPriceUpper-sqrtPrice) - (sqrtPriceUpper-sqrtPrice-half))/half
-   #    else:
-   #        share = ((sqrtPrice-sqrtPriceLower) - (sqrtPrice-sqrtPriceLower-half))/half
+    def get_target_token_ratio(self, sqrtPrice, tickLower, tickUpper):
+        sqrtPriceLower = P.tick_to_sqrtPrice(tickLower)
+        sqrtPriceUpper = P.tick_to_sqrtPrice(tickUpper)
 
+        if sqrtPrice > sqrtPriceUpper:
+            return Decimal(0), Decimal(1)
+        elif sqrtPrice < sqrtPriceLower:
+            return Decimal(1), Decimal(0)
+        else:
+            w = sqrtPriceUpper-sqrtPriceLower
+            return (sqrtPriceUpper-sqrtPrice)/w, (sqrtPrice-sqrtPriceLower)/w,
 
     def simulate(self, width, update):
         oracle = O.Oracle(100, 3600, 20)
@@ -123,6 +120,7 @@ class TamperSimulator:
         ratioL = self.get_liquidity_ratio(sqrtPrice, sqrtPriceLower, sqrtPriceUpper)
         fee_liquidity = Decimal(0)
 
+
         for index, row in data.iterrows():
             block = int(row['block'])
             sqrtPrice = Decimal(row['sqrtPriceX96'])/P.Q96
@@ -138,26 +136,30 @@ class TamperSimulator:
 
                 if tickLowerTarget == tickLower and tickUpperTarget == tickUpper and math.fabs(ratio_deviation) > Decimal(0.05):
                     ratio_width = self.get_width_ratio(tickLower, tickUpper)
-                    liquidityDelta = Decimal(math.fabs(liquidity * ratio_deviation)/2) # moving liquidity
+                    liquidityDelta = Decimal(math.fabs(liquidity * ratio_deviation)/2) # moving half of liquidity deviation
                     liquidity -= liquidityDelta
                     if ratio_deviation > 0: # to the left, more narrow range
-                        liquidityDelta = liquidityDelta * ratio_width - liquidityDelta * self.fee
+                        liquidityDelta = liquidityDelta * ratio_width - liquidityDelta * self.fee / 2 # should swap half of liquidity
                     else: # to the right, more wide range
-                        liquidityDelta = liquidityDelta / ratio_width - liquidityDelta * self.fee
+                        liquidityDelta = liquidityDelta / ratio_width - liquidityDelta * self.fee / 2 # should swap half of liquidity
                     liquidity += liquidityDelta
 
                 if tickLowerTarget != tickLower and tickUpperTarget != tickUpper:
                     
                     ratio_width = self.get_width_ratio(tickLower, tickUpper)
 
-                    if tickLowerTarget < tickLower: # move al liquidity to the left
-                        liquidityDelta = Decimal(math.fabs(liquidity * (Decimal(1)-ratioL))/2) # moving liquidity
+                    if tickLowerTarget < tickLower: # move all liquidity to the left
+                        liquidityDelta = Decimal(math.fabs(liquidity * (Decimal(1)-ratioL))) # moving all liquidity from the right position
                         liquidity -= liquidityDelta
-                        liquidityDelta = liquidityDelta * ratio_width - liquidityDelta * self.fee
+                        lower, upper = self.get_left(tickLower, tickUpper, width)
+                        _, r = self.get_target_token_ratio(sqrtPrice, lower, upper)
+                        liquidityDelta = liquidityDelta * ratio_width - r * liquidityDelta * self.fee # should swap l share of moving liquidity
                     elif tickUpperTarget > tickUpper:
-                        liquidityDelta = Decimal(math.fabs(liquidity * ratioL)/2) # moving liquidity
+                        liquidityDelta = Decimal(math.fabs(liquidity * ratioL)) # moving all liquidity from the left position
                         liquidity -= liquidityDelta
-                        liquidityDelta = liquidityDelta / ratio_width - liquidityDelta * self.fee
+                        lower, upper = self.get_right(tickLower, tickUpper, width)
+                        l, _ = self.get_target_token_ratio(sqrtPrice, lower, upper)
+                        liquidityDelta = liquidityDelta / ratio_width - l * liquidityDelta * self.fee # should swap r share of moving liquidity
                     liquidity += liquidityDelta
 
                     sqrtPriceLower = P.tick_to_sqrtPrice(tickLowerTarget)
@@ -173,18 +175,18 @@ class TamperSimulator:
             sqrtPriceUpperL = P.tick_to_sqrtPrice(tickUpperL)
             x, y = P.get_cross_ranges(sqrtPriceLowerL, sqrtPriceUpperL, sqrtPrice, sqrtPriceLast)
             delta = P.get_cross_ranges_ration(sqrtPriceLowerL, sqrtPriceUpperL, x, y)
-            fee_liquidity += delta * self.fee * liquidity
+            fee_liquidity += delta * self.fee * liquidity * ratioL
 
-            tickLowerR, tickUpperR = self.get_left(tickLower, tickUpper, width)
+            tickLowerR, tickUpperR = self.get_right(tickLower, tickUpper, width)
             sqrtPriceLowerR = P.tick_to_sqrtPrice(tickLowerR)
             sqrtPriceUpperR = P.tick_to_sqrtPrice(tickUpperR)
             x, y = P.get_cross_ranges(sqrtPriceLowerR, sqrtPriceUpperR, sqrtPrice, sqrtPriceLast)
             delta = P.get_cross_ranges_ration(sqrtPriceLowerR, sqrtPriceUpperR, x, y)
-            fee_liquidity += delta * self.fee * liquidity
+            fee_liquidity += delta * self.fee * liquidity * (Decimal(1) - ratioL)
 
             sqrtPriceLast = sqrtPrice
 
-            if index % BLOCK_WRITE_INTERVAL[self.loader.chainId] == 0:
+            if index % L.BLOCK_WRITE_INTERVAL[self.loader.chainId] == 0 or index == len(data)-1:
                 am0, am1, _ ,_ = self.calc_amounts(liquidity, sqrtPrice, sqrtPriceLower, sqrtPriceUpper)
 
                 fee0, fee1, _,_ = self.calc_amounts(fee_liquidity, sqrtPrice, sqrtPriceLower, sqrtPriceUpper)

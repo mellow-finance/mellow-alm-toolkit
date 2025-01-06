@@ -13,10 +13,6 @@ LIQUIDITY_UNIT = Decimal(1e9)
 OPT_CHAIN_ID = '10'
 BASE_CHAIN_ID = '8453'
 
-BLOCK_WRITE_INTERVAL = {
-    OPT_CHAIN_ID: 10000,
-    BASE_CHAIN_ID: 10000
-}
 
 class LazySimulator:
     def __init__(self, pool):
@@ -85,7 +81,7 @@ class LazySimulator:
 
             sqrtPriceLast = sqrtPrice
 
-            if index % BLOCK_WRITE_INTERVAL[self.loader.chainId] == 0:
+            if index % L.BLOCK_WRITE_INTERVAL[self.loader.chainId] == 0:
                 am0, am1, _ ,_ = position.calc_amounts(liquidity, sqrtPrice, sqrtPriceLower, sqrtPriceUpper)
 
                 fee0, fee1, _,_ = position.calc_amounts(fee_liquidity, sqrtPrice, sqrtPriceLower, sqrtPriceUpper)
