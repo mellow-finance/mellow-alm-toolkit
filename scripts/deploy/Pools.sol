@@ -27,10 +27,10 @@ contract PoolParameters {
     uint256 constant ONE_USD_AMOUNT_6 = 10 ** 6; // 1 USD
     uint256 constant ONE_USD_EUR_AMOUNT_6 = uint256(100 * 10 ** 6) / 105; // 1 USD
     uint256 constant ONE_USD_AMOUNT_18 = 10 ** 18; // 1 USD
-    uint256 constant ONE_USD_ETH_AMOUNT = uint256(10 ** 18) / 3880; // 1 ETH/3950 ~ 1 USD
-    uint256 constant ONE_USD_WSTETH_AMOUNT = uint256(10 ** 18) / 4600; // 1 WSTETH/4600 ~ 1 USD
-    uint256 constant ONE_USD_OP_AMOUNT = uint256(100 * 10 ** 18) / 237; // 1 OP ~ 2.56 USD
-    uint256 constant ONE_USD_BTC_AMOUNT = uint256(10 ** 8) / 104000; // 1 BTC/104000 ~ 1 USD
+    uint256 constant ONE_USD_ETH_AMOUNT = uint256(10 ** 18) / 3285; // 1 ETH/3950 ~ 1 USD
+    uint256 constant ONE_USD_WSTETH_AMOUNT = uint256(10 ** 18) / 3940; // 1 WSTETH/4600 ~ 1 USD
+    uint256 constant ONE_USD_OP_AMOUNT = uint256(100 * 10 ** 18) / 177; // 1 OP ~ 1.77 USD
+    uint256 constant ONE_USD_BTC_AMOUNT = uint256(10 ** 8) / 93668; // 1 BTC/104000 ~ 1 USD
 
     uint256 constant TICK_NEIGHBORHOOD_DEFAULT = 0;
     uint256 constant MAX_LIQUIDITY_RATIO_DEVIATION_X96_DEFAULT = 0;
