@@ -15,7 +15,7 @@ class Oracle:
         self.__history = deque()
         pass
 
-    def push(self, tick, timestamp):
+    def __push(self, tick, timestamp):
         self.__history.append(PricePoint(tick, timestamp))
         
         if len(self.__history) > self.__look_back:
@@ -23,18 +23,23 @@ class Oracle:
         
         self.__remove_old(timestamp)
         
-    def ensure_no_mev(self, tick):
+    def ensure_no_mev(self, tick, timestamp):
         max_delta = 0
-        for point in self.__history:
-            delta = math.fabs(point.tick - tick)
-            if delta > max_delta:
-                max_delta = delta
+        result = True
 
-        if max_delta > self.__max_delta:
-           # self.print()
-            return False
+        for point in self.__history:
+            if point.timestamp + self.__max_age > timestamp:
+                delta = math.fabs(point.tick - tick)
+                if delta > max_delta:
+                    max_delta = delta
+
+                if max_delta > self.__max_delta:
+                    result = False
+                    break
+
+        self.__push(tick, timestamp)
         
-        return True
+        return result
 
     def print(self):
         print("=========== Oracle data ===========")

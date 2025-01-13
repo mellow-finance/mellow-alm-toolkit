@@ -25,33 +25,50 @@ def initialize_tamper_simulator(pool_name):
         tamper_simulator = T.TamperSimulator(L.POOLS[pool_name])
 
 def run_lazy_simulation(N):
-    global lazy_simulator
-    if lazy_simulator is None:
-        initialize_lazy_simulator()
     return lazy_simulator.simulate(N, update=False)
 
 def run_tamper_simulation(N):
-    global tamper_simulator
-    if lazy_simulator is None:
-        initialize_tamper_simulator()
     return tamper_simulator.simulate(N, update=False)
 
 # Tamper
-def tamper(pool_name):
+def tamper(pool_name, width):
     print("run Tamper simulator for the pool", L.POOLS[pool_name])
     initialize_tamper_simulator(pool_name)
-    N_values = [2, 4, 8, 10, 20, 40, 60, 80, 100, 120, 140, 160, 180, 200, 220, 240, 260, 280, 300, 320]
-    with Pool(processes=min(32, len(N_values))) as pool: 
-        results = pool.map(run_tamper_simulation, N_values)
+    with Pool(processes=min(32, len(width))) as pool: 
+        results = pool.map(run_tamper_simulation, width)
 
 # Lazy
-def lazy(pool_name):
+def lazy(pool_name, width):
     print("run Lazy simulator for the pool", L.POOLS[pool_name])
     initialize_lazy_simulator(pool_name)
-    N_values = [500, 1000, 1500, 200, 2500, 3000, 4000, 5000, 6000, 7000, 8000]
-    with Pool(processes=min(32, len(N_values))) as pool: 
-        results = pool.map(run_lazy_simulation, N_values)
+    with Pool(processes=min(32, len(width))) as pool:
+        results = pool.map(run_lazy_simulation, width)
+
+def debug_tamper(pool_name, width):
+    print("run tamper simulator for the pool", L.POOLS[pool_name])
+    initialize_tamper_simulator(pool_name)
+    run_tamper_simulation(width)
+
+def debug_lazy(pool_name, width):
+    print("run Lazy simulator for the pool", L.POOLS[pool_name])
+    initialize_lazy_simulator(pool_name)
+    run_lazy_simulation(width)
 
 if __name__ == "__main__":
-    #tamper('EURC-USDC_BASE')
-    lazy('USDC-WETH_OPT')
+    lazy('USDC-WETH_OPT', list(range(1000, 8001, 1000)))
+    #tamper('WSTETH-WETH_OPT', list(range(20, 341, 40)))
+    #lazy('WETH-OP_OPT', list(range(1000, 8001, 1000)))
+
+    #tamper('WETH-WSTETH_BASE', list(range(20, 341, 40)))
+    #tamper('WETH-OP_OPT', list(range(100, 1101, 200)))
+
+    #debug_lazy('WETH-OP_OPT', 8000)
+    #debug_tamper('USDC-WETH_OPT', 100)
+    
+    #lazy('WETH-WSTETH_BASE', list(range(10, 211, 20)))
+    #lazy('WETH-CBBTC_BASE', list(range(500, 8001, 500)))
+    #lazy('EURC-USDC_BASE', list(range(100, 1201, 100)))
+#
+    #lazy('USDC-WETH_OPT', list(range(500, 8001, 500)))
+    #lazy('WSTETH-WETH_OPT', list(range(10, 211, 20)))
+    #lazy('WETH-OP_OPT', list(range(500, 8001, 500)))

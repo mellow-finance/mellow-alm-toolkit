@@ -111,6 +111,7 @@ out/
 
 # Backtest data
 test/backtest/data
+test/backtest/src/__pycache__
 
 report/
 

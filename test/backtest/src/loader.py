@@ -45,40 +45,56 @@ POOLS = {
     "WETH-USDC_BASE": [
         "0xb2cc224c1c9feE385f8ad6a55b4d94E92359DC59",
         13904084,
-        BASE_CHAIN_ID
+        BASE_CHAIN_ID,
+        "WETH", "USDC"
     ],
     "WETH-WSTETH_BASE": [
         "0x861A2922bE165a5Bd41b1E482B49216b465e1B5F",
         13954872,
-        BASE_CHAIN_ID
+        BASE_CHAIN_ID,
+        "WETH", "WSTETH"
     ],
     "EURC-USDC_BASE": [
         "0xc5E51044eB7318950B1aFb044FccFb25782C48c1",
         21861234,
-        BASE_CHAIN_ID
+        BASE_CHAIN_ID,
+        "EURC", "USDC"
     ],
     "WETH-CBBTC_BASE": [
         "0x70aCDF2Ad0bf2402C957154f944c19Ef4e1cbAE1",
         19347433,
-        BASE_CHAIN_ID
+        BASE_CHAIN_ID,
+        "WETH", "CBBTC"
     ],
     #======================================================
     "USDC-WETH_OPT": [
         "0x478946BcD4a5a22b316470F5486fAfb928C0bA25",
         117044107,
-        OPT_CHAIN_ID
+        OPT_CHAIN_ID,
+        "USDC", "WETH"
     ],
     "WSTETH-WETH_OPT": [
         "0xbF30Ff33CF9C6b0c48702Ff17891293b002DfeA4",
         121537871,
-        OPT_CHAIN_ID
+        OPT_CHAIN_ID,
+        "WSTETH", "WETH"
     ],
     "WETH-OP_OPT": [
         "0x84a67CD00EB244edCa2288346ADD251A783243c8",
         129174241,
-        OPT_CHAIN_ID
+        OPT_CHAIN_ID,
+        "WETH", "OP"
     ],
     #======================================================
+}
+
+LAZY_SYNCING = "lazy_syncing"
+TAMPER = "tamper"
+
+# reference block with timestamp
+BLOCK_TIMESTAMP = {
+    OPT_CHAIN_ID: [117044107, 1709672591],
+    BASE_CHAIN_ID: [13904084, 1714597515]
 }
 
 BLOCK_DURATION = {
@@ -99,7 +115,8 @@ class SwapTransaction:
         self.__extractData(log.data.hex())
         
     def __extractData(self, data):
-        data = data[2:]
+        if data[:2] == "0x":
+            data = data[2:]
         amount0_bytes = bytes.fromhex(data[:64])
         amount1_bytes = bytes.fromhex(data[64:128])
         sqrtPriceX96_bytes = bytes.fromhex(data[128:192])
@@ -167,7 +184,27 @@ class SwapLogLoader:
         self.decimals0 = self.erc20Contract0.functions.decimals().call()
         self.decimals1 = self.erc20Contract1.functions.decimals().call()
         print(self.poolAddress, self.tickSpacing, self.fee, self.decimals0, self.decimals1)
-        pass
+    
+    # poolPrice is cost of 1 wei of token0 in token1
+    def getPriceInToken(self, poolPrice, tokenId):
+        if tokenId == 0:
+            return math.pow(10, self.decimals0-self.decimals1)/poolPrice
+        else:
+            return poolPrice * math.pow(10, -self.decimals0+self.decimals1)
+        
+    def convertAmountsInToken(self, amount0, amount1, poolPrice, tokenId):
+        price = self.getPriceInToken(poolPrice, tokenId)
+        if tokenId == 0:
+            return amount0 + amount1 * price
+        else:
+            return amount0 * price + amount1
+
+    def getHumanPrice(self, poolPrice, tokenId):
+        price = self.getPriceInToken(poolPrice, tokenId)
+        if tokenId == 0:
+            return price * math.pow(10, self.decimals0 - self.decimals1)
+        else:
+            return math.pow(10, self.decimals0 - self.decimals1) / price
 
     def loadSwaps(self):
         fromBlock = self.startBlock
@@ -227,7 +264,3 @@ class SwapLogLoader:
             toBlock += self.logBatch
 
         print("loading has been finished")
-
-
-#swapLogLoader = SwapLogLoader(POOLS['WETH-USDC_BASE'])
-#swapLogLoader.simulateLazy(4000)
