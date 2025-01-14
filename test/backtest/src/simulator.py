@@ -55,20 +55,13 @@ def debug_lazy(pool_name, width):
     run_lazy_simulation(width)
 
 if __name__ == "__main__":
-    lazy('USDC-WETH_OPT', list(range(1000, 8001, 1000)))
+    # velodrome pools
+    lazy('USDC-WETH_OPT', list(range(1000, 1001, 1000)))
     #tamper('WSTETH-WETH_OPT', list(range(20, 341, 40)))
     #lazy('WETH-OP_OPT', list(range(1000, 8001, 1000)))
 
+    # aerodrome pools
+    #lazy('WETH-USDC_BASE', list(range(1000, 8001, 1000)))
     #tamper('WETH-WSTETH_BASE', list(range(20, 341, 40)))
-    #tamper('WETH-OP_OPT', list(range(100, 1101, 200)))
-
-    #debug_lazy('WETH-OP_OPT', 8000)
-    #debug_tamper('USDC-WETH_OPT', 100)
-    
-    #lazy('WETH-WSTETH_BASE', list(range(10, 211, 20)))
-    #lazy('WETH-CBBTC_BASE', list(range(500, 8001, 500)))
-    #lazy('EURC-USDC_BASE', list(range(100, 1201, 100)))
-#
-    #lazy('USDC-WETH_OPT', list(range(500, 8001, 500)))
-    #lazy('WSTETH-WETH_OPT', list(range(10, 211, 20)))
-    #lazy('WETH-OP_OPT', list(range(500, 8001, 500)))
+    #tamper('EURC-USDC_BASE', list(range(20, 341, 40)))
+    #lazy('WETH-CBBTC_BASE', list(range(1000, 8001, 1000)))

@@ -1,5 +1,6 @@
 import loader as L
 import csv
+import os
 import math
 from decimal import Decimal, getcontext
 getcontext().prec = 50
@@ -66,29 +67,9 @@ class TamperSimulator:
 
         return l
 
-    def get_width_ratio(self, tickLower, tickUpper):
-        half = (tickUpper-tickLower)/2
-        sqrtPriceLowerL = P.tick_to_sqrtPrice(tickLower-half)
-        sqrtPriceUpperL = P.tick_to_sqrtPrice(tickUpper-half)
-        sqrtPriceLowerR = P.tick_to_sqrtPrice(tickLower+half)
-        sqrtPriceUpperR = P.tick_to_sqrtPrice(tickUpper+half)
-
-        return (sqrtPriceUpperL-sqrtPriceLowerL)/(sqrtPriceUpperR-sqrtPriceLowerR)
-    
-    def get_target_token_ratio(self, sqrtPrice, tickLower, tickUpper):
-        sqrtPriceLower = P.tick_to_sqrtPrice(tickLower)
-        sqrtPriceUpper = P.tick_to_sqrtPrice(tickUpper)
-
-        if sqrtPrice > sqrtPriceUpper:
-            return Decimal(0), Decimal(1)
-        elif sqrtPrice < sqrtPriceLower:
-            return Decimal(1), Decimal(0)
-        else:
-            w = sqrtPriceUpper-sqrtPriceLower
-            return (sqrtPriceUpper-sqrtPrice)/w, (sqrtPrice-sqrtPriceLower)/w,
-
     def simulate(self, width, update):
-        oracle = O.Oracle(100, 3600, 20)
+
+        oracle = O.Oracle(100, 3600, 40 if self.tickSpacing > 10 else 5)
 
         if update:
             self.loader.loadSwaps()
@@ -96,6 +77,7 @@ class TamperSimulator:
         csvFileData = open(self.loader.getFilename("transactions")+".csv", 'r')
         data = pd.read_csv(csvFileData)
 
+        os.makedirs(self.loader.path + "/" + L.LAZY_SYNCING, exist_ok=True)
         csvFileResult = open(self.loader.getFilename(L.TAMPER + "/" + str(width)+"_result")+".csv", 'w')
         csvWriter = csv.writer(csvFileResult)
         csvWriter.writerow(['block', 'tick', 'tickLower', 'tickUpper', 'price', 'liquidity', 'amount0', 'amount1', 'fee0', 'fee1', 'cost0', 'cost1'])
@@ -113,7 +95,6 @@ class TamperSimulator:
         lower, upper = self.get_right(self.pos_left, width)
         self.pos_right = P.Position(lower, upper, liquidityInitial/2, self.fee)
 
-        am0Hold, am1Hold = Decimal(0), Decimal(0)
         fee0, fee1 = Decimal(0), Decimal(0)
         am0Remain, am1Remain = Decimal(0), Decimal(0)
 

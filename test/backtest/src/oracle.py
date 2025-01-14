@@ -24,20 +24,20 @@ class Oracle:
         self.__remove_old(timestamp)
         
     def ensure_no_mev(self, tick, timestamp):
-        max_delta = 0
+        self.__push(tick, timestamp)
+
         result = True
 
-        for point in self.__history:
-            if point.timestamp + self.__max_age > timestamp:
-                delta = math.fabs(point.tick - tick)
-                if delta > max_delta:
-                    max_delta = delta
+        if len(self.__history) > 1:
+            point_prev = self.__history[0]
 
-                if max_delta > self.__max_delta:
-                    result = False
-                    break
-
-        self.__push(tick, timestamp)
+            for point in self.__history:
+                if point.timestamp + self.__max_age > timestamp:
+                    delta = math.fabs(point.tick - point_prev.tick)
+                    if delta > self.__max_delta:
+                        result = False
+                        break
+                point_prev = point
         
         return result
 

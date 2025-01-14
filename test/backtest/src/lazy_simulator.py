@@ -1,5 +1,6 @@
 import loader as L
 import csv
+import os
 import math
 from decimal import Decimal, getcontext
 getcontext().prec = 50
@@ -13,7 +14,6 @@ LIQUIDITY_UNIT = Decimal(1e9)
 OPT_CHAIN_ID = '10'
 BASE_CHAIN_ID = '8453'
 
-
 class LazySimulator:
     def __init__(self, pool):
         self.loader = L.SwapLogLoader(pool)
@@ -24,7 +24,7 @@ class LazySimulator:
         
     def simulate(self, width, update):
 
-        oracle = O.Oracle(100, 3600, 20)
+        oracle = O.Oracle(100, 3600, 40 if self.tickSpacing > 10 else 5)
 
         if update:
             self.loader.loadSwaps()
@@ -32,6 +32,7 @@ class LazySimulator:
         csvFileData = open(self.loader.getFilename("transactions")+".csv", 'r')
         data = pd.read_csv(csvFileData)
 
+        os.makedirs(self.loader.path + "/" + L.LAZY_SYNCING, exist_ok=True)
         csvFileResult = open(self.loader.getFilename(L.LAZY_SYNCING + "/" + str(width)+"_result")+".csv", 'w')
         csvWriter = csv.writer(csvFileResult)
         csvWriter.writerow(['block', 'tick', 'tickLower', 'tickUpper', 'price', 'liquidity', 'amount0', 'amount1', 'fee0', 'fee1', 'cost0', 'cost1'])
