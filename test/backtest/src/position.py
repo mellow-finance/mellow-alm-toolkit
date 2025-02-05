@@ -34,7 +34,9 @@ def ranges_ration(x: Decimal, y: Decimal, X: Decimal, Y: Decimal):
     return DECIMAL_ZERO
 
 # returns cross of (y-x)/(Y-X), where [x, y] = [X,Y] and [a,b]
-def get_cross_ranges_ration(X: Decimal, Y: Decimal, a: Decimal, b: Decimal):
+def get_cross_ranges_ratio(X: Decimal, Y: Decimal, a: Decimal, b: Decimal):
+    a, b = min(a,b), max(a,b)
+    X, Y = min(X, Y), max(X, Y)
     x = max(X, a)
     y = min(Y, b)
 
@@ -111,13 +113,27 @@ def calc_near(sqrtPrice, tickSpacing, width, tickLower, tickUpper):
     if tickNear < 0:
         tickNear -= tickSpacing
 
+    moved = False
     if sqrtPrice < sqrtPriceLower:
         tickLower = tickNear + tickSpacing
         tickUpper = tickLower + width
+        moved = True
     elif sqrtPrice >= sqrtPriceUpper:
         tickUpper = tickNear
         tickLower = tickUpper - width
+        moved = True
+
     return tickLower, tickUpper
+    if moved:
+        sqrtPriceLower, sqrtPriceUpper = tick_to_sqrtPrice(tickLower), tick_to_sqrtPrice(tickUpper)
+
+        if sqrtPrice > sqrtPriceLower:
+            tickLower += tickSpacing
+            tickUpper += tickSpacing
+        elif sqrtPrice < sqrtPriceUpper:
+            tickLower -= tickSpacing
+            tickUpper -= tickSpacing
+
 
 def fit_amounts_for_position(am0: Decimal, am1: Decimal, sqrtPrice: Decimal, sqrtPriceLower: Decimal, sqrtPriceUpper: Decimal, fee: Decimal):
     price = sqrtPrice*sqrtPrice
@@ -165,6 +181,12 @@ class Position:
         self.__sqrtPriceLower = tick_to_sqrtPrice(tickLower)
         self.__sqrtPriceUpper = tick_to_sqrtPrice(tickUpper)
 
+    def sqrtPriceLower(self):
+        return self.__sqrtPriceLower
+    
+    def sqrtPriceUpper(self):
+        return self.__sqrtPriceUpper
+    
     def ticks(self):
         return self.__tickLower, self.__tickUpper
     
@@ -190,7 +212,7 @@ class Position:
 
     # increase liquidity: takes as much as possible from am0, am1 (perform swap) and returns remaining unused amounts
     def increase_liquidity(self, am0Delta, am1Delta, sqrtPrice: Decimal):
-        if am0Delta < DECIMAL_ONE and am1Delta < DECIMAL_ONE:
+        if am0Delta < Decimal(1e-10) and am1Delta < Decimal(1e-10):
             return am0Delta, am1Delta
 
         # rebalance amount to get maximum liquidity
@@ -208,7 +230,7 @@ class Position:
     def calc_fee(self, sqrtPrice0: Decimal, sqrtPrice1: Decimal):
         return calc_fee(self.__sqrtPriceLower, self.__sqrtPriceUpper, self.__liquidity, sqrtPrice0, sqrtPrice1, self.__swap_fee)
     
-# decrease src position liquidty and increase dst, returns remaining amounts
+# decrease src position liquidity and increase dst, returns remaining amounts
 def move_liquidity(src: Position, dst: Position, share: Decimal, sqrtPrice: Decimal):
     liquidity = src.liquidity()
     if liquidity == DECIMAL_ZERO:

@@ -20,91 +20,38 @@ INFINITE_BLOCK = 10**20
 
 load_dotenv()
 
+# read pools
+with open("pools.json", 'r') as f:
+    POOLS = json.load(f)
+
 SWAP_TOPIC = '0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67'
 
-"""
-          BASE AERO
-    [0]   0xb2cc224c1c9feE385f8ad6a55b4d94E92359DC59 | 4000 | 100 |  weth  |  usdc  |  500k |   lazy   |   30     | 1 hour |  42   |
-    [1]   0x861A2922bE165a5Bd41b1E482B49216b465e1B5F |    1 |   1 |  weth  |  wsteth|  500k |  tamper  |   30     | 1 hour |   5   |
-    [2]   0xc5E51044eB7318950B1aFb044FccFb25782C48c1 | 1000 |   1 |  eurc  |  usdc  |  500k |  tamper  |
-    [3]   0x70aCDF2Ad0bf2402C957154f944c19Ef4e1cbAE1 | 4000 | 100 |  weth  | cbbtc  |  500k |   lazy   |
-"""
-
-"""      OPTIMISM VELO                          
-    [0]  0x478946BcD4a5a22b316470F5486fAfb928C0bA25 | 4200 | 100 | usdc   |   weth |  500k | lazySync |   30     | 1 hour |  42   |
-    [1]  0xbF30Ff33CF9C6b0c48702Ff17891293b002DfeA4 |  280 |   1 | wsteth |   weth |  400k |  tamper  |   30     | 1 hour |   5   |
-    [2]  0x84a67CD00EB244edCa2288346ADD251A783243c8 | 6000 |  50 | weth   |     op |  500k | lazySync |   30     | 1 hour |  60   |
-"""
-
-# address -> init block
+ETH_CHAIN_ID = '1'
 OPT_CHAIN_ID = '10'
 BASE_CHAIN_ID = '8453'
 
-POOLS = {
-    #======================================================
-    "WETH-USDC_BASE": [
-        "0xb2cc224c1c9feE385f8ad6a55b4d94E92359DC59",
-        13904084,
-        BASE_CHAIN_ID,
-        "WETH", "USDC"
-    ],
-    "WETH-WSTETH_BASE": [
-        "0x861A2922bE165a5Bd41b1E482B49216b465e1B5F",
-        13954872,
-        BASE_CHAIN_ID,
-        "WETH", "WSTETH"
-    ],
-    "EURC-USDC_BASE": [
-        "0xc5E51044eB7318950B1aFb044FccFb25782C48c1",
-        21861234,
-        BASE_CHAIN_ID,
-        "EURC", "USDC"
-    ],
-    "WETH-CBBTC_BASE": [
-        "0x70aCDF2Ad0bf2402C957154f944c19Ef4e1cbAE1",
-        19347433,
-        BASE_CHAIN_ID,
-        "WETH", "CBBTC"
-    ],
-    #======================================================
-    "USDC-WETH_OPT": [
-        "0x478946BcD4a5a22b316470F5486fAfb928C0bA25",
-        117044107,
-        OPT_CHAIN_ID,
-        "USDC", "WETH"
-    ],
-    "WSTETH-WETH_OPT": [
-        "0xbF30Ff33CF9C6b0c48702Ff17891293b002DfeA4",
-        121537871,
-        OPT_CHAIN_ID,
-        "WSTETH", "WETH"
-    ],
-    "WETH-OP_OPT": [
-        "0x84a67CD00EB244edCa2288346ADD251A783243c8",
-        129174241,
-        OPT_CHAIN_ID,
-        "WETH", "OP"
-    ],
-    #======================================================
-}
-
-LAZY_SYNCING = "lazy_syncing"
-TAMPER = "tamper"
+ONE_MINUTE = 60
+ONE_HOUR = 60 * ONE_MINUTE
+ONE_DAY = 24 * ONE_HOUR
+WRITE_PERIOD = ONE_HOUR * 12 # in seconds
 
 # reference block with timestamp
 BLOCK_TIMESTAMP = {
     OPT_CHAIN_ID: [117044107, 1709672591],
-    BASE_CHAIN_ID: [13904084, 1714597515]
+    BASE_CHAIN_ID: [13904084, 1714597515],
+    ETH_CHAIN_ID: [20621191, 1724776991] # 21622076 1736849903
 }
 
 BLOCK_DURATION = {
     OPT_CHAIN_ID: 2.0,
-    BASE_CHAIN_ID: 2.0
+    BASE_CHAIN_ID: 2.0,
+    ETH_CHAIN_ID: 12.06223692
 }
 
 BLOCK_WRITE_INTERVAL= {
     OPT_CHAIN_ID: 1000,
-    BASE_CHAIN_ID: 1000
+    BASE_CHAIN_ID: 1000,
+    ETH_CHAIN_ID: 100
 }
 
 class SwapTransaction:
@@ -133,9 +80,9 @@ class SwapTransaction:
     
 class SwapLogLoader:
     def __init__(self, pool):
-        self.poolAddress = pool[0]
-        self.startBlock = pool[1]
-        self.chainId = pool[2]
+        self.poolAddress = pool['address']
+        self.startBlock = pool['block']
+        self.chainId = str(pool['chainId'])
         self.fee = None
         
         self.__readSettings()
@@ -167,6 +114,9 @@ class SwapLogLoader:
         elif self.chainId == BASE_CHAIN_ID:
             self.rpcUrl = os.getenv('BASE_RPC')
             self.logBatch = 20000
+        elif self.chainId == ETH_CHAIN_ID:
+            self.rpcUrl = os.getenv('ETH_RPC')
+            self.logBatch = 1000
 
         self.abiErc20File = '../abi/erc20.json'
         self.abiFile = "../abi/velodrom_abi.json"

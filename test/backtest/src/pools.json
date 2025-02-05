@@ -1,0 +1,179 @@
+{
+    "8453": {
+      "WETH_USDC": {
+        "address": "0xb2cc224c1c9feE385f8ad6a55b4d94E92359DC59",
+        "block": 13904084,
+        "token0": "WETH",
+        "token1": "USDC",
+        "chainId": 8453
+      },
+      "WETH_WSTETH": {
+        "address": "0x861A2922bE165a5Bd41b1E482B49216b465e1B5F",
+        "block": 13954872,
+        "token0": "WETH",
+        "token1": "WSTETH",
+        "chainId": 8453
+      },
+      "EURC_USDC": {
+        "address": "0xc5E51044eB7318950B1aFb044FccFb25782C48c1",
+        "block": 21861234,
+        "token0": "EURC",
+        "token1": "USDC",
+        "chainId": 8453
+      },
+      "WETH_CBBTC": {
+        "address": "0x70aCDF2Ad0bf2402C957154f944c19Ef4e1cbAE1",
+        "block": 19347433,
+        "token0": "WETH",
+        "token1": "CBBTC",
+        "chainId": 8453
+      },
+
+
+      "WETH_AERO": {
+        "address": "0x82321f3BEB69f503380D6B233857d5C43562e2D0",
+        "block": 14209290,
+        "token0": "WETH",
+        "token1": "AERO",
+        "chainId": 8453
+      },
+      "cbETH_WETH": {
+        "address": "0x47cA96Ea59C13F72745928887f84C9F52C3D7348",
+        "block": 13910345,
+        "token0": "cbETH",
+        "token1": "WETH",
+        "chainId": 8453
+      },
+      "USDC_cbBTC": {
+        "address": "0x4e962BB3889Bf030368F56810A9c96B83CB3E778",
+        "block": 19357558,
+        "token0": "USDC",
+        "token1": "cbBTC",
+        "chainId": 8453
+      },
+      "USDC_USDT": {
+        "address": "0xa41Bc0AFfbA7Fd420d186b84899d7ab2aC57fcD1",
+        "block": 19357558,
+        "token0": "USDC",
+        "token1": "USDT",
+        "chainId": 8453
+      },
+      "uSOL_WETH": {
+        "address": "0x0225Ba893D5f8Ecd6d2022f9dEC59b34F61098A1",
+        "block": 18677232,
+        "token0": "WETH",
+        "token1": "uSOL",
+        "chainId": 8453
+      },
+      "VIRTUAL_WETH": {
+        "address": "0xC200F21EfE67c7F41B81A854c26F9cdA80593065",
+        "block": 21463287,
+        "token0": "VIRTUAL",
+        "token1": "WETH",
+        "chainId": 8453
+      },
+      "WETH_AIXBT": {
+        "address": "0x22A52bB644f855ebD5ca2edB643FF70222D70C31",
+        "block": 22682790,
+        "token0": "WETH",
+        "token1": "AIXBT",
+        "chainId": 8453
+      },
+      "WETH_VVV": {
+        "address": "0x7eC6C9D993D9832Aa654593f2Dbc21303650Bc6c",
+        "block": 25657966,
+        "token0": "WETH",
+        "token1": "VVV",
+        "chainId": 8453
+      }
+    },
+    "10": {
+      "USDC_WETH": {
+        "address": "0x478946BcD4a5a22b316470F5486fAfb928C0bA25",
+        "block": 117044107,
+        "token0": "USDC",
+        "token1": "WETH",
+        "chainId": 10
+      },
+      "WSTETH_WETH": {
+        "address": "0xbF30Ff33CF9C6b0c48702Ff17891293b002DfeA4",
+        "block": 121537871,
+        "token0": "WSTETH",
+        "token1": "WETH",
+        "chainId": 10
+      },
+      "WETH_OP": {
+        "address": "0x84a67CD00EB244edCa2288346ADD251A783243c8",
+        "block": 129174241,
+        "token0": "WETH",
+        "token1": "OP",
+        "chainId": 10
+      },
+
+      
+      "WETH_OP_2": {
+        "address": "0x4DC22588Ade05C40338a9D95A6da9dCeE68Bcd60",
+        "block": 121635577,
+        "token0": "WETH",
+        "token1": "OP",
+        "chainId": 10
+      },
+      "USDC_OP": {
+        "address": "0xeBD5311beA1948e1441333976EadCFE5fBda777C",
+        "block": 121638213,
+        "token0": "USDC",
+        "token1": "OP",
+        "chainId": 10
+      },
+      "WETH_VELO": {
+        "address": "0x39eD27D101Aa4b7cE1cb4293B877954B8b5e14e5",
+        "block": 121644028,
+        "token0": "WETH",
+        "token1": "VELO",
+        "chainId": 10
+      },
+      "WETH_BTC": {
+        "address": "0x319C0DD36284ac24A6b2beE73929f699b9f48c38",
+        "block": 121638016,
+        "token0": "WETH",
+        "token1": "BTC",
+        "chainId": 10
+      },
+      "USDC_USDC.e": {
+        "address": "0x2FA71491F8070FA644d97b4782dB5734854c0f6F",
+        "block": 121642419,
+        "token0": "USDC",
+        "token1": "USDC.e",
+        "chainId": 10
+      },
+      "USDC_wstETH": {
+        "address": "0xEE1baC98527a9fDd57fcCf967817215B083cE1F0",
+        "block": 121538498,
+        "token0": "USDC",
+        "token1": "wstETH",
+        "chainId": 10
+      },
+      "WETH_rETH": {
+        "address": "0xf9e06512342997AB79694a077132cE3F380144cD",
+        "block": 130459786,
+        "token0": "WETH",
+        "token1": "rETH",
+        "chainId": 10
+      },
+      "WBTC_tBTC": {
+        "address": "0x8949A8E02998d76D7a703cAC9eE7e0f529828011",
+        "block": 121644471,
+        "token0": "WBTC",
+        "token1": "tBTC",
+        "chainId": 10
+      },
+      "USDC_sUSD": {
+        "address": "0x3C01ec09D15D5450FC702DC4353b17Cd2978d8a5",
+        "block": 121639250,
+        "token0": "USDC",
+        "token1": "sUSD",
+        "chainId": 10
+      }
+    }
+  }
+  
