@@ -181,14 +181,16 @@ contract Deploy is Script, DeployScript, PoolParameters {
         
         deployStrategies(contracts);
         vm.stopBroadcast();
-        revert("success");
+        //revert("success");
     }
 
     function deployStrategies(CoreDeployment memory contracts) internal {
         IVeloDeployFactory.DeployParams[] memory params =
             getPoolDeployParams(contracts);
 
-        for (uint256 i = 0; i < params.length; i++) {
+        uint256 startIndex = 3;
+
+        for (uint256 i = startIndex; i < 4; i++) {
             IERC20(params[i].pool.token0()).approve(
                 address(contracts.deployFactory), params[i].maxAmount0
             );

@@ -81,27 +81,27 @@ library Constants {
     function getCoreDeployment() internal view returns (CoreDeployment memory) {
         if (block.chainid == 10) {
             return CoreDeployment({
-                core: Core(payable(0x0000000b87EdAf5259c21782f6e59f0b535E2800)),
-                ammModule: IVeloAmmModule(0x8763CB560902E084c1D91Be1f8cf677d27f6F068),
+                core: Core(payable(0x0000000cE42D4981513060aB7E50B9e5e2D19AF1)),
+                ammModule: IVeloAmmModule(0x3240847946E112Db9C7D3BBB4FC3CDc38Cb6bFB5),
                 depositWithdrawModule: IVeloDepositWithdrawModule(
-                    0x4797D1BeF612F3b434e46819a061AE3A1831F7a5
+                    0x794070c3CB9366F066D837BFdCDe67fD981CDA56
                 ),
-                oracle: IVeloOracle(0x184Aa6499597DB63A20c85C3A5f7C5c504Fb86bC),
-                strategyModule: IPulseStrategyModule(0xA809bC1F3184600BD015Fd4E1CBDc7C5c1A0fc86),
-                deployFactory: VeloDeployFactory(payable(0xb4eA34bDD77D75b97dF6b07DA0b2A3021B6D2227)),
-                lpWrapperImplementation: ILpWrapper(0x9B2C4b485b55e92cf0b0A7FC763443Ffa9d34514)
+                oracle: IVeloOracle(0xc96ED9f6C8f546DCf7953c9df8Ff270330F45213),
+                strategyModule: IPulseStrategyModule(0xdebea4AF183d323132AD5AB7C0b7Cd2091094eee),
+                deployFactory: VeloDeployFactory(payable(0xE46EC96906fc6dEC53De25F013639969Fe10180d)),
+                lpWrapperImplementation: ILpWrapper(0xfd61E98a352ed8cA2C364DCd5B6C21dc126959F5)
             });
         } else if (block.chainid == 8453) {
             return CoreDeployment({
-                core: Core(payable(0x0000000b87EdAf5259c21782f6e59f0b535E2800)),
-                ammModule: IVeloAmmModule(0x8763CB560902E084c1D91Be1f8cf677d27f6F068),
+                core: Core(payable(0x0000000cE42D4981513060aB7E50B9e5e2D19AF1)),
+                ammModule: IVeloAmmModule(0x3240847946E112Db9C7D3BBB4FC3CDc38Cb6bFB5),
                 depositWithdrawModule: IVeloDepositWithdrawModule(
-                    0x4797D1BeF612F3b434e46819a061AE3A1831F7a5
+                    0x794070c3CB9366F066D837BFdCDe67fD981CDA56
                 ),
-                oracle: IVeloOracle(0x184Aa6499597DB63A20c85C3A5f7C5c504Fb86bC),
-                strategyModule: IPulseStrategyModule(0xA809bC1F3184600BD015Fd4E1CBDc7C5c1A0fc86),
-                deployFactory: VeloDeployFactory(payable(0xb4eA34bDD77D75b97dF6b07DA0b2A3021B6D2227)),
-                lpWrapperImplementation: ILpWrapper(0x9B2C4b485b55e92cf0b0A7FC763443Ffa9d34514)
+                oracle: IVeloOracle(0xc96ED9f6C8f546DCf7953c9df8Ff270330F45213),
+                strategyModule: IPulseStrategyModule(0xdebea4AF183d323132AD5AB7C0b7Cd2091094eee),
+                deployFactory: VeloDeployFactory(payable(0xE46EC96906fc6dEC53De25F013639969Fe10180d)),
+                lpWrapperImplementation: ILpWrapper(0xfd61E98a352ed8cA2C364DCd5B6C21dc126959F5)
             });
         }
         revert("Unsupported chain");

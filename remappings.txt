@@ -4,3 +4,4 @@ forge-std/=lib/forge-std/src/
 @openzeppelin/contracts-upgradeable=lib/openzeppelin-contracts-upgradeable/contracts/
 @uniswap/v3-core/contracts/=lib/v3-core/contracts/
 @uniswap/v3-periphery/contracts/=lib/v3-periphery/contracts/
+@velodrome/lens=lib/velo/contracts/periphery/lens
