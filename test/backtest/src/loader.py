@@ -29,6 +29,7 @@ SWAP_TOPIC = '0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67
 ETH_CHAIN_ID = '1'
 OPT_CHAIN_ID = '10'
 BASE_CHAIN_ID = '8453'
+MODE_CHAIN_ID = '34443'
 
 ONE_MINUTE = 60
 ONE_HOUR = 60 * ONE_MINUTE
@@ -39,18 +40,21 @@ WRITE_PERIOD = ONE_HOUR * 12 # in seconds
 BLOCK_TIMESTAMP = {
     OPT_CHAIN_ID: [117044107, 1709672591],
     BASE_CHAIN_ID: [13904084, 1714597515],
-    ETH_CHAIN_ID: [20621191, 1724776991] # 21622076 1736849903
+    MODE_CHAIN_ID: [15586458, 1731340499],
+    ETH_CHAIN_ID: [20621191, 1724776991],
 }
 
 BLOCK_DURATION = {
     OPT_CHAIN_ID: 2.0,
     BASE_CHAIN_ID: 2.0,
-    ETH_CHAIN_ID: 12.06223692
+    MODE_CHAIN_ID: 2.0,
+    ETH_CHAIN_ID: 12.06223692,
 }
 
 BLOCK_WRITE_INTERVAL= {
     OPT_CHAIN_ID: 1000,
     BASE_CHAIN_ID: 1000,
+    MODE_CHAIN_ID: 1000,
     ETH_CHAIN_ID: 100
 }
 
@@ -113,6 +117,9 @@ class SwapLogLoader:
             self.logBatch = 20000
         elif self.chainId == BASE_CHAIN_ID:
             self.rpcUrl = os.getenv('BASE_RPC')
+            self.logBatch = 20000
+        elif self.chainId == MODE_CHAIN_ID:
+            self.rpcUrl = os.getenv('MODE_RPC')
             self.logBatch = 20000
         elif self.chainId == ETH_CHAIN_ID:
             self.rpcUrl = os.getenv('ETH_RPC')

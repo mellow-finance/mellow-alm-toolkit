@@ -83,7 +83,7 @@ class PlotStrategyResult():
             except Exception as e:
                 print(f"Error processing {file}: {e}")
 
-        tokenShow = self.token0 if self.showInToken else self.token1
+        tokenShow = self.token0 if self.showInToken == 0 else self.token1
 
         ax1.set_title("Absolute cost position change nominated in " + tokenShow + " for different width, price " + self.get_label_price())
         ax1.set_xlabel("Date")
@@ -115,7 +115,7 @@ class PlotStrategyResult():
             except Exception as e:
                 print(f"Error processing {file}: {e}")
 
-        tokenShow = self.token0 if self.showInToken else self.token1
+        tokenShow = self.token0 if self.showInToken == 0 else self.token1
         ax1.set_title("Absolute cost position change nominated in " + tokenShow + " for different width, price " + self.get_label_price())
         ax1.set_xlabel("Date")
         ax1.set_ylabel("Total change in " + tokenShow + ", %")
@@ -164,7 +164,7 @@ class PlotStrategyResult():
             ax1.plot(X_axis, Y - Y_avg, label=f"{labeles[index]}",linewidth=LINE_WIDTH)
             index += 1
 
-        tokenShow = self.token0 if self.showInToken else self.token1
+        tokenShow = self.token0 if self.showInToken == 0 else self.token1
         ax1.set_title("Realative strategy performance (F_i-<F_i>) nominated in " + tokenShow + " for different width, price " + self.get_label_price())
         ax1.set_xlabel("Date")
         ax1.set_ylabel("Relative performance deviation from average, %")

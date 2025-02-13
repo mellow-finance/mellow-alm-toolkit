@@ -7,9 +7,10 @@ import loader as L
 import plot as P
 
 # width for backtesting in tickSpacing's of pool
-LAZY_BASIC_WIDTH = list([8,16,24,32,48,56,64,72,80,88,96,104])
-#LAZY_BASIC_WIDTH = list([1,2,3,4,6,8,12,16,24,32,48,64])
-TAMPER_BASIC_WIDTH = list([2,4,6,8,12,16,24,32,48,64,96,128])
+LAZY_LOW_VOLATILE_WIDTH = list([1,2,3,4,6,8,16,24,32,48,56,64,72,80,88,96])
+LAZY_HIGH_VOLATILE_WIDTH = list([24,32,48,56,64,72,80,88,96,104,112,128,144,160,176,192])
+TAMPER_LOW_VOLATILE_WIDTH = list([2,4,6,8,12,16,24,32,48,64])
+TAMPER_HIGH_VOLATILE_WIDTH = list([32,48,64,80,96,112,128,144,160])
 COOL_DOWN = list([5,10,15,30])
 
 lazy_simulator = None
@@ -69,13 +70,13 @@ def plot_data(pool, strategy, cool_down):
 
 def simulate(pool, strategy, width = None):
     if strategy == SIM.LAZY_ASCENDING or strategy == SIM.LAZY_DESCENDING or strategy == SIM.LAZY_SYNCING:
-        width = LAZY_BASIC_WIDTH if width is None else width
+        width = LAZY_LOW_VOLATILE_WIDTH if width is None else width
         for minute in COOL_DOWN:
             cool_down = L.ONE_MINUTE * minute
             lazy(pool, width, strategy, cool_down)
             plot_data(pool, strategy, cool_down)
     else:
-        width = TAMPER_BASIC_WIDTH if width is None else width
+        width = TAMPER_LOW_VOLATILE_WIDTH if width is None else width
         for minute in COOL_DOWN:
             cool_down = L.ONE_MINUTE * minute
             tamper(pool, width, SIM.TAMPER_LOW, cool_down)
@@ -86,12 +87,17 @@ def simulate(pool, strategy, width = None):
             plot_data(pool, SIM.TAMPER_SENSITIVE, cool_down)
 
 if __name__ == "__main__":
+    #simulate(L.POOLS[L.MODE_CHAIN_ID]['WETH_USDC'], SIM.LAZY_SYNCING, LAZY_HIGH_VOLATILE_WIDTH)
+    #simulate(L.POOLS[L.MODE_CHAIN_ID]['WETH_MODE'], SIM.LAZY_SYNCING, LAZY_HIGH_VOLATILE_WIDTH)
+    #simulate(L.POOLS[L.MODE_CHAIN_ID]['WETH_XVELO'], SIM.LAZY_SYNCING, LAZY_HIGH_VOLATILE_WIDTH)
+    #simulate(L.POOLS[L.MODE_CHAIN_ID]['USDC_USDT'], SIM.TAMPER_LOW, TAMPER_LOW_VOLATILE_WIDTH)
+    simulate(L.POOLS[L.MODE_CHAIN_ID]['USDC_USDT'], SIM.TAMPER_LOW, TAMPER_HIGH_VOLATILE_WIDTH)
+    exit(1)
    # simulate(L.POOLS[L.OPT_CHAIN_ID]['WETH_VELO'], SIM.LAZY_SYNCING)
    # simulate(L.POOLS[L.OPT_CHAIN_ID]['USDC_wstETH'], SIM.LAZY_SYNCING)
    # simulate(L.POOLS[L.OPT_CHAIN_ID]['WBTC_tBTC'], SIM.LAZY_SYNCING)
    # simulate(L.POOLS[L.BASE_CHAIN_ID]['WETH_AERO'], SIM.LAZY_SYNCING)
     simulate(L.POOLS[L.BASE_CHAIN_ID]['WETH_AIXBT'], SIM.LAZY_SYNCING)
-    exit(1)
     simulate(L.POOLS[L.OPT_CHAIN_ID]['WETH_rETH'], SIM.TAMPER_LOW)
     simulate(L.POOLS[L.BASE_CHAIN_ID]['cbETH_WETH'], SIM.TAMPER_LOW)
     simulate(L.POOLS[L.OPT_CHAIN_ID]['USDC_sUSD'], SIM.TAMPER_LOW)

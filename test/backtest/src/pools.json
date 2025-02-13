@@ -174,6 +174,44 @@
         "token1": "sUSD",
         "chainId": 10
       }
+    },
+
+    "34443": {
+      "WETH_USDC": {
+        "address": "0x3Adf15f77F2911f84b0FE9DbdfF43ef60D40012c",
+        "block": 15515268,
+        "token0": "WETH",
+        "token1": "USDC",
+        "chainId": 34443
+      },
+      "WETH_MODE": {
+        "address": "0x1E41CDE26b30646bb3DBBea48A63708b00470c1c",
+        "block": 16641336,
+        "token0": "WETH",
+        "token1": "MODE",
+        "chainId": 34443
+      },
+      "WETH_XVELO": {
+        "address": "0xc2026f3fb6fc51F4EcAE40a88b4509cB6C143ed4",
+        "block": 15516035,
+        "token0": "WETH",
+        "token1": "XVELO",
+        "chainId": 34443
+      },
+      "USDC_USDT": {
+        "address": "0x9c92aA1d12dE024E219884e133B58895C27d6610",
+        "block": 15515597,
+        "token0": "USDC",
+        "token1": "USDT",
+        "chainId": 34443
+      },
+      "empty_pool": {
+        "address": "",
+        "block": 0,
+        "token0": "",
+        "token1": "",
+        "chainId": 34443
+      }
     }
   }
   
