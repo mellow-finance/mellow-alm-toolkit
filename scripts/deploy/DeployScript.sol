@@ -60,6 +60,7 @@ abstract contract DeployScript {
                 console2.log(predictedCoreAddress, i);
             }
         }
+        0x0000000cE42D4981513060aB7E50B9e5e2D19AF1 65105670
         revert("done"); */
         salt = bytes32(uint256(68845712)); // 0x0000000b87EdAf5259c21782f6e59f0b535E2800 68845712 Base+Optimism
 
