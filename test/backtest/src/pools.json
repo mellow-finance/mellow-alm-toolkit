@@ -205,6 +205,13 @@
         "token1": "USDT",
         "chainId": 34443
       },
+      "wMLT_USDC": {
+        "address": "0x8874846147AfF9a207d8f925a9Bc229e0eB0A4A6",
+        "block": 17387549,
+        "token0": "wMLT",
+        "token1": "USDC",
+        "chainId": 34443
+      },
       "empty_pool": {
         "address": "",
         "block": 0,
