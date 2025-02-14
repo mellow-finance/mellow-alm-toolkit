@@ -30,6 +30,8 @@ ETH_CHAIN_ID = '1'
 OPT_CHAIN_ID = '10'
 BASE_CHAIN_ID = '8453'
 MODE_CHAIN_ID = '34443'
+SONEIUM_CHAIN_ID = '1868'
+INK_CHAIN_ID = '57073'
 
 ONE_MINUTE = 60
 ONE_HOUR = 60 * ONE_MINUTE
@@ -41,6 +43,8 @@ BLOCK_TIMESTAMP = {
     OPT_CHAIN_ID: [117044107, 1709672591],
     BASE_CHAIN_ID: [13904084, 1714597515],
     MODE_CHAIN_ID: [15586458, 1731340499],
+    SONEIUM_CHAIN_ID: [1912725, 1736960201],
+    INK_CHAIN_ID: [3460297, 1736958708],
     ETH_CHAIN_ID: [20621191, 1724776991],
 }
 
@@ -48,6 +52,8 @@ BLOCK_DURATION = {
     OPT_CHAIN_ID: 2.0,
     BASE_CHAIN_ID: 2.0,
     MODE_CHAIN_ID: 2.0,
+    SONEIUM_CHAIN_ID: 2.0,
+    INK_CHAIN_ID: 1.0,
     ETH_CHAIN_ID: 12.06223692,
 }
 
@@ -55,6 +61,8 @@ BLOCK_WRITE_INTERVAL= {
     OPT_CHAIN_ID: 1000,
     BASE_CHAIN_ID: 1000,
     MODE_CHAIN_ID: 1000,
+    SONEIUM_CHAIN_ID: 1000,
+    INK_CHAIN_ID: 1000,
     ETH_CHAIN_ID: 100
 }
 
@@ -121,6 +129,12 @@ class SwapLogLoader:
         elif self.chainId == MODE_CHAIN_ID:
             self.rpcUrl = os.getenv('MODE_RPC')
             self.logBatch = 20000
+        elif self.chainId == SONEIUM_CHAIN_ID:
+            self.rpcUrl = os.getenv('SONEIUM_RPC')
+            self.logBatch = 20000
+        elif self.chainId == INK_CHAIN_ID:
+            self.rpcUrl = os.getenv('INK_RPC')
+            self.logBatch = 10000
         elif self.chainId == ETH_CHAIN_ID:
             self.rpcUrl = os.getenv('ETH_RPC')
             self.logBatch = 1000
@@ -201,13 +215,13 @@ class SwapLogLoader:
             try:
                 logs = self.rpc.eth.get_logs(filter_params)
             except Exception as e:
-                if "Log response size exceeded" in str(e):
+                if "Log response size exceeded" in str(e) or "Response is too big" in str(e):
                     self.logBatch = int(9 * self.logBatch // 10)
                     toBlock = fromBlock + self.logBatch
                     print(f"log batch reduced to {self.logBatch}")
                 else:
-                    print(f"an error {e} during get_logs, sleep for 1 min")
-                    time.sleep(60)
+                    print(f"an error {e} during get_logs batch size {self.logBatch}, sleep for 10 sec")
+                    time.sleep(10)
                 continue
 
             for log in logs:

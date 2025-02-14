@@ -219,6 +219,62 @@
         "token1": "",
         "chainId": 34443
       }
+    },
+
+    "1868": {
+      "WETH_USDCe": {
+        "address": "0x5441c4c5cc00D33bd9409F742D511Ee01db1667B",
+        "block": 1963996,
+        "token0": "WETH",
+        "token1": "USDCe",
+        "chainId": 1868
+      },
+      "ASTR_nsASTR": {
+        "address": "0xD756D54Ec07eb0dfd136c0D5749Cd22b67310066",
+        "block": 2013616,
+        "token0": "ASTR",
+        "token1": "nsASTR",
+        "chainId": 1868
+      },
+      "ASTR_WETH": {
+        "address": "0xB44795454376C7127f89B1cC0d56F403E70CA952",
+        "block": 2012449,
+        "token0": "ASTR",
+        "token1": "WETH",
+        "chainId": 1868
+      },
+      "USDT_USDCe": {
+        "address": "0x3844fDD68fD40319f977e9d8f15e7f5d61131ec2",
+        "block": 2012725,
+        "token0": "USDT",
+        "token1": "USDCe",
+        "chainId": 1868
+      }
+    },
+
+
+    "57073": {
+      "USDT_USDCe": {
+        "address": "0x317728bcCE5d1C2895b71b01eEBbB6989ae504aE",
+        "block": 4118531,
+        "token0": "USDT",
+        "token1": "USDCe",
+        "chainId": 57073
+      },
+      "USDT_WETH": {
+        "address": "0xaC7fC3e9b9d3377a90650fe62B858fF56bD841C9",
+        "block": 4118227,
+        "token0": "USDT",
+        "token1": "WETH",
+        "chainId": 57073
+      },
+      "WETH_USDCe": {
+        "address": "0x67ce303f24b3841698891Cece349072856B80A9C",
+        "block": 3460297,
+        "token0": "WETH",
+        "token1": "USDCe",
+        "chainId": 57073
+      }
     }
   }
   
