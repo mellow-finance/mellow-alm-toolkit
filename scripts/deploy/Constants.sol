@@ -116,7 +116,7 @@ library Constants {
                 positionManager: SONEIUM_POSITION_MANAGER,
                 isPoolSelector: SONEIUM_IS_POOL_SELECTOR,
                 weth: SONEIUM_WETH,
-                lpWrapperAdmin: OPTIMISM_LP_WRAPPER_ADMIN,
+                lpWrapperAdmin: SONEIUM_MELLOW_ADMIN,
                 lpWrapperManager: SONEIUM_LP_WRAPPER_MANAGER,
                 minInitialTotalSupply: OPTIMISM_MIN_INITIAL_TOTAL_SUPPLY,
                 factoryOperator: OPTIMISM_FACTORY_OPERATOR,
@@ -144,6 +144,18 @@ library Constants {
                 lpWrapperImplementation: ILpWrapper(0xfd61E98a352ed8cA2C364DCd5B6C21dc126959F5)
             });
         } else if (block.chainid == 8453) {
+            return CoreDeployment({
+                core: Core(payable(0x0000000cE42D4981513060aB7E50B9e5e2D19AF1)),
+                ammModule: IVeloAmmModule(0x3240847946E112Db9C7D3BBB4FC3CDc38Cb6bFB5),
+                depositWithdrawModule: IVeloDepositWithdrawModule(
+                    0x794070c3CB9366F066D837BFdCDe67fD981CDA56
+                ),
+                oracle: IVeloOracle(0xc96ED9f6C8f546DCf7953c9df8Ff270330F45213),
+                strategyModule: IPulseStrategyModule(0xdebea4AF183d323132AD5AB7C0b7Cd2091094eee),
+                deployFactory: VeloDeployFactory(payable(0xE46EC96906fc6dEC53De25F013639969Fe10180d)),
+                lpWrapperImplementation: ILpWrapper(0xfd61E98a352ed8cA2C364DCd5B6C21dc126959F5)
+            });
+        }else if (block.chainid == 1868) {
             return CoreDeployment({
                 core: Core(payable(0x0000000cE42D4981513060aB7E50B9e5e2D19AF1)),
                 ammModule: IVeloAmmModule(0x3240847946E112Db9C7D3BBB4FC3CDc38Cb6bFB5),

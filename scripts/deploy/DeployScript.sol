@@ -84,7 +84,7 @@ abstract contract DeployScript {
         console2.log("Predicted Core address:", predictedCoreAddress);
         address deployed = Create2.deploy(0, salt, bytecode);
         console2.log("Deployed  Core address:", deployed);
-        require(deployed == 0x0000000cE42D4981513060aB7E50B9e5e2D19AF1); // Base+Optimism
+        require(deployed == 0x0000000cE42D4981513060aB7E50B9e5e2D19AF1); // Base+Optimism+Soneium
 
         contracts.core = Core(payable(deployed));
         //------------------------------------------
@@ -154,7 +154,7 @@ contract Deploy is Script, DeployScript, PoolParameters {
     address immutable FACTORY_OPERATOR = vm.addr(factoryPrivateKey);
 
     function run() external {
-                 
+/*                  
         CoreDeploymentParams memory coreDeploymentParams = Constants.getDeploymentParams();
 
         vm.startBroadcast(deployerPrivateKey);
@@ -176,16 +176,16 @@ contract Deploy is Script, DeployScript, PoolParameters {
         console2.log("         Factory Operator: ", address(coreDeploymentParams.factoryOperator));
         console2.log("     Core LpWrapper Admin: ", address(coreDeploymentParams.lpWrapperAdmin));
         console2.log("   Core LpWrapper Manager: ", address(coreDeploymentParams.lpWrapperManager));
+        console2.log("        Protocol treasury: ", address(coreDeploymentParams.protocolParams.treasury));
 
         require(OPERATOR == coreDeploymentParams.coreOperator);
         require(FACTORY_OPERATOR == coreDeploymentParams.factoryOperator);
-
         deployStrategies(contracts);
-
-        revert("success");
+ */
+       // revert("success");
         
-       /*
         CoreDeployment memory contracts = Constants.getCoreDeployment();
+
         console2.log("         FACTORY_OPERATOR: ", FACTORY_OPERATOR);
         console2.log("                     Core: ", address(contracts.core));
         console2.log("        VeloDeployFactory: ", address(contracts.deployFactory));
@@ -195,7 +195,8 @@ contract Deploy is Script, DeployScript, PoolParameters {
         console2.log("VeloDepositWithdrawModule: ", address(contracts.depositWithdrawModule));
         console2.log("               VeloOracle: ", address(contracts.oracle));
         
-        deployStrategies(contracts); */
+        deployStrategies(contracts); 
+       // revert("success");
     }
 
     function deployStrategies(CoreDeployment memory contracts) internal {
@@ -203,9 +204,9 @@ contract Deploy is Script, DeployScript, PoolParameters {
         IVeloDeployFactory.DeployParams[] memory params =
             getPoolDeployParams(contracts);
 
-        uint256 startIndex = 0;
+        uint256 startIndex = 2;
 
-        for (uint256 i = startIndex; i < 2; i++) {
+        for (uint256 i = startIndex; i < 5; i++) {
             IERC20(params[i].pool.token0()).approve(
                 address(contracts.deployFactory), params[i].maxAmount0
             );
