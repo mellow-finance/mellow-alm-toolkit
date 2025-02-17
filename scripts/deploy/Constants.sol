@@ -14,14 +14,17 @@ library Constants {
     address internal constant OPTIMISM_DEPLOYER = 0xBe440AeE8c8D54aC7bb7D93506460492Df5812ea; // actual deployer
     address internal constant OPTIMISM_MELLOW_ADMIN = 0x893df22649247AD4e57E4926731F9Cf0dA344829; // actual mellow msig
     address internal constant MODE_MELLOW_ADMIN = 0x893df22649247AD4e57E4926731F9Cf0dA344829; // actual mellow msig
+    address internal constant SONEIUM_MELLOW_ADMIN = 0x978ba0e402e5Da4110D7243412887986cEf35e8c; // actual mellow msig
 
     address internal constant OPTIMISM_POSITION_MANAGER = 0x416b433906b1B72FA758e166e239c43d68dC6F29;
     address internal constant BASE_POSITION_MANAGER = 0x827922686190790b37229fd06084350E74485b72;
     address internal constant MODE_POSITION_MANAGER = 0x991d5546C4B442B4c5fdc4c8B8b8d131DEB24702;
+    address internal constant SONEIUM_POSITION_MANAGER = 0x991d5546C4B442B4c5fdc4c8B8b8d131DEB24702;
 
     bytes4 internal constant OPTIMISM_IS_POOL_SELECTOR = bytes4(keccak256("isPair(address)"));
     bytes4 internal constant BASE_IS_POOL_SELECTOR = bytes4(keccak256("isPool(address)"));
     bytes4 internal constant MODE_IS_POOL_SELECTOR = bytes4(keccak256("isPair(address)"));
+    bytes4 internal constant SONEIUM_IS_POOL_SELECTOR = bytes4(keccak256("isPair(address)"));
 
     address internal constant OPTIMISM_SWAP_ROUTER = 0x0792a633F0c19c351081CF4B211F68F79bCc9676;
 
@@ -30,13 +33,16 @@ library Constants {
     address internal constant OPTIMISM_WETH = 0x4200000000000000000000000000000000000006;
     address internal constant BASE_WETH = 0x4200000000000000000000000000000000000006;
     address internal constant MODE_WETH = 0x4200000000000000000000000000000000000006;
+    address internal constant SONEIUM_WETH = 0x4200000000000000000000000000000000000006;
 
     address internal constant BASE_WSTETH = 0xc1CBa3fCea344f92D9239c08C0568f6F2F0ee452;
     address internal constant OPTIMISM_LP_WRAPPER_ADMIN = OPTIMISM_MELLOW_ADMIN; // mellow msig
     address internal constant OPTIMISM_LP_WRAPPER_MANAGER =
         0x64781bebFE7eD2f49aB55225B4E097EBbc3AfB38; // msig Velo+Mellow
     address internal constant BASE_LP_WRAPPER_MANAGER = 0x64781bebFE7eD2f49aB55225B4E097EBbc3AfB38; // msig Velo+Mellow
-    address internal constant MODE_LP_WRAPPER_MANAGER = 0x64781bebFE7eD2f49aB55225B4E097EBbc3AfB38; // msig Velo+Mellow
+    address internal constant MODE_LP_WRAPPER_MANAGER = 0xA4443abEb1A04CDcdff5939Ae9Fa3d2e021D7DC9; // msig Velo+Mellow
+    address internal constant SONEIUM_LP_WRAPPER_MANAGER = 0x660b1d9DF381B8141F066653CeBc047d5eD690D5; // msig Velo+Mellow
+    address internal constant INK_LP_WRAPPER_MANAGER = 0xDaC1293A165c073B787b60223c76Dd8c3f538d8C; // msig Velo+Mellow
 
     uint256 internal constant OPTIMISM_MIN_INITIAL_TOTAL_SUPPLY = 1000 wei;
     address internal constant OPTIMISM_FACTORY_OPERATOR = 0xd82019856027bf7E7183Bd76FE6ed31e2CcE534C; // actual
@@ -44,6 +50,7 @@ library Constants {
 
     address internal constant OPTIMISM_MELLOW_TREASURY = 0xf0E36e9186Dbe927505d2588a6E6D56083Dd4a56; // actual msig mellow
     address internal constant MODE_MELLOW_TREASURY = 0xf0E36e9186Dbe927505d2588a6E6D56083Dd4a56; // actual msig mellow
+    address internal constant SONEIUM_MELLOW_TREASURY = 0x978ba0e402e5Da4110D7243412887986cEf35e8c; // actual msig mellow
     uint32 internal constant OPTIMISM_FEE_D9 = 1e8; // 10% fee
 
     function getDeploymentParams()
@@ -99,6 +106,23 @@ library Constants {
                 coreOperator: OPTIMISM_CORE_OPERATOR,
                 protocolParams: IVeloAmmModule.ProtocolParams({
                     treasury: MODE_MELLOW_TREASURY,
+                    feeD9: OPTIMISM_FEE_D9
+                })
+            });
+        } else if (block.chainid == 1868) {
+            return DeployScript.CoreDeploymentParams({
+                deployer: OPTIMISM_DEPLOYER,
+                mellowAdmin: SONEIUM_MELLOW_ADMIN,
+                positionManager: SONEIUM_POSITION_MANAGER,
+                isPoolSelector: SONEIUM_IS_POOL_SELECTOR,
+                weth: SONEIUM_WETH,
+                lpWrapperAdmin: OPTIMISM_LP_WRAPPER_ADMIN,
+                lpWrapperManager: SONEIUM_LP_WRAPPER_MANAGER,
+                minInitialTotalSupply: OPTIMISM_MIN_INITIAL_TOTAL_SUPPLY,
+                factoryOperator: OPTIMISM_FACTORY_OPERATOR,
+                coreOperator: OPTIMISM_CORE_OPERATOR,
+                protocolParams: IVeloAmmModule.ProtocolParams({
+                    treasury: SONEIUM_MELLOW_TREASURY,
                     feeD9: OPTIMISM_FEE_D9
                 })
             });

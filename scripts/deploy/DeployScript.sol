@@ -28,10 +28,10 @@ abstract contract DeployScript {
         returns (CoreDeployment memory contracts)
     {
         console2.log("Deployer address:", params.deployer);
-        for (uint256 index = 0; index < 206; index++) {
+        for (uint256 index = 0; index < 1; index++) {
             address(params.deployer).call{value: 1 ether/1000000}("");
         }
-
+        //return contracts;
         contracts.ammModule = new VeloAmmModule(
             INonfungiblePositionManager(params.positionManager), params.isPoolSelector
         );
@@ -179,11 +179,12 @@ contract Deploy is Script, DeployScript, PoolParameters {
 
         require(OPERATOR == coreDeploymentParams.coreOperator);
         require(FACTORY_OPERATOR == coreDeploymentParams.factoryOperator);
+
+        deployStrategies(contracts);
+
         revert("success");
         
-        //
-       /*  vm.startBroadcast(factoryPrivateKey);
-
+       /*
         CoreDeployment memory contracts = Constants.getCoreDeployment();
         console2.log("         FACTORY_OPERATOR: ", FACTORY_OPERATOR);
         console2.log("                     Core: ", address(contracts.core));
@@ -194,17 +195,17 @@ contract Deploy is Script, DeployScript, PoolParameters {
         console2.log("VeloDepositWithdrawModule: ", address(contracts.depositWithdrawModule));
         console2.log("               VeloOracle: ", address(contracts.oracle));
         
-        deployStrategies(contracts);
-        vm.stopBroadcast(); */
+        deployStrategies(contracts); */
     }
 
     function deployStrategies(CoreDeployment memory contracts) internal {
+        vm.startBroadcast(factoryPrivateKey);
         IVeloDeployFactory.DeployParams[] memory params =
             getPoolDeployParams(contracts);
 
-        uint256 startIndex = 3;
+        uint256 startIndex = 0;
 
-        for (uint256 i = startIndex; i < 4; i++) {
+        for (uint256 i = startIndex; i < 2; i++) {
             IERC20(params[i].pool.token0()).approve(
                 address(contracts.deployFactory), params[i].maxAmount0
             );
@@ -217,5 +218,6 @@ contract Deploy is Script, DeployScript, PoolParameters {
 
             console2.log("Pool/LpWrapper addresses: ", address(params[i].pool), address(lpWrapper));
         }
+        vm.stopBroadcast();
     }
 }
