@@ -111,7 +111,7 @@ contract Unit is Fixture {
             abi.encode(
                 IVeloAmmModule.ProtocolParams({
                     treasury: Constants.OPTIMISM_MELLOW_TREASURY,
-                    feeD9: Constants.OPTIMISM_FEE_D9
+                    feeD9: Constants.FEE_D9
                 })
             )
         );
@@ -349,7 +349,7 @@ contract Unit is Fixture {
             abi.encode(
                 IVeloAmmModule.ProtocolParams({
                     treasury: Constants.OPTIMISM_MELLOW_TREASURY,
-                    feeD9: Constants.OPTIMISM_FEE_D9
+                    feeD9: Constants.FEE_D9
                 })
             )
         );
@@ -581,7 +581,7 @@ contract Unit is Fixture {
             abi.encode(
                 IVeloAmmModule.ProtocolParams({
                     treasury: address(0),
-                    feeD9: Constants.OPTIMISM_FEE_D9
+                    feeD9: Constants.FEE_D9
                 })
             )
         );
@@ -594,7 +594,7 @@ contract Unit is Fixture {
         bytes memory protocolParams = abi.encode(
             IVeloAmmModule.ProtocolParams({
                 treasury: Constants.OPTIMISM_MELLOW_TREASURY,
-                feeD9: Constants.OPTIMISM_FEE_D9
+                feeD9: Constants.FEE_D9
             })
         );
 
@@ -673,7 +673,7 @@ contract Unit is Fixture {
             abi.encode(
                 IVeloAmmModule.ProtocolParams({
                     treasury: Constants.OPTIMISM_MELLOW_TREASURY,
-                    feeD9: Constants.OPTIMISM_FEE_D9
+                    feeD9: Constants.FEE_D9
                 })
             )
         );

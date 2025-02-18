@@ -448,7 +448,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
 
             VeloAmmModule ammModule = new VeloAmmModule(
                 INonfungiblePositionManager(Constants.OPTIMISM_POSITION_MANAGER),
-                Constants.OPTIMISM_IS_POOL_SELECTOR
+                Constants.IS_PAIR_SELECTOR
             );
 
             (bool isRebalanceRequired, ICore.TargetPositionInfo memory target) =
@@ -493,7 +493,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
             IVeloAmmModule ammModule = IVeloAmmModule(
                 new VeloAmmModule(
                     INonfungiblePositionManager(Constants.OPTIMISM_POSITION_MANAGER),
-                    Constants.OPTIMISM_IS_POOL_SELECTOR
+                    Constants.IS_PAIR_SELECTOR
                 )
             );
 
