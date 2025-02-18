@@ -28,10 +28,12 @@ abstract contract DeployScript {
         returns (CoreDeployment memory contracts)
     {
         console2.log("Deployer address:", params.deployer);
-        for (uint256 index = 0; index < 105; index++) {
+        for (uint256 index = 0; index < 5; index++) {
             address(params.deployer).call{value: 1 ether/1000000}("");
         }
-        // return contracts;
+
+       // return contracts;
+
         contracts.ammModule = new VeloAmmModule(
             INonfungiblePositionManager(params.positionManager), params.isPoolSelector
         );
@@ -193,7 +195,7 @@ contract Deploy is Script, DeployScript, PoolParameters {
         CoreDeployment memory contracts = deployCore(coreDeploymentParams);
         vm.stopBroadcast();
         
-        //deployStrategies(contracts);
+        deployStrategies(contracts);
 
         revert("success");
         
@@ -217,9 +219,9 @@ contract Deploy is Script, DeployScript, PoolParameters {
         IVeloDeployFactory.DeployParams[] memory params =
             getPoolDeployParams(contracts);
 
-        uint256 startIndex = 2;
+        uint256 startIndex = 0;
 
-        for (uint256 i = startIndex; i < 5; i++) {
+        for (uint256 i = startIndex; i < 3; i++) {
             IERC20(params[i].pool.token0()).approve(
                 address(contracts.deployFactory), params[i].maxAmount0
             );
