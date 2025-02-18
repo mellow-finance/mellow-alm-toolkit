@@ -28,10 +28,10 @@ abstract contract DeployScript {
         returns (CoreDeployment memory contracts)
     {
         console2.log("Deployer address:", params.deployer);
-        for (uint256 index = 0; index < 1; index++) {
+        for (uint256 index = 0; index < 105; index++) {
             address(params.deployer).call{value: 1 ether/1000000}("");
         }
-        //return contracts;
+        // return contracts;
         contracts.ammModule = new VeloAmmModule(
             INonfungiblePositionManager(params.positionManager), params.isPoolSelector
         );
@@ -84,7 +84,7 @@ abstract contract DeployScript {
         console2.log("Predicted Core address:", predictedCoreAddress);
         address deployed = Create2.deploy(0, salt, bytecode);
         console2.log("Deployed  Core address:", deployed);
-        require(deployed == 0x0000000cE42D4981513060aB7E50B9e5e2D19AF1); // Base+Optimism+Soneium
+        require(deployed == 0x0000000cE42D4981513060aB7E50B9e5e2D19AF1, "unexpected Core address"); // Base+Optimism+Soneium+Mode
 
         contracts.core = Core(payable(deployed));
         //------------------------------------------
@@ -96,6 +96,8 @@ abstract contract DeployScript {
             contracts.strategyModule,
             address(contracts.lpWrapperImplementation)
         );
+
+        checkDeploymentAddresses(contracts);
 
         contracts.core.setProtocolParams(abi.encode(params.protocolParams));
 
@@ -143,6 +145,37 @@ abstract contract DeployScript {
     }
 
     function testDeployScript() internal pure {}
+
+    function checkDeploymentAddresses(CoreDeployment memory deployed) internal {
+        CoreDeploymentParams memory coreDeploymentParams = Constants.getDeploymentParams();
+
+        CoreDeployment memory expected = Constants.getCoreDeployment();
+        require(address(expected.core) == address(deployed.core), "core mismatch");
+        require(address(expected.ammModule) == address(deployed.ammModule), "ammModule mismatch");
+        require(address(expected.depositWithdrawModule) == address(deployed.depositWithdrawModule), "depositWithdrawModule mismatch");
+        require(address(expected.oracle) == address(deployed.oracle), "oracle mismatch");
+        require(address(expected.strategyModule) == address(deployed.strategyModule), "strategyModule mismatch");
+        require(address(expected.deployFactory) == address(deployed.deployFactory), "deployFactory mismatch");
+        require(address(expected.lpWrapperImplementation) == address(deployed.lpWrapperImplementation), "lpWrapperImplementation mismatch");
+
+        console2.log(
+            "----------- Mellow ALM deployment addresses at chain ID", block.chainid, "-----------"
+        );
+        console2.log("                     Core: ", address(deployed.core));
+        console2.log("        VeloDeployFactory: ", address(deployed.deployFactory));
+        console2.log("      PulseStrategyModule: ", address(deployed.strategyModule));
+        console2.log("                LpWrapper: ", address(deployed.lpWrapperImplementation));
+        console2.log("            VeloAmmModule: ", address(deployed.ammModule));
+        console2.log("VeloDepositWithdrawModule: ", address(deployed.depositWithdrawModule));
+        console2.log("               VeloOracle: ", address(deployed.oracle));
+        console2.log("                 Deployer: ", address(coreDeploymentParams.deployer));
+        console2.log("               Core Admin: ", address(coreDeploymentParams.mellowAdmin));
+        console2.log("            Core Operator: ", address(coreDeploymentParams.coreOperator));
+        console2.log("         Factory Operator: ", address(coreDeploymentParams.factoryOperator));
+        console2.log("     Core LpWrapper Admin: ", address(coreDeploymentParams.lpWrapperAdmin));
+        console2.log("   Core LpWrapper Manager: ", address(coreDeploymentParams.lpWrapperManager));
+        console2.log("        Protocol treasury: ", address(coreDeploymentParams.protocolParams.treasury));
+    }
 }
 
 contract Deploy is Script, DeployScript, PoolParameters {
@@ -154,37 +187,20 @@ contract Deploy is Script, DeployScript, PoolParameters {
     address immutable FACTORY_OPERATOR = vm.addr(factoryPrivateKey);
 
     function run() external {
-/*                  
+                  
         CoreDeploymentParams memory coreDeploymentParams = Constants.getDeploymentParams();
+        require(OPERATOR == coreDeploymentParams.coreOperator);
+        require(FACTORY_OPERATOR == coreDeploymentParams.factoryOperator);
 
         vm.startBroadcast(deployerPrivateKey);
         CoreDeployment memory contracts = deployCore(coreDeploymentParams);
         vm.stopBroadcast();
-        console2.log(
-            "----------- Mellow ALM deployment addresses at chain ID", block.chainid, "-----------"
-        );
-        console2.log("                     Core: ", address(contracts.core));
-        console2.log("        VeloDeployFactory: ", address(contracts.deployFactory));
-        console2.log("      PulseStrategyModule: ", address(contracts.strategyModule));
-        console2.log("                LpWrapper: ", address(contracts.lpWrapperImplementation));
-        console2.log("            VeloAmmModule: ", address(contracts.ammModule));
-        console2.log("VeloDepositWithdrawModule: ", address(contracts.depositWithdrawModule));
-        console2.log("               VeloOracle: ", address(contracts.oracle));
-        console2.log("                 Deployer: ", address(coreDeploymentParams.deployer));
-        console2.log("               Core Admin: ", address(coreDeploymentParams.mellowAdmin));
-        console2.log("            Core Operator: ", address(coreDeploymentParams.coreOperator));
-        console2.log("         Factory Operator: ", address(coreDeploymentParams.factoryOperator));
-        console2.log("     Core LpWrapper Admin: ", address(coreDeploymentParams.lpWrapperAdmin));
-        console2.log("   Core LpWrapper Manager: ", address(coreDeploymentParams.lpWrapperManager));
-        console2.log("        Protocol treasury: ", address(coreDeploymentParams.protocolParams.treasury));
-
-        require(OPERATOR == coreDeploymentParams.coreOperator);
-        require(FACTORY_OPERATOR == coreDeploymentParams.factoryOperator);
-        deployStrategies(contracts);
- */
-       // revert("success");
         
-        CoreDeployment memory contracts = Constants.getCoreDeployment();
+        //deployStrategies(contracts);
+
+        revert("success");
+        
+/*         CoreDeployment memory contracts = Constants.getCoreDeployment();
 
         console2.log("         FACTORY_OPERATOR: ", FACTORY_OPERATOR);
         console2.log("                     Core: ", address(contracts.core));
@@ -195,7 +211,7 @@ contract Deploy is Script, DeployScript, PoolParameters {
         console2.log("VeloDepositWithdrawModule: ", address(contracts.depositWithdrawModule));
         console2.log("               VeloOracle: ", address(contracts.oracle));
         
-        deployStrategies(contracts); 
+        deployStrategies(contracts);  */
        // revert("success");
     }
 
