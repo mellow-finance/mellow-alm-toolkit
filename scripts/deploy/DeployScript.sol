@@ -195,7 +195,7 @@ contract Deploy is Script, DeployScript, PoolParameters {
         CoreDeployment memory contracts = deployCore(coreDeploymentParams);
         vm.stopBroadcast();
         
-        deployStrategies(contracts);
+    //    deployStrategies(contracts);
 
         revert("success");
         
