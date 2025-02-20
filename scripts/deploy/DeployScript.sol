@@ -187,19 +187,19 @@ contract Deploy is Script, DeployScript, PoolParameters {
 
     function run() external {
                   
-        CoreDeploymentParams memory coreDeploymentParams = Constants.getDeploymentParams();
+/*         CoreDeploymentParams memory coreDeploymentParams = Constants.getDeploymentParams();
         require(OPERATOR == coreDeploymentParams.coreOperator);
         require(FACTORY_OPERATOR == coreDeploymentParams.factoryOperator);
 
         vm.startBroadcast(deployerPrivateKey);
         CoreDeployment memory contracts = deployCore(coreDeploymentParams);
         vm.stopBroadcast();
-        
-    //    deployStrategies(contracts);
+        deployStrategies(contracts);
 
-        revert("success");
+        //revert("success");
         
-/*         CoreDeployment memory contracts = Constants.getCoreDeployment();
+         */
+        CoreDeployment memory contracts = Constants.getCoreDeployment();
 
         console2.log("         FACTORY_OPERATOR: ", FACTORY_OPERATOR);
         console2.log("                     Core: ", address(contracts.core));
@@ -210,8 +210,8 @@ contract Deploy is Script, DeployScript, PoolParameters {
         console2.log("VeloDepositWithdrawModule: ", address(contracts.depositWithdrawModule));
         console2.log("               VeloOracle: ", address(contracts.oracle));
         
-        deployStrategies(contracts);  */
-       // revert("success");
+        deployStrategies(contracts);  
+      //  revert("success");
     }
 
     function deployStrategies(CoreDeployment memory contracts) internal {
@@ -219,9 +219,10 @@ contract Deploy is Script, DeployScript, PoolParameters {
         IVeloDeployFactory.DeployParams[] memory params =
             getPoolDeployParams(contracts);
 
-        uint256 startIndex = 0;
+        uint256 startIndex = 3;
+        uint256 endIndex = 3;
 
-        for (uint256 i = startIndex; i < 3; i++) {
+        for (uint256 i = startIndex; i <= endIndex; i++) {
             IERC20(params[i].pool.token0()).approve(
                 address(contracts.deployFactory), params[i].maxAmount0
             );
