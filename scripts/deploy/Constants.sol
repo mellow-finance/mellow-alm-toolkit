@@ -10,18 +10,25 @@ library Constants {
     address internal constant TEST_OPTIMISM_DEPLOYER = 0xf785Ee037A85aa079e84b1ba8674E4091f93d304;
     address internal constant TEST_OPTIMISM_OPERATOR_ADMIN =
         0x63B6E180e86E845d47Ce34324F8409ea898AD13c;
+
     //==============================================================================================
     address internal constant OPTIMISM_DEPLOYER = 0xBe440AeE8c8D54aC7bb7D93506460492Df5812ea; // actual deployer
+    //==============================================================================================
+
     address internal constant OPTIMISM_MELLOW_ADMIN = 0x893df22649247AD4e57E4926731F9Cf0dA344829; // actual mellow msig
     address internal constant SONEIUM_MELLOW_ADMIN = 0x978ba0e402e5Da4110D7243412887986cEf35e8c; // actual mellow msig
     address internal constant MODE_MELLOW_ADMIN = 0x978ba0e402e5Da4110D7243412887986cEf35e8c; // actual mellow msig
     address internal constant INK_MELLOW_ADMIN = 0xF5c8311038eE0f419adeE240F3CB4f061a9eecfd; // actual mellow msig
+    address internal constant SWELL_MELLOW_ADMIN = address(0); // actual mellow msig
+    address internal constant UNI_MELLOW_ADMIN = address(0); // actual mellow msig
 
     address internal constant OPTIMISM_POSITION_MANAGER = 0x416b433906b1B72FA758e166e239c43d68dC6F29;
     address internal constant BASE_POSITION_MANAGER = 0x827922686190790b37229fd06084350E74485b72;
     address internal constant SONEIUM_POSITION_MANAGER = 0x991d5546C4B442B4c5fdc4c8B8b8d131DEB24702;
     address internal constant MODE_POSITION_MANAGER = 0x991d5546C4B442B4c5fdc4c8B8b8d131DEB24702;
     address internal constant INK_POSITION_MANAGER = 0x991d5546C4B442B4c5fdc4c8B8b8d131DEB24702;
+    address internal constant SWELL_POSITION_MANAGER = 0x991d5546C4B442B4c5fdc4c8B8b8d131DEB24702;
+    address internal constant UNI_POSITION_MANAGER = 0x991d5546C4B442B4c5fdc4c8B8b8d131DEB24702;
 
     bytes4 internal constant IS_PAIR_SELECTOR = bytes4(keccak256("isPair(address)"));
     bytes4 internal constant IS_POOL_SELECTOR = bytes4(keccak256("isPool(address)"));
@@ -35,6 +42,8 @@ library Constants {
     address internal constant SONEIUM_WETH = 0x4200000000000000000000000000000000000006;
     address internal constant MODE_WETH = 0x4200000000000000000000000000000000000006;
     address internal constant INK_WETH = 0x4200000000000000000000000000000000000006;
+    address internal constant SWELL_WETH = 0x4200000000000000000000000000000000000006;
+    address internal constant UNI_WETH = 0x4200000000000000000000000000000000000006;
 
     address internal constant BASE_WSTETH = 0xc1CBa3fCea344f92D9239c08C0568f6F2F0ee452;
 
@@ -43,6 +52,8 @@ library Constants {
     address internal constant SONEIUM_LP_WRAPPER_ADMIN = SONEIUM_MELLOW_ADMIN; // mellow msig
     address internal constant MODE_LP_WRAPPER_ADMIN = MODE_MELLOW_ADMIN; // mellow msig
     address internal constant INK_LP_WRAPPER_ADMIN = INK_MELLOW_ADMIN; // mellow msig
+    address internal constant SWELL_LP_WRAPPER_ADMIN = SWELL_MELLOW_ADMIN; // mellow msig
+    address internal constant UNI_LP_WRAPPER_ADMIN = UNI_MELLOW_ADMIN; // mellow msig
 
     address internal constant OPTIMISM_LP_WRAPPER_MANAGER =
         0x64781bebFE7eD2f49aB55225B4E097EBbc3AfB38; // msig Velo+Mellow
@@ -50,6 +61,8 @@ library Constants {
     address internal constant MODE_LP_WRAPPER_MANAGER = 0xA4443abEb1A04CDcdff5939Ae9Fa3d2e021D7DC9; // msig Velo+Mellow
     address internal constant SONEIUM_LP_WRAPPER_MANAGER = 0x660b1d9DF381B8141F066653CeBc047d5eD690D5; // msig Velo+Mellow
     address internal constant INK_LP_WRAPPER_MANAGER = 0xDaC1293A165c073B787b60223c76Dd8c3f538d8C; // msig Velo+Mellow
+    address internal constant SWELL_LP_WRAPPER_MANAGER = 0xDaC1293A165c073B787b60223c76Dd8c3f538d8C; // msig Velo+Mellow
+    address internal constant UNI_LP_WRAPPER_MANAGER = 0xDaC1293A165c073B787b60223c76Dd8c3f538d8C; // msig Velo+Mellow
 
     uint256 internal constant OPTIMISM_MIN_INITIAL_TOTAL_SUPPLY = 1000 wei;
     address internal constant FACTORY_OPERATOR = 0xd82019856027bf7E7183Bd76FE6ed31e2CcE534C; // actual
@@ -60,6 +73,8 @@ library Constants {
     address internal constant MODE_MELLOW_TREASURY = MODE_MELLOW_ADMIN; // actual msig mellow
     address internal constant SONEIUM_MELLOW_TREASURY = SONEIUM_MELLOW_ADMIN; // actual msig mellow
     address internal constant INK_MELLOW_TREASURY = INK_MELLOW_ADMIN; // actual msig mellow
+    address internal constant SWELL_MELLOW_TREASURY = SWELL_MELLOW_ADMIN; // mellow msig
+    address internal constant UNI_MELLOW_TREASURY = UNI_MELLOW_ADMIN; // mellow msig
     uint32 internal constant FEE_D9 = 1e8; // 10% fee
 
     function getDeploymentParams()
@@ -166,6 +181,40 @@ library Constants {
                 coreOperator: CORE_OPERATOR,
                 protocolParams: IVeloAmmModule.ProtocolParams({
                     treasury: INK_MELLOW_TREASURY,
+                    feeD9: FEE_D9
+                })
+            });
+        } else if (block.chainid == 1923) {
+            return DeployScript.CoreDeploymentParams({
+                deployer: OPTIMISM_DEPLOYER,
+                mellowAdmin: SWELL_MELLOW_ADMIN,
+                positionManager: SWELL_POSITION_MANAGER,
+                isPoolSelector: IS_PAIR_SELECTOR,
+                weth: SWELL_WETH,
+                lpWrapperAdmin: SWELL_LP_WRAPPER_ADMIN,
+                lpWrapperManager: SWELL_LP_WRAPPER_MANAGER,
+                minInitialTotalSupply: OPTIMISM_MIN_INITIAL_TOTAL_SUPPLY,
+                factoryOperator: FACTORY_OPERATOR,
+                coreOperator: CORE_OPERATOR,
+                protocolParams: IVeloAmmModule.ProtocolParams({
+                    treasury: SWELL_MELLOW_TREASURY,
+                    feeD9: FEE_D9
+                })
+            });
+        } else if (block.chainid == 130) {
+            return DeployScript.CoreDeploymentParams({
+                deployer: OPTIMISM_DEPLOYER,
+                mellowAdmin: UNI_MELLOW_ADMIN,
+                positionManager: UNI_POSITION_MANAGER,
+                isPoolSelector: IS_PAIR_SELECTOR,
+                weth: UNI_WETH,
+                lpWrapperAdmin: UNI_LP_WRAPPER_ADMIN,
+                lpWrapperManager: UNI_LP_WRAPPER_MANAGER,
+                minInitialTotalSupply: OPTIMISM_MIN_INITIAL_TOTAL_SUPPLY,
+                factoryOperator: FACTORY_OPERATOR,
+                coreOperator: CORE_OPERATOR,
+                protocolParams: IVeloAmmModule.ProtocolParams({
+                    treasury: UNI_MELLOW_TREASURY,
                     feeD9: FEE_D9
                 })
             });
