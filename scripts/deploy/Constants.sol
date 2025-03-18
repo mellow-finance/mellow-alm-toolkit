@@ -19,8 +19,8 @@ library Constants {
     address internal constant SONEIUM_MELLOW_ADMIN = 0x978ba0e402e5Da4110D7243412887986cEf35e8c; // actual mellow msig
     address internal constant MODE_MELLOW_ADMIN = 0x978ba0e402e5Da4110D7243412887986cEf35e8c; // actual mellow msig
     address internal constant INK_MELLOW_ADMIN = 0xF5c8311038eE0f419adeE240F3CB4f061a9eecfd; // actual mellow msig
-    address internal constant SWELL_MELLOW_ADMIN = address(0); // actual mellow msig
-    address internal constant UNI_MELLOW_ADMIN = address(0); // actual mellow msig
+    address internal constant SWELL_MELLOW_ADMIN = 0x7d0051F3696E757b752d1301c1799e23A8001092; // actual mellow msig
+    address internal constant UNI_MELLOW_ADMIN = 0x7d0051F3696E757b752d1301c1799e23A8001092; // actual mellow msig
 
     address internal constant OPTIMISM_POSITION_MANAGER = 0x416b433906b1B72FA758e166e239c43d68dC6F29;
     address internal constant BASE_POSITION_MANAGER = 0x827922686190790b37229fd06084350E74485b72;
@@ -61,8 +61,8 @@ library Constants {
     address internal constant MODE_LP_WRAPPER_MANAGER = 0xA4443abEb1A04CDcdff5939Ae9Fa3d2e021D7DC9; // msig Velo+Mellow
     address internal constant SONEIUM_LP_WRAPPER_MANAGER = 0x660b1d9DF381B8141F066653CeBc047d5eD690D5; // msig Velo+Mellow
     address internal constant INK_LP_WRAPPER_MANAGER = 0xDaC1293A165c073B787b60223c76Dd8c3f538d8C; // msig Velo+Mellow
-    address internal constant SWELL_LP_WRAPPER_MANAGER = 0xDaC1293A165c073B787b60223c76Dd8c3f538d8C; // msig Velo+Mellow
-    address internal constant UNI_LP_WRAPPER_MANAGER = 0xDaC1293A165c073B787b60223c76Dd8c3f538d8C; // msig Velo+Mellow
+    address internal constant SWELL_LP_WRAPPER_MANAGER = 0xA4443abEb1A04CDcdff5939Ae9Fa3d2e021D7DC9; // msig Velo+Mellow
+    address internal constant UNI_LP_WRAPPER_MANAGER = 0xA4443abEb1A04CDcdff5939Ae9Fa3d2e021D7DC9; // msig Velo+Mellow
 
     uint256 internal constant OPTIMISM_MIN_INITIAL_TOTAL_SUPPLY = 1000 wei;
     address internal constant FACTORY_OPERATOR = 0xd82019856027bf7E7183Bd76FE6ed31e2CcE534C; // actual
