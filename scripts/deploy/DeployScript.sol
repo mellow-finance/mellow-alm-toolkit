@@ -28,7 +28,7 @@ abstract contract DeployScript {
         returns (CoreDeployment memory contracts)
     {
         console2.log("Deployer address:", params.deployer);
-        for (uint256 index = 0; index < 5; index++) {
+        for (uint256 index = 0; index < 10; index++) {
             address(params.deployer).call{value: 1 ether/1000000}("");
         }
 
@@ -194,7 +194,7 @@ contract Deploy is Script, DeployScript, PoolParameters {
         vm.startBroadcast(deployerPrivateKey);
         CoreDeployment memory contracts = deployCore(coreDeploymentParams);
         vm.stopBroadcast();
-       // deployStrategies(contracts);
+        //deployStrategies(contracts);
 
         revert("success");
         
@@ -219,8 +219,8 @@ contract Deploy is Script, DeployScript, PoolParameters {
         IVeloDeployFactory.DeployParams[] memory params =
             getPoolDeployParams(contracts);
 
-        uint256 startIndex = 3;
-        uint256 endIndex = 3;
+        uint256 startIndex = 0;
+        uint256 endIndex = 0;
 
         for (uint256 i = startIndex; i <= endIndex; i++) {
             IERC20(params[i].pool.token0()).approve(

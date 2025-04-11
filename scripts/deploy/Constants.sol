@@ -21,7 +21,7 @@ library Constants {
     address internal constant INK_MELLOW_ADMIN = 0xF5c8311038eE0f419adeE240F3CB4f061a9eecfd; // actual mellow msig
     address internal constant SWELL_MELLOW_ADMIN = 0x7d0051F3696E757b752d1301c1799e23A8001092; // actual mellow msig
     address internal constant UNI_MELLOW_ADMIN = 0x7d0051F3696E757b752d1301c1799e23A8001092; // actual mellow msig
-    address internal constant CELO_MELLOW_ADMIN = address(0); // actual mellow msig
+    address internal constant CELO_MELLOW_ADMIN = 0xF5c8311038eE0f419adeE240F3CB4f061a9eecfd; // actual mellow msig
     address internal constant SUPERSEED_MELLOW_ADMIN = 0x978ba0e402e5Da4110D7243412887986cEf35e8c; // actual mellow msig
 
     address internal constant OPTIMISM_POSITION_MANAGER = 0x416b433906b1B72FA758e166e239c43d68dC6F29;
@@ -31,7 +31,7 @@ library Constants {
     address internal constant INK_POSITION_MANAGER = 0x991d5546C4B442B4c5fdc4c8B8b8d131DEB24702;
     address internal constant SWELL_POSITION_MANAGER = 0x991d5546C4B442B4c5fdc4c8B8b8d131DEB24702;
     address internal constant UNI_POSITION_MANAGER = 0x991d5546C4B442B4c5fdc4c8B8b8d131DEB24702;
-    address internal constant CELO_POSITION_MANAGER = address(0);
+    address internal constant CELO_POSITION_MANAGER = 0x991d5546C4B442B4c5fdc4c8B8b8d131DEB24702;
     address internal constant SUPERSEED_POSITION_MANAGER = 0x991d5546C4B442B4c5fdc4c8B8b8d131DEB24702;
 
     bytes4 internal constant IS_PAIR_SELECTOR = bytes4(keccak256("isPair(address)"));

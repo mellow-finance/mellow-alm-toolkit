@@ -27,7 +27,7 @@ contract PoolParameters {
     uint256 constant ONE_USD_AMOUNT_6 = 10 ** 6; // 1 USD
     uint256 constant ONE_USD_EUR_AMOUNT_6 = uint256(100 * 10 ** 6) / 105; // 1 USD
     uint256 constant ONE_USD_AMOUNT_18 = 10 ** 18; // 1 USD
-    uint256 constant ONE_USD_ETH_AMOUNT = uint256(10 ** 18) / 1450; // 1 ETH/1450 ~ 1 USD
+    uint256 constant ONE_USD_ETH_AMOUNT = uint256(10 ** 18) / 1586; // 1 ETH/1450 ~ 1 USD
     uint256 constant ONE_USD_WEETH_AMOUNT = uint256(10 ** 18) / 2150; // 1 ETH/2150 ~ 1 USD
     uint256 constant ONE_USD_WSTETH_AMOUNT = uint256(10 ** 18) / 3321; // 1 WSTETH/3321 ~ 1 USD
     uint256 constant ONE_USD_OP_AMOUNT = uint256(100 * 10 ** 18) / 114; // 1 OP ~ 1.14 USD
@@ -50,6 +50,8 @@ contract PoolParameters {
     uint256 constant ONE_USD_MORPHO_AMOUNT = uint256(100 * 10 ** 18) / 130; // 1 MORPHO ~ 1.3 USD
     uint256 constant ONE_USD_TOSHI_AMOUNT = uint256(100000 * 10 ** 18) / 37; // 1 TOSHI ~ 0.0003670 USD
     uint256 constant ONE_USD_B3_AMOUNT = uint256(10000 * 10 ** 18) / 57; // 1 B3 ~ 0.0057 USD
+
+    uint256 constant ONE_USD_CELO_AMOUNT = uint256(100 * 10 ** 18) / 29; // 1 CELO ~ 0.2893 USD
 
     uint256 constant TICK_NEIGHBORHOOD_DEFAULT = 0;
     uint256 constant MAX_LIQUIDITY_RATIO_DEVIATION_X96_DEFAULT = 0;
@@ -78,6 +80,8 @@ contract PoolParameters {
             poolDeployParams = _uniPoolDeployParams(contracts);
         } else if (block.chainid == 5330) {
             poolDeployParams = _superPoolDeployParams(contracts);
+        }else if (block.chainid == 42220) {
+            poolDeployParams = _celoPoolDeployParams(contracts);
         } else {
             revert("Unsupported chain");
         }
@@ -1318,19 +1322,20 @@ contract PoolParameters {
         view
         returns (IVeloDeployFactory.DeployParams[] memory poolDeployParams)
     {
-        poolDeployParams = new IVeloDeployFactory.DeployParams[](1);
+        poolDeployParams = new IVeloDeployFactory.DeployParams[](2);
         /*
-    - CL100- CELO/USDT
-    - CL100-WETH/USDT
+    - CL100-WETH/USDT 1M tvl
+    - CL100-CELO/USDT 360k tvl
             -------------------------------------------------------------------------------------------------------------------------------|
                                                      address |  width|  TS |   t0   |    t1  |limit | strategy | lookback | maxAge | delta |
-            [0]   0x5438e884c621d5db08fA605B53ca04c5B33a623A |  6000 | 100 |  usdc  |  weth  | 150k |  lazySync|       60 | 1 hour |   60  |
+            [0]   0xA6A14E6767C07Ffba3786Ac0054A8647Cfdca58D |  6000 | 100 |  usdt  |  weth  | 200k |  lazySync|       60 | 1 hour |   60  |
+            [1]   0xe8f84C5DaCC3c308747b953aB84FA47b4859263C |  6000 | 100 |  celo  |  usdt  |  50k |  lazySync|       60 | 1 hour |   60  |
         */
         uint256 ID = 0;
 
         //---------------------------------------------------------------------------------------
-        //    [0]   0x5438e884c621d5db08fA605B53ca04c5B33a623A |  6000 | 100 |  usdc  |  weth  | 150k |  lazySync|       60 | 1 hour |   60  |
-        poolDeployParams[ID].pool = ICLPool(0x5438e884c621d5db08fA605B53ca04c5B33a623A);
+        //    [0]   0xA6A14E6767C07Ffba3786Ac0054A8647Cfdca58D |  6000 | 100 |  usdt  |  weth  | 200k |  lazySync|       60 | 1 hour |   60  |
+        poolDeployParams[ID].pool = ICLPool(0xA6A14E6767C07Ffba3786Ac0054A8647Cfdca58D);
         poolDeployParams[ID].strategyParams.strategyType =
             IPulseStrategyModule.StrategyType.LazySyncing;
         poolDeployParams[ID].strategyParams.tickSpacing = poolDeployParams[ID].pool.tickSpacing();
@@ -1344,7 +1349,24 @@ contract PoolParameters {
         poolDeployParams[ID].securityParams.lookback = 60;  // ~1min
         poolDeployParams[ID].securityParams.maxAge = 1 hours;
         poolDeployParams[ID].securityParams.maxAllowedDelta = 60; // 1% of position
-        _setInitialAndLimitSupply(150_000, poolDeployParams[ID], contracts);
+        _setInitialAndLimitSupply(200_000, poolDeployParams[ID], contracts);
+        ID++;
+        //    [1]   0xe8f84C5DaCC3c308747b953aB84FA47b4859263C |  6000 | 100 |  celo  |  usdt  | 50k |  lazySync|       60 | 1 hour |   60  |
+        poolDeployParams[ID].pool = ICLPool(0xe8f84C5DaCC3c308747b953aB84FA47b4859263C);
+        poolDeployParams[ID].strategyParams.strategyType =
+            IPulseStrategyModule.StrategyType.LazySyncing;
+        poolDeployParams[ID].strategyParams.tickSpacing = poolDeployParams[ID].pool.tickSpacing();
+        poolDeployParams[ID].strategyParams.tickNeighborhood = 0;
+        poolDeployParams[ID].strategyParams.width = 6000;
+        poolDeployParams[ID].strategyParams.maxLiquidityRatioDeviationX96 =
+            MAX_LIQUIDITY_RATIO_DEVIATION_X96_DEFAULT;
+        poolDeployParams[ID].maxAmount0 = ONE_USD_CELO_AMOUNT;
+        poolDeployParams[ID].maxAmount1 = ONE_USD_AMOUNT_6;
+        poolDeployParams[ID].slippageD9 = SLIPPAGE_D9_DEFAULT;
+        poolDeployParams[ID].securityParams.lookback = 60;  // ~1min
+        poolDeployParams[ID].securityParams.maxAge = 1 hours;
+        poolDeployParams[ID].securityParams.maxAllowedDelta = 60; // 1% of position
+        _setInitialAndLimitSupply(50_000, poolDeployParams[ID], contracts);
         ID++;
     }
 }
