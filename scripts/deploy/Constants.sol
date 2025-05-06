@@ -269,7 +269,7 @@ library Constants {
         revert("Unsupported chain");
     }
 
-    function getCoreDeployment() internal view returns (CoreDeployment memory) {
+    function getCoreDeployment() internal pure returns (CoreDeployment memory) {
         /// @notice Core deployment addresses are the same on all chains
         return CoreDeployment({
             core: Core(payable(0x0000000cE42D4981513060aB7E50B9e5e2D19AF1)),
