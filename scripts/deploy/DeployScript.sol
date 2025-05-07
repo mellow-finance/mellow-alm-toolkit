@@ -136,6 +136,12 @@ abstract contract DeployScript {
         CoreDeployment memory contracts,
         IVeloDeployFactory.DeployParams memory params
     ) internal returns (ILpWrapper) {
+        address lpWrapper = contracts.deployFactory.poolToWrapper(address(params.pool));
+
+        if (lpWrapper != address(0)) {
+            return ILpWrapper(lpWrapper);
+        }
+
         try contracts.deployFactory.createStrategy(params) returns (ILpWrapper lpWrapper) {
             return lpWrapper;
         } catch {
@@ -145,7 +151,7 @@ abstract contract DeployScript {
 
     function testDeployScript() internal pure {}
 
-    function checkDeploymentAddresses(CoreDeployment memory deployed) internal {
+    function checkDeploymentAddresses(CoreDeployment memory deployed) internal view {
         CoreDeploymentParams memory coreDeploymentParams = Constants.getDeploymentParams();
 
         CoreDeployment memory expected = Constants.getCoreDeployment();
@@ -219,10 +225,7 @@ contract Deploy is Script, DeployScript, PoolParameters {
         IVeloDeployFactory.DeployParams[] memory params =
             getPoolDeployParams(contracts);
 
-        uint256 startIndex = 0;
-        uint256 endIndex = 0;
-
-        for (uint256 i = startIndex; i <= endIndex; i++) {
+        for (uint256 i = 0; i < params.length; i++) {
             IERC20(params[i].pool.token0()).approve(
                 address(contracts.deployFactory), params[i].maxAmount0
             );
