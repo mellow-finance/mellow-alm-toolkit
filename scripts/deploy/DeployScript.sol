@@ -142,6 +142,13 @@ abstract contract DeployScript {
             return ILpWrapper(lpWrapper);
         }
 
+        IERC20(params.pool.token0()).approve(
+            address(contracts.deployFactory), params.maxAmount0
+        );
+        IERC20(params.pool.token1()).approve(
+            address(contracts.deployFactory), params.maxAmount1
+        );
+
         try contracts.deployFactory.createStrategy(params) returns (ILpWrapper lpWrapper) {
             return lpWrapper;
         } catch {
@@ -196,16 +203,15 @@ contract Deploy is Script, DeployScript, PoolParameters {
         CoreDeploymentParams memory coreDeploymentParams = Constants.getDeploymentParams();
         require(OPERATOR == coreDeploymentParams.coreOperator);
         require(FACTORY_OPERATOR == coreDeploymentParams.factoryOperator);
-
+/* 
         vm.startBroadcast(deployerPrivateKey);
         CoreDeployment memory contracts = deployCore(coreDeploymentParams);
         vm.stopBroadcast();
-        //deployStrategies(contracts);
 
         revert("success");
-        
+         */
          
-/*         CoreDeployment memory contracts = Constants.getCoreDeployment();
+        CoreDeployment memory contracts = Constants.getCoreDeployment();
 
         console2.log("         FACTORY_OPERATOR: ", FACTORY_OPERATOR);
         console2.log("                     Core: ", address(contracts.core));
@@ -216,8 +222,8 @@ contract Deploy is Script, DeployScript, PoolParameters {
         console2.log("VeloDepositWithdrawModule: ", address(contracts.depositWithdrawModule));
         console2.log("               VeloOracle: ", address(contracts.oracle));
         
-        deployStrategies(contracts);   */
-      //  revert("success");
+        deployStrategies(contracts);
+    //    revert("success");
     }
 
     function deployStrategies(CoreDeployment memory contracts) internal {
@@ -226,12 +232,6 @@ contract Deploy is Script, DeployScript, PoolParameters {
             getPoolDeployParams(contracts);
 
         for (uint256 i = 0; i < params.length; i++) {
-            IERC20(params[i].pool.token0()).approve(
-                address(contracts.deployFactory), params[i].maxAmount0
-            );
-            IERC20(params[i].pool.token1()).approve(
-                address(contracts.deployFactory), params[i].maxAmount1
-            );
             ILpWrapper lpWrapper = deployStrategy(contracts, params[i]);
 
             require(address(lpWrapper) != address(0));
