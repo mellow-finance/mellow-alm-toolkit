@@ -23,6 +23,7 @@ library Constants {
     address internal constant UNI_MELLOW_ADMIN = 0x7d0051F3696E757b752d1301c1799e23A8001092; // actual mellow msig
     address internal constant CELO_MELLOW_ADMIN = 0xF5c8311038eE0f419adeE240F3CB4f061a9eecfd; // actual mellow msig
     address internal constant SUPERSEED_MELLOW_ADMIN = 0x978ba0e402e5Da4110D7243412887986cEf35e8c; // actual mellow msig
+    address internal constant LISK_MELLOW_ADMIN = 0x978ba0e402e5Da4110D7243412887986cEf35e8c; // actual mellow msig
 
     address internal constant OPTIMISM_POSITION_MANAGER = 0x416b433906b1B72FA758e166e239c43d68dC6F29;
     address internal constant BASE_POSITION_MANAGER = 0x827922686190790b37229fd06084350E74485b72;
@@ -33,6 +34,7 @@ library Constants {
     address internal constant UNI_POSITION_MANAGER = 0x991d5546C4B442B4c5fdc4c8B8b8d131DEB24702;
     address internal constant CELO_POSITION_MANAGER = 0x991d5546C4B442B4c5fdc4c8B8b8d131DEB24702;
     address internal constant SUPERSEED_POSITION_MANAGER = 0x991d5546C4B442B4c5fdc4c8B8b8d131DEB24702;
+    address internal constant LISK_POSITION_MANAGER = 0x991d5546C4B442B4c5fdc4c8B8b8d131DEB24702;
 
     bytes4 internal constant IS_PAIR_SELECTOR = bytes4(keccak256("isPair(address)"));
     bytes4 internal constant IS_POOL_SELECTOR = bytes4(keccak256("isPool(address)"));
@@ -50,6 +52,7 @@ library Constants {
     address internal constant UNI_WETH = 0x4200000000000000000000000000000000000006;
     address internal constant CELO_WETH = 0x4200000000000000000000000000000000000006;
     address internal constant SUPERSEED_WETH = 0x4200000000000000000000000000000000000006;
+    address internal constant LISK_WETH = 0x4200000000000000000000000000000000000006;
 
     address internal constant BASE_WSTETH = 0xc1CBa3fCea344f92D9239c08C0568f6F2F0ee452;
     address internal constant OPTIMISM_WSTETH = 0x1F32b1c2345538c0c6f582fCB022739c4A194Ebb;
@@ -63,6 +66,7 @@ library Constants {
     address internal constant UNI_LP_WRAPPER_ADMIN = UNI_MELLOW_ADMIN; // mellow msig
     address internal constant CELO_LP_WRAPPER_ADMIN = CELO_MELLOW_ADMIN; // mellow msig
     address internal constant SUPERSEED_LP_WRAPPER_ADMIN = SUPERSEED_MELLOW_ADMIN; // mellow msig
+    address internal constant LISK_LP_WRAPPER_ADMIN = LISK_MELLOW_ADMIN; // mellow msig
 
     address internal constant OPTIMISM_LP_WRAPPER_MANAGER =
         0x64781bebFE7eD2f49aB55225B4E097EBbc3AfB38; // msig Velo+Mellow
@@ -74,6 +78,7 @@ library Constants {
     address internal constant UNI_LP_WRAPPER_MANAGER = 0xA4443abEb1A04CDcdff5939Ae9Fa3d2e021D7DC9; // msig Velo+Mellow
     address internal constant CELO_LP_WRAPPER_MANAGER = 0xDaC1293A165c073B787b60223c76Dd8c3f538d8C; // msig Velo+Mellow
     address internal constant SUPERSEED_LP_WRAPPER_MANAGER = 0xA4443abEb1A04CDcdff5939Ae9Fa3d2e021D7DC9; // msig Velo+Mellow
+    address internal constant LISK_LP_WRAPPER_MANAGER = 0xA4443abEb1A04CDcdff5939Ae9Fa3d2e021D7DC9; // msig Velo+Mellow
 
     uint256 internal constant OPTIMISM_MIN_INITIAL_TOTAL_SUPPLY = 1000 wei;
     address internal constant FACTORY_OPERATOR = 0xd82019856027bf7E7183Bd76FE6ed31e2CcE534C; // actual
@@ -88,6 +93,7 @@ library Constants {
     address internal constant UNI_MELLOW_TREASURY = UNI_MELLOW_ADMIN; // mellow msig
     address internal constant CELO_MELLOW_TREASURY = CELO_MELLOW_ADMIN; // mellow msig
     address internal constant SUPERSEED_MELLOW_TREASURY = SUPERSEED_MELLOW_ADMIN; // mellow msig
+    address internal constant LISK_MELLOW_TREASURY = LISK_MELLOW_ADMIN; // mellow msig
     uint32 internal constant FEE_D9 = 1e8; // 10% fee
 
     function getDeploymentParams()
@@ -262,6 +268,23 @@ library Constants {
                 coreOperator: CORE_OPERATOR,
                 protocolParams: IVeloAmmModule.ProtocolParams({
                     treasury: SUPERSEED_MELLOW_TREASURY,
+                    feeD9: FEE_D9
+                })
+            });
+        } else if (block.chainid == 1135) {
+            return DeployScript.CoreDeploymentParams({
+                deployer: OPTIMISM_DEPLOYER,
+                mellowAdmin: LISK_MELLOW_ADMIN,
+                positionManager: LISK_POSITION_MANAGER,
+                isPoolSelector: IS_PAIR_SELECTOR,
+                weth: LISK_WETH,
+                lpWrapperAdmin: LISK_LP_WRAPPER_ADMIN,
+                lpWrapperManager: LISK_LP_WRAPPER_MANAGER,
+                minInitialTotalSupply: OPTIMISM_MIN_INITIAL_TOTAL_SUPPLY,
+                factoryOperator: FACTORY_OPERATOR,
+                coreOperator: CORE_OPERATOR,
+                protocolParams: IVeloAmmModule.ProtocolParams({
+                    treasury: LISK_MELLOW_TREASURY,
                     feeD9: FEE_D9
                 })
             });

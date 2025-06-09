@@ -25,9 +25,9 @@ contract PoolParameters {
     uint256 constant Q96 = 2 ** 96;
     uint256 constant Q128 = 2 ** 128;
     uint256 constant ONE_USD_AMOUNT_6 = 10 ** 6; // 1 USD
-    uint256 constant ONE_USD_EUR_AMOUNT_6 = uint256(100 * 10 ** 6) / 105; // 1 USD
+    uint256 constant ONE_USD_EUR_AMOUNT_6 = uint256(100 * 10 ** 6) / 114; // 1 USD
     uint256 constant ONE_USD_AMOUNT_18 = 10 ** 18; // 1 USD
-    uint256 constant ONE_USD_ETH_AMOUNT = uint256(10 ** 18) / 2490; // 1 ETH/1,548 ~ 1 USD
+    uint256 constant ONE_USD_ETH_AMOUNT = uint256(10 ** 18) / 2600; // 1 ETH/1,548 ~ 1 USD
     uint256 constant ONE_USD_WEETH_AMOUNT = uint256(10 ** 18) / 1675; // 1 ETH/2150 ~ 1 USD
     uint256 constant ONE_USD_WSTETH_AMOUNT = uint256(10 ** 18) / 3170; // 1 WSTETH/3321 ~ 1 USD
     uint256 constant ONE_USD_OP_AMOUNT = uint256(100 * 10 ** 18) / 62; // 1 OP ~ 1.14 USD
@@ -94,8 +94,10 @@ contract PoolParameters {
             poolDeployParams = _uniPoolDeployParams(contracts);
         } else if (block.chainid == 5330) {
             poolDeployParams = _superPoolDeployParams(contracts);
-        }else if (block.chainid == 42220) {
+        } else if (block.chainid == 42220) {
             poolDeployParams = _celoPoolDeployParams(contracts);
+        } else if (block.chainid == 1135) {
+            poolDeployParams = _liskPoolDeployParams(contracts);
         } else {
             revert("Unsupported chain");
         }
@@ -1985,6 +1987,107 @@ contract PoolParameters {
         poolDeployParams[ID].securityParams.maxAge = 1 hours;
         poolDeployParams[ID].securityParams.maxAllowedDelta = 2; // 1% of position
         _setInitialAndLimitSupply(10_000, poolDeployParams[ID], contracts);
+        ID++;
+    }
+
+    function _liskPoolDeployParams(CoreDeployment memory contracts)
+        internal
+        view
+        returns (IVeloDeployFactory.DeployParams[] memory poolDeployParams)
+    {
+        poolDeployParams = new IVeloDeployFactory.DeployParams[](5);
+        /*
+                -----------------------------------------------------------------------------------------------------------------------------------|
+                                                         address |  width |  TS  |   t0   |    t1  |  limit | strategy | lookback | maxAge | delta |
+                [0]   0xC859c755E8C0568fD86F7860Bcf9A59D6F57BEB5 |   12   |   1  | USDT0  | USDC.e |  300k  |  tamper  |    30    |   1h   |   2   |
+                [1]   0x9C69E0B64A63aA7daA0B5dc61Df3Cc77ea05BcB3 |   48   |   1  | WETH   | wstETH |  200k  | lazyDesc |    30    |   1h   |   2   |
+                [2]   0xDC1479FD1Db51cA0079ceCfaA879232e168c8246 |  4000  | 100  | WBTC   | WETH   |  200k  | lazySync |    30    |   1h   |  40   |
+                [3]   0xEa1BB3Bd0590ce0B04f701F7C3f2911440d56c70 |   900  |  50  | USDT0  | EURC.e |  100k  |  tamper  |    30    |   1h   |   9   |
+                [4]   0x915e897DafFBf232991a9ac1a35240318bF7e65D |  6000  | 100  | WETH   | USDT0  |  300k  | lazySync |    30    |   1h   |  60   |
+        */
+        uint256 ID = 0;
+        //    [0]   0xC859c755E8C0568fD86F7860Bcf9A59D6F57BEB5 |   12   |   1  | USDT0  | USDC.e |  300k  |  tamper  |    30    |   1h   |   2   |
+        poolDeployParams[ID].pool = ICLPool(0xC859c755E8C0568fD86F7860Bcf9A59D6F57BEB5);
+        poolDeployParams[ID].strategyParams.strategyType =
+            IPulseStrategyModule.StrategyType.Tamper;
+        poolDeployParams[ID].strategyParams.tickSpacing = poolDeployParams[ID].pool.tickSpacing();
+        poolDeployParams[ID].strategyParams.tickNeighborhood = 0;
+        poolDeployParams[ID].strategyParams.width = 12;
+        poolDeployParams[ID].strategyParams.maxLiquidityRatioDeviationX96 = Q96 / 20;
+        poolDeployParams[ID].maxAmount0 = ONE_USD_AMOUNT_6;
+        poolDeployParams[ID].maxAmount1 = ONE_USD_AMOUNT_6;
+        poolDeployParams[ID].slippageD9 = SLIPPAGE_D9_DEFAULT;
+        poolDeployParams[ID].securityParams.lookback = 30;  // ~1min
+        poolDeployParams[ID].securityParams.maxAge = 1 hours;
+        poolDeployParams[ID].securityParams.maxAllowedDelta = 2; // 1% of position
+        _setInitialAndLimitSupply(300_000, poolDeployParams[ID], contracts);
+        ID++;
+        //    [1]   0x9C69E0B64A63aA7daA0B5dc61Df3Cc77ea05BcB3 |   48   |   1  | WETH   | wstETH |  200k  | lazyDesc |    30    |   1h   |   2   |
+        poolDeployParams[ID].pool = ICLPool(0x9C69E0B64A63aA7daA0B5dc61Df3Cc77ea05BcB3);
+        poolDeployParams[ID].strategyParams.strategyType =
+            IPulseStrategyModule.StrategyType.LazyDescending;
+        poolDeployParams[ID].strategyParams.tickSpacing = poolDeployParams[ID].pool.tickSpacing();
+        poolDeployParams[ID].strategyParams.tickNeighborhood = 0;
+        poolDeployParams[ID].strategyParams.width = 48;
+        poolDeployParams[ID].strategyParams.maxLiquidityRatioDeviationX96 =
+            MAX_LIQUIDITY_RATIO_DEVIATION_X96_DEFAULT;
+        poolDeployParams[ID].maxAmount0 = ONE_USD_ETH_AMOUNT;
+        poolDeployParams[ID].maxAmount1 = ONE_USD_WSTETH_AMOUNT;
+        poolDeployParams[ID].slippageD9 = SLIPPAGE_D9_DEFAULT;
+        poolDeployParams[ID].securityParams.lookback = 30;  // ~1min
+        poolDeployParams[ID].securityParams.maxAge = 1 hours;
+        poolDeployParams[ID].securityParams.maxAllowedDelta = 2; // 1% of position
+        _setInitialAndLimitSupply(200_000, poolDeployParams[ID], contracts);
+        ID++;
+        //    [2]   0xDC1479FD1Db51cA0079ceCfaA879232e168c8246 |  4000  | 100  | WBTC   | WETH   |  200k  | lazySync |    30    |   1h   |  40   |
+        poolDeployParams[ID].pool = ICLPool(0xDC1479FD1Db51cA0079ceCfaA879232e168c8246);
+        poolDeployParams[ID].strategyParams.strategyType =
+            IPulseStrategyModule.StrategyType.LazySyncing;
+        poolDeployParams[ID].strategyParams.tickSpacing = poolDeployParams[ID].pool.tickSpacing();
+        poolDeployParams[ID].strategyParams.tickNeighborhood = 0;
+        poolDeployParams[ID].strategyParams.width = 4000;
+        poolDeployParams[ID].strategyParams.maxLiquidityRatioDeviationX96 =
+            MAX_LIQUIDITY_RATIO_DEVIATION_X96_DEFAULT;
+        poolDeployParams[ID].maxAmount0 = ONE_USD_BTC_AMOUNT_8;
+        poolDeployParams[ID].maxAmount1 = ONE_USD_ETH_AMOUNT;
+        poolDeployParams[ID].slippageD9 = SLIPPAGE_D9_DEFAULT;
+        poolDeployParams[ID].securityParams.lookback = 40;  // ~1min
+        poolDeployParams[ID].securityParams.maxAge = 1 hours;
+        poolDeployParams[ID].securityParams.maxAllowedDelta = 60; // 1% of position
+        _setInitialAndLimitSupply(200_000, poolDeployParams[ID], contracts);
+        ID++;
+        //    [3]   0xEa1BB3Bd0590ce0B04f701F7C3f2911440d56c70 |   900  |  50  | USDT0  | EURC.e |  100k  |  tamper  |    30    |   1h   |   9   |
+        poolDeployParams[ID].pool = ICLPool(0xEa1BB3Bd0590ce0B04f701F7C3f2911440d56c70);
+        poolDeployParams[ID].strategyParams.strategyType =
+            IPulseStrategyModule.StrategyType.Tamper;
+        poolDeployParams[ID].strategyParams.tickSpacing = poolDeployParams[ID].pool.tickSpacing();
+        poolDeployParams[ID].strategyParams.tickNeighborhood = 0;
+        poolDeployParams[ID].strategyParams.width = 900;
+        poolDeployParams[ID].strategyParams.maxLiquidityRatioDeviationX96 = Q96 / 20;
+        poolDeployParams[ID].maxAmount0 = ONE_USD_AMOUNT_6;
+        poolDeployParams[ID].maxAmount1 = ONE_USD_EUR_AMOUNT_6;
+        poolDeployParams[ID].slippageD9 = SLIPPAGE_D9_DEFAULT;
+        poolDeployParams[ID].securityParams.lookback = 30;  // ~1min
+        poolDeployParams[ID].securityParams.maxAge = 1 hours;
+        poolDeployParams[ID].securityParams.maxAllowedDelta = 10; // 1% of position
+        _setInitialAndLimitSupply(100_000, poolDeployParams[ID], contracts);
+        ID++;
+        //    [4]   0x915e897DafFBf232991a9ac1a35240318bF7e65D |  6000  | 100  | WETH   | USDT0  |  300k  | lazySync |    30    |   1h   |  60   |
+        poolDeployParams[ID].pool = ICLPool(0x915e897DafFBf232991a9ac1a35240318bF7e65D);
+        poolDeployParams[ID].strategyParams.strategyType =
+            IPulseStrategyModule.StrategyType.LazySyncing;
+        poolDeployParams[ID].strategyParams.tickSpacing = poolDeployParams[ID].pool.tickSpacing();
+        poolDeployParams[ID].strategyParams.tickNeighborhood = 0;
+        poolDeployParams[ID].strategyParams.width = 6000;
+        poolDeployParams[ID].strategyParams.maxLiquidityRatioDeviationX96 =
+            MAX_LIQUIDITY_RATIO_DEVIATION_X96_DEFAULT;
+        poolDeployParams[ID].maxAmount0 = ONE_USD_ETH_AMOUNT;
+        poolDeployParams[ID].maxAmount1 = ONE_USD_AMOUNT_6;
+        poolDeployParams[ID].slippageD9 = SLIPPAGE_D9_DEFAULT;
+        poolDeployParams[ID].securityParams.lookback = 30;  // ~1min
+        poolDeployParams[ID].securityParams.maxAge = 1 hours;
+        poolDeployParams[ID].securityParams.maxAllowedDelta = 60; // 1% of position
+        _setInitialAndLimitSupply(300_000, poolDeployParams[ID], contracts);
         ID++;
     }
 }
