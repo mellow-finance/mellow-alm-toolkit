@@ -14,7 +14,7 @@ contract Unit is Fixture {
 
     ICLPool pool = ICLPool(factory.getPool(Constants.OPTIMISM_WETH, Constants.OPTIMISM_OP, 200));
 
-    DeployScript.CoreDeployment contracts;
+    CoreDeployment contracts;
     IVeloDeployFactory.DeployParams deployParams;
 
     function setUp() external {

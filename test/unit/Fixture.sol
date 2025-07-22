@@ -291,13 +291,13 @@ contract Fixture is DeployScript, Test {
         INonfungiblePositionManager(params.positionManager);
     ICLFactory public factory = ICLFactory(positionManager.factory());
 
-    function deployContracts() public returns (DeployScript.CoreDeployment memory contracts) {
+    function deployContracts() public returns (CoreDeployment memory contracts) {
         vm.startPrank(params.deployer);
         contracts = deployCore(params);
         vm.stopPrank();
     }
 
-    function deployLpWrapper(ICLPool pool, DeployScript.CoreDeployment memory contracts)
+    function deployLpWrapper(ICLPool pool, CoreDeployment memory contracts)
         public
         returns (ILpWrapper lpWrapper, IVeloDeployFactory.DeployParams memory deployParams)
     {

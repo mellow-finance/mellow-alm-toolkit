@@ -7,8 +7,7 @@ contract Unit is Fixture {
     using SafeERC20 for IERC20;
 
     VeloAmmModule public module = new VeloAmmModule(
-        INonfungiblePositionManager(Constants.OPTIMISM_POSITION_MANAGER),
-        Constants.IS_PAIR_SELECTOR
+        INonfungiblePositionManager(Constants.OPTIMISM_POSITION_MANAGER), Constants.IS_PAIR_SELECTOR
     );
 
     ICLPool public pool =

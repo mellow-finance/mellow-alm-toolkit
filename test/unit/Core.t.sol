@@ -7,7 +7,7 @@ contract Unit is Fixture {
     using SafeERC20 for IERC20;
 
     ICLPool pool = ICLPool(factory.getPool(Constants.OPTIMISM_WETH, Constants.OPTIMISM_OP, 200));
-    DeployScript.CoreDeployment contracts;
+    CoreDeployment contracts;
     ILpWrapper lpWrapper;
     IVeloDeployFactory.DeployParams deployParams;
 
@@ -579,10 +579,7 @@ contract Unit is Fixture {
         vm.expectRevert(abi.encodeWithSignature("AddressZero()"));
         core.setProtocolParams(
             abi.encode(
-                IVeloAmmModule.ProtocolParams({
-                    treasury: address(0),
-                    feeD9: Constants.FEE_D9
-                })
+                IVeloAmmModule.ProtocolParams({treasury: address(0), feeD9: Constants.FEE_D9})
             )
         );
 
