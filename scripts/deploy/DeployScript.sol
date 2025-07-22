@@ -29,7 +29,7 @@ abstract contract DeployScript {
     {
         console2.log("Deployer address:", params.deployer);
         for (uint256 index = 0; index < 10; index++) {
-            address(params.deployer).call{value: 1 ether/1000000}("");
+            address(params.deployer).call{value: 1 ether / 1000000}("");
         }
 
         //return contracts;
@@ -57,12 +57,12 @@ abstract contract DeployScript {
                 params.weth
             )
         );
-        
+
         bytes32 byteCodeHash = keccak256(bytecode);
         address predictedCoreAddress;
         /// @dev salt selection loop
 
-/*         for (uint256 i = 500 * 1e6; i < 700 * 1e6; i++) {
+        /*         for (uint256 i = 500 * 1e6; i < 700 * 1e6; i++) {
             predictedCoreAddress =
                 Create2.computeAddress(bytes32(i), byteCodeHash, create2DeterministicDeployer);
             if (uint160(predictedCoreAddress) >> 136 == 0) {
@@ -79,7 +79,7 @@ abstract contract DeployScript {
         predictedCoreAddress =
             Create2.computeAddress(salt, byteCodeHash, create2DeterministicDeployer);
 
-       // console2.log("Desired   Core address:", 0x0000000cE42D4981513060aB7E50B9e5e2D19AF1);
+        // console2.log("Desired   Core address:", 0x0000000cE42D4981513060aB7E50B9e5e2D19AF1);
         console2.log("Predicted Core address:", predictedCoreAddress);
         address deployed = Create2.deploy(0, salt, bytecode);
         console2.log("Deployed  Core address:", deployed);
@@ -142,12 +142,18 @@ abstract contract DeployScript {
             return ILpWrapper(lpWrapper);
         }
 
-        IERC20(params.pool.token0()).approve(
-            address(contracts.deployFactory), params.maxAmount0
-        );
-        IERC20(params.pool.token1()).approve(
-            address(contracts.deployFactory), params.maxAmount1
-        );
+        IERC20(params.pool.token0()).approve(address(contracts.deployFactory), params.maxAmount0);
+        IERC20(params.pool.token1()).approve(address(contracts.deployFactory), params.maxAmount1);
+
+        console2.log("Approves for factory:", address(contracts.deployFactory));
+        console2.log("              Token0:", address(params.pool.token0()), params.maxAmount0);
+        console2.log("              Token1:", address(params.pool.token1()), params.maxAmount1);
+        console2.log("                Pool:", address(contracts.deployFactory));
+
+        bytes memory data =
+            abi.encodeWithSelector(contracts.deployFactory.createStrategy.selector, params);
+        console2.log("Calldata to deploy strategy for the Pool:", address(params.pool));
+        console2.logBytes(data);
 
         try contracts.deployFactory.createStrategy(params) returns (ILpWrapper lpWrapper) {
             return lpWrapper;
@@ -164,11 +170,23 @@ abstract contract DeployScript {
         CoreDeployment memory expected = Constants.getCoreDeployment();
         require(address(expected.core) == address(deployed.core), "core mismatch");
         require(address(expected.ammModule) == address(deployed.ammModule), "ammModule mismatch");
-        require(address(expected.depositWithdrawModule) == address(deployed.depositWithdrawModule), "depositWithdrawModule mismatch");
+        require(
+            address(expected.depositWithdrawModule) == address(deployed.depositWithdrawModule),
+            "depositWithdrawModule mismatch"
+        );
         require(address(expected.oracle) == address(deployed.oracle), "oracle mismatch");
-        require(address(expected.strategyModule) == address(deployed.strategyModule), "strategyModule mismatch");
-        require(address(expected.deployFactory) == address(deployed.deployFactory), "deployFactory mismatch");
-        require(address(expected.lpWrapperImplementation) == address(deployed.lpWrapperImplementation), "lpWrapperImplementation mismatch");
+        require(
+            address(expected.strategyModule) == address(deployed.strategyModule),
+            "strategyModule mismatch"
+        );
+        require(
+            address(expected.deployFactory) == address(deployed.deployFactory),
+            "deployFactory mismatch"
+        );
+        require(
+            address(expected.lpWrapperImplementation) == address(deployed.lpWrapperImplementation),
+            "lpWrapperImplementation mismatch"
+        );
 
         console2.log(
             "----------- Mellow ALM deployment addresses at chain ID", block.chainid, "-----------"
@@ -186,34 +204,33 @@ abstract contract DeployScript {
         console2.log("         Factory Operator: ", address(coreDeploymentParams.factoryOperator));
         console2.log("     Core LpWrapper Admin: ", address(coreDeploymentParams.lpWrapperAdmin));
         console2.log("   Core LpWrapper Manager: ", address(coreDeploymentParams.lpWrapperManager));
-        console2.log("        Protocol treasury: ", address(coreDeploymentParams.protocolParams.treasury));
+        console2.log(
+            "        Protocol treasury: ", address(coreDeploymentParams.protocolParams.treasury)
+        );
     }
 }
 
 contract Deploy is Script, DeployScript, PoolParameters {
     uint256 immutable deployerPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
     address immutable DEPLOYER = vm.addr(deployerPrivateKey);
-    uint256 immutable operatorPrivateKey = vm.envUint("OPERATOR_PRIVATE_KEY");
-    address immutable OPERATOR = vm.addr(operatorPrivateKey);
-    uint256 immutable factoryPrivateKey = vm.envUint("FACTORY_OPERATOR_PRIVATE_KEY");
-    address immutable FACTORY_OPERATOR = vm.addr(factoryPrivateKey);
+    //uint256 immutable factoryPrivateKey = vm.envUint("FACTORY_OPERATOR_PRIVATE_KEY");
+    //address immutable FACTORY_OPERATOR = vm.addr(factoryPrivateKey);
 
     function run() external {
-                  
         CoreDeploymentParams memory coreDeploymentParams = Constants.getDeploymentParams();
-        require(OPERATOR == coreDeploymentParams.coreOperator);
-        require(FACTORY_OPERATOR == coreDeploymentParams.factoryOperator);
-/* 
+        //    require(OPERATOR == coreDeploymentParams.coreOperator);
+        //    require(FACTORY_OPERATOR == coreDeploymentParams.factoryOperator);
+        /* 
         vm.startBroadcast(deployerPrivateKey);
         CoreDeployment memory contracts = deployCore(coreDeploymentParams);
         vm.stopBroadcast();
 
         revert("success");
          */
-         
+
         CoreDeployment memory contracts = Constants.getCoreDeployment();
 
-        console2.log("         FACTORY_OPERATOR: ", FACTORY_OPERATOR);
+        console2.log("         FACTORY_OPERATOR: ", coreDeploymentParams.factoryOperator);
         console2.log("                     Core: ", address(contracts.core));
         console2.log("        VeloDeployFactory: ", address(contracts.deployFactory));
         console2.log("      PulseStrategyModule: ", address(contracts.strategyModule));
@@ -221,22 +238,66 @@ contract Deploy is Script, DeployScript, PoolParameters {
         console2.log("            VeloAmmModule: ", address(contracts.ammModule));
         console2.log("VeloDepositWithdrawModule: ", address(contracts.depositWithdrawModule));
         console2.log("               VeloOracle: ", address(contracts.oracle));
-        
+
         deployStrategies(contracts);
-    //    revert("success");
+        revert("success");
     }
 
     function deployStrategies(CoreDeployment memory contracts) internal {
-        vm.startBroadcast(factoryPrivateKey);
-        IVeloDeployFactory.DeployParams[] memory params =
-            getPoolDeployParams(contracts);
+        CoreDeploymentParams memory coreDeploymentParams = Constants.getDeploymentParams();
 
-        for (uint256 i = 0; i < params.length; i++) {
+        transferTokensToFactoryOperator(contracts);
+        //vm.startBroadcast(factoryPrivateKey);
+        vm.startPrank(coreDeploymentParams.factoryOperator);
+        IVeloDeployFactory.DeployParams[] memory params = getPoolDeployParams(contracts);
+
+        for (uint256 i = 46; i < 47; /*params.length*/ i++) {
             ILpWrapper lpWrapper = deployStrategy(contracts, params[i]);
 
             require(address(lpWrapper) != address(0));
 
             console2.log("Pool/LpWrapper addresses: ", address(params[i].pool), address(lpWrapper));
+        }
+        vm.stopPrank();
+        //vm.stopBroadcast();
+    }
+
+    function transferTokensToFactoryOperator(CoreDeployment memory contracts) internal {
+        uint256 senderPrivateKey = vm.envUint("OPERATOR_PRIVATE_KEY");
+        IVeloDeployFactory.DeployParams[] memory params = getPoolDeployParams(contracts);
+        CoreDeploymentParams memory coreDeploymentParams = Constants.getDeploymentParams();
+
+        address SENDER = vm.addr(senderPrivateKey);
+
+        console2.log(
+            "Transferring tokens from",
+            SENDER,
+            "to factory operator",
+            coreDeploymentParams.factoryOperator
+        );
+
+        vm.startBroadcast(senderPrivateKey);
+        for (uint256 i = 0; i < params.length; i++) {
+            ICLPool pool = params[i].pool;
+
+            uint256 balance0 = IERC20(pool.token0()).balanceOf(SENDER);
+            uint256 balance1 = IERC20(pool.token1()).balanceOf(SENDER);
+            if (balance0 > 0) {
+                IERC20(ICLPool(pool).token0()).transfer(
+                    coreDeploymentParams.factoryOperator, balance0
+                );
+                console2.log(
+                    "Transferred", IERC20Metadata(ICLPool(pool).token0()).symbol(), balance0
+                );
+            }
+            if (balance1 > 0) {
+                IERC20(ICLPool(pool).token1()).transfer(
+                    coreDeploymentParams.factoryOperator, balance1
+                );
+                console2.log(
+                    "Transferred", IERC20Metadata(ICLPool(pool).token1()).symbol(), balance1
+                );
+            }
         }
         vm.stopBroadcast();
     }
