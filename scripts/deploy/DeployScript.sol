@@ -135,30 +135,21 @@ abstract contract DeployScript {
     function deployStrategy(
         CoreDeployment memory contracts,
         IVeloDeployFactory.DeployParams memory params
-    ) internal returns (ILpWrapper) {
-        address lpWrapper = contracts.deployFactory.poolToWrapper(address(params.pool));
-
-        if (lpWrapper != address(0)) {
-            return ILpWrapper(lpWrapper);
-        }
-
+    ) internal returns (address) {
         IERC20(params.pool.token0()).approve(address(contracts.deployFactory), params.maxAmount0);
         IERC20(params.pool.token1()).approve(address(contracts.deployFactory), params.maxAmount1);
 
-        console2.log("Approves for factory:", address(contracts.deployFactory));
-        console2.log("              Token0:", address(params.pool.token0()), params.maxAmount0);
-        console2.log("              Token1:", address(params.pool.token1()), params.maxAmount1);
-        console2.log("                Pool:", address(contracts.deployFactory));
-
         bytes memory data =
             abi.encodeWithSelector(contracts.deployFactory.createStrategy.selector, params);
-        console2.log("Calldata to deploy strategy for the Pool:", address(params.pool));
-        console2.logBytes(data);
 
         try contracts.deployFactory.createStrategy(params) returns (ILpWrapper lpWrapper) {
-            return lpWrapper;
+            console2.log("Approves for factory:", address(contracts.deployFactory));
+            console2.log("              Token0:", address(params.pool.token0()), params.maxAmount0);
+            console2.log("              Token1:", address(params.pool.token1()), params.maxAmount1);
+            console2.log("                Pool:", address(params.pool));
+            return address(lpWrapper);
         } catch {
-            return ILpWrapper(address(0));
+            return address(0);
         }
     }
 
@@ -213,11 +204,10 @@ abstract contract DeployScript {
 contract Deploy is Script, DeployScript, PoolParameters {
     uint256 immutable deployerPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
     address immutable DEPLOYER = vm.addr(deployerPrivateKey);
-    //uint256 immutable factoryPrivateKey = vm.envUint("FACTORY_OPERATOR_PRIVATE_KEY");
-    //address immutable FACTORY_OPERATOR = vm.addr(factoryPrivateKey);
 
     function run() external {
         CoreDeploymentParams memory coreDeploymentParams = Constants.getDeploymentParams();
+
         //    require(OPERATOR == coreDeploymentParams.coreOperator);
         //    require(FACTORY_OPERATOR == coreDeploymentParams.factoryOperator);
         /* 
@@ -229,6 +219,8 @@ contract Deploy is Script, DeployScript, PoolParameters {
          */
 
         CoreDeployment memory contracts = Constants.getCoreDeployment();
+        //transferTokensToFactoryOperator(contracts);
+        //return;
 
         console2.log("         FACTORY_OPERATOR: ", coreDeploymentParams.factoryOperator);
         console2.log("                     Core: ", address(contracts.core));
@@ -246,20 +238,53 @@ contract Deploy is Script, DeployScript, PoolParameters {
     function deployStrategies(CoreDeployment memory contracts) internal {
         CoreDeploymentParams memory coreDeploymentParams = Constants.getDeploymentParams();
 
-        transferTokensToFactoryOperator(contracts);
-        //vm.startBroadcast(factoryPrivateKey);
         vm.startPrank(coreDeploymentParams.factoryOperator);
         IVeloDeployFactory.DeployParams[] memory params = getPoolDeployParams(contracts);
 
-        for (uint256 i = 46; i < 47; /*params.length*/ i++) {
-            ILpWrapper lpWrapper = deployStrategy(contracts, params[i]);
+        uint256 firstIndex = 47;
+        uint256 lastIndex = params.length;
+        string memory batchJson = '{"transactions":[';
+        for (uint256 i = firstIndex; i < lastIndex; i++) {
+            console2.log("-----------------------------------------------------");
+            address lpWrapper = contracts.deployFactory.poolToWrapper(address(params[i].pool));
+            if (lpWrapper != address(0)) {
+                console2.log("[EXISTS] Strategy");
+            } else {
+                lpWrapper = deployStrategy(contracts, params[i]);
+                if (lpWrapper != address(0)) {
+                    string memory semicolon = i < lastIndex - 1 ? "," : "";
+                    batchJson = string(
+                        abi.encodePacked(
+                            batchJson, jsonDeploymentEntity(contracts, params[i]), semicolon
+                        )
+                    );
 
-            require(address(lpWrapper) != address(0));
-
-            console2.log("Pool/LpWrapper addresses: ", address(params[i].pool), address(lpWrapper));
+                    console2.log("[SUCCESS] Strategy is deployed");
+                } else {
+                    console2.log("[FAILED] Strategy deployment");
+                }
+            }
+            console2.log("For Pool :", address(params[i].pool));
+            console2.log("LpWrapper:", lpWrapper);
         }
+
+        batchJson = string(abi.encodePacked(batchJson, "]}"));
+
+        vm.writeFile(
+            string(
+                abi.encodePacked(
+                    "cache/deployment/",
+                    vm.toString(block.chainid),
+                    "_batch_",
+                    vm.toString(firstIndex),
+                    "-",
+                    vm.toString(lastIndex - 1),
+                    ".json"
+                )
+            ),
+            batchJson
+        );
         vm.stopPrank();
-        //vm.stopBroadcast();
     }
 
     function transferTokensToFactoryOperator(CoreDeployment memory contracts) internal {
@@ -300,5 +325,45 @@ contract Deploy is Script, DeployScript, PoolParameters {
             }
         }
         vm.stopBroadcast();
+    }
+
+    function jsonDeploymentEntity(
+        CoreDeployment memory contracts,
+        IVeloDeployFactory.DeployParams memory params
+    ) internal view returns (string memory) {
+        return string(
+            abi.encodePacked(
+                jsonTransaction(
+                    params.pool.token0(),
+                    abi.encodeWithSelector(
+                        IERC20.approve.selector, address(contracts.deployFactory), params.maxAmount0
+                    )
+                ),
+                ",",
+                jsonTransaction(
+                    params.pool.token1(),
+                    abi.encodeWithSelector(
+                        IERC20.approve.selector, address(contracts.deployFactory), params.maxAmount1
+                    )
+                ),
+                ",",
+                jsonTransaction(
+                    address(contracts.deployFactory),
+                    abi.encodeWithSelector(IVeloDeployFactory.createStrategy.selector, params)
+                )
+            )
+        );
+    }
+
+    function jsonTransaction(address to, bytes memory data) internal pure returns (string memory) {
+        return string(
+            abi.encodePacked(
+                '{"to":"',
+                vm.toString(to),
+                '","value":"0","data":"',
+                vm.toString(data),
+                '","operation":"0"}'
+            )
+        );
     }
 }
