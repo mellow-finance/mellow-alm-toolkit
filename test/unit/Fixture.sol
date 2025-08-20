@@ -297,21 +297,30 @@ contract Fixture is DeployScript, Test {
         vm.stopPrank();
     }
 
-    function deployLpWrapper(ICLPool pool, DeployScript.CoreDeployment memory contracts)
-        public
-        returns (ILpWrapper lpWrapper, IVeloDeployFactory.DeployParams memory deployParams)
-    {
+    function deployLpWrapper(
+        ICLPool pool,
+        IPulseStrategyModule.StrategyType strategyType,
+        DeployScript.CoreDeployment memory contracts
+    ) public returns (ILpWrapper lpWrapper, IVeloDeployFactory.DeployParams memory deployParams) {
         deployParams.slippageD9 = 1e6;
         deployParams.strategyParams = IPulseStrategyModule.StrategyParams({
-            strategyType: IPulseStrategyModule.StrategyType.LazySyncing,
+            strategyType: strategyType,
             tickNeighborhood: 0, // Neighborhood of ticks to consider for rebalancing
             tickSpacing: pool.tickSpacing(), // tickSpacing of the corresponding amm pool
-            width: pool.tickSpacing() * 10, // Width of the interval
-            maxLiquidityRatioDeviationX96: 0 // The maximum allowed deviation of the liquidity ratio for lower position.
+            width: pool.tickSpacing() * 8, // Width of the interval
+            maxLiquidityRatioDeviationX96: strategyType == IPulseStrategyModule.StrategyType.Tamper
+                ? Q96 / 20
+                : 0
         });
 
-        deployParams.securityParams =
-            IVeloOracle.SecurityParams({lookback: 100, maxAge: 5 days, maxAllowedDelta: 10});
+        int24 maxAllowedDelta = deployParams.strategyParams.tickSpacing == 1
+            ? int24(1)
+            : deployParams.strategyParams.width / 10;
+        deployParams.securityParams = IVeloOracle.SecurityParams({
+            lookback: 100,
+            maxAge: 1 days,
+            maxAllowedDelta: maxAllowedDelta
+        });
 
         deployParams.pool = pool;
         deployParams.maxAmount0 = 10 ** (ERC20(pool.token0()).decimals() / 2 + 1);

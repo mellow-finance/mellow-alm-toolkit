@@ -19,7 +19,8 @@ contract Unit is Fixture {
 
     function setUp() external {
         contracts = deployContracts();
-        (lpWrapper, deployParams) = deployLpWrapper(pool, contracts);
+        (lpWrapper, deployParams) =
+            deployLpWrapper(pool, IPulseStrategyModule.StrategyType.LazySyncing, contracts);
     }
 
     using Math for uint256;
@@ -295,7 +296,8 @@ contract Unit is Fixture {
 
     function testSetParams() external {
         contracts = deployContracts();
-        (lpWrapper, deployParams) = deployLpWrapper(pool, contracts);
+        (lpWrapper, deployParams) =
+            deployLpWrapper(pool, IPulseStrategyModule.StrategyType.LazySyncing, contracts);
 
         ICore core = contracts.core;
         ICore.ManagedPositionInfo memory info = core.managedPositionAt(0);
@@ -349,7 +351,8 @@ contract Unit is Fixture {
 
     function testViewFunctions() external {
         contracts = deployContracts();
-        (lpWrapper, deployParams) = deployLpWrapper(pool, contracts);
+        (lpWrapper, deployParams) =
+            deployLpWrapper(pool, IPulseStrategyModule.StrategyType.LazySyncing, contracts);
 
         (IVeloAmmModule.ProtocolParams memory paramsLpWrapper, uint256 d9) =
             lpWrapper.protocolParams();
@@ -638,7 +641,8 @@ contract Unit is Fixture {
 
     function testReward() external {
         contracts = deployContracts();
-        (lpWrapper, deployParams) = deployLpWrapper(pool, contracts);
+        (lpWrapper, deployParams) =
+            deployLpWrapper(pool, IPulseStrategyModule.StrategyType.LazySyncing, contracts);
 
         deal(pool.token0(), Constants.OPTIMISM_DEPLOYER, 1 ether);
         deal(pool.token1(), Constants.OPTIMISM_DEPLOYER, 1 ether);
@@ -686,7 +690,8 @@ contract Unit is Fixture {
 
     function testEmptyRebalance() external {
         contracts = deployContracts();
-        (lpWrapper, deployParams) = deployLpWrapper(pool, contracts);
+        (lpWrapper, deployParams) =
+            deployLpWrapper(pool, IPulseStrategyModule.StrategyType.LazySyncing, contracts);
 
         ICore.ManagedPositionInfo memory info = contracts.core.managedPositionAt(0);
         uint256 tokenIdBefore = info.ammPositionIds[0];
@@ -697,5 +702,64 @@ contract Unit is Fixture {
         uint256 tokenIdAfter = info.ammPositionIds[0];
 
         assertEq(tokenIdBefore, tokenIdAfter);
+    }
+
+    function testPreviewMintAmounts() external {
+        ICore core = contracts.core;
+        ICore.ManagedPositionInfo memory info = core.managedPositionAt(0);
+        IVeloAmmModule ammModule = contracts.ammModule;
+        uint256 tokenId = info.ammPositionIds[0];
+        (IAmmModule.AmmPosition memory position) = ammModule.getAmmPosition(tokenId);
+
+        vm.startPrank(Constants.OPTIMISM_DEPLOYER);
+
+        deal(pool.token0(), Constants.OPTIMISM_DEPLOYER, 1000000 ether);
+        deal(pool.token1(), Constants.OPTIMISM_DEPLOYER, 1000000 ether);
+
+        IERC20(pool.token0()).approve(address(lpWrapper), 1000000 ether);
+        IERC20(pool.token1()).approve(address(lpWrapper), 1000000 ether);
+
+        {
+            uint256 amount0Desired = 1 ether;
+            uint256 amount1Desired = 1 ether;
+            (uint256 lpAmount, uint256 amount0Actual, uint256 amount1Actual) =
+                lpWrapper.previewAmounts(amount0Desired, amount1Desired);
+            assertTrue(amount0Actual <= amount0Desired, "Overflow amount0Actual");
+            assertTrue(amount1Actual <= amount1Desired, "Overflow amount1Actual");
+            (uint256 amount0, uint256 amount1) = lpWrapper.previewMint(lpAmount);
+            assertEq(amount0, amount0Actual, "previewMint mismatch previewAmounts 0");
+            assertEq(amount1, amount1Actual, "previewMint mismatch previewAmounts 1");
+        }
+
+        movePrice(ICLPool(info.pool), TickMath.getSqrtRatioAtTick(position.tickUpper) + 1);
+
+        {
+            uint256 amount0Desired = 1 ether;
+            uint256 amount1Desired = 1 ether;
+            (uint256 lpAmount, uint256 amount0Actual, uint256 amount1Actual) =
+                lpWrapper.previewAmounts(amount0Desired, amount1Desired);
+            assertEq(amount0Actual, 0, "One side position");
+            assertTrue(amount0Actual <= amount0Desired, "Overflow amount0Actual");
+            assertTrue(amount1Actual <= amount1Desired, "Overflow amount1Actual");
+            (uint256 amount0, uint256 amount1) = lpWrapper.previewMint(lpAmount);
+            assertEq(amount0, 0, "One side position");
+            assertEq(amount0, amount0Actual, "previewMint mismatch previewAmounts 0");
+            assertEq(amount1, amount1Actual, "previewMint mismatch previewAmounts 1");
+        }
+
+        movePrice(ICLPool(info.pool), TickMath.getSqrtRatioAtTick(position.tickLower) - 1);
+        {
+            uint256 amount0Desired = 1 ether;
+            uint256 amount1Desired = 1 ether;
+            (uint256 lpAmount, uint256 amount0Actual, uint256 amount1Actual) =
+                lpWrapper.previewAmounts(amount0Desired, amount1Desired);
+            assertEq(amount1Actual, 0, "One side position");
+            assertTrue(amount0Actual <= amount0Desired, "Overflow amount0Actual");
+            assertTrue(amount1Actual <= amount1Desired, "Overflow amount1Actual");
+            (uint256 amount0, uint256 amount1) = lpWrapper.previewMint(lpAmount);
+            assertEq(amount1, 0, "One side position");
+            assertEq(amount0, amount0Actual, "previewMint mismatch previewAmounts 0");
+            assertEq(amount1, amount1Actual, "previewMint mismatch previewAmounts 1");
+        }
     }
 }

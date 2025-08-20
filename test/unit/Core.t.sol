@@ -13,7 +13,8 @@ contract Unit is Fixture {
 
     function setUp() external {
         contracts = deployContracts();
-        (lpWrapper, deployParams) = deployLpWrapper(pool, contracts);
+        (lpWrapper, deployParams) =
+            deployLpWrapper(pool, IPulseStrategyModule.StrategyType.LazySyncing, contracts);
     }
 
     function testContructor() external {
