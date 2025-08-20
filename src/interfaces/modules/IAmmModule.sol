@@ -50,6 +50,22 @@ interface IAmmModule {
     ) external pure returns (uint256 amount0, uint256 amount1);
 
     /**
+     * @dev Calculates token amounts for a given liquidity amount in a position, rounding up.
+     * @param liquidity Liquidity amount.
+     * @param sqrtPriceX96 Square root of the current price in the pool.
+     * @param tickLower Lower tick of the position.
+     * @param tickUpper Upper tick of the position.
+     * @return amount0 Amount of token0.
+     * @return amount1 Amount of token1.
+     */
+    function getAmountsForLiquidityCeil(
+        uint256 liquidity,
+        uint160 sqrtPriceX96,
+        int24 tickLower,
+        int24 tickUpper
+    ) external pure returns (uint256 amount0, uint256 amount1);
+
+    /**
      * @dev Returns the Total Value Locked (TVL) for a token and liquidity pool state.
      * @param tokenId Token ID.
      * @param sqrtRatioX96 Square root of the current tick value in the pool.

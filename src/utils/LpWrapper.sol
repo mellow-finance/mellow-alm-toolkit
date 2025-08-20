@@ -302,29 +302,15 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
         uint256 lpAmount,
         uint256 totalSupply_,
         IAmmModule.AmmPosition memory position,
-        uint160 sqrtRatioX96
-    ) public pure returns (uint256 amount0, uint256 amount1) {
+        uint160 sqrtPriceX96
+    ) public view returns (uint256 amount0, uint256 amount1) {
         uint256 liquidity = lpAmount.mulDiv(position.liquidity, totalSupply_, Math.Rounding.Ceil);
         if (liquidity > type(uint128).max) {
             revert LiquidityOverflow();
         }
-        uint256 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(position.tickLower);
-        uint256 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(position.tickUpper);
-        if (sqrtRatioX96 < sqrtRatioBX96) {
-            uint256 sqrtRatioAX96_ = sqrtRatioAX96.max(sqrtRatioX96);
-            amount0 = Math.ceilDiv(
-                (liquidity << 96).mulDiv(
-                    sqrtRatioBX96 - sqrtRatioAX96_, sqrtRatioBX96, Math.Rounding.Ceil
-                ),
-                sqrtRatioAX96_
-            );
-        }
-
-        if (sqrtRatioX96 > sqrtRatioAX96) {
-            amount1 = liquidity.mulDiv(
-                sqrtRatioBX96.min(sqrtRatioX96) - sqrtRatioAX96, Q96, Math.Rounding.Ceil
-            );
-        }
+        return ammModule.getAmountsForLiquidityCeil(
+            liquidity, sqrtPriceX96, position.tickLower, position.tickUpper
+        );
     }
 
     /// ---------------------- INTERNAL MUTABLE FUNCTIONS ----------------------
