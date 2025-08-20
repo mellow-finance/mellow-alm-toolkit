@@ -704,9 +704,12 @@ contract Unit is Fixture {
         assertEq(tokenIdBefore, tokenIdAfter);
     }
 
-    function testPreviewMintAmounts() external {
+    function testPreviewMintAmountsLazy() external {
+        (lpWrapper, deployParams) =
+            deployLpWrapper(pool, IPulseStrategyModule.StrategyType.LazySyncing, contracts);
+
         ICore core = contracts.core;
-        ICore.ManagedPositionInfo memory info = core.managedPositionAt(0);
+        ICore.ManagedPositionInfo memory info = core.managedPositionAt(lpWrapper.positionId());
         IVeloAmmModule ammModule = contracts.ammModule;
         uint256 tokenId = info.ammPositionIds[0];
         (IAmmModule.AmmPosition memory position) = ammModule.getAmmPosition(tokenId);
@@ -726,13 +729,19 @@ contract Unit is Fixture {
                 lpWrapper.previewAmounts(amount0Desired, amount1Desired);
             assertTrue(amount0Actual <= amount0Desired, "Overflow amount0Actual");
             assertTrue(amount1Actual <= amount1Desired, "Overflow amount1Actual");
+
+            uint256 slippageX96 = Math.min(
+                (amount0Desired - amount0Actual).mulDiv(Q96, amount0Desired),
+                (amount1Desired - amount1Actual).mulDiv(Q96, amount1Desired)
+            );
+            assertLe(slippageX96, Q96 / 1e6, "High slippage");
+
             (uint256 amount0, uint256 amount1) = lpWrapper.previewMint(lpAmount);
             assertEq(amount0, amount0Actual, "previewMint mismatch previewAmounts 0");
             assertEq(amount1, amount1Actual, "previewMint mismatch previewAmounts 1");
         }
 
         movePrice(ICLPool(info.pool), TickMath.getSqrtRatioAtTick(position.tickUpper) + 1);
-
         {
             uint256 amount0Desired = 1 ether;
             uint256 amount1Desired = 1 ether;
@@ -741,6 +750,13 @@ contract Unit is Fixture {
             assertEq(amount0Actual, 0, "One side position");
             assertTrue(amount0Actual <= amount0Desired, "Overflow amount0Actual");
             assertTrue(amount1Actual <= amount1Desired, "Overflow amount1Actual");
+
+            uint256 slippageX96 = Math.min(
+                (amount0Desired - amount0Actual).mulDiv(Q96, amount0Desired),
+                (amount1Desired - amount1Actual).mulDiv(Q96, amount1Desired)
+            );
+            assertLe(slippageX96, Q96 / 1e6, "High slippage");
+
             (uint256 amount0, uint256 amount1) = lpWrapper.previewMint(lpAmount);
             assertEq(amount0, 0, "One side position");
             assertEq(amount0, amount0Actual, "previewMint mismatch previewAmounts 0");
@@ -756,8 +772,137 @@ contract Unit is Fixture {
             assertEq(amount1Actual, 0, "One side position");
             assertTrue(amount0Actual <= amount0Desired, "Overflow amount0Actual");
             assertTrue(amount1Actual <= amount1Desired, "Overflow amount1Actual");
+
+            uint256 slippageX96 = Math.min(
+                (amount0Desired - amount0Actual).mulDiv(Q96, amount0Desired),
+                (amount1Desired - amount1Actual).mulDiv(Q96, amount1Desired)
+            );
+            assertLe(slippageX96, Q96 / 1e6, "High slippage");
+
             (uint256 amount0, uint256 amount1) = lpWrapper.previewMint(lpAmount);
             assertEq(amount1, 0, "One side position");
+            assertEq(amount0, amount0Actual, "previewMint mismatch previewAmounts 0");
+            assertEq(amount1, amount1Actual, "previewMint mismatch previewAmounts 1");
+        }
+    }
+
+    function testPreviewMintAmountsTamper() external {
+        (lpWrapper, deployParams) =
+            deployLpWrapper(pool, IPulseStrategyModule.StrategyType.Tamper, contracts);
+
+        ICore core = contracts.core;
+        ICore.ManagedPositionInfo memory info = core.managedPositionAt(lpWrapper.positionId());
+        IVeloAmmModule ammModule = contracts.ammModule;
+        IAmmModule.AmmPosition[] memory positions =
+            new IAmmModule.AmmPosition[](info.ammPositionIds.length);
+        for (uint256 index = 0; index < info.ammPositionIds.length; index++) {
+            uint256 tokenId = info.ammPositionIds[index];
+            positions[index] = ammModule.getAmmPosition(tokenId);
+        }
+
+        vm.startPrank(Constants.OPTIMISM_DEPLOYER);
+
+        deal(pool.token0(), Constants.OPTIMISM_DEPLOYER, 1000000 ether);
+        deal(pool.token1(), Constants.OPTIMISM_DEPLOYER, 1000000 ether);
+
+        IERC20(pool.token0()).approve(address(lpWrapper), 1000000 ether);
+        IERC20(pool.token1()).approve(address(lpWrapper), 1000000 ether);
+
+        {
+            uint256 amount0Desired = 1 ether;
+            uint256 amount1Desired = 1 ether;
+            (uint256 lpAmount, uint256 amount0Actual, uint256 amount1Actual) =
+                lpWrapper.previewAmounts(amount0Desired, amount1Desired);
+            assertTrue(amount0Actual <= amount0Desired, "Overflow amount0Actual");
+            assertTrue(amount1Actual <= amount1Desired, "Overflow amount1Actual");
+
+            uint256 slippageX96 = Math.min(
+                (amount0Desired - amount0Actual).mulDiv(Q96, amount0Desired),
+                (amount1Desired - amount1Actual).mulDiv(Q96, amount1Desired)
+            );
+            assertLe(slippageX96, Q96 / 1e6, "High slippage");
+
+            (uint256 amount0, uint256 amount1) = lpWrapper.previewMint(lpAmount);
+            assertEq(amount0, amount0Actual, "previewMint mismatch previewAmounts 0");
+            assertEq(amount1, amount1Actual, "previewMint mismatch previewAmounts 1");
+        }
+
+        movePrice(ICLPool(info.pool), TickMath.getSqrtRatioAtTick(positions[0].tickUpper) + 1);
+        {
+            uint256 amount0Desired = 1 ether;
+            uint256 amount1Desired = 1 ether;
+            (uint256 lpAmount, uint256 amount0Actual, uint256 amount1Actual) =
+                lpWrapper.previewAmounts(amount0Desired, amount1Desired);
+            assertTrue(amount0Actual <= amount0Desired, "Overflow amount0Actual");
+            assertTrue(amount1Actual <= amount1Desired, "Overflow amount1Actual");
+
+            uint256 slippageX96 = Math.min(
+                (amount0Desired - amount0Actual).mulDiv(Q96, amount0Desired),
+                (amount1Desired - amount1Actual).mulDiv(Q96, amount1Desired)
+            );
+            assertLe(slippageX96, Q96 / 1e6, "High slippage");
+
+            (uint256 amount0, uint256 amount1) = lpWrapper.previewMint(lpAmount);
+            assertEq(amount0, amount0Actual, "previewMint mismatch previewAmounts 0");
+            assertEq(amount1, amount1Actual, "previewMint mismatch previewAmounts 1");
+        }
+
+        movePrice(ICLPool(info.pool), TickMath.getSqrtRatioAtTick(positions[1].tickLower) - 1);
+        {
+            uint256 amount0Desired = 1 ether;
+            uint256 amount1Desired = 1 ether;
+            (uint256 lpAmount, uint256 amount0Actual, uint256 amount1Actual) =
+                lpWrapper.previewAmounts(amount0Desired, amount1Desired);
+            assertTrue(amount0Actual <= amount0Desired, "Overflow amount0Actual");
+            assertTrue(amount1Actual <= amount1Desired, "Overflow amount1Actual");
+
+            uint256 slippageX96 = Math.min(
+                (amount0Desired - amount0Actual).mulDiv(Q96, amount0Desired),
+                (amount1Desired - amount1Actual).mulDiv(Q96, amount1Desired)
+            );
+            assertLe(slippageX96, Q96 / 1e6, "High slippage");
+
+            (uint256 amount0, uint256 amount1) = lpWrapper.previewMint(lpAmount);
+            assertEq(amount0, amount0Actual, "previewMint mismatch previewAmounts 0");
+            assertEq(amount1, amount1Actual, "previewMint mismatch previewAmounts 1");
+        }
+
+        movePrice(ICLPool(info.pool), TickMath.getSqrtRatioAtTick(positions[1].tickUpper) + 1);
+        {
+            uint256 amount0Desired = 1 ether;
+            uint256 amount1Desired = 1 ether;
+            (uint256 lpAmount, uint256 amount0Actual, uint256 amount1Actual) =
+                lpWrapper.previewAmounts(amount0Desired, amount1Desired);
+            assertTrue(amount0Actual <= amount0Desired, "Overflow amount0Actual");
+            assertTrue(amount1Actual <= amount1Desired, "Overflow amount1Actual");
+
+            uint256 slippageX96 = Math.min(
+                (amount0Desired - amount0Actual).mulDiv(Q96, amount0Desired),
+                (amount1Desired - amount1Actual).mulDiv(Q96, amount1Desired)
+            );
+            assertLe(slippageX96, Q96 / 1e6, "High slippage");
+
+            (uint256 amount0, uint256 amount1) = lpWrapper.previewMint(lpAmount);
+            assertEq(amount0, amount0Actual, "previewMint mismatch previewAmounts 0");
+            assertEq(amount1, amount1Actual, "previewMint mismatch previewAmounts 1");
+        }
+
+        movePrice(ICLPool(info.pool), TickMath.getSqrtRatioAtTick(positions[0].tickLower) - 1);
+        {
+            uint256 amount0Desired = 1 ether;
+            uint256 amount1Desired = 1 ether;
+            (uint256 lpAmount, uint256 amount0Actual, uint256 amount1Actual) =
+                lpWrapper.previewAmounts(amount0Desired, amount1Desired);
+            assertTrue(amount0Actual <= amount0Desired, "Overflow amount0Actual");
+            assertTrue(amount1Actual <= amount1Desired, "Overflow amount1Actual");
+
+            uint256 slippageX96 = Math.min(
+                (amount0Desired - amount0Actual).mulDiv(Q96, amount0Desired),
+                (amount1Desired - amount1Actual).mulDiv(Q96, amount1Desired)
+            );
+            assertLe(slippageX96, Q96 / 1e6, "High slippage");
+
+            (uint256 amount0, uint256 amount1) = lpWrapper.previewMint(lpAmount);
             assertEq(amount0, amount0Actual, "previewMint mismatch previewAmounts 0");
             assertEq(amount1, amount1Actual, "previewMint mismatch previewAmounts 1");
         }
