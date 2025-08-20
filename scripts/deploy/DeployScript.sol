@@ -135,7 +135,7 @@ abstract contract DeployScript {
     function deployStrategy(
         CoreDeployment memory contracts,
         IVeloDeployFactory.DeployParams memory params
-    ) internal returns (address) {
+    ) internal returns (ILpWrapper) {
         IERC20(params.pool.token0()).approve(address(contracts.deployFactory), params.maxAmount0);
         IERC20(params.pool.token1()).approve(address(contracts.deployFactory), params.maxAmount1);
 
@@ -147,9 +147,9 @@ abstract contract DeployScript {
             console2.log("              Token0:", address(params.pool.token0()), params.maxAmount0);
             console2.log("              Token1:", address(params.pool.token1()), params.maxAmount1);
             console2.log("                Pool:", address(params.pool));
-            return address(lpWrapper);
+            return lpWrapper;
         } catch {
-            return address(0);
+            return ILpWrapper(address(0));
         }
     }
 
@@ -219,7 +219,7 @@ contract Deploy is Script, DeployScript, PoolParameters {
          */
 
         CoreDeployment memory contracts = Constants.getCoreDeployment();
-        //transferTokensToFactoryOperator(contracts);
+        transferTokensToFactoryOperator(contracts);
         //return;
 
         console2.log("         FACTORY_OPERATOR: ", coreDeploymentParams.factoryOperator);
@@ -232,7 +232,7 @@ contract Deploy is Script, DeployScript, PoolParameters {
         console2.log("               VeloOracle: ", address(contracts.oracle));
 
         deployStrategies(contracts);
-        revert("success");
+        // revert("success");
     }
 
     function deployStrategies(CoreDeployment memory contracts) internal {
@@ -241,17 +241,18 @@ contract Deploy is Script, DeployScript, PoolParameters {
         vm.startPrank(coreDeploymentParams.factoryOperator);
         IVeloDeployFactory.DeployParams[] memory params = getPoolDeployParams(contracts);
 
-        uint256 firstIndex = 47;
+        uint256 firstIndex = 0;
         uint256 lastIndex = params.length;
         string memory batchJson = '{"transactions":[';
         for (uint256 i = firstIndex; i < lastIndex; i++) {
             console2.log("-----------------------------------------------------");
-            address lpWrapper = contracts.deployFactory.poolToWrapper(address(params[i].pool));
-            if (lpWrapper != address(0)) {
-                console2.log("[EXISTS] Strategy");
+            ILpWrapper lpWrapper = ILpWrapper(contracts.deployFactory.poolToWrapper(address(params[i].pool)));
+            if (address(lpWrapper) != address(0)) {
+                console2.log("[EXISTS] Strategy is deployed", address(lpWrapper));
+                continue; // already deployed
             } else {
                 lpWrapper = deployStrategy(contracts, params[i]);
-                if (lpWrapper != address(0)) {
+                if (address(lpWrapper) != address(0)) {
                     string memory semicolon = i < lastIndex - 1 ? "," : "";
                     batchJson = string(
                         abi.encodePacked(
@@ -265,7 +266,7 @@ contract Deploy is Script, DeployScript, PoolParameters {
                 }
             }
             console2.log("For Pool :", address(params[i].pool));
-            console2.log("LpWrapper:", lpWrapper);
+            console2.log("LpWrapper:", address(lpWrapper));
         }
 
         batchJson = string(abi.encodePacked(batchJson, "]}"));
@@ -288,43 +289,40 @@ contract Deploy is Script, DeployScript, PoolParameters {
     }
 
     function transferTokensToFactoryOperator(CoreDeployment memory contracts) internal {
-        uint256 senderPrivateKey = vm.envUint("OPERATOR_PRIVATE_KEY");
         IVeloDeployFactory.DeployParams[] memory params = getPoolDeployParams(contracts);
         CoreDeploymentParams memory coreDeploymentParams = Constants.getDeploymentParams();
 
-        address SENDER = vm.addr(senderPrivateKey);
-
-        console2.log(
-            "Transferring tokens from",
-            SENDER,
-            "to factory operator",
-            coreDeploymentParams.factoryOperator
-        );
-
-        vm.startBroadcast(senderPrivateKey);
         for (uint256 i = 0; i < params.length; i++) {
             ICLPool pool = params[i].pool;
+            sendAssets(pool.token0(), coreDeploymentParams.factoryOperator);
+            sendAssets(pool.token1(), coreDeploymentParams.factoryOperator);
 
-            uint256 balance0 = IERC20(pool.token0()).balanceOf(SENDER);
-            uint256 balance1 = IERC20(pool.token1()).balanceOf(SENDER);
-            if (balance0 > 0) {
-                IERC20(ICLPool(pool).token0()).transfer(
-                    coreDeploymentParams.factoryOperator, balance0
-                );
-                console2.log(
-                    "Transferred", IERC20Metadata(ICLPool(pool).token0()).symbol(), balance0
-                );
-            }
-            if (balance1 > 0) {
-                IERC20(ICLPool(pool).token1()).transfer(
-                    coreDeploymentParams.factoryOperator, balance1
-                );
-                console2.log(
-                    "Transferred", IERC20Metadata(ICLPool(pool).token1()).symbol(), balance1
-                );
-            }
         }
-        vm.stopBroadcast();
+    }
+
+    function sendAssets(address token, address to) internal {
+        uint256 senderPrivateKey = vm.envUint("OPERATOR_PRIVATE_KEY");
+        address SENDER = vm.addr(senderPrivateKey);
+
+        if (token == 0x471EcE3750Da237f93B8E339c536989b8978a438) {
+            vm.startBroadcast(senderPrivateKey);
+            to.call{value: 3.5e18}("");
+            vm.stopBroadcast();
+            // skip CELO token
+            return;
+        }
+
+        require(token != address(0), "token is zero address");
+        require(to != address(0), "to is zero address");
+
+
+        uint256 balance = IERC20(token).balanceOf(SENDER);
+        if (balance > 0) {
+            vm.startBroadcast(senderPrivateKey);
+            IERC20(token).transfer(to, balance);
+            vm.stopBroadcast();
+            console2.log("Transferred", IERC20Metadata(token).symbol(), balance, to);
+        }
     }
 
     function jsonDeploymentEntity(
