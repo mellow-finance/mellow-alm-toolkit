@@ -392,16 +392,21 @@ contract Unit is Fixture {
         IERC20(pool.token0()).approve(address(lpWrapper), 1010000 ether);
         IERC20(pool.token1()).approve(address(lpWrapper), 1010000 ether);
 
-        vm.expectRevert(abi.encodeWithSignature("InsufficientAmounts()"));
-        lpWrapper.mint(
-            ILpWrapper.MintParams({
-                lpAmount: 100 ether,
-                amount0Max: 1 ether,
-                amount1Max: 1 ether,
-                recipient: Constants.OPTIMISM_DEPLOYER,
-                deadline: type(uint256).max
-            })
-        );
+        {
+            uint256 lpAmount = 100 ether;
+            (uint256 amount0, uint256 amount1) = lpWrapper.previewMint(lpAmount);
+
+            vm.expectRevert(abi.encodeWithSignature("InsufficientAmounts()"));
+            lpWrapper.mint(
+                ILpWrapper.MintParams({
+                    lpAmount: lpAmount,
+                    amount0Max: amount0 / 2,
+                    amount1Max: amount1 / 2,
+                    recipient: Constants.OPTIMISM_DEPLOYER,
+                    deadline: type(uint256).max
+                })
+            );
+        }
 
         vm.expectRevert(abi.encodeWithSignature("Deadline()"));
         lpWrapper.mint(
@@ -424,34 +429,39 @@ contract Unit is Fixture {
                 deadline: block.timestamp
             })
         );
-
-        vm.expectRevert(abi.encodeWithSignature("TotalSupplyLimitReached()"));
-        lpWrapper.mint(
-            ILpWrapper.MintParams({
-                lpAmount: 99999 ether,
-                amount0Max: 100000 ether,
-                amount1Max: 100000 ether,
-                recipient: Constants.OPTIMISM_DEPLOYER,
-                deadline: block.timestamp
-            })
-        );
+        {
+            uint256 lpAmount = lpWrapper.totalSupplyLimit() - lpWrapper.totalSupply() + 1 wei;
+            (uint256 amount0, uint256 amount1) = lpWrapper.previewMint(lpAmount);
+            vm.expectRevert(abi.encodeWithSignature("TotalSupplyLimitReached()"));
+            lpWrapper.mint(
+                ILpWrapper.MintParams({
+                    lpAmount: lpAmount,
+                    amount0Max: amount0,
+                    amount1Max: amount1,
+                    recipient: Constants.OPTIMISM_DEPLOYER,
+                    deadline: block.timestamp
+                })
+            );
+        }
 
         uint256 totalSupplyBefore = lpWrapper.totalSupply();
         IAmmModule.AmmPosition memory positionBefore = ammModule.getAmmPosition(tokenId);
 
+        uint256 lpAmountDesired = 1 ether;
+        (uint256 amount0Expected, uint256 amount1Expected) = lpWrapper.previewMint(lpAmountDesired);
         (uint256 amount0, uint256 amount1, uint256 lpAmount) = lpWrapper.mint(
             ILpWrapper.MintParams({
-                lpAmount: 1 ether,
-                amount0Max: 1 ether,
-                amount1Max: 1 ether,
+                lpAmount: lpAmountDesired,
+                amount0Max: amount0Expected,
+                amount1Max: amount1Expected,
                 recipient: Constants.OPTIMISM_DEPLOYER,
                 deadline: block.timestamp
             })
         );
 
-        assertGe(amount0, 6.427e14, "amount0");
-        assertGe(amount1, 0.99 ether, "amount1");
-        assertGe(lpAmount, 0.999 ether, "lpAmount");
+        assertApproxEqAbs(amount0, amount0Expected, 1, "amount0");
+        assertApproxEqAbs(amount1, amount1Expected, 1, "amount1");
+        assertApproxEqAbs(lpAmountDesired, lpAmount, 1, "lpAmount");
         assertEq(lpWrapper.balanceOf(Constants.OPTIMISM_DEPLOYER), lpAmount);
 
         uint256 totalSupplyAfter = lpWrapper.totalSupply();
@@ -476,16 +486,21 @@ contract Unit is Fixture {
             );
         }
 
-        vm.expectRevert(abi.encodeWithSignature("InsufficientAmounts()"));
-        lpWrapper.mint(
-            ILpWrapper.MintParams({
-                lpAmount: 100 ether,
-                amount0Max: 1 ether,
-                amount1Max: 1 ether,
-                recipient: Constants.OPTIMISM_DEPLOYER,
-                deadline: block.timestamp
-            })
-        );
+        {
+            uint256 lpAmount = 100 ether;
+            (uint256 amount0, uint256 amount1) = lpWrapper.previewMint(lpAmount);
+
+            vm.expectRevert(abi.encodeWithSignature("InsufficientAmounts()"));
+            lpWrapper.mint(
+                ILpWrapper.MintParams({
+                    lpAmount: lpAmount,
+                    amount0Max: amount0 / 2,
+                    amount1Max: amount1 / 2,
+                    recipient: Constants.OPTIMISM_DEPLOYER,
+                    deadline: type(uint256).max
+                })
+            );
+        }
 
         vm.stopPrank();
     }
@@ -640,7 +655,7 @@ contract Unit is Fixture {
 
         lpWrapper.mint(
             ILpWrapper.MintParams({
-                lpAmount: 0.99 ether,
+                lpAmount: 100 ether,
                 amount0Max: 1 ether,
                 amount1Max: 1 ether,
                 recipient: Constants.OPTIMISM_DEPLOYER,
@@ -654,18 +669,18 @@ contract Unit is Fixture {
         vm.expectRevert(abi.encodeWithSignature("InvalidDistributor()"));
         IVeloFarm(lpWrapper).distribute(1 ether, rewardToken);
 
-        skip(1 hours);
+        skip(365 days);
 
         vm.startPrank(Constants.OPTIMISM_DEPLOYER);
-        uint256 eranedAmount = IVeloFarm(lpWrapper).getRewards(Constants.OPTIMISM_DEPLOYER);
-        assertEq(eranedAmount, IERC20(rewardToken).balanceOf(Constants.OPTIMISM_DEPLOYER));
+        uint256 earnedAmount = IVeloFarm(lpWrapper).getRewards(Constants.OPTIMISM_DEPLOYER);
+        assertEq(earnedAmount, IERC20(rewardToken).balanceOf(Constants.OPTIMISM_DEPLOYER));
 
         assertApproxEqRel(
-            FullMath.mulDiv(eranedAmount, Q96, totalSupplyAfter - totalSupplyBefore),
+            FullMath.mulDiv(earnedAmount, Q96, totalSupplyAfter - totalSupplyBefore),
             FullMath.mulDiv(
                 IERC20(rewardToken).balanceOf(address(lpWrapper)), Q96, totalSupplyBefore
             ),
-            10 ** 3 // 1e-15
+            10 ** 10 // 1e-8
         );
     }
 

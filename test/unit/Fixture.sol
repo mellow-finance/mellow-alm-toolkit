@@ -314,14 +314,25 @@ contract Fixture is DeployScript, Test {
             IVeloOracle.SecurityParams({lookback: 100, maxAge: 5 days, maxAllowedDelta: 10});
 
         deployParams.pool = pool;
-        deployParams.maxAmount0 = 1 ether;
-        deployParams.maxAmount1 = 1 ether;
-        deployParams.initialTotalSupply = 1 ether;
+        deployParams.maxAmount0 = 10 ** (ERC20(pool.token0()).decimals() / 2 + 1);
+        deployParams.maxAmount1 = 10 ** (ERC20(pool.token1()).decimals() / 2 + 1);
+        deployParams.initialTotalSupply =
+            10 ** ((ERC20(pool.token0()).decimals() + ERC20(pool.token1()).decimals()) / 2);
         deployParams.totalSupplyLimit = 1000 ether;
 
         vm.startPrank(params.factoryOperator);
-        deal(pool.token0(), address(contracts.deployFactory), 1 ether);
-        deal(pool.token1(), address(contracts.deployFactory), 1 ether);
+        if (
+            IERC20(pool.token0()).balanceOf(address(contracts.deployFactory))
+                < deployParams.maxAmount0
+        ) {
+            deal(pool.token0(), address(contracts.deployFactory), deployParams.maxAmount0);
+        }
+        if (
+            IERC20(pool.token1()).balanceOf(address(contracts.deployFactory))
+                < deployParams.maxAmount1
+        ) {
+            deal(pool.token1(), address(contracts.deployFactory), deployParams.maxAmount1);
+        }
         lpWrapper = deployStrategy(contracts, deployParams);
         vm.stopPrank();
     }
