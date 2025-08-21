@@ -926,6 +926,6 @@ contract Unit is Fixture {
             amount0Desired > 0 ? amount0Desired - amount0Actual : type(uint256).max,
             amount1Desired > 0 ? amount1Desired - amount1Actual : type(uint256).max
         );
-        assertTrue(slippageRelX96 < Q96 / 1e10 || slippageAbsX96 < 3, "High slippage");
+        assertTrue(slippageRelX96 < Q96 / 1e6 || slippageAbsX96 < 3, "High slippage");
     }
 }

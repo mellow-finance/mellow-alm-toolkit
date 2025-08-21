@@ -303,26 +303,26 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
         uint256 amount1;
         (uint160 sqrtPriceX96, IAmmModule.AmmPosition[] memory positions) = getState();
         uint256 n = positions.length;
-        uint256 totalSupply_ = totalSupply();
-        lpAmount = 1 ether; //Math.max(1 ether, totalSupply_);
-        uint256[] memory liquidity = new uint256[](n);
 
-        /// @dev step #1: estimate ceil amounts for arbitrary lpAmount
+        /// @dev step #1: estimate ceil amounts for current lpAmount equals to totalSupply
         for (uint256 i = 0; i < n; i++) {
-            (uint256 amount0_, uint256 amount1_, uint256 liquidity_) =
-                calculateAmountsForLp(lpAmount, totalSupply_, positions[i], sqrtPriceX96);
-            liquidity[i] = liquidity_;
+            (uint256 amount0_, uint256 amount1_) = ammModule.getAmountsForLiquidityCeil(
+                positions[i].liquidity, sqrtPriceX96, positions[i].tickLower, positions[i].tickUpper
+            );
             amount0 += amount0_;
             amount1 += amount1_;
         }
         /// @dev step #2: adjust lpAmount based on desired amounts
         lpAmount = type(uint256).max;
+        uint256 totalSupply_ = totalSupply();
+        uint256 liquidity;
         for (uint256 i = 0; i < n; i++) {
-            liquidity[i] = Math.min(
-                amount0 > 0 ? liquidity[i].mulDiv(amount0Desired, amount0) : type(uint256).max,
-                amount1 > 0 ? liquidity[i].mulDiv(amount1Desired, amount1) : type(uint256).max
+            liquidity = positions[i].liquidity;
+            liquidity = Math.min(
+                amount0 > 0 ? liquidity.mulDiv(amount0Desired, amount0) : type(uint256).max,
+                amount1 > 0 ? liquidity.mulDiv(amount1Desired, amount1) : type(uint256).max
             );
-            lpAmount = Math.min(lpAmount, totalSupply_.mulDiv(liquidity[i], positions[i].liquidity));
+            lpAmount = Math.min(lpAmount, totalSupply_.mulDiv(liquidity, positions[i].liquidity));
         }
     }
 
