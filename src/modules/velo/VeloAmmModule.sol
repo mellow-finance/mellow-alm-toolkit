@@ -6,6 +6,7 @@ import "../../libraries/PositionValue.sol";
 
 contract VeloAmmModule is IVeloAmmModule {
     using SafeERC20 for IERC20;
+    using Math for uint256;
 
     /// @inheritdoc IVeloAmmModule
     uint256 public constant D9 = 1e9;
@@ -222,6 +223,31 @@ contract VeloAmmModule is IVeloAmmModule {
             TickMath.getSqrtRatioAtTick(tickUpper),
             liquidity
         );
+    }
+
+    function getAmountsForLiquidityCeil(
+        uint256 liquidity,
+        uint160 sqrtPriceX96,
+        int24 tickLower,
+        int24 tickUpper
+    ) public pure override returns (uint256 amount0, uint256 amount1) {
+        uint256 sqrtPriceAX96 = TickMath.getSqrtRatioAtTick(tickLower);
+        uint256 sqrtPriceBX96 = TickMath.getSqrtRatioAtTick(tickUpper);
+        if (sqrtPriceX96 < sqrtPriceBX96) {
+            uint256 sqrtRatioAX96_ = sqrtPriceAX96.max(sqrtPriceX96);
+            amount0 = Math.ceilDiv(
+                (liquidity << 96).mulDiv(
+                    sqrtPriceBX96 - sqrtRatioAX96_, sqrtPriceBX96, Math.Rounding.Ceil
+                ),
+                sqrtRatioAX96_
+            );
+        }
+
+        if (sqrtPriceX96 > sqrtPriceAX96) {
+            amount1 = liquidity.mulDiv(
+                sqrtPriceBX96.min(sqrtPriceX96) - sqrtPriceAX96, 2 ** 96, Math.Rounding.Ceil
+            );
+        }
     }
 
     /// ---------------------- INTERNAL MUTABLE FUNCTIONS ----------------------

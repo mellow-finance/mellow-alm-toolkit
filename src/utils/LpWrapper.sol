@@ -294,24 +294,26 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
     }
 
     /// @inheritdoc ILpWrapper
-    function previewAmounts(uint256 amount0Desired, uint256 amount1Desired)
+    function previewDeposit(uint256 amount0Desired, uint256 amount1Desired)
         external
         view
-        returns (uint256 lpAmount, uint256 amount0, uint256 amount1)
+        returns (uint256 lpAmount)
     {
+        uint256 amount0;
+        uint256 amount1;
         (uint160 sqrtPriceX96, IAmmModule.AmmPosition[] memory positions) = getState();
         uint256 n = positions.length;
         uint256 totalSupply_ = totalSupply();
-        lpAmount = Math.max(1 ether, totalSupply_);
+        lpAmount = 1 ether; //Math.max(1 ether, totalSupply_);
         uint256[] memory liquidity = new uint256[](n);
 
-        /// @dev step #1: estimate amounts for arbitrary lpAmount
+        /// @dev step #1: estimate ceil amounts for arbitrary lpAmount
         for (uint256 i = 0; i < n; i++) {
             (uint256 amount0_, uint256 amount1_, uint256 liquidity_) =
                 calculateAmountsForLp(lpAmount, totalSupply_, positions[i], sqrtPriceX96);
+            liquidity[i] = liquidity_;
             amount0 += amount0_;
             amount1 += amount1_;
-            liquidity[i] = liquidity_;
         }
         /// @dev step #2: adjust lpAmount based on desired amounts
         lpAmount = type(uint256).max;
@@ -320,18 +322,7 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
                 amount0 > 0 ? liquidity[i].mulDiv(amount0Desired, amount0) : type(uint256).max,
                 amount1 > 0 ? liquidity[i].mulDiv(amount1Desired, amount1) : type(uint256).max
             );
-            lpAmount = Math.min(
-                lpAmount,
-                totalSupply_.mulDiv(liquidity[i], positions[i].liquidity, Math.Rounding.Ceil)
-            );
-        }
-        /// @dev step #3: calculate final amounts based on adjusted lpAmount
-        (amount0, amount1) = (0, 0);
-        for (uint256 i = 0; i < n; i++) {
-            (uint256 amount0_, uint256 amount1_,) =
-                calculateAmountsForLp(lpAmount, totalSupply_, positions[i], sqrtPriceX96);
-            amount0 += amount0_;
-            amount1 += amount1_;
+            lpAmount = Math.min(lpAmount, totalSupply_.mulDiv(liquidity[i], positions[i].liquidity));
         }
     }
 

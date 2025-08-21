@@ -31,6 +31,7 @@ contract Unit is Fixture {
         oracle = new VeloOracle();
 
         ICLPool pool = ICLPool(factory.getPool(Constants.OPTIMISM_WETH, Constants.OPTIMISM_OP, 200));
+
         assertEq(pool.tickSpacing(), 200);
         oracle.ensureNoMEV(
             address(pool),
@@ -91,6 +92,10 @@ contract Unit is Fixture {
                 IVeloOracle.SecurityParams({lookback: 1001, maxAllowedDelta: 0, maxAge: 7 days})
             )
         );
+
+        deal(Constants.OPTIMISM_WETH, address(this), 1e10 ether);
+        deal(Constants.OPTIMISM_OP, address(this), 1e10 ether);
+
         vm.startPrank(Constants.OPTIMISM_DEPLOYER);
         (
             ,
@@ -134,6 +139,9 @@ contract Unit is Fixture {
         );
 
         (, int24 spotTick,,,,) = pool.slot0();
+
+        deal(Constants.OPTIMISM_WETH, address(this), 1e10 ether);
+        deal(Constants.OPTIMISM_OP, address(this), 1e10 ether);
 
         vm.startPrank(Constants.OPTIMISM_DEPLOYER);
         movePrice(pool, TickMath.getSqrtRatioAtTick(spotTick));

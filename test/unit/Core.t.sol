@@ -15,6 +15,9 @@ contract Unit is Fixture {
         contracts = deployContracts();
         (lpWrapper, deployParams) =
             deployLpWrapper(pool, IPulseStrategyModule.StrategyType.LazySyncing, contracts);
+
+        deal(Constants.OPTIMISM_WETH, address(this), 1e10 ether);
+        deal(Constants.OPTIMISM_OP, address(this), 1e10 ether);
     }
 
     function testContructor() external {

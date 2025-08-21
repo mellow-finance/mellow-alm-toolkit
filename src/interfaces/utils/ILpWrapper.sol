@@ -186,13 +186,11 @@ interface ILpWrapper is IVeloFarm, IAccessControlEnumerable, IERC20 {
      * @param amount0Desired The desired amount of asset 0.
      * @param amount1Desired The desired amount of asset 1.
      * @return lpAmount The estimated amount of LP tokens.
-     * @return amount0 The estimated amount of asset 0.
-     * @return amount1 The estimated amount of asset 1.
      */
-    function previewAmounts(uint256 amount0Desired, uint256 amount1Desired)
+    function previewDeposit(uint256 amount0Desired, uint256 amount1Desired)
         external
         view
-        returns (uint256 lpAmount, uint256 amount0, uint256 amount1);
+        returns (uint256 lpAmount);
 
     /**
      * @dev Returns the estimated amounts of underlying assets for a given LP token amount.

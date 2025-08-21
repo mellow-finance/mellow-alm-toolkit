@@ -281,6 +281,8 @@ contract RebalancingBotMock is IRebalanceCallback {
 contract Fixture is DeployScript, Test {
     using SafeERC20 for IERC20;
 
+    address WETH = 0x4200000000000000000000000000000000000006;
+
     ILpWrapper private wstethWeth1Wrapper;
 
     int24 public constant TICK_SPACING = 200;
@@ -307,7 +309,7 @@ contract Fixture is DeployScript, Test {
             strategyType: strategyType,
             tickNeighborhood: 0, // Neighborhood of ticks to consider for rebalancing
             tickSpacing: pool.tickSpacing(), // tickSpacing of the corresponding amm pool
-            width: pool.tickSpacing() * 8, // Width of the interval
+            width: pool.tickSpacing() * 2, // Width of the interval
             maxLiquidityRatioDeviationX96: strategyType == IPulseStrategyModule.StrategyType.Tamper
                 ? Q96 / 20
                 : 0
@@ -317,8 +319,8 @@ contract Fixture is DeployScript, Test {
             ? int24(1)
             : deployParams.strategyParams.width / 10;
         deployParams.securityParams = IVeloOracle.SecurityParams({
-            lookback: 100,
-            maxAge: 1 days,
+            lookback: 10,
+            maxAge: 1 hours,
             maxAllowedDelta: maxAllowedDelta
         });
 
@@ -326,7 +328,7 @@ contract Fixture is DeployScript, Test {
         deployParams.maxAmount0 = 10 ** (ERC20(pool.token0()).decimals() / 2 + 1);
         deployParams.maxAmount1 = 10 ** (ERC20(pool.token1()).decimals() / 2 + 1);
         deployParams.initialTotalSupply =
-            10 ** ((ERC20(pool.token0()).decimals() + ERC20(pool.token1()).decimals()) / 2);
+            10 ** ((ERC20(pool.token0()).decimals() + ERC20(pool.token1()).decimals()) / 4 + 1);
         deployParams.totalSupplyLimit = 1000 ether;
 
         vm.startPrank(params.factoryOperator);
@@ -344,6 +346,22 @@ contract Fixture is DeployScript, Test {
         }
         lpWrapper = deployStrategy(contracts, deployParams);
         vm.stopPrank();
+    }
+
+    function dealTokenAmount(address token, address recipient, uint256 amount) public {
+        if (token == WETH) {
+            deal(recipient, amount);
+            vm.startPrank(recipient);
+            IWETH9(WETH).deposit{value: amount}();
+            vm.stopPrank();
+        } else {
+            console2.log(token);
+            if (token == 0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85) {
+                deal(0xbd17DEee53a58B48548117a11a2E7bbF2D0d6Fa7, recipient, amount);
+            } else {
+                deal(token, recipient, amount);
+            }
+        }
     }
 
     function mint(
@@ -447,9 +465,6 @@ contract Fixture is DeployScript, Test {
         address token0 = pool.token0();
         address token1 = pool.token1();
         (uint160 sqrtPriceX96,,,,,) = pool.slot0();
-
-        deal(token0, address(this), 10000000000000000000 ether);
-        deal(token1, address(this), 10000000000000000000 ether);
 
         vm.startPrank(address(this));
 
