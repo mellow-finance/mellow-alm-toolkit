@@ -774,6 +774,104 @@ contract Unit is Fixture {
         }
     }
 
+    function testPreviewDepositTamper(uint96 amount0, uint96 amount1) external {
+        vm.assume(amount0 > 1e12 && amount0 < 1000 ether);
+        vm.assume(amount1 > 1e12 && amount1 < 1000 ether);
+
+        (lpWrapper, deployParams) =
+            deployLpWrapper(pool, IPulseStrategyModule.StrategyType.Tamper, contracts);
+
+        address depositor = vm.addr(uint256(keccak256("depositor")));
+
+        deal(pool.token0(), depositor, 1000000 ether);
+        deal(pool.token1(), depositor, 1000000 ether);
+
+        vm.prank(params.lpWrapperAdmin);
+        lpWrapper.setTotalSupplyLimit(type(uint256).max);
+
+        vm.startPrank(depositor);
+        uint256 previewLpAmount = lpWrapper.previewDeposit(amount0, amount1);
+        (uint256 previewAmount0, uint256 previewAmount1) = lpWrapper.previewMint(previewLpAmount);
+
+        IERC20(pool.token0()).approve(address(lpWrapper), amount0);
+        IERC20(pool.token1()).approve(address(lpWrapper), amount1);
+
+        (uint256 actualAmount0, uint256 actualAmount1, uint256 actualLpAmount) = lpWrapper.mint(
+            ILpWrapper.MintParams({
+                lpAmount: previewLpAmount,
+                amount0Max: amount0,
+                amount1Max: amount1,
+                recipient: depositor,
+                deadline: type(uint256).max
+            })
+        );
+        vm.stopPrank();
+    }
+
+    function testPreviewDepositMintTamper(uint96 lpAmount) external {
+        vm.assume(lpAmount > 1e12 && lpAmount < 1000 ether);
+        (lpWrapper, deployParams) =
+            deployLpWrapper(pool, IPulseStrategyModule.StrategyType.Tamper, contracts);
+
+        address depositor = vm.addr(uint256(keccak256("depositor")));
+
+        deal(pool.token0(), depositor, 1000000 ether);
+        deal(pool.token1(), depositor, 1000000 ether);
+
+        vm.prank(params.lpWrapperAdmin);
+        lpWrapper.setTotalSupplyLimit(type(uint256).max);
+
+        vm.startPrank(depositor);
+        (uint256 previewAmount0, uint256 previewAmount1) = lpWrapper.previewMint(lpAmount);
+        uint256 previewLpAmount = lpWrapper.previewDeposit(previewAmount0, previewAmount1);
+
+        IERC20(pool.token0()).approve(address(lpWrapper), previewAmount0);
+        IERC20(pool.token1()).approve(address(lpWrapper), previewAmount1);
+
+        (uint256 actualAmount0, uint256 actualAmount1, uint256 actualLpAmount) = lpWrapper.mint(
+            ILpWrapper.MintParams({
+                lpAmount: previewLpAmount,
+                amount0Max: previewAmount0,
+                amount1Max: previewAmount1,
+                recipient: depositor,
+                deadline: type(uint256).max
+            })
+        );
+        vm.stopPrank();
+    }
+
+    function testPreviewDepositMintLazy(uint96 lpAmount) external {
+        vm.assume(lpAmount > 1e9 && lpAmount < 1000 ether);
+        (lpWrapper, deployParams) =
+            deployLpWrapper(pool, IPulseStrategyModule.StrategyType.LazySyncing, contracts);
+
+        address depositor = vm.addr(uint256(keccak256("depositor")));
+
+        deal(pool.token0(), depositor, 1000000 ether);
+        deal(pool.token1(), depositor, 1000000 ether);
+
+        vm.prank(params.lpWrapperAdmin);
+        lpWrapper.setTotalSupplyLimit(type(uint256).max);
+
+        vm.startPrank(depositor);
+        (uint256 previewAmount0, uint256 previewAmount1) = lpWrapper.previewMint(lpAmount);
+        uint256 previewLpAmount = lpWrapper.previewDeposit(previewAmount0, previewAmount1);
+
+        IERC20(pool.token0()).approve(address(lpWrapper), previewAmount0);
+        IERC20(pool.token1()).approve(address(lpWrapper), previewAmount1);
+
+        (uint256 actualAmount0, uint256 actualAmount1, uint256 actualLpAmount) = lpWrapper.mint(
+            ILpWrapper.MintParams({
+                lpAmount: previewLpAmount,
+                amount0Max: previewAmount0,
+                amount1Max: previewAmount1,
+                recipient: depositor,
+                deadline: type(uint256).max
+            })
+        );
+        vm.stopPrank();
+    }
+
     function testPreviewMintAmountsLazy() external {
         (lpWrapper, deployParams) =
             deployLpWrapper(pool, IPulseStrategyModule.StrategyType.LazySyncing, contracts);

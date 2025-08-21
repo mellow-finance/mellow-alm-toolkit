@@ -304,7 +304,7 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
         (uint160 sqrtPriceX96, IAmmModule.AmmPosition[] memory positions) = getState();
         uint256 n = positions.length;
 
-        /// @dev step #1: estimate ceil amounts for current lpAmount equals to totalSupply
+        /// @dev step #1: get amounts that are hold at current positions
         for (uint256 i = 0; i < n; i++) {
             (uint256 amount0_, uint256 amount1_) = ammModule.getAmountsForLiquidityCeil(
                 positions[i].liquidity, sqrtPriceX96, positions[i].tickLower, positions[i].tickUpper
@@ -319,10 +319,11 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
         for (uint256 i = 0; i < n; i++) {
             liquidity = positions[i].liquidity;
             liquidity = Math.min(
-                amount0 > 0 ? liquidity.mulDiv(amount0Desired, amount0) : type(uint256).max,
-                amount1 > 0 ? liquidity.mulDiv(amount1Desired, amount1) : type(uint256).max
+                amount0 > 0 ? liquidity.mulDiv(amount0Desired, amount0 + 1) : type(uint256).max,
+                amount1 > 0 ? liquidity.mulDiv(amount1Desired, amount1 + 1) : type(uint256).max
             );
-            lpAmount = Math.min(lpAmount, totalSupply_.mulDiv(liquidity, positions[i].liquidity));
+            lpAmount =
+                Math.min(lpAmount, totalSupply_.mulDiv(liquidity, positions[i].liquidity + 1));
         }
     }
 
