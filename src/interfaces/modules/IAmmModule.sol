@@ -34,6 +34,23 @@ interface IAmmModule {
     function validateCallbackParams(address pool, bytes memory params) external view;
 
     /**
+     * @dev Calculates liquidity for given token amounts and position parameters.
+     * @param amount0 Amount of token0.
+     * @param amount1 Amount of token1.
+     * @param sqrtPriceX96 Square root of the current price in the pool.
+     * @param tickLower Lower tick of the position.
+     * @param tickUpper Upper tick of the position.
+     * @return Liquidity amount.
+     */
+    function getLiquidityForAmounts(
+        uint256 amount0,
+        uint256 amount1,
+        uint160 sqrtPriceX96,
+        int24 tickLower,
+        int24 tickUpper
+    ) external pure returns (uint128);
+
+    /**
      * @dev Calculates token amounts for a given liquidity amount in a position.
      * @param liquidity Liquidity amount.
      * @param sqrtPriceX96 Square root of the current price in the pool.

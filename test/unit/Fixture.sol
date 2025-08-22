@@ -488,9 +488,11 @@ contract Fixture is DeployScript, Test {
 
         address recipient = abi.decode(data, (address));
         if (amount0Delta > 0) {
+            deal(pool.token0(), recipient, uint256(amount0Delta));
             IERC20(pool.token0()).safeTransferFrom(recipient, address(pool), uint256(amount0Delta));
         }
         if (amount1Delta > 0) {
+            deal(pool.token1(), recipient, uint256(amount1Delta));
             IERC20(pool.token1()).safeTransferFrom(recipient, address(pool), uint256(amount1Delta));
         }
     }

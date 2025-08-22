@@ -317,13 +317,12 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
         uint256 totalSupply_ = totalSupply();
         uint256 liquidity;
         for (uint256 i = 0; i < n; i++) {
-            liquidity = positions[i].liquidity;
+            liquidity = positions[i].liquidity + 1;
             liquidity = Math.min(
                 amount0 > 0 ? liquidity.mulDiv(amount0Desired, amount0 + 1) : type(uint256).max,
                 amount1 > 0 ? liquidity.mulDiv(amount1Desired, amount1 + 1) : type(uint256).max
             );
-            lpAmount =
-                Math.min(lpAmount, totalSupply_.mulDiv(liquidity, positions[i].liquidity + 1));
+            lpAmount = Math.min(lpAmount, totalSupply_.mulDiv(liquidity, positions[i].liquidity));
         }
     }
 

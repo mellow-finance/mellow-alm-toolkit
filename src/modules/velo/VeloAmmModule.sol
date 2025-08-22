@@ -211,6 +211,23 @@ contract VeloAmmModule is IVeloAmmModule {
     }
 
     /// @inheritdoc IAmmModule
+    function getLiquidityForAmounts(
+        uint256 amount0,
+        uint256 amount1,
+        uint160 sqrtPriceX96,
+        int24 tickLower,
+        int24 tickUpper
+    ) public pure override returns (uint128) {
+        return LiquidityAmounts.getLiquidityForAmounts(
+            sqrtPriceX96,
+            TickMath.getSqrtRatioAtTick(tickLower),
+            TickMath.getSqrtRatioAtTick(tickUpper),
+            amount0,
+            amount1
+        );
+    }
+
+    /// @inheritdoc IAmmModule
     function getAmountsForLiquidity(
         uint128 liquidity,
         uint160 sqrtPriceX96,
