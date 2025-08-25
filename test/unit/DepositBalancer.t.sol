@@ -1,138 +1,324 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.25;
 
-import "../Imports.sol";
+import "./Fixture.sol";
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "src/interfaces/utils/IVeloDeployFactory.sol";
-import "src/utils/DepositBalancer.sol";
+import "src/modules/velo/DepositBalancer.sol";
 
-contract DepositBalancerTest is Test {
-    ICore immutable core = ICore(0x0000000cE42D4981513060aB7E50B9e5e2D19AF1);
-    address immutable factory = 0xE46EC96906fc6dEC53De25F013639969Fe10180d;
-    address immutable poolFactory = 0xCc0bDDB707055e04e497aB22a59c2aF4391cd12F;
-    address depositor = 0xf89d7b9c864f589bbF53a82105107622B35EaA40; // Bybit HW
-    address USDC_WETH = 0x478946BcD4a5a22b316470F5486fAfb928C0bA25;
-    address WETH_OP = 0x84a67CD00EB244edCa2288346ADD251A783243c8;
-    address USDC_USDC = 0x2FA71491F8070FA644d97b4782dB5734854c0f6F;
-    address USDC_USDT = 0x84Ce89B4f6F67E523A81A82f9f2F14D84B726F6B;
+contract DepositBalancerTest is Fixture {
+    DeployScript.CoreDeployment contracts;
+
+    ICLPool pool = ICLPool(factory.getPool(Constants.OPTIMISM_WETH, Constants.OPTIMISM_OP, 200));
+
+    address depositor = vm.addr(uint256(keccak256("depositor")));
+    address recipient = vm.addr(uint256(keccak256("recipient")));
+
+    ICore core;
+    address lpWrapperFactory;
     DepositBalancer depositBalancer;
 
     function setUp() public {
-        depositBalancer = new DepositBalancer(factory, poolFactory);
+        deal(Constants.OPTIMISM_WETH, address(this), type(uint256).max);
+        deal(Constants.OPTIMISM_OP, address(this), type(uint256).max);
+
+        deal(Constants.OPTIMISM_WETH, depositor, 1e20 ether);
+        deal(Constants.OPTIMISM_OP, depositor, 1e20 ether);
+
+        contracts = deployContracts();
+        core = ICore(contracts.core);
+        lpWrapperFactory = address(contracts.deployFactory);
+
+        int24 ts = pool.tickSpacing();
+        (, int24 tick,,,,) = pool.slot0();
+        int24 spot = (tick / ts) * ts;
+
+        /// @dev Mint huge liquidity around +-100k ticks
+        mint(
+            Constants.OPTIMISM_WETH,
+            Constants.OPTIMISM_OP,
+            ts,
+            spot - 10 * ts,
+            spot + 10 * ts,
+            1e32,
+            pool,
+            address(this)
+        );
+
+        depositBalancer = new DepositBalancer(lpWrapperFactory, address(factory), address(core));
     }
 
-    function testDepositBalancerOneSide() public {
-        testDepositBalancer1(USDC_WETH);
-        testDepositBalancer2(USDC_WETH);
+    function testDepositLazy(bool isToken0, uint96 amount) public {
+        vm.assume(amount > 1e12 && amount < 1e6 ether);
+        (ILpWrapper lpWrapper,) =
+            deployLpWrapper(pool, IPulseStrategyModule.StrategyType.LazySyncing, contracts);
+
+        vm.startPrank(params.lpWrapperAdmin);
+        lpWrapper.setTotalSupplyLimit(type(uint256).max);
+        vm.stopPrank();
+
+        address token = isToken0 ? Constants.OPTIMISM_WETH : Constants.OPTIMISM_OP;
+        _deposit(recipient, token, amount);
     }
 
-    function testDepositBalancerTwoSide() public {
-        testDepositBalancer1(WETH_OP);
-        testDepositBalancer2(WETH_OP);
+    function testDepositTamper(bool isToken0, uint96 amount) public {
+        vm.assume(amount > 1e12 && amount < 1e6 ether);
+        (ILpWrapper lpWrapper,) =
+            deployLpWrapper(pool, IPulseStrategyModule.StrategyType.Tamper, contracts);
+
+        vm.startPrank(params.lpWrapperAdmin);
+        lpWrapper.setTotalSupplyLimit(type(uint256).max);
+        vm.stopPrank();
+
+        address token = isToken0 ? Constants.OPTIMISM_WETH : Constants.OPTIMISM_OP;
+        _deposit(recipient, token, amount);
     }
 
-    function testDepositBalancerTamper1() public {
-        testDepositBalancer1(USDC_USDC);
-        testDepositBalancer2(USDC_USDC);
+    function testDepositLazy2() external {
+        (ILpWrapper lpWrapper,) =
+            deployLpWrapper(pool, IPulseStrategyModule.StrategyType.LazySyncing, contracts);
+
+        vm.prank(params.lpWrapperAdmin);
+        lpWrapper.setTotalSupplyLimit(type(uint256).max);
+        
+        {
+            uint256 positionId = lpWrapper.positionId();
+            ICore.ManagedPositionInfo memory position = core.managedPositionAt(positionId);
+
+            vm.prank(params.lpWrapperAdmin);
+            lpWrapper.setPositionParams(
+                position.slippageD9,
+                position.callbackParams,
+                position.strategyParams,
+                abi.encode(
+                    IVeloOracle.SecurityParams({
+                        lookback: 1,
+                        maxAge: 1 seconds,
+                        maxAllowedDelta: 10000
+                    })
+                )
+            );
+        }
+
+        core = contracts.core;
+        ICore.ManagedPositionInfo memory info = core.managedPositionAt(lpWrapper.positionId());
+        IVeloAmmModule ammModule = contracts.ammModule;
+        IAmmModule.AmmPosition[] memory positions =
+            new IAmmModule.AmmPosition[](info.ammPositionIds.length);
+        for (uint256 index = 0; index < info.ammPositionIds.length; index++) {
+            uint256 tokenId = info.ammPositionIds[index];
+            positions[index] = ammModule.getAmmPosition(tokenId);
+        }
+        uint160[] memory sqrtPriceX96Check = new uint160[](2);
+        sqrtPriceX96Check[0] = TickMath.getSqrtRatioAtTick(positions[0].tickUpper + 1);
+        sqrtPriceX96Check[1] = TickMath.getSqrtRatioAtTick(positions[0].tickLower - 1);
+
+        for (uint256 index = 0; index < sqrtPriceX96Check.length + 1; index++) {
+            if (index > 0) {
+                movePrice(pool, sqrtPriceX96Check[index - 1]);
+            }
+            {
+                uint256 lpBalanceRecipientBefore = IERC20(lpWrapper).balanceOf(depositor);
+                address token = pool.token0();
+                uint256 amount = 10 ** ERC20(token).decimals();
+
+                (,, uint256 actualLpAmount) = _deposit(depositor, token, amount);
+
+                uint256 lpBalanceRecipientAfter = IERC20(lpWrapper).balanceOf(depositor);
+
+                require(
+                    lpBalanceRecipientAfter - lpBalanceRecipientBefore == actualLpAmount,
+                    "depositor lp balance"
+                );
+            }
+            {
+                uint256 lpBalanceRecipientBefore = IERC20(lpWrapper).balanceOf(depositor);
+                address token = pool.token1();
+                uint256 amount = 10 ** ERC20(token).decimals();
+
+                (,, uint256 actualLpAmount) = _deposit(depositor, token, amount);
+
+                uint256 lpBalanceRecipientAfter = IERC20(lpWrapper).balanceOf(depositor);
+
+                require(
+                    lpBalanceRecipientAfter - lpBalanceRecipientBefore == actualLpAmount,
+                    "depositor lp balance"
+                );
+            }
+        }
     }
 
-    function testDepositBalancerTamper2() public {
-        testDepositBalancer1(USDC_USDT);
-        testDepositBalancer2(USDC_USDT);
-    }
+    function testDepositTamper2() external {
+        (ILpWrapper lpWrapper,) =
+            deployLpWrapper(pool, IPulseStrategyModule.StrategyType.Tamper, contracts);
 
-    function testWithdrawRegular() public {
-        testDepositBalancerWithdraw(USDC_WETH);
-        testDepositBalancerWithdraw(WETH_OP);
-        testDepositBalancerWithdraw(USDC_USDC);
-        testDepositBalancerWithdraw(USDC_USDT);
-    }
-
-    function testDepositBalancer1(address poolAddress) internal {
-        ICLPool pool = ICLPool(poolAddress);
-        address lpWrapper = IVeloDeployFactory(factory).poolToWrapper(address(pool));
+        vm.prank(params.lpWrapperAdmin);
+        lpWrapper.setTotalSupplyLimit(type(uint256).max);
 
         {
-            address recipient = address(0xfedcba987654321);
+            uint256 positionId = lpWrapper.positionId();
+            ICore.ManagedPositionInfo memory position = core.managedPositionAt(positionId);
+
+            vm.prank(params.lpWrapperAdmin);
+            lpWrapper.setPositionParams(
+                position.slippageD9,
+                position.callbackParams,
+                position.strategyParams,
+                abi.encode(
+                    IVeloOracle.SecurityParams({
+                        lookback: 1,
+                        maxAge: 1 seconds,
+                        maxAllowedDelta: 10000
+                    })
+                )
+            );
+        }
+
+        core = contracts.core;
+        ICore.ManagedPositionInfo memory info = core.managedPositionAt(lpWrapper.positionId());
+        IVeloAmmModule ammModule = contracts.ammModule;
+        IAmmModule.AmmPosition[] memory positions =
+            new IAmmModule.AmmPosition[](info.ammPositionIds.length);
+        for (uint256 index = 0; index < info.ammPositionIds.length; index++) {
+            uint256 tokenId = info.ammPositionIds[index];
+            positions[index] = ammModule.getAmmPosition(tokenId);
+        }
+        uint160[] memory sqrtPriceX96Check = new uint160[](4);
+        sqrtPriceX96Check[0] = TickMath.getSqrtRatioAtTick(positions[0].tickUpper + 1);
+        sqrtPriceX96Check[1] = TickMath.getSqrtRatioAtTick(positions[0].tickLower - 1);
+        sqrtPriceX96Check[2] = TickMath.getSqrtRatioAtTick(positions[1].tickUpper + 1);
+        sqrtPriceX96Check[3] = TickMath.getSqrtRatioAtTick(positions[1].tickLower - 1);
+
+        for (uint256 index = 0; index < sqrtPriceX96Check.length + 1; index++) {
+            if (index > 0) {
+                movePrice(pool, sqrtPriceX96Check[index - 1]);
+            }
+            {
+                uint256 lpBalanceRecipientBefore = IERC20(lpWrapper).balanceOf(depositor);
+                address token = pool.token0();
+                uint256 amount = 10 ** ERC20(token).decimals();
+
+                (,, uint256 actualLpAmount) = _deposit(depositor, token, amount);
+
+                uint256 lpBalanceRecipientAfter = IERC20(lpWrapper).balanceOf(depositor);
+
+                require(
+                    lpBalanceRecipientAfter - lpBalanceRecipientBefore == actualLpAmount,
+                    "depositor lp balance"
+                );
+            }
+            {
+                uint256 lpBalanceRecipientBefore = IERC20(lpWrapper).balanceOf(depositor);
+                address token = pool.token1();
+                uint256 amount = 10 ** ERC20(token).decimals();
+
+                (,, uint256 actualLpAmount) = _deposit(depositor, token, amount);
+
+                uint256 lpBalanceRecipientAfter = IERC20(lpWrapper).balanceOf(depositor);
+
+                require(
+                    lpBalanceRecipientAfter - lpBalanceRecipientBefore == actualLpAmount,
+                    "depositor lp balance"
+                );
+            }
+        }
+    }
+
+    function testDepositSwapOnTarget() external {
+        (ILpWrapper lpWrapper,) =
+            deployLpWrapper(pool, IPulseStrategyModule.StrategyType.Tamper, contracts);
+
+        {
             address token = pool.token0();
+            uint256 amount = 10 ** ERC20(token).decimals();
+            vm.startPrank(depositor);
+            IERC20(token).approve(address(depositBalancer), amount);
 
-            uint256 lpBalanceRecipientBefore = IERC20(lpWrapper).balanceOf(recipient);
-            uint256 lpBalanceDepositorBefore = IERC20(lpWrapper).balanceOf(depositor);
+            uint256 balanceBefore = IERC20(token).balanceOf(depositor);
+            (uint256 lpAmount, uint256 targetAmount0,) =
+                depositBalancer.previewDepositAmounts(address(lpWrapper), amount, 0);
 
-            (,, uint256 actualLpAmount) =
-                _deposit(pool, recipient, token, 10 ** ERC20(token).decimals());
-
-            uint256 lpBalanceRecipientAfter = IERC20(lpWrapper).balanceOf(recipient);
-            uint256 lpBalanceDepositorAfter = IERC20(lpWrapper).balanceOf(depositor);
-
-            require(
-                lpBalanceRecipientAfter - lpBalanceRecipientBefore == actualLpAmount,
-                "depositor lp balance"
+            bytes memory callData = abi.encodeWithSelector(
+                ICLPoolActions.swap.selector,
+                address(depositBalancer),
+                true,
+                amount - targetAmount0,
+                TickMath.MIN_SQRT_RATIO + 1,
+                ""
             );
-            require(lpBalanceDepositorAfter == lpBalanceDepositorBefore, "depositor lp balance");
+            IDepositBalancer.SwapData memory swapData =
+                IDepositBalancer.SwapData({minReturn: 0, target: address(pool), data: callData});
+
+            console2.log("try deposit", ERC20(token).symbol(), amount);
+            uint256 lpAmountBefore = IERC20(address(lpWrapper)).balanceOf(recipient);
+
+            (,, uint256 actualLpAmount) = depositBalancer.deposit(
+                address(lpWrapper),
+                token,
+                amount,
+                recipient,
+                type(uint256).max,
+                abi.encode(swapData)
+            );
+            vm.stopPrank();
+
+            uint256 balanceAfter = IERC20(token).balanceOf(depositor);
+            uint256 lpAmountAfter = IERC20(lpWrapper).balanceOf(recipient);
+
+            require(lpAmountAfter - lpAmountBefore == actualLpAmount, "depositor lp balance");
+            assertApproxEqRel(lpAmount, actualLpAmount, 1e15, "depositor actual lp");
+            assertApproxEqRel(balanceBefore - balanceAfter, amount, 1e15, "depositor amount");
         }
         {
-            address recipient = address(0xfedcba987654321);
             address token = pool.token1();
+            uint256 amount = 10 ** ERC20(token).decimals();
+            vm.startPrank(depositor);
+            IERC20(token).approve(address(depositBalancer), amount);
 
-            uint256 lpBalanceRecipientBefore = IERC20(lpWrapper).balanceOf(recipient);
-            uint256 lpBalanceDepositorBefore = IERC20(lpWrapper).balanceOf(depositor);
+            uint256 balanceBefore = IERC20(token).balanceOf(depositor);
+            (uint256 lpAmount,, uint256 targetAmount1) =
+                depositBalancer.previewDepositAmounts(address(lpWrapper), 0, amount);
 
-            (,, uint256 actualLpAmount) =
-                _deposit(pool, recipient, token, 10 ** ERC20(token).decimals());
-
-            uint256 lpBalanceRecipientAfter = IERC20(lpWrapper).balanceOf(recipient);
-            uint256 lpBalanceDepositorAfter = IERC20(lpWrapper).balanceOf(depositor);
-
-            require(
-                lpBalanceRecipientAfter - lpBalanceRecipientBefore == actualLpAmount,
-                "depositor lp balance"
+            bytes memory callData = abi.encodeWithSelector(
+                ICLPoolActions.swap.selector,
+                address(depositBalancer),
+                false,
+                amount - targetAmount1,
+                TickMath.MAX_SQRT_RATIO - 1,
+                ""
             );
-            require(lpBalanceDepositorAfter == lpBalanceDepositorBefore, "depositor lp balance");
+            IDepositBalancer.SwapData memory swapData =
+                IDepositBalancer.SwapData({minReturn: 0, target: address(pool), data: callData});
+
+            console2.log("try deposit", ERC20(token).symbol(), amount);
+
+            uint256 lpAmountBefore = IERC20(address(lpWrapper)).balanceOf(recipient);
+            (,, uint256 actualLpAmount) = depositBalancer.deposit(
+                address(lpWrapper),
+                token,
+                amount,
+                recipient,
+                type(uint256).max,
+                abi.encode(swapData)
+            );
+
+            uint256 balanceAfter = IERC20(token).balanceOf(depositor);
+            uint256 lpAmountAfter = IERC20(lpWrapper).balanceOf(recipient);
+            require(lpAmountAfter - lpAmountBefore == actualLpAmount, "depositor lp balance");
+            assertApproxEqRel(lpAmount, actualLpAmount, 1e15, "depositor actual lp");
+            assertApproxEqRel(balanceBefore - balanceAfter, amount, 1e15, "depositor amount");
         }
     }
 
-    function testDepositBalancer2(address poolAddress) internal {
-        ICLPool pool = ICLPool(poolAddress);
-        address lpWrapper = IVeloDeployFactory(factory).poolToWrapper(address(pool));
-        {
-            uint256 lpBalanceRecipientBefore = IERC20(lpWrapper).balanceOf(depositor);
-            address token = pool.token0();
-
-            (,, uint256 actualLpAmount) =
-                _deposit(pool, depositor, token, 10 ** ERC20(token).decimals());
-
-            uint256 lpBalanceRecipientAfter = IERC20(lpWrapper).balanceOf(depositor);
-
-            require(
-                lpBalanceRecipientAfter - lpBalanceRecipientBefore == actualLpAmount,
-                "depositor lp balance"
-            );
-        }
-        {
-            uint256 lpBalanceRecipientBefore = IERC20(lpWrapper).balanceOf(depositor);
-            address token = pool.token1();
-
-            (,, uint256 actualLpAmount) =
-                _deposit(pool, depositor, token, 10 ** ERC20(token).decimals());
-
-            uint256 lpBalanceRecipientAfter = IERC20(lpWrapper).balanceOf(depositor);
-
-            require(
-                lpBalanceRecipientAfter - lpBalanceRecipientBefore == actualLpAmount,
-                "depositor lp balance"
-            );
-        }
-    }
-
-    function testDepositBalancerWithdraw(address poolAddress) internal {
-        ICLPool pool = ICLPool(poolAddress);
-        address lpWrapper = IVeloDeployFactory(factory).poolToWrapper(address(pool));
+    function testDepositBalancerWithdraw() external {
+        (ILpWrapper lpWrapper,) =
+            deployLpWrapper(pool, IPulseStrategyModule.StrategyType.Tamper, contracts);
 
         address token = pool.token0();
 
-        _deposit(pool, depositor, token, 10 ** ERC20(token).decimals());
+        (uint256 actualAmount0, uint256 actualAmount1,) =
+            _deposit(depositor, token, 10 ** ERC20(token).decimals());
 
         uint256 lpAmount = IERC20(lpWrapper).balanceOf(depositor);
         uint256 amount0;
@@ -140,18 +326,20 @@ contract DepositBalancerTest is Test {
         {
             uint256 lpAmountWithdraw = lpAmount / 3;
             uint256 lpBalanceRecipientBefore = IERC20(lpWrapper).balanceOf(depositor);
-            (amount0, amount1,) = _withdraw(pool, depositor, lpAmount / 3, address(0), false);
+            (amount0, amount1,) = _withdraw(depositor, lpAmountWithdraw, address(0), false);
             uint256 lpBalanceRecipientAfter = IERC20(lpWrapper).balanceOf(depositor);
             require(
                 lpBalanceRecipientBefore - lpBalanceRecipientAfter == lpAmountWithdraw,
                 "depositor lp balance"
             );
+            assertApproxEqAbs(amount0, actualAmount0 / 3, 1, "amount0");
+            assertApproxEqAbs(amount1, actualAmount1 / 3, 1, "amount1");
         }
         {
             uint256 lpAmountWithdraw = lpAmount / 3;
             uint256 lpBalanceRecipientBefore = IERC20(lpWrapper).balanceOf(depositor);
             uint256 amount1Before = IERC20(pool.token1()).balanceOf(depositor);
-            _withdraw(pool, depositor, lpAmountWithdraw, pool.token0(), amount1 > 0);
+            _withdraw(depositor, lpAmountWithdraw, pool.token0(), amount1 > 0);
             uint256 lpBalanceRecipientAfter = IERC20(lpWrapper).balanceOf(depositor);
             uint256 amount1After = IERC20(pool.token1()).balanceOf(depositor);
             require(
@@ -164,8 +352,8 @@ contract DepositBalancerTest is Test {
             uint256 lpAmountWithdraw = IERC20(lpWrapper).balanceOf(depositor);
             uint256 lpBalanceRecipientBefore = IERC20(lpWrapper).balanceOf(depositor);
             uint256 amount0Before = IERC20(pool.token0()).balanceOf(depositor);
-            _withdraw(pool, depositor, lpAmountWithdraw, pool.token1(), amount0 > 0);
-            uint256 lpBalanceRecipientAfter = ERC20(lpWrapper).balanceOf(depositor);
+            _withdraw(depositor, lpAmountWithdraw, pool.token1(), amount0 > 0);
+            uint256 lpBalanceRecipientAfter = IERC20(lpWrapper).balanceOf(depositor);
             uint256 amount0After = IERC20(pool.token0()).balanceOf(depositor);
             require(
                 lpBalanceRecipientBefore - lpBalanceRecipientAfter == lpAmountWithdraw,
@@ -177,47 +365,153 @@ contract DepositBalancerTest is Test {
         require(IERC20(lpWrapper).balanceOf(depositor) == 0, "non zero LP");
     }
 
-    function _deposit(ICLPool pool, address recipient, address token, uint256 amount)
+    function testWithdrawSwapOnTarget() external {
+        (ILpWrapper lpWrapper,) =
+            deployLpWrapper(pool, IPulseStrategyModule.StrategyType.Tamper, contracts);
+
+        address token0 = pool.token0();
+        address token1 = pool.token1();
+        uint256 amount = 10 ** ERC20(token0).decimals();
+
+        _deposit(depositor, token0, amount);
+
+        uint256 lpAmount = IERC20(lpWrapper).balanceOf(depositor);
+
+        {
+            uint256 lpAmountWithdraw = lpAmount / 2;
+            uint256 lpBalanceRecipientBefore = IERC20(lpWrapper).balanceOf(depositor);
+
+            (uint256 amount0, uint256 amount1) = lpWrapper.previewBurn(lpAmountWithdraw);
+
+            bytes memory callData = abi.encodeWithSelector(
+                ICLPoolActions.swap.selector,
+                address(depositBalancer),
+                false,
+                amount1,
+                TickMath.MAX_SQRT_RATIO - 1,
+                ""
+            );
+
+            uint256 amount0Before = IERC20(token0).balanceOf(depositor);
+            uint256 amount1Before = IERC20(token1).balanceOf(depositor);
+
+            vm.startPrank(depositor);
+            IERC20(address(lpWrapper)).approve(address(depositBalancer), lpAmountWithdraw);
+            (amount0, amount1,) = depositBalancer.withdraw(
+                address(lpWrapper),
+                token0,
+                lpAmountWithdraw,
+                depositor,
+                type(uint256).max,
+                abi.encode(
+                    IDepositBalancer.SwapData({minReturn: 0, target: address(pool), data: callData})
+                )
+            );
+
+            require(
+                lpBalanceRecipientBefore - IERC20(lpWrapper).balanceOf(depositor)
+                    == lpAmountWithdraw,
+                "depositor lp balance"
+            );
+            assertApproxEqRel(
+                IERC20(token0).balanceOf(depositor) - amount0Before, amount / 2, 1e16, "amount0"
+            );
+            assertApproxEqAbs(IERC20(token1).balanceOf(depositor), amount1Before, 0, "amount1");
+            vm.stopPrank();
+        }
+        {
+            uint256 lpAmountWithdraw = IERC20(lpWrapper).balanceOf(depositor);
+            uint256 lpBalanceRecipientBefore = IERC20(lpWrapper).balanceOf(depositor);
+
+            (uint256 amount0, uint256 amount1) = lpWrapper.previewBurn(lpAmountWithdraw);
+
+            bytes memory callData = abi.encodeWithSelector(
+                ICLPoolActions.swap.selector,
+                address(depositBalancer),
+                true,
+                amount0,
+                TickMath.MIN_SQRT_RATIO + 1,
+                ""
+            );
+
+            uint256 amount0Before = IERC20(token0).balanceOf(depositor);
+
+            vm.startPrank(depositor);
+            IERC20(address(lpWrapper)).approve(address(depositBalancer), lpAmountWithdraw);
+            (amount0, amount1,) = depositBalancer.withdraw(
+                address(lpWrapper),
+                token1,
+                lpAmountWithdraw,
+                depositor,
+                type(uint256).max,
+                abi.encode(
+                    IDepositBalancer.SwapData({minReturn: 0, target: address(pool), data: callData})
+                )
+            );
+
+            require(
+                lpBalanceRecipientBefore - IERC20(lpWrapper).balanceOf(depositor)
+                    == lpAmountWithdraw,
+                "depositor lp balance"
+            );
+            assertApproxEqAbs(IERC20(token0).balanceOf(depositor), amount0Before, 0, "amount0");
+            vm.stopPrank();
+        }
+    }
+
+    function _deposit(address recipient_, address token, uint256 amount)
         internal
         returns (uint256 actualAmount0, uint256 actualAmount1, uint256 actualLpAmount)
     {
-        if (IERC20(token).balanceOf(depositor) < amount) {
-            console2.log("balance", depositor, IERC20(token).balanceOf(depositor));
-            console2.log("   deal", ERC20(token).symbol(), amount);
-            deal(token, depositor, amount);
-        }
+        address lpWrapper = IVeloDeployFactory(lpWrapperFactory).poolToWrapper(address(pool));
 
         vm.startPrank(depositor);
         IERC20(token).approve(address(depositBalancer), amount);
 
         uint256 balanceBefore = IERC20(token).balanceOf(depositor);
+
+        console2.log("try deposit", ERC20(token).symbol(), amount);
+        uint256 lpAmountBefore = IERC20(lpWrapper).balanceOf(recipient_);
         (actualAmount0, actualAmount1, actualLpAmount) =
-            depositBalancer.deposit(address(pool), token, amount, recipient, type(uint256).max);
+            depositBalancer.deposit(lpWrapper, token, amount, recipient_, type(uint256).max, "");
         uint256 balanceAfter = IERC20(token).balanceOf(depositor);
+
+        assertEq(
+            IERC20(lpWrapper).balanceOf(recipient_) - lpAmountBefore,
+            actualLpAmount,
+            "LP token wrong balance"
+        );
 
         console2.log("deposited", actualAmount0, actualAmount1);
 
         require(balanceBefore > balanceAfter, "no deposit");
         require(balanceBefore - balanceAfter <= amount, "too much");
-        //assertApproxEqRel(balanceBefore - balanceAfter, amount, 5e16, "slippage"); // 5% slippage
-        _checkZeroRemaining(address(depositBalancer), pool.token0(), pool.token1());
+
+        (uint160 sqrtPriceX96,) = ILpWrapper(lpWrapper).oracle().getOraclePrice(address(pool));
+
+        uint256 capitalDesired = PositionMath.calculateCapital(
+            pool.token0() == token ? amount : 0, pool.token0() == token ? 0 : amount, sqrtPriceX96
+        );
+        uint256 capitalActual =
+            PositionMath.calculateCapital(actualAmount0, actualAmount1, sqrtPriceX96);
+
+        assertApproxEqRel(capitalActual, capitalDesired, 1e15, "slippage more than 0.1%");
+
+        _checkZeroRemaining(address(depositBalancer), pool);
     }
 
-    function _withdraw(
-        ICLPool pool,
-        address recipient,
-        uint256 lpAmount,
-        address tokenTarget,
-        bool expectSwap
-    ) internal returns (uint256 amount0, uint256 amount1, uint256 actualLpAmount) {
-        address lpWrapper = IVeloDeployFactory(factory).poolToWrapper(address(pool));
+    function _withdraw(address recipient_, uint256 lpAmount, address tokenTarget, bool expectSwap)
+        internal
+        returns (uint256 amount0, uint256 amount1, uint256 actualLpAmount)
+    {
+        address lpWrapper = IVeloDeployFactory(lpWrapperFactory).poolToWrapper(address(pool));
 
         vm.startPrank(depositor);
         IERC20(lpWrapper).approve(address(depositBalancer), lpAmount);
 
         vm.recordLogs();
         (amount0, amount1, actualLpAmount) = depositBalancer.withdraw(
-            address(pool), lpAmount, tokenTarget, recipient, type(uint256).max
+            lpWrapper, tokenTarget, lpAmount, recipient_, type(uint256).max, ""
         );
         Vm.Log[] memory entries = vm.getRecordedLogs();
 
@@ -231,12 +525,14 @@ contract DepositBalancerTest is Test {
             }
         }
 
-        require(expectSwap == swapEmitted, "Unexpected swap event");
-        _checkZeroRemaining(address(depositBalancer), pool.token0(), pool.token1());
+        require(
+            expectSwap == swapEmitted, expectSwap ? "Swap event is absent" : "Unexpected swap event"
+        );
+        _checkZeroRemaining(address(depositBalancer), pool);
     }
 
-    function _checkZeroRemaining(address account, address token0, address token1) internal view {
-        require(IERC20(token0).balanceOf(account) == 0, "non zero balance of token0");
-        require(IERC20(token1).balanceOf(account) == 0, "non zero balance of token1");
+    function _checkZeroRemaining(address account, ICLPool pool_) internal view {
+        require(IERC20(pool_.token0()).balanceOf(account) == 0, "non zero balance of token0");
+        require(IERC20(pool_.token1()).balanceOf(account) == 0, "non zero balance of token1");
     }
 }
