@@ -182,6 +182,17 @@ interface ILpWrapper is IVeloFarm, IAccessControlEnumerable, IERC20 {
         returns (uint256 amount0, uint256 amount1);
 
     /**
+     * @dev Returns the lower bounds of underlying asset amounts to be received for a given LP token amount when burning.
+     * @param lpAmount The amount of LP tokens to burn.
+     * @return amount0 The estimated amount of asset 0.
+     * @return amount1 The estimated amount of asset 1.
+     */
+    function previewBurn(uint256 lpAmount)
+        external
+        view
+        returns (uint256 amount0, uint256 amount1);
+
+    /**
      * @dev Returns the estimated amounts of LP tokens for a given desired amount of underlying assets.
      * @param amount0Desired The desired amount of asset 0.
      * @param amount1Desired The desired amount of asset 1.

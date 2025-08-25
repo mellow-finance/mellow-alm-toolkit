@@ -51,7 +51,7 @@ interface IAmmModule {
     ) external pure returns (uint128);
 
     /**
-     * @dev Calculates token amounts for a given liquidity amount in a position.
+     * @dev Calculates token amounts for a given liquidity amount in a position, rounding down.
      * @param liquidity Liquidity amount.
      * @param sqrtPriceX96 Square root of the current price in the pool.
      * @param tickLower Lower tick of the position.
@@ -60,7 +60,7 @@ interface IAmmModule {
      * @return amount1 Amount of token1.
      */
     function getAmountsForLiquidity(
-        uint128 liquidity,
+        uint256 liquidity,
         uint160 sqrtPriceX96,
         int24 tickLower,
         int24 tickUpper

@@ -294,6 +294,24 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
     }
 
     /// @inheritdoc ILpWrapper
+    function previewBurn(uint256 lpAmount)
+        external
+        view
+        returns (uint256 amount0, uint256 amount1)
+    {
+        (uint160 sqrtPriceX96, IAmmModule.AmmPosition[] memory positions) = getState();
+        uint256 totalSupply_ = totalSupply();
+        for (uint256 i = 0; i < positions.length; i++) {
+            uint256 liquidity = lpAmount.mulDiv(positions[i].liquidity, totalSupply_);
+            (uint256 amount0_, uint256 amount1_) = ammModule.getAmountsForLiquidity(
+                liquidity, sqrtPriceX96, positions[i].tickLower, positions[i].tickUpper
+            );
+            amount0 += amount0_;
+            amount1 += amount1_;
+        }
+    }
+
+    /// @inheritdoc ILpWrapper
     function previewDeposit(uint256 amount0Desired, uint256 amount1Desired)
         external
         view

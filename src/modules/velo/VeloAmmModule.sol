@@ -229,17 +229,22 @@ contract VeloAmmModule is IVeloAmmModule {
 
     /// @inheritdoc IAmmModule
     function getAmountsForLiquidity(
-        uint128 liquidity,
+        uint256 liquidity,
         uint160 sqrtPriceX96,
         int24 tickLower,
         int24 tickUpper
-    ) public pure override returns (uint256, uint256) {
-        return LiquidityAmounts.getAmountsForLiquidity(
-            sqrtPriceX96,
-            TickMath.getSqrtRatioAtTick(tickLower),
-            TickMath.getSqrtRatioAtTick(tickUpper),
-            liquidity
-        );
+    ) public pure override returns (uint256 amount0, uint256 amount1) {
+        uint256 sqrtPriceAX96 = TickMath.getSqrtRatioAtTick(tickLower);
+        uint256 sqrtPriceBX96 = TickMath.getSqrtRatioAtTick(tickUpper);
+        if (sqrtPriceX96 < sqrtPriceBX96) {
+            uint256 sqrtRatioAX96_ = sqrtPriceAX96.max(sqrtPriceX96);
+            amount0 = (liquidity << 96).mulDiv(sqrtPriceBX96 - sqrtRatioAX96_, sqrtPriceBX96)
+                / sqrtRatioAX96_;
+        }
+
+        if (sqrtPriceX96 > sqrtPriceAX96) {
+            amount1 = liquidity.mulDiv(sqrtPriceBX96.min(sqrtPriceX96) - sqrtPriceAX96, 2 ** 96);
+        }
     }
 
     function getAmountsForLiquidityCeil(

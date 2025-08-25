@@ -791,12 +791,11 @@ contract Unit is Fixture {
 
         vm.startPrank(depositor);
         uint256 previewLpAmount = lpWrapper.previewDeposit(amount0, amount1);
-        (uint256 previewAmount0, uint256 previewAmount1) = lpWrapper.previewMint(previewLpAmount);
 
         IERC20(pool.token0()).approve(address(lpWrapper), amount0);
         IERC20(pool.token1()).approve(address(lpWrapper), amount1);
 
-        (uint256 actualAmount0, uint256 actualAmount1, uint256 actualLpAmount) = lpWrapper.mint(
+        lpWrapper.mint(
             ILpWrapper.MintParams({
                 lpAmount: previewLpAmount,
                 amount0Max: amount0,
@@ -838,6 +837,10 @@ contract Unit is Fixture {
             })
         );
         vm.stopPrank();
+        assertTrue(actualLpAmount >= previewLpAmount, "too low actual lp amount");
+        assertApproxEqAbs(actualLpAmount, previewLpAmount, 1, "wrong preview lp amount");
+        assertApproxEqRel(actualAmount0, previewAmount0, 1e12, "wrong preview amount0");
+        assertApproxEqRel(actualAmount1, previewAmount1, 1e12, "wrong preview amount1");
     }
 
     function testPreviewDepositMintLazy(uint96 lpAmount) external {
@@ -869,6 +872,90 @@ contract Unit is Fixture {
                 deadline: type(uint256).max
             })
         );
+        vm.stopPrank();
+        assertTrue(actualLpAmount >= previewLpAmount, "too low actual lp amount");
+        assertApproxEqAbs(actualLpAmount, previewLpAmount, 1, "wrong preview lp amount");
+        assertApproxEqRel(actualAmount0, previewAmount0, 1e12, "wrong preview amount0");
+        assertApproxEqRel(actualAmount1, previewAmount1, 1e12, "wrong preview amount1");
+    }
+
+    function testPreviewBurnLazy(uint96 lpAmount) external {
+        vm.assume(lpAmount > 1e12 && lpAmount < 1000 ether);
+        (lpWrapper, deployParams) =
+            deployLpWrapper(pool, IPulseStrategyModule.StrategyType.LazySyncing, contracts);
+
+        address depositor = vm.addr(uint256(keccak256("depositor")));
+
+        deal(pool.token0(), depositor, 1000000 ether);
+        deal(pool.token1(), depositor, 1000000 ether);
+
+        vm.prank(params.lpWrapperAdmin);
+        lpWrapper.setTotalSupplyLimit(type(uint256).max);
+
+        vm.startPrank(depositor);
+        (uint256 previewAmount0, uint256 previewAmount1) = lpWrapper.previewMint(lpAmount);
+
+        IERC20(pool.token0()).approve(address(lpWrapper), previewAmount0);
+        IERC20(pool.token1()).approve(address(lpWrapper), previewAmount1);
+
+        lpWrapper.mint(
+            ILpWrapper.MintParams({
+                lpAmount: lpAmount,
+                amount0Max: previewAmount0,
+                amount1Max: previewAmount1,
+                recipient: depositor,
+                deadline: type(uint256).max
+            })
+        );
+
+        (uint256 amount0, uint256 amount1) = lpWrapper.previewBurn(lpAmount);
+        (uint256 actualAmount0, uint256 actualAmount1, uint256 actualLpAmount) =
+            lpWrapper.withdraw(lpAmount, amount0, amount1, depositor, type(uint256).max);
+
+        assertEq(actualLpAmount, lpAmount, "wrong burnt lp amount");
+        assertTrue(actualAmount0 >= amount0, "too low actual amount0");
+        assertTrue(actualAmount1 >= amount1, "too low actual amount1");
+
+        vm.stopPrank();
+    }
+
+    function testPreviewBurnTamper(uint96 lpAmount) external {
+        vm.assume(lpAmount > 1e12 && lpAmount < 1000 ether);
+        (lpWrapper, deployParams) =
+            deployLpWrapper(pool, IPulseStrategyModule.StrategyType.Tamper, contracts);
+
+        address depositor = vm.addr(uint256(keccak256("depositor")));
+
+        deal(pool.token0(), depositor, 1000000 ether);
+        deal(pool.token1(), depositor, 1000000 ether);
+
+        vm.prank(params.lpWrapperAdmin);
+        lpWrapper.setTotalSupplyLimit(type(uint256).max);
+
+        vm.startPrank(depositor);
+        (uint256 previewAmount0, uint256 previewAmount1) = lpWrapper.previewMint(lpAmount);
+
+        IERC20(pool.token0()).approve(address(lpWrapper), previewAmount0);
+        IERC20(pool.token1()).approve(address(lpWrapper), previewAmount1);
+
+        lpWrapper.mint(
+            ILpWrapper.MintParams({
+                lpAmount: lpAmount,
+                amount0Max: previewAmount0,
+                amount1Max: previewAmount1,
+                recipient: depositor,
+                deadline: type(uint256).max
+            })
+        );
+
+        (uint256 amount0, uint256 amount1) = lpWrapper.previewBurn(lpAmount);
+        (uint256 actualAmount0, uint256 actualAmount1, uint256 actualLpAmount) =
+            lpWrapper.withdraw(lpAmount, amount0, amount1, depositor, type(uint256).max);
+
+        assertEq(actualLpAmount, lpAmount, "wrong burnt lp amount");
+        assertTrue(actualAmount0 >= amount0, "too low actual amount0");
+        assertTrue(actualAmount1 >= amount1, "too low actual amount1");
+
         vm.stopPrank();
     }
 
