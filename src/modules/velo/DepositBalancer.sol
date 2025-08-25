@@ -15,6 +15,7 @@ contract DepositBalancer is IDepositBalancer, Context, ReentrancyGuard {
 
     ICore public immutable core;
     IOracle public immutable oracle;
+    IAmmModule public immutable ammModule;
     ICLFactory public immutable poolFactory;
     IVeloDeployFactory public immutable factory;
 
@@ -23,6 +24,7 @@ contract DepositBalancer is IDepositBalancer, Context, ReentrancyGuard {
     constructor(address factory_, address poolFactory_, address core_) {
         core = ICore(core_);
         oracle = core.oracle();
+        ammModule = core.ammModule();
         factory = IVeloDeployFactory(factory_);
         poolFactory = ICLFactory(poolFactory_);
     }
@@ -251,15 +253,9 @@ contract DepositBalancer is IDepositBalancer, Context, ReentrancyGuard {
     }
 
     function _swapOnPool(address pool, bool zeroForOne, uint256 amountIn) internal {
-        if (amountIn == 0) {
-            return;
-        }
-        ICLPool(pool).swap(
-            address(this),
-            zeroForOne,
-            int256(amountIn),
-            zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1,
-            ""
+        Address.functionDelegateCall(
+            address(ammModule),
+            abi.encodeWithSelector(IAmmModule.swapOnPool.selector, pool, zeroForOne, amountIn)
         );
     }
 

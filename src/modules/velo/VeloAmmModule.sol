@@ -272,6 +272,22 @@ contract VeloAmmModule is IVeloAmmModule {
         }
     }
 
+    function swapOnPool(address pool, bool zeroForOne, uint256 amountIn)
+        external
+        returns (int256 amount0, int256 amount1)
+    {
+        if (amountIn == 0) {
+            return (0, 0);
+        }
+        return ICLPool(pool).swap(
+            address(this),
+            zeroForOne,
+            int256(amountIn),
+            zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1,
+            ""
+        );
+    }
+
     /// ---------------------- INTERNAL MUTABLE FUNCTIONS ----------------------
 
     function _isStaked(address gauge, uint256 tokenId) internal view returns (bool) {
