@@ -81,7 +81,7 @@ contract DepositBalancerTest is Fixture {
 
         vm.prank(params.lpWrapperAdmin);
         lpWrapper.setTotalSupplyLimit(type(uint256).max);
-        
+
         {
             uint256 positionId = lpWrapper.positionId();
             ICore.ManagedPositionInfo memory position = core.managedPositionAt(positionId);
@@ -463,7 +463,7 @@ contract DepositBalancerTest is Fixture {
         internal
         returns (uint256 actualAmount0, uint256 actualAmount1, uint256 actualLpAmount)
     {
-        address lpWrapper = IVeloDeployFactory(lpWrapperFactory).poolToWrapper(address(pool));
+        address lpWrapper = IVeloDeployFactory(lpWrapperFactory).poolToWrappers(address(pool))[0];
 
         vm.startPrank(depositor);
         IERC20(token).approve(address(depositBalancer), amount);
@@ -504,7 +504,7 @@ contract DepositBalancerTest is Fixture {
         internal
         returns (uint256 amount0, uint256 amount1, uint256 actualLpAmount)
     {
-        address lpWrapper = IVeloDeployFactory(lpWrapperFactory).poolToWrapper(address(pool));
+        address lpWrapper = IVeloDeployFactory(lpWrapperFactory).poolToWrappers(address(pool))[0];
 
         vm.startPrank(depositor);
         IERC20(lpWrapper).approve(address(depositBalancer), lpAmount);

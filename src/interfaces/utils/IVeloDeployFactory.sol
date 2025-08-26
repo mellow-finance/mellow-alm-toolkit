@@ -49,11 +49,12 @@ interface IVeloDeployFactory is IAccessControlEnumerable {
     event StrategyCreated(StrategyCreatedParams params);
 
     /**
-     * @notice Emitted when
+     * @notice Emitted when a wrapper is removed from a pool.
      * @param pool The address of the pool.
+     * @param lpWrapper The address of the LP wrapper.
      * @param sender The address of the sender.
      */
-    event WrapperRemoved(address indexed pool, address indexed sender);
+    event WrapperRemoved(address indexed pool, address indexed lpWrapper, address indexed sender);
 
     /**
      * @notice Emitted when the LP wrapper admin address is updated.
@@ -149,7 +150,7 @@ interface IVeloDeployFactory is IAccessControlEnumerable {
      * Requirements:
      * - Caller must have the ADMIN role, ensuring that only authorized personnel can alter the protocol's configuration in this manner.
      */
-    function removeWrapperForPool(address pool) external;
+    function removeWrapperForPool(address pool, address lpWrapper) external;
 
     /**
      * @notice Sets a new LP wrapper admin address.
@@ -190,11 +191,26 @@ interface IVeloDeployFactory is IAccessControlEnumerable {
         returns (string memory name, string memory symbol);
 
     /**
-     * @notice Maps a pool address to its associated LP wrapper address.
-     * @param pool The address of the pool.
-     * @return lpWrapper The address of the LP wrapper associated with the specified pool.
+     * @notice Checks if a given address is an LP wrapper belongs to the factory.
+     * @param lpWrapper The address to check.
+     * @return isEntity True if the address is an LP wrapper, false otherwise.
      */
-    function poolToWrapper(address pool) external view returns (address lpWrapper);
+    function isEntity(address lpWrapper) external view returns (bool);
+
+    /**
+     * @notice Checks if a given LP wrapper belongs to a specific pool.
+     * @param lpWrapper The address of the LP wrapper.
+     * @param pool The address of the pool.
+     * @return isEntity True if the LP wrapper is associated with the pool, false otherwise.
+     */
+    function isEntity(address lpWrapper, address pool) external view returns (bool);
+
+    /**
+     * @notice Maps a pool address to its associated LP wrapper addresses.
+     * @param pool The address of the pool.
+     * @return Array of addresses of the LP wrappers associated with the specified pool.
+     */
+    function poolToWrappers(address pool) external view returns (address[] memory);
 
     /**
      * @notice Gets the LP wrapper admin address.
