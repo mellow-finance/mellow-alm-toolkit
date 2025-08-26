@@ -25,7 +25,7 @@ import "src/libraries/PositionMath.sol";
  * - Token balances and approvals must be properly handled by the caller.
  * - Tokens must conform to the ERC20 standard.
  */
-interface IDepositBalancer is ICLSwapCallback {
+interface IDepositBalancer {
     /// @dev Thrown when a zero address is provided.
     error ZeroAddress();
     /// @dev Thrown when a zero amount is provided.

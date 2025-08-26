@@ -3,6 +3,7 @@ pragma solidity 0.8.25;
 
 import "../../external/velo/ICLFactory.sol";
 import "../../external/velo/ICLGauge.sol";
+import "../../external/velo/callback/ICLSwapCallback.sol";
 import "../../utils/IVeloFarm.sol";
 import "../IAmmModule.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -33,6 +34,11 @@ interface IVeloAmmModule is IAmmModule {
      * @notice Thrown when the specified gauge is invalid.
      */
     error InvalidGauge();
+
+    /**
+     * @notice Thrown when a callback is not allowed.
+     */
+    error ForbiddenCallback();
 
     /**
      * @dev Struct representing callback parameters for operations associated with the Velo protocol.

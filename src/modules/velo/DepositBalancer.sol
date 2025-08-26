@@ -29,6 +29,19 @@ contract DepositBalancer is IDepositBalancer, Context, ReentrancyGuard {
         poolFactory = ICLFactory(poolFactory_);
     }
 
+    /// @dev Fallback to redirect incoming swap callbacks into the AMM module.
+    fallback() external {
+        address pool = _msgSender();
+        if (!ammModule.isPool(pool)) {
+            revert Forbidden();
+        }
+
+        Address.functionDelegateCall(
+            address(ammModule),
+            abi.encodeWithSelector(IAmmModule.poolCallback.selector, pool, msg.sig, msg.data[4:])
+        );
+    }
+
     /* ----------------------------------------------------------------------------------
     *                                   External mutable functions
     ---------------------------------------------------------------------------------- */
@@ -131,27 +144,6 @@ contract DepositBalancer is IDepositBalancer, Context, ReentrancyGuard {
             }
             /// @dev sweep any remaining tokens in favor of the recipient: all assets on the contract are actually received while withdrawn
             (amount0, amount1) = _emptyBalances(token0, token1, recipient);
-        }
-    }
-
-    ///  @inheritdoc ICLSwapCallback
-    function uniswapV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata)
-        external
-    {
-        address pool = _msgSender();
-        address token0 = ICLPool(pool).token0();
-        address token1 = ICLPool(pool).token1();
-
-        if (pool != poolFactory.getPool(token0, token1, ICLPool(pool).tickSpacing())) {
-            revert Forbidden();
-        }
-
-        if (amount0Delta > 0) {
-            IERC20(token0).transfer(pool, uint256(amount0Delta));
-        }
-
-        if (amount1Delta > 0) {
-            IERC20(token1).transfer(pool, uint256(amount1Delta));
         }
     }
 

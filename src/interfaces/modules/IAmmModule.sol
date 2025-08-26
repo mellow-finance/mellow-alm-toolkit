@@ -192,4 +192,12 @@ interface IAmmModule {
     function swapOnPool(address pool, bool zeroForOne, uint256 amountIn)
         external
         returns (int256 amount0, int256 amount1);
+
+    /**
+     * @dev Callback function for the pool.
+     * @param pool Address of the pool.
+     * @param selector Selector of the callback function.
+     * @param data Additional data for the callback.
+     */
+    function poolCallback(address pool, bytes4 selector, bytes memory data) external;
 }
