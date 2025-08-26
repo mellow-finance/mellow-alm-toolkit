@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.25;
 
-import "../../interfaces/modules/velo/IDepositBalancer.sol";
-import "../../interfaces/utils/ILpWrapper.sol";
-import "../../interfaces/utils/IVeloDeployFactory.sol";
+import "../interfaces/utils/IDepositBalancer.sol";
+
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {TickMath} from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
+import "src/libraries/PositionMath.sol";
 
 contract DepositBalancer is IDepositBalancer, Context, ReentrancyGuard {
     using Math for uint256;
@@ -16,17 +15,15 @@ contract DepositBalancer is IDepositBalancer, Context, ReentrancyGuard {
     ICore public immutable core;
     IOracle public immutable oracle;
     IAmmModule public immutable ammModule;
-    ICLFactory public immutable poolFactory;
     IVeloDeployFactory public immutable factory;
 
     uint256 public constant D9 = 10 ** 9;
 
-    constructor(address factory_, address poolFactory_, address core_) {
+    constructor(address factory_, address core_) {
         core = ICore(core_);
         oracle = core.oracle();
         ammModule = core.ammModule();
         factory = IVeloDeployFactory(factory_);
-        poolFactory = ICLFactory(poolFactory_);
     }
 
     /// @dev Fallback to redirect incoming swap callbacks into the AMM module.

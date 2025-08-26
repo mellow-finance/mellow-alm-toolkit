@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.25;
 
-import "../IAmmDepositWithdrawModule.sol";
-import "src/interfaces/external/velo/callback/ICLSwapCallback.sol";
-import "src/libraries/PositionMath.sol";
+import "../modules/IAmmDepositWithdrawModule.sol";
+import "./ILpWrapper.sol";
+import "./IVeloDeployFactory.sol";
 
 /**
  * @title DepositBalancer

@@ -5,7 +5,7 @@ import "./Fixture.sol";
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "src/interfaces/utils/IVeloDeployFactory.sol";
-import "src/modules/velo/DepositBalancer.sol";
+import "src/utils/DepositBalancer.sol";
 
 contract DepositBalancerTest is Fixture {
     DeployScript.CoreDeployment contracts;
@@ -46,7 +46,7 @@ contract DepositBalancerTest is Fixture {
             address(this)
         );
 
-        depositBalancer = new DepositBalancer(lpWrapperFactory, address(factory), address(core));
+        depositBalancer = new DepositBalancer(lpWrapperFactory, address(core));
     }
 
     function testDepositLazy(bool isToken0, uint96 amount) public {
