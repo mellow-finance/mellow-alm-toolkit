@@ -104,10 +104,7 @@ interface ILpWrapper is IVeloFarm, IAccessControlEnumerable, IERC20 {
      * @param securityParams The security parameters for managing oracle and risk controls.
      */
     event PositionParamsSet(
-        uint56 slippageD9,
-        bytes callbackParams,
-        bytes strategyParams,
-        bytes securityParams
+        uint56 slippageD9, bytes callbackParams, bytes strategyParams, bytes securityParams
     );
 
     /**

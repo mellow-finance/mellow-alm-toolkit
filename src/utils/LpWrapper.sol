@@ -205,12 +205,7 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
             positionId, slippageD9, callbackParams, strategyParams, securityParams
         );
 
-        emit PositionParamsSet(
-            slippageD9,
-            callbackParams,
-            strategyParams,
-            securityParams
-        );
+        emit PositionParamsSet(slippageD9, callbackParams, strategyParams, securityParams);
     }
 
     /// @inheritdoc ILpWrapper
