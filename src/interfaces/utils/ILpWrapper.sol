@@ -170,18 +170,59 @@ interface ILpWrapper is IVeloFarm, IAccessControlEnumerable, IERC20 {
      */
     function totalSupplyLimit() external view returns (uint256);
 
+    /**
+     * @dev Returns the estimated amounts of underlying assets for a given LP token amount.
+     * @param lpAmount The amount of LP tokens to preview.
+     * @return amount0 The estimated amount of asset 0.
+     * @return amount1 The estimated amount of asset 1.
+     */
     function previewMint(uint256 lpAmount)
         external
         view
         returns (uint256 amount0, uint256 amount1);
 
+    /**
+     * @dev Returns the lower bounds of underlying asset amounts to be received for a given LP token amount when burning.
+     * @param lpAmount The amount of LP tokens to burn.
+     * @return amount0 The estimated amount of asset 0.
+     * @return amount1 The estimated amount of asset 1.
+     */
+    function previewBurn(uint256 lpAmount)
+        external
+        view
+        returns (uint256 amount0, uint256 amount1);
+
+    /**
+     * @dev Returns the estimated amounts of LP tokens for a given desired amount of underlying assets.
+     * @param amount0Desired The desired amount of asset 0.
+     * @param amount1Desired The desired amount of asset 1.
+     * @return lpAmount The estimated amount of LP tokens.
+     */
+    function previewDeposit(uint256 amount0Desired, uint256 amount1Desired)
+        external
+        view
+        returns (uint256 lpAmount);
+
+    /**
+     * @dev Returns the estimated amounts of underlying assets for a given LP token amount.
+     * @param lpAmount The amount of LP tokens to preview.
+     * @return amount0 The estimated amount of asset 0.
+     * @return amount1 The estimated amount of asset 1.
+     */
     function calculateAmountsForLp(
         uint256 lpAmount,
         uint256 totalSupply_,
         IAmmModule.AmmPosition memory position,
         uint160 sqrtPriceX96
-    ) external view returns (uint256 amount0, uint256 amount1);
+    ) external view returns (uint256 amount0, uint256 amount1, uint256 liquidity);
 
+    /**
+     * @dev Mints new LP tokens by depositing underlying assets.
+     * @param mintParams The parameters for the minting operation.
+     * @return actualAmount0 The actual amount of asset 0 deposited.
+     * @return actualAmount1 The actual amount of asset 1 deposited.
+     * @return actualLpAmount The actual amount of LP tokens minted.
+     */
     function mint(MintParams memory mintParams)
         external
         returns (uint256 actualAmount0, uint256 actualAmount1, uint256 actualLpAmount);

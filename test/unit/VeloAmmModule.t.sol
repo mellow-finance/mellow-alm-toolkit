@@ -104,6 +104,9 @@ contract Unit is Fixture {
         );
         (uint160 sqrtPriceX96,,,,,) = pool.slot0();
 
+        deal(Constants.OPTIMISM_WETH, address(this), 1e10 ether);
+        deal(Constants.OPTIMISM_OP, address(this), 1e10 ether);
+
         {
             (uint256 amount0, uint256 amount1) =
                 module.tvl(tokenId, sqrtPriceX96, defaultCallbackParams, defaultProtocolParams);

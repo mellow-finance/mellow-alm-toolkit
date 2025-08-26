@@ -53,7 +53,8 @@ contract Unit is Fixture {
         contracts.deployFactory.removeWrapperForPool(address(pool));
         assertTrue(contracts.deployFactory.poolToWrapper(address(pool)) == address(0));
 
-        (ILpWrapper lpWrapper,) = deployLpWrapper(pool, contracts);
+        (ILpWrapper lpWrapper,) =
+            deployLpWrapper(pool, IPulseStrategyModule.StrategyType.LazySyncing, contracts);
 
         assertTrue(address(lpWrapper) != address(0));
         assertTrue(contracts.deployFactory.poolToWrapper(address(pool)) == address(lpWrapper));
@@ -141,7 +142,7 @@ contract Unit is Fixture {
         DeployScript.CoreDeployment memory contracts = deployContracts();
 
         (ILpWrapper lpWrapper, IVeloDeployFactory.DeployParams memory deployParams) =
-            deployLpWrapper(pool, contracts);
+            deployLpWrapper(pool, IPulseStrategyModule.StrategyType.LazySyncing, contracts);
         assertFalse(address(lpWrapper) == address(0));
         assertEq(contracts.core.positionCount(), 1);
 

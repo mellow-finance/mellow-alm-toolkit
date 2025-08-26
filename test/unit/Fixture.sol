@@ -281,6 +281,8 @@ contract RebalancingBotMock is IRebalanceCallback {
 contract Fixture is DeployScript, Test {
     using SafeERC20 for IERC20;
 
+    address WETH = 0x4200000000000000000000000000000000000006;
+
     ILpWrapper private wstethWeth1Wrapper;
 
     int24 public constant TICK_SPACING = 200;
@@ -297,33 +299,69 @@ contract Fixture is DeployScript, Test {
         vm.stopPrank();
     }
 
-    function deployLpWrapper(ICLPool pool, DeployScript.CoreDeployment memory contracts)
-        public
-        returns (ILpWrapper lpWrapper, IVeloDeployFactory.DeployParams memory deployParams)
-    {
+    function deployLpWrapper(
+        ICLPool pool,
+        IPulseStrategyModule.StrategyType strategyType,
+        DeployScript.CoreDeployment memory contracts
+    ) public returns (ILpWrapper lpWrapper, IVeloDeployFactory.DeployParams memory deployParams) {
         deployParams.slippageD9 = 1e6;
         deployParams.strategyParams = IPulseStrategyModule.StrategyParams({
-            strategyType: IPulseStrategyModule.StrategyType.LazySyncing,
+            strategyType: strategyType,
             tickNeighborhood: 0, // Neighborhood of ticks to consider for rebalancing
             tickSpacing: pool.tickSpacing(), // tickSpacing of the corresponding amm pool
-            width: pool.tickSpacing() * 10, // Width of the interval
-            maxLiquidityRatioDeviationX96: 0 // The maximum allowed deviation of the liquidity ratio for lower position.
+            width: pool.tickSpacing() * 2, // Width of the interval
+            maxLiquidityRatioDeviationX96: strategyType == IPulseStrategyModule.StrategyType.Tamper
+                ? Q96 / 20
+                : 0
         });
 
-        deployParams.securityParams =
-            IVeloOracle.SecurityParams({lookback: 100, maxAge: 5 days, maxAllowedDelta: 10});
+        int24 maxAllowedDelta = deployParams.strategyParams.tickSpacing == 1
+            ? int24(1)
+            : deployParams.strategyParams.width / 10;
+        deployParams.securityParams = IVeloOracle.SecurityParams({
+            lookback: 10,
+            maxAge: 1 hours,
+            maxAllowedDelta: maxAllowedDelta
+        });
 
         deployParams.pool = pool;
-        deployParams.maxAmount0 = 1 ether;
-        deployParams.maxAmount1 = 1 ether;
-        deployParams.initialTotalSupply = 1 ether;
+        deployParams.maxAmount0 = 10 ** (ERC20(pool.token0()).decimals() / 2 + 1);
+        deployParams.maxAmount1 = 10 ** (ERC20(pool.token1()).decimals() / 2 + 1);
+        deployParams.initialTotalSupply =
+            10 ** ((ERC20(pool.token0()).decimals() + ERC20(pool.token1()).decimals()) / 4 + 1);
         deployParams.totalSupplyLimit = 1000 ether;
 
         vm.startPrank(params.factoryOperator);
-        deal(pool.token0(), address(contracts.deployFactory), 1 ether);
-        deal(pool.token1(), address(contracts.deployFactory), 1 ether);
+        if (
+            IERC20(pool.token0()).balanceOf(address(contracts.deployFactory))
+                < deployParams.maxAmount0
+        ) {
+            deal(pool.token0(), address(contracts.deployFactory), deployParams.maxAmount0);
+        }
+        if (
+            IERC20(pool.token1()).balanceOf(address(contracts.deployFactory))
+                < deployParams.maxAmount1
+        ) {
+            deal(pool.token1(), address(contracts.deployFactory), deployParams.maxAmount1);
+        }
         lpWrapper = deployStrategy(contracts, deployParams);
         vm.stopPrank();
+    }
+
+    function dealTokenAmount(address token, address recipient, uint256 amount) public {
+        if (token == WETH) {
+            deal(recipient, amount);
+            vm.startPrank(recipient);
+            IWETH9(WETH).deposit{value: amount}();
+            vm.stopPrank();
+        } else {
+            console2.log(token);
+            if (token == 0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85) {
+                deal(0xbd17DEee53a58B48548117a11a2E7bbF2D0d6Fa7, recipient, amount);
+            } else {
+                deal(token, recipient, amount);
+            }
+        }
     }
 
     function mint(
@@ -428,9 +466,6 @@ contract Fixture is DeployScript, Test {
         address token1 = pool.token1();
         (uint160 sqrtPriceX96,,,,,) = pool.slot0();
 
-        deal(token0, address(this), 10000000000000000000 ether);
-        deal(token1, address(this), 10000000000000000000 ether);
-
         vm.startPrank(address(this));
 
         IERC20(token0).approve(address(this), type(uint256).max);
@@ -453,9 +488,11 @@ contract Fixture is DeployScript, Test {
 
         address recipient = abi.decode(data, (address));
         if (amount0Delta > 0) {
+            deal(pool.token0(), recipient, uint256(amount0Delta));
             IERC20(pool.token0()).safeTransferFrom(recipient, address(pool), uint256(amount0Delta));
         }
         if (amount1Delta > 0) {
+            deal(pool.token1(), recipient, uint256(amount1Delta));
             IERC20(pool.token1()).safeTransferFrom(recipient, address(pool), uint256(amount1Delta));
         }
     }

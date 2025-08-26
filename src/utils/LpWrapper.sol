@@ -102,7 +102,7 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
         IAmmModule.AmmPosition[] memory positions = new IAmmModule.AmmPosition[](n);
         for (uint256 i = 0; i < n; i++) {
             positions[i] = ammModule.getAmmPosition(info.ammPositionIds[i]);
-            (uint256 amount0, uint256 amount1) =
+            (uint256 amount0, uint256 amount1,) =
                 calculateAmountsForLp(mintParams.lpAmount, totalSupply_, positions[i], sqrtPriceX96);
             amounts0[i] = amount0;
             amounts1[i] = amount1;
@@ -283,17 +283,80 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
         view
         returns (uint256 amount0, uint256 amount1)
     {
-        ICore.ManagedPositionInfo memory info = core.managedPositionAt(positionId);
-        uint256 n = info.ammPositionIds.length;
+        (uint160 sqrtPriceX96, IAmmModule.AmmPosition[] memory positions) = getState();
         uint256 totalSupply_ = totalSupply();
-        (uint160 sqrtPriceX96,) = oracle.getOraclePrice(info.pool);
-        IAmmModule.AmmPosition[] memory positions = new IAmmModule.AmmPosition[](n);
-        for (uint256 i = 0; i < n; i++) {
-            positions[i] = ammModule.getAmmPosition(info.ammPositionIds[i]);
-            (uint256 amount0_, uint256 amount1_) =
+        for (uint256 i = 0; i < positions.length; i++) {
+            (uint256 amount0_, uint256 amount1_,) =
                 calculateAmountsForLp(lpAmount, totalSupply_, positions[i], sqrtPriceX96);
             amount0 += amount0_;
             amount1 += amount1_;
+        }
+    }
+
+    /// @inheritdoc ILpWrapper
+    function previewBurn(uint256 lpAmount)
+        external
+        view
+        returns (uint256 amount0, uint256 amount1)
+    {
+        (uint160 sqrtPriceX96, IAmmModule.AmmPosition[] memory positions) = getState();
+        uint256 totalSupply_ = totalSupply();
+        for (uint256 i = 0; i < positions.length; i++) {
+            uint256 liquidity = lpAmount.mulDiv(positions[i].liquidity, totalSupply_);
+            (uint256 amount0_, uint256 amount1_) = ammModule.getAmountsForLiquidity(
+                liquidity, sqrtPriceX96, positions[i].tickLower, positions[i].tickUpper
+            );
+            amount0 += amount0_;
+            amount1 += amount1_;
+        }
+    }
+
+    /// @inheritdoc ILpWrapper
+    function previewDeposit(uint256 amount0Desired, uint256 amount1Desired)
+        external
+        view
+        returns (uint256 lpAmount)
+    {
+        uint256 amount0Total;
+        uint256 amount1Total;
+        (uint160 sqrtPriceX96, IAmmModule.AmmPosition[] memory positions) = getState();
+        uint256[] memory amount0 = new uint256[](positions.length);
+        uint256[] memory amount1 = new uint256[](positions.length);
+        /// @dev step #1: get amounts that are hold at current positions
+        for (uint256 i = 0; i < positions.length; i++) {
+            (amount0[i], amount1[i]) = ammModule.getAmountsForLiquidityCeil(
+                positions[i].liquidity, sqrtPriceX96, positions[i].tickLower, positions[i].tickUpper
+            );
+            amount0Total += amount0[i];
+            amount1Total += amount1[i];
+        }
+        /// @dev step #2: adjust lpAmount based on desired amounts
+        lpAmount = type(uint256).max;
+        uint256 liquidity;
+        for (uint256 i = 0; i < positions.length; i++) {
+            liquidity = positions[i].liquidity;
+            liquidity = Math.min(
+                amount0[i] > 0
+                    ? liquidity.mulDiv(amount0Desired.mulDiv(amount0[i], amount0Total), amount0[i])
+                    : type(uint256).max,
+                amount1[i] > 0
+                    ? liquidity.mulDiv(amount1Desired.mulDiv(amount1[i], amount1Total), amount1[i])
+                    : type(uint256).max
+            );
+            lpAmount = Math.min(lpAmount, totalSupply().mulDiv(liquidity, positions[i].liquidity));
+        }
+    }
+
+    function getState()
+        internal
+        view
+        returns (uint160 sqrtPriceX96, IAmmModule.AmmPosition[] memory positions)
+    {
+        ICore.ManagedPositionInfo memory info = core.managedPositionAt(positionId);
+        (sqrtPriceX96,) = oracle.getOraclePrice(pool);
+        positions = new IAmmModule.AmmPosition[](info.ammPositionIds.length);
+        for (uint256 i = 0; i < info.ammPositionIds.length; i++) {
+            positions[i] = ammModule.getAmmPosition(info.ammPositionIds[i]);
         }
     }
 
@@ -302,29 +365,15 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
         uint256 lpAmount,
         uint256 totalSupply_,
         IAmmModule.AmmPosition memory position,
-        uint160 sqrtRatioX96
-    ) public pure returns (uint256 amount0, uint256 amount1) {
-        uint256 liquidity = lpAmount.mulDiv(position.liquidity, totalSupply_, Math.Rounding.Ceil);
+        uint160 sqrtPriceX96
+    ) public view returns (uint256 amount0, uint256 amount1, uint256 liquidity) {
+        liquidity = lpAmount.mulDiv(position.liquidity, totalSupply_, Math.Rounding.Ceil);
         if (liquidity > type(uint128).max) {
             revert LiquidityOverflow();
         }
-        uint256 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(position.tickLower);
-        uint256 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(position.tickUpper);
-        if (sqrtRatioX96 < sqrtRatioBX96) {
-            uint256 sqrtRatioAX96_ = sqrtRatioAX96.max(sqrtRatioX96);
-            amount0 = Math.ceilDiv(
-                (liquidity << 96).mulDiv(
-                    sqrtRatioBX96 - sqrtRatioAX96_, sqrtRatioBX96, Math.Rounding.Ceil
-                ),
-                sqrtRatioAX96_
-            );
-        }
-
-        if (sqrtRatioX96 > sqrtRatioAX96) {
-            amount1 = liquidity.mulDiv(
-                sqrtRatioBX96.min(sqrtRatioX96) - sqrtRatioAX96, Q96, Math.Rounding.Ceil
-            );
-        }
+        (amount0, amount1) = ammModule.getAmountsForLiquidityCeil(
+            liquidity, sqrtPriceX96, position.tickLower, position.tickUpper
+        );
     }
 
     /// ---------------------- INTERNAL MUTABLE FUNCTIONS ----------------------

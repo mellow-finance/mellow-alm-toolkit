@@ -37,8 +37,8 @@ contract Unit is Fixture {
                 position_.liquidity
             );
 
-            deal(token0, address(this), 1 ether);
-            deal(token1, address(this), 1 ether);
+            deal(token0, address(this), 1e10 ether);
+            deal(token1, address(this), 1e10 ether);
             IERC20(token0).approve(address(module), 1 ether);
             IERC20(token1).approve(address(module), 1 ether);
 
