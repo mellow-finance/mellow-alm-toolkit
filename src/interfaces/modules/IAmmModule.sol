@@ -180,4 +180,24 @@ interface IAmmModule {
      * @dev Returns the address of the position manager.
      */
     function positionManager() external view returns (address);
+
+    /**
+     * @dev Swaps tokens on a specified pool.
+     * @param pool Address of the pool to swap on.
+     * @param zeroForOne Boolean indicating the swap direction.
+     * @param amountIn Amount of tokens to swap.
+     * @return amount0 Amount of token0 received.
+     * @return amount1 Amount of token1 received.
+     */
+    function swapOnPool(address pool, bool zeroForOne, uint256 amountIn)
+        external
+        returns (int256 amount0, int256 amount1);
+
+    /**
+     * @dev Callback function for the pool.
+     * @param pool Address of the pool.
+     * @param selector Selector of the callback function.
+     * @param data Additional data for the callback.
+     */
+    function poolCallback(address pool, bytes4 selector, bytes memory data) external;
 }
