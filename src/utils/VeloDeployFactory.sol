@@ -7,11 +7,13 @@ import "../modules/strategies/PulseStrategyModule.sol";
 import "./DefaultAccessControl.sol";
 
 contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
+    using EnumerableSet for EnumerableSet.AddressSet;
     using SafeERC20 for IERC20;
 
     string public constant factoryName = "MellowVelodromeStrategy";
     string public constant factorySymbol = "MVS";
-    mapping(address => address) public poolToWrapper;
+    EnumerableSet.AddressSet private _lpWrappers;
+    mapping(address => EnumerableSet.AddressSet) private _poolWrappers;
     address public immutable lpWrapperImplementation;
 
     address public lpWrapperAdmin;
@@ -108,16 +110,15 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
             name,
             symbol
         );
-        poolToWrapper[address(params.pool)] = address(lpWrapper);
-
-        _emitStrategyCreated(positionId, params.strategyParams);
+        _addLpWrapper(address(params.pool), address(lpWrapper));
+        _emitStrategyCreated(positionId, address(lpWrapper), params.strategyParams);
     }
 
     /// @inheritdoc IVeloDeployFactory
-    function removeWrapperForPool(address pool) external {
+    function removeWrapperForPool(address pool, address lpWrapper) external {
         _requireAdmin();
-        delete poolToWrapper[pool];
-        emit WrapperRemoved(pool, msg.sender);
+        _removeLpWrapper(pool, lpWrapper);
+        emit WrapperRemoved(pool, lpWrapper, msg.sender);
     }
 
     /// @inheritdoc IVeloDeployFactory
@@ -148,6 +149,21 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
     }
 
     /// ---------------------- EXTERNAL VIEW FUNCTIONS ----------------------
+
+    /// @inheritdoc IVeloDeployFactory
+    function isEntity(address lpWrapper) external view returns (bool) {
+        return _lpWrappers.contains(lpWrapper);
+    }
+
+    /// @inheritdoc IVeloDeployFactory
+    function isEntity(address lpWrapper, address pool) external view returns (bool) {
+        return _poolWrappers[pool].contains(lpWrapper);
+    }
+
+    /// @inheritdoc IVeloDeployFactory
+    function poolToWrappers(address pool) external view returns (address[] memory) {
+        return _poolWrappers[pool].values();
+    }
 
     /// @inheritdoc IVeloDeployFactory
     function configureNameAndSymbol(ICLPool pool)
@@ -230,6 +246,7 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
 
     function _emitStrategyCreated(
         uint256 positionId,
+        address lpWrapper,
         IPulseStrategyModule.StrategyParams memory strategyParams
     ) private {
         ICore.ManagedPositionInfo memory position = core.managedPositionAt(positionId);
@@ -237,7 +254,7 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
             pool: position.pool,
             ammPosition: new IVeloAmmModule.AmmPosition[](position.ammPositionIds.length),
             strategyParams: strategyParams,
-            lpWrapper: poolToWrapper[position.pool],
+            lpWrapper: lpWrapper,
             caller: msg.sender
         });
         for (uint256 i = 0; i < position.ammPositionIds.length; i++) {
@@ -246,6 +263,20 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
         }
 
         emit StrategyCreated(strategyCreatedParams);
+    }
+
+    function _addLpWrapper(address pool, address lpWrapper) private {
+        bool success = _lpWrappers.add(lpWrapper) && _poolWrappers[pool].add(lpWrapper);
+        if (!success) {
+            revert InvalidParams();
+        }
+    }
+
+    function _removeLpWrapper(address pool, address lpWrapper) private {
+        bool success = _lpWrappers.remove(lpWrapper) && _poolWrappers[pool].remove(lpWrapper);
+        if (!success) {
+            revert InvalidParams();
+        }
     }
 
     /// ----------------  PRIVATE VIEW FUNCTIONS  ----------------

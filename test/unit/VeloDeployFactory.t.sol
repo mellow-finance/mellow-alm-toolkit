@@ -49,22 +49,20 @@ contract Unit is Fixture {
     function testRemoveWrapperForPool() public {
         DeployScript.CoreDeployment memory contracts = deployContracts();
 
-        vm.prank(params.mellowAdmin);
-        contracts.deployFactory.removeWrapperForPool(address(pool));
-        assertTrue(contracts.deployFactory.poolToWrapper(address(pool)) == address(0));
+        assertTrue(contracts.deployFactory.poolToWrappers(address(pool)).length == 0);
 
         (ILpWrapper lpWrapper,) =
             deployLpWrapper(pool, IPulseStrategyModule.StrategyType.LazySyncing, contracts);
 
         assertTrue(address(lpWrapper) != address(0));
-        assertTrue(contracts.deployFactory.poolToWrapper(address(pool)) == address(lpWrapper));
+        assertTrue(contracts.deployFactory.poolToWrappers(address(pool))[0] == address(lpWrapper));
 
         vm.expectRevert(abi.encodeWithSignature("Forbidden()"));
-        contracts.deployFactory.removeWrapperForPool(address(pool));
+        contracts.deployFactory.removeWrapperForPool(address(pool), address(lpWrapper));
 
         vm.prank(params.mellowAdmin);
-        contracts.deployFactory.removeWrapperForPool(address(pool));
-        assertTrue(contracts.deployFactory.poolToWrapper(address(pool)) == address(0));
+        contracts.deployFactory.removeWrapperForPool(address(pool), address(lpWrapper));
+        assertTrue(contracts.deployFactory.poolToWrappers(address(pool)).length == 0);
     }
 
     function testSetLpWrapperAdmin() public {
@@ -229,5 +227,46 @@ contract Unit is Fixture {
         );
 
         assertEq(isRebalanceRequired, false);
+    }
+
+    function testManyLpWrappers() public {
+        DeployScript.CoreDeployment memory contracts = deployContracts();
+        IVeloDeployFactory factory = contracts.deployFactory;
+
+        assertTrue(factory.poolToWrappers(address(pool)).length == 0);
+
+        address[] memory lpWrappers = new address[](5);
+        for (uint256 index = 0; index < lpWrappers.length; index++) {
+            (ILpWrapper lpWrapper,) =
+                deployLpWrapper(pool, IPulseStrategyModule.StrategyType.LazySyncing, contracts);
+
+            lpWrappers[index] = address(lpWrapper);
+
+            assertTrue(factory.poolToWrappers(address(pool)).length == index + 1);
+            assertTrue(factory.isEntity(lpWrappers[index]));
+            assertTrue(factory.isEntity(lpWrappers[index], address(pool)));
+        }
+
+        vm.expectRevert(IVeloDeployFactory.InvalidParams.selector);
+        vm.prank(params.mellowAdmin);
+        factory.removeWrapperForPool(address(pool), address(0));
+
+        address poolWrong = vm.addr(uint256(keccak256("wrong pool")));
+        for (uint256 index = 0; index < lpWrappers.length; index++) {
+            vm.expectRevert(IVeloDeployFactory.InvalidParams.selector);
+            vm.prank(params.mellowAdmin);
+            factory.removeWrapperForPool(poolWrong, lpWrappers[index]);
+        }
+
+        for (uint256 index = 0; index < lpWrappers.length; index++) {
+            vm.prank(params.mellowAdmin);
+            factory.removeWrapperForPool(address(pool), lpWrappers[index]);
+            assertFalse(factory.isEntity(lpWrappers[index]));
+            assertTrue(
+                factory.poolToWrappers(address(pool)).length == lpWrappers.length - index - 1
+            );
+        }
+
+        assertTrue(factory.poolToWrappers(address(pool)).length == 0);
     }
 }
