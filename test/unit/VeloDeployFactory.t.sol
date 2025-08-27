@@ -116,7 +116,7 @@ contract Unit is Fixture {
         deployParams.securityParams =
             IVeloOracle.SecurityParams({lookback: 100, maxAge: 5 days, maxAllowedDelta: 10});
 
-        deployParams.pool = poolBad;
+        deployParams.pool = address(poolBad);
         deployParams.maxAmount0 = 1000 wei;
         deployParams.maxAmount1 = 1000 wei;
         deployParams.initialTotalSupply = 1000 wei;
@@ -129,7 +129,7 @@ contract Unit is Fixture {
         vm.expectRevert(abi.encodeWithSignature("ForbiddenPool()"));
         contracts.deployFactory.createStrategy(deployParams);
 
-        deployParams.pool = pool;
+        deployParams.pool = address(pool);
         deployParams.strategyParams.width = pool.tickSpacing() * 10;
         deployParams.strategyParams.tickSpacing = pool.tickSpacing() / 2;
         vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
@@ -198,7 +198,7 @@ contract Unit is Fixture {
         deployParams.securityParams =
             IVeloOracle.SecurityParams({lookback: 100, maxAge: 5 days, maxAllowedDelta: 10});
 
-        deployParams.pool = pool;
+        deployParams.pool = address(pool);
         deployParams.maxAmount0 = 100 ether;
         deployParams.maxAmount1 = 1 ether;
         deployParams.initialTotalSupply = 1000 wei;

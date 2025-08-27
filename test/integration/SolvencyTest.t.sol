@@ -37,10 +37,8 @@ contract SolvencyTest is SolvencyRunner {
 
         INonfungiblePositionManager positionManager =
             INonfungiblePositionManager(coreParams.positionManager);
-        params.pool = ICLPool(
-            ICLFactory(positionManager.factory()).getPool(
-                Constants.OPTIMISM_WETH, Constants.OPTIMISM_WSTETH, 1
-            )
+        params.pool = ICLFactory(positionManager.factory()).getPool(
+            Constants.OPTIMISM_WETH, Constants.OPTIMISM_WSTETH, 1
         );
         params.maxAmount0 = 1000 gwei;
         params.maxAmount1 = 1000 gwei;

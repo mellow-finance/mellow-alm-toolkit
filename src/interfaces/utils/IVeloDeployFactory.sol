@@ -92,7 +92,7 @@ interface IVeloDeployFactory is IAccessControlEnumerable {
         uint32 slippageD9;
         IPulseStrategyModule.StrategyParams strategyParams;
         IVeloOracle.SecurityParams securityParams;
-        ICLPool pool;
+        address pool;
         uint256 maxAmount0;
         uint256 maxAmount1;
         uint256 initialTotalSupply;
@@ -108,7 +108,7 @@ interface IVeloDeployFactory is IAccessControlEnumerable {
      * @param securityParams Additional security parameters, encoded as bytes, for risk control.
      */
     struct PoolStrategyParameter {
-        ICLPool pool;
+        address pool;
         IPulseStrategyModule.StrategyParams strategyParams;
         uint256 maxAmount0;
         uint256 maxAmount1;
@@ -185,7 +185,7 @@ interface IVeloDeployFactory is IAccessControlEnumerable {
      * @return name The name of the LP wrapper.
      * @return symbol The symbol of the LP wrapper.
      */
-    function configureNameAndSymbol(ICLPool pool)
+    function configureNameAndSymbol(address pool)
         external
         view
         returns (string memory name, string memory symbol);

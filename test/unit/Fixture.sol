@@ -324,7 +324,7 @@ contract Fixture is DeployScript, Test {
             maxAllowedDelta: maxAllowedDelta
         });
 
-        deployParams.pool = pool;
+        deployParams.pool = address(pool);
         deployParams.maxAmount0 = 10 ** (ERC20(pool.token0()).decimals() / 2 + 1);
         deployParams.maxAmount1 = 10 ** (ERC20(pool.token1()).decimals() / 2 + 1);
         deployParams.initialTotalSupply =

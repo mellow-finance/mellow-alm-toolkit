@@ -61,8 +61,8 @@ contract SolvencyRunner is Test, DeployScript {
         _core = core_;
         _wrapper = wrapper_;
 
-        token0 = _wrapper.token0();
-        token1 = _wrapper.token1();
+        token0 = IERC20(_wrapper.token0());
+        token1 = IERC20(_wrapper.token1());
 
         pool = ICLPool(_core.managedPositionAt(_wrapper.positionId()).pool);
         gauge = ICLGauge(pool.gauge());

@@ -59,8 +59,7 @@ contract DepositBalancer is IDepositBalancer, Context, ReentrancyGuard {
         }
 
         address pool = ILpWrapper(lpWrapper).pool();
-        address token0 = ICLPool(pool).token0();
-        address token1 = ICLPool(pool).token1();
+        (address token0, address token1) = ammModule.getPoolTokens(pool);
 
         if (token0 != tokenIn && token1 != tokenIn) {
             revert Forbidden();
@@ -119,8 +118,7 @@ contract DepositBalancer is IDepositBalancer, Context, ReentrancyGuard {
         } else {
             _ensureNoMEV(lpWrapper);
 
-            address token0 = ICLPool(pool).token0();
-            address token1 = ICLPool(pool).token1();
+            (address token0, address token1) = ammModule.getPoolTokens(pool);
 
             if (token != token0 && token != token1) {
                 revert Forbidden();

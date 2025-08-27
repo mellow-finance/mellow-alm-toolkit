@@ -25,9 +25,9 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
     /// @inheritdoc ILpWrapper
     address public pool;
     /// @inheritdoc ILpWrapper
-    IERC20 public token0;
+    address public token0;
     /// @inheritdoc ILpWrapper
-    IERC20 public token1;
+    address public token1;
 
     /// @inheritdoc ILpWrapper
     uint256 public totalSupplyLimit;
@@ -64,16 +64,14 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
         if (info.owner != this_) {
             revert Forbidden();
         }
-        ICLPool pool_ = ICLPool(info.pool);
 
         __VeloFarm_init(ammModule.getRewardToken(info.pool), name_, symbol_);
 
+        pool = info.pool;
         positionId = positionId_;
         totalSupplyLimit = totalSupplyLimit_;
 
-        pool = address(pool_);
-        token0 = IERC20(pool_.token0());
-        token1 = IERC20(pool_.token1());
+        (token0, token1) = ammModule.getPoolTokens(info.pool);
 
         _mint(this_, initialTotalSupply);
         emit TotalSupplyLimitUpdated(totalSupplyLimit, 0, totalSupply());
@@ -387,12 +385,12 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
     ) private returns (uint256 actualAmount0, uint256 actualAmount1) {
         address sender = _msgSender();
         if (amount0 > 0) {
-            token0.safeTransferFrom(sender, address(this), amount0);
-            token0.safeIncreaseAllowance(address(core), amount0);
+            IERC20(token0).safeTransferFrom(sender, address(this), amount0);
+            IERC20(token0).safeIncreaseAllowance(address(core), amount0);
         }
         if (amount1 > 0) {
-            token1.safeTransferFrom(sender, address(this), amount1);
-            token1.safeIncreaseAllowance(address(core), amount1);
+            IERC20(token1).safeTransferFrom(sender, address(this), amount1);
+            IERC20(token1).safeIncreaseAllowance(address(core), amount1);
         }
 
         for (uint256 i = 0; i < positionsBefore.length; i++) {
@@ -407,11 +405,11 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
         }
 
         if (actualAmount0 != amount0) {
-            token0.safeTransfer(sender, amount0 - actualAmount0);
+            IERC20(token0).safeTransfer(sender, amount0 - actualAmount0);
         }
 
         if (actualAmount1 != amount1) {
-            token1.safeTransfer(sender, amount1 - actualAmount1);
+            IERC20(token1).safeTransfer(sender, amount1 - actualAmount1);
         }
     }
 

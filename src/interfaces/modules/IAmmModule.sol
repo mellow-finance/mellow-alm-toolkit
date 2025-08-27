@@ -131,10 +131,36 @@ interface IAmmModule {
     function getProperty(address pool) external view returns (uint24);
 
     /**
+     * @dev Returns the square root price for a given pool.
+     * @param pool Address of the pool.
+     */
+    function getSqrtPriceX96(address pool) external view returns (uint160);
+
+    /**
+     * @dev Returns the square root price and tick for a given pool.
+     * @param pool Address of the pool.
+     */
+    function getSqrtPriceX96AndTick(address pool) external view returns (uint160, int24);
+
+    /**
+     * @dev Returns the token addresses for a given pool.
+     * @param pool Address of the pool.
+     * @return token0 Address of the first token.
+     * @return token1 Address of the second token.
+     */
+    function getPoolTokens(address pool) external view returns (address, address);
+
+    /**
      * @dev Returns the reward token address for the AMM.
      * @param pool Address of the pool.
      */
     function getRewardToken(address pool) external view returns (address);
+
+    /**
+     * @dev Returns the gauge address for a given pool.
+     * @param pool Address of the pool.
+     */
+    function getGauge(address pool) external view returns (address);
 
     /**
      * @notice Collects accumulated rewards for a specific token ID.

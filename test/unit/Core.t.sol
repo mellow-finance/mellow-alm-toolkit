@@ -247,7 +247,7 @@ contract Unit is Fixture {
         deployParams_.securityParams =
             IVeloOracle.SecurityParams({lookback: 1, maxAge: 1 seconds, maxAllowedDelta: 10000});
 
-        deployParams_.pool = pool;
+        deployParams_.pool = address(pool);
         deployParams_.maxAmount0 = 100 ether;
         deployParams_.maxAmount1 = 1 ether;
         deployParams_.initialTotalSupply = 1000 wei;

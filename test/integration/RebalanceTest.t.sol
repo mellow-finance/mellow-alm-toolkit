@@ -33,10 +33,8 @@ contract IntegrationTest is Test, DeployScript {
 
         INonfungiblePositionManager positionManager =
             INonfungiblePositionManager(coreParams.positionManager);
-        params.pool = ICLPool(
-            ICLFactory(positionManager.factory()).getPool(
-                Constants.OPTIMISM_WETH, Constants.OPTIMISM_WSTETH, 1
-            )
+        params.pool = ICLFactory(positionManager.factory()).getPool(
+            Constants.OPTIMISM_WETH, Constants.OPTIMISM_WSTETH, 1
         );
         params.maxAmount0 = 1000 wei;
         params.maxAmount1 = 1000 wei;

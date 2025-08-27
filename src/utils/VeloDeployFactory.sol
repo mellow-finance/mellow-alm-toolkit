@@ -21,6 +21,7 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
     uint256 public minInitialTotalSupply;
 
     ICore public immutable core;
+    IAmmModule public immutable ammModule;
     IPulseStrategyModule public immutable strategyModule;
     INonfungiblePositionManager public immutable positionManager;
 
@@ -38,6 +39,7 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
         __DefaultAccessControl_init(admin_);
         core = core_;
         strategyModule = strategyModule_;
+        ammModule = core.ammModule();
         positionManager = INonfungiblePositionManager(core.ammModule().positionManager());
 
         lpWrapperImplementation = lpWrapperImplementation_;
@@ -64,7 +66,7 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
 
         core.strategyModule().validateStrategyParams(abi.encode(params.strategyParams));
         if (
-            params.pool.tickSpacing() != params.strategyParams.tickSpacing
+            ammModule.getProperty(params.pool) != uint24(params.strategyParams.tickSpacing)
                 || minInitialTotalSupply > params.initialTotalSupply
         ) {
             revert InvalidParams();
@@ -89,7 +91,7 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
         depositParams.callbackParams = abi.encode(
             IVeloAmmModule.CallbackParams({
                 farm: address(lpWrapper),
-                gauge: address(params.pool.gauge())
+                gauge: address(ammModule.getGauge(params.pool))
             })
         );
         depositParams.strategyParams = abi.encode(params.strategyParams);
@@ -110,7 +112,7 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
             name,
             symbol
         );
-        _addLpWrapper(address(params.pool), address(lpWrapper));
+        _addLpWrapper(params.pool, address(lpWrapper));
         _emitStrategyCreated(positionId, address(lpWrapper), params.strategyParams);
     }
 
@@ -166,19 +168,20 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
     }
 
     /// @inheritdoc IVeloDeployFactory
-    function configureNameAndSymbol(ICLPool pool)
+    function configureNameAndSymbol(address pool)
         public
         view
         returns (string memory name, string memory symbol)
     {
+        (address token0, address token1) = ammModule.getPoolTokens(pool);
         string memory suffix = string(
             abi.encodePacked(
                 ":",
-                IERC20Metadata(pool.token0()).symbol(),
+                IERC20Metadata(token0).symbol(),
                 "-",
-                IERC20Metadata(pool.token1()).symbol(),
+                IERC20Metadata(token1).symbol(),
                 "-",
-                Strings.toString(uint256(int256(ICLPool(pool).tickSpacing())))
+                Strings.toString(uint256(ammModule.getProperty(pool)))
             )
         );
 
@@ -192,13 +195,11 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
         private
         returns (uint256[] memory tokenIds)
     {
-        ICLPool pool = params.pool;
-        if (!core.ammModule().isPool(address(pool))) {
+        if (!core.ammModule().isPool(params.pool)) {
             revert ForbiddenPool();
         }
 
-        core.oracle().ensureNoMEV(address(pool), params.securityParams);
-        pool.increaseObservationCardinalityNext(MIN_OBSERVATION_CARDINALITY);
+        core.oracle().ensureNoMEV(params.pool, params.securityParams);
 
         bool isTamper =
             params.strategyParams.strategyType == IPulseStrategyModule.StrategyType.Tamper;
@@ -206,9 +207,8 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
         MintInfo[] memory mintInfo =
             (isTamper ? _getPositionParamTamper : _getPositionParamPulse)(params);
 
-        IERC20 token0 = IERC20(pool.token0());
-        IERC20 token1 = IERC20(pool.token1());
-        int24 tickSpacing = pool.tickSpacing();
+        (address token0, address token1) = ammModule.getPoolTokens(params.pool);
+        int24 tickSpacing = int24(ammModule.getProperty(params.pool));
 
         _handleToken(depositor, token0, params.maxAmount0);
         _handleToken(depositor, token1, params.maxAmount1);
@@ -216,8 +216,8 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
         for (uint256 i = 0; i < mintInfo.length; i++) {
             (tokenIds[i],,,) = positionManager.mint(
                 INonfungiblePositionManager.MintParams({
-                    token0: address(token0),
-                    token1: address(token1),
+                    token0: token0,
+                    token1: token1,
                     tickLower: mintInfo[i].tickLower,
                     tickUpper: mintInfo[i].tickUpper,
                     tickSpacing: tickSpacing,
@@ -233,14 +233,14 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
         }
     }
 
-    function _handleToken(address depositor, IERC20 token, uint256 amount) private {
+    function _handleToken(address depositor, address token, uint256 amount) private {
         address this_ = address(this);
-        uint256 balance = token.balanceOf(this_);
+        uint256 balance = IERC20(token).balanceOf(this_);
         if (balance < amount) {
-            token.safeTransferFrom(depositor, this_, amount - balance);
+            IERC20(token).safeTransferFrom(depositor, this_, amount - balance);
         }
-        if (token.allowance(this_, address(positionManager)) == 0) {
-            token.forceApprove(address(positionManager), type(uint256).max);
+        if (IERC20(token).allowance(this_, address(positionManager)) == 0) {
+            IERC20(token).forceApprove(address(positionManager), type(uint256).max);
         }
     }
 
@@ -286,8 +286,7 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
         view
         returns (MintInfo[] memory mintInfo)
     {
-        (uint160 sqrtPriceX96,,,,,) = params.pool.slot0();
-        int24 tick = TickMath.getTickAtSqrtRatio(sqrtPriceX96);
+        (uint160 sqrtPriceX96, int24 tick) = ammModule.getSqrtPriceX96AndTick(params.pool);
         (, ICore.TargetPositionInfo memory target) = strategyModule.calculateTargetTamper(
             sqrtPriceX96, tick, new IAmmModule.AmmPosition[](0), params.strategyParams
         );
@@ -328,8 +327,7 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
         view
         returns (MintInfo[] memory mintInfo)
     {
-        (uint160 sqrtPriceX96,,,,,) = params.pool.slot0();
-        int24 tick = TickMath.getTickAtSqrtRatio(sqrtPriceX96);
+        (uint160 sqrtPriceX96, int24 tick) = ammModule.getSqrtPriceX96AndTick(params.pool);
         (, ICore.TargetPositionInfo memory target) = strategyModule.calculateTargetPulse(
             sqrtPriceX96, tick, new IAmmModule.AmmPosition[](0), params.strategyParams
         );

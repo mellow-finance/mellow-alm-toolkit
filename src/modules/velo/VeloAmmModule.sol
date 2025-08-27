@@ -132,8 +132,35 @@ contract VeloAmmModule is IVeloAmmModule {
     }
 
     /// @inheritdoc IAmmModule
+    function getSqrtPriceX96(address pool) external view returns (uint160 sqrtPriceX96) {
+        (sqrtPriceX96,,,,,) = ICLPool(pool).slot0();
+    }
+
+    function getSqrtPriceX96AndTick(address pool)
+        external
+        view
+        returns (uint160 sqrtPriceX96, int24 tick)
+    {
+        (sqrtPriceX96,,,,,) = ICLPool(pool).slot0();
+        // Reasoning for using sqrtPriceX96 to get actual tick:
+        // uniswap V3: https://github.com/Uniswap/v3-core/blob/main/contracts/interfaces/pool/IUniswapV3PoolState.sol#L12
+        // velodrome slipstream: https://github.com/velodrome-finance/slipstream/blob/main/contracts/core/interfaces/pool/ICLPoolState.sol#L12
+        tick = TickMath.getTickAtSqrtRatio(sqrtPriceX96);
+    }
+
+    /// @inheritdoc IAmmModule
+    function getPoolTokens(address pool) external view returns (address, address) {
+        return (ICLPool(pool).token0(), ICLPool(pool).token1());
+    }
+
+    /// @inheritdoc IAmmModule
     function getRewardToken(address pool) external view returns (address) {
         return ICLGauge(ICLPool(pool).gauge()).rewardToken();
+    }
+
+    /// @inheritdoc IAmmModule
+    function getGauge(address pool) external view returns (address) {
+        return ICLPool(pool).gauge();
     }
 
     /// ---------------------- EXTERNAL PURE FUNCTIONS ----------------------

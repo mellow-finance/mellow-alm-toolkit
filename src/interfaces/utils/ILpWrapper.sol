@@ -359,11 +359,11 @@ interface ILpWrapper is IVeloFarm, IAccessControlEnumerable, IERC20 {
      * @notice Returns the ERC20 token contract for token0 in the pool.
      * @return The IERC20 contract of token0.
      */
-    function token0() external view returns (IERC20);
+    function token0() external view returns (address);
 
     /**
      * @notice Returns the ERC20 token contract for token1 in the pool.
      * @return The IERC20 contract of token1.
      */
-    function token1() external view returns (IERC20);
+    function token1() external view returns (address);
 }
