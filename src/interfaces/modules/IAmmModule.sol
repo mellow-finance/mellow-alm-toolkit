@@ -131,6 +131,12 @@ interface IAmmModule {
     function getProperty(address pool) external view returns (uint24);
 
     /**
+     * @dev Returns the reward token address for the AMM.
+     * @param pool Address of the pool.
+     */
+    function getRewardToken(address pool) external view returns (address);
+
+    /**
      * @notice Collects accumulated rewards for a specific token ID.
      * @dev This function allows the caller to collect rewards associated with a specified token,
      *      using additional parameters for customization of the collection process.

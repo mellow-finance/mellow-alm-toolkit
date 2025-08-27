@@ -131,6 +131,11 @@ contract VeloAmmModule is IVeloAmmModule {
         return uint24(ICLPool(pool).tickSpacing());
     }
 
+    /// @inheritdoc IAmmModule
+    function getRewardToken(address pool) external view returns (address) {
+        return ICLGauge(ICLPool(pool).gauge()).rewardToken();
+    }
+
     /// ---------------------- EXTERNAL PURE FUNCTIONS ----------------------
     /// @inheritdoc IAmmModule
     function validateProtocolParams(bytes memory params) external pure {

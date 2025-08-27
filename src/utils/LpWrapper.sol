@@ -66,7 +66,7 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
         }
         ICLPool pool_ = ICLPool(info.pool);
 
-        __VeloFarm_init(ICLGauge(pool_.gauge()).rewardToken(), name_, symbol_);
+        __VeloFarm_init(ammModule.getRewardToken(info.pool), name_, symbol_);
 
         positionId = positionId_;
         totalSupplyLimit = totalSupplyLimit_;
