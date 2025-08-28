@@ -25,9 +25,6 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
     IPulseStrategyModule public immutable strategyModule;
     INonfungiblePositionManager public immutable positionManager;
 
-    uint16 public constant MIN_OBSERVATION_CARDINALITY = 100;
-    uint256 public constant Q96 = 2 ** 96;
-
     /// ---------------------- INITIALIZER FUNCTIONS ----------------------
 
     constructor(
@@ -300,7 +297,7 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
             sqrtPriceX96,
             TickMath.getSqrtRatioAtTick(target.lowerTicks[1]),
             TickMath.getSqrtRatioAtTick(target.upperTicks[1]),
-            uint128(Q96 - target.liquidityRatiosX96[0])
+            uint128(PositionMath.Q96 - target.liquidityRatiosX96[0])
         );
         uint256 coefficient = Math.max(
             Math.ceilDiv(lowerAmount0X96 + upperAmount0X96, params.maxAmount0),
