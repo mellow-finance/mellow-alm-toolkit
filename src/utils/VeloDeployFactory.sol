@@ -66,7 +66,7 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
             ammModule.getProperty(params.pool) != uint24(params.strategyParams.tickSpacing)
                 || minInitialTotalSupply > params.initialTotalSupply
         ) {
-            revert InvalidParams();
+            revert InvalidDeployParams();
         }
 
         lpWrapper = ILpWrapper(Clones.clone(lpWrapperImplementation));
@@ -141,7 +141,7 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
     function setMinInitialTotalSupply(uint256 minInitialTotalSupply_) external {
         _requireAdmin();
         if (minInitialTotalSupply_ == 0 || minInitialTotalSupply_ > 1 ether) {
-            revert InvalidParams();
+            revert InvalidTotalSupplyValue();
         }
         minInitialTotalSupply = minInitialTotalSupply_;
         emit MinInitialTotalSupplySet(minInitialTotalSupply_, msg.sender);
@@ -265,14 +265,14 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
     function _addLpWrapper(address pool, address lpWrapper) private {
         bool success = _lpWrappers.add(lpWrapper) && _poolWrappers[pool].add(lpWrapper);
         if (!success) {
-            revert InvalidParams();
+            revert LpWrapperAlreadyExists();
         }
     }
 
     function _removeLpWrapper(address pool, address lpWrapper) private {
         bool success = _lpWrappers.remove(lpWrapper) && _poolWrappers[pool].remove(lpWrapper);
         if (!success) {
-            revert InvalidParams();
+            revert LpWrapperNotExists();
         }
     }
 

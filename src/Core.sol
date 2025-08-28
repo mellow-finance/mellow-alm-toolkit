@@ -80,7 +80,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         strategyModule.validateStrategyParams(params.strategyParams);
         oracle.validateSecurityParams(params.securityParams);
         if (params.slippageD9 > D9 / 4 || params.slippageD9 == 0 || params.owner == address(0)) {
-            revert InvalidParams();
+            revert InvalidDepositParams();
         }
 
         bytes memory protocolParams_ = _protocolParams;
@@ -143,7 +143,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
             }
         }
         if (!hasTokenId) {
-            revert InvalidParams();
+            revert InvalidDepositParams();
         }
 
         bytes memory protocolParams_ = _protocolParams;
@@ -192,7 +192,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
             }
         }
         if (!hasTokenId) {
-            revert InvalidParams();
+            revert InvalidWithdrawParams();
         }
 
         bytes memory protocolParams_ = _protocolParams;
@@ -260,7 +260,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
                     || ammModule.getPool(position_.token0, position_.token1, position_.property)
                         != info.pool
             ) {
-                revert InvalidParams();
+                revert InvalidRebalanceParams();
             }
             _transferFrom(params.callback, this_, tokenId);
             _afterRebalance(tokenId, info.callbackParams, protocolParams_);
@@ -323,7 +323,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         strategyModule.validateStrategyParams(strategyParams);
         oracle.validateSecurityParams(securityParams);
         if (slippageD9 > D9 / 4 || slippageD9 == 0) {
-            revert InvalidParams();
+            revert InvalidSlippageParams();
         }
         info.callbackParams = callbackParams;
         info.strategyParams = strategyParams;
@@ -484,7 +484,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         for (uint256 i = 0; i < ammPositionIds.length; i++) {
             uint256 tokenId = ammPositionIds[i];
             if (tokenId == 0) {
-                revert InvalidParams();
+                revert InvalidPositionParams();
             }
             position = ammModule.getAmmPosition(tokenId);
             if (position.liquidity != 0) {
@@ -492,16 +492,16 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
             }
             address pool_ = ammModule.getPool(position.token0, position.token1, position.property);
             if (pool_ == address(0)) {
-                revert InvalidParams();
+                revert InvalidPositionParams();
             }
             if (i == 0) {
                 pool = pool_;
             } else if (pool != pool_) {
-                revert InvalidParams();
+                revert InvalidPositionParams();
             }
         }
         if (!hasLiquidity) {
-            revert InvalidParams();
+            revert InvalidPositionParams();
         }
     }
 

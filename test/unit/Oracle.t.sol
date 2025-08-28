@@ -15,12 +15,12 @@ contract Unit is Fixture {
         oracle = new VeloOracle();
         IVeloOracle.SecurityParams memory params =
             IVeloOracle.SecurityParams({lookback: 0, maxAllowedDelta: 0, maxAge: 7 days});
-        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        vm.expectRevert(IVeloOracle.InvalidSecurityParams.selector);
         oracle.validateSecurityParams(abi.encode(params));
         params.lookback = 1;
         oracle.validateSecurityParams(abi.encode(params));
         params.maxAllowedDelta = -1;
-        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        vm.expectRevert(IVeloOracle.InvalidSecurityParams.selector);
         oracle.validateSecurityParams(abi.encode(params));
         oracle.validateSecurityParams(new bytes(0));
         vm.expectRevert();

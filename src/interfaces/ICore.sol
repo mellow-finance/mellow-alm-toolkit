@@ -215,11 +215,35 @@ interface ICore is IERC721Receiver, IAccessControlEnumerable {
     }
 
     /**
-     * @dev Custom error for indicating invalid parameters have been supplied to a function.
+     * @dev Custom error for indicating invalid parameters have been supplied to a function while depositing.
      * This error is used when the arguments passed to a function do not meet the required criteria,
      * such as out-of-range values or parameters that do not adhere to expected formats or constraints.
      */
-    error InvalidParams();
+    error InvalidDepositParams();
+
+    /**
+     * @dev Custom error for indicating invalid parameters have been supplied to a function while withdrawing.
+     * This error is used when the arguments passed to a function do not meet the required criteria,
+     * such as out-of-range values or parameters that do not adhere to expected formats or constraints.
+     */
+    error InvalidWithdrawParams();
+
+    /**
+     * @dev Custom error for indicating invalid parameters have been supplied to a function while rebalancing.
+     * This error is used when the arguments passed to a function do not meet the required criteria,
+     * such as out-of-range values or parameters that do not adhere to expected formats or constraints.
+     */
+    error InvalidRebalanceParams();
+
+    /**
+     * @notice Thrown if the slippage parameters are invalid.
+     */
+    error InvalidSlippageParams();
+
+    /**
+     * @notice Thrown if the position parameters are invalid.
+     */
+    error InvalidPositionParams();
 
     /**
      * @dev Custom error for signaling that a rebalance operation is not needed.

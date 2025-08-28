@@ -86,11 +86,11 @@ contract Unit is Fixture {
         contracts.deployFactory.setMinInitialTotalSupply(123);
 
         vm.startPrank(params.mellowAdmin);
-        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        vm.expectRevert(IVeloDeployFactory.InvalidTotalSupplyValue.selector);
         contracts.deployFactory.setMinInitialTotalSupply(0);
 
         vm.startPrank(params.mellowAdmin);
-        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        vm.expectRevert(IVeloDeployFactory.InvalidTotalSupplyValue.selector);
         contracts.deployFactory.setMinInitialTotalSupply(1 ether + 1);
 
         contracts.deployFactory.setMinInitialTotalSupply(10 ** 18);
@@ -132,7 +132,7 @@ contract Unit is Fixture {
         deployParams.pool = address(pool);
         deployParams.strategyParams.width = pool.tickSpacing() * 10;
         deployParams.strategyParams.tickSpacing = pool.tickSpacing() / 2;
-        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        vm.expectRevert(IVeloDeployFactory.InvalidDeployParams.selector);
         contracts.deployFactory.createStrategy(deployParams);
     }
 
@@ -247,13 +247,13 @@ contract Unit is Fixture {
             assertTrue(factory.isEntity(lpWrappers[index], address(pool)));
         }
 
-        vm.expectRevert(IVeloDeployFactory.InvalidParams.selector);
+        vm.expectRevert(IVeloDeployFactory.LpWrapperNotExists.selector);
         vm.prank(params.mellowAdmin);
         factory.removeWrapperForPool(address(pool), address(0));
 
         address poolWrong = vm.addr(uint256(keccak256("wrong pool")));
         for (uint256 index = 0; index < lpWrappers.length; index++) {
-            vm.expectRevert(IVeloDeployFactory.InvalidParams.selector);
+            vm.expectRevert(IVeloDeployFactory.LpWrapperNotExists.selector);
             vm.prank(params.mellowAdmin);
             factory.removeWrapperForPool(poolWrong, lpWrappers[index]);
         }

@@ -70,7 +70,7 @@ contract Unit is Fixture {
 
         vm.startPrank(info.owner);
 
-        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        vm.expectRevert(ICore.InvalidDepositParams.selector);
         core.directDeposit(positionId, tokenId + 1, 1 ether, 1 ether, 0, 0);
 
         IERC20(pool.token0()).approve(address(core), 1 ether);
@@ -157,12 +157,12 @@ contract Unit is Fixture {
         IERC20(pool.token0()).approve(address(coreBroken), 1 ether);
         IERC20(pool.token1()).approve(address(coreBroken), 1 ether);
 
-        vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
+        vm.expectRevert(ICore.InvalidLength.selector);
         coreBroken.directDeposit(positionId, tokenId, specificValueRevert, 1 ether, 0, 0);
 
         coreBroken.directDeposit(positionId, tokenId, 1 ether, 1 ether, 0, 0);
 
-        vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
+        vm.expectRevert(ICore.InvalidLength.selector);
         coreBroken.directWithdraw(
             positionId, tokenId, specificValueRevert, Constants.OPTIMISM_DEPLOYER, 0, 0
         );
@@ -184,7 +184,7 @@ contract Unit is Fixture {
 
         vm.startPrank(info.owner);
 
-        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        vm.expectRevert(ICore.InvalidWithdrawParams.selector);
         core.directWithdraw(positionId, tokenId + 1, position.liquidity, address(this), 0, 0);
 
         vm.expectRevert(abi.encodeWithSignature("FailedCall()"));
@@ -270,11 +270,11 @@ contract Unit is Fixture {
         vm.startPrank(params.mellowAdmin);
 
         rebalanceParams.data = abi.encode(10);
-        vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
+        vm.expectRevert(ICore.InvalidLength.selector);
         core.rebalance(rebalanceParams);
 
         rebalanceParams.data = new bytes(0x40);
-        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        vm.expectRevert(ICore.InvalidRebalanceParams.selector);
         core.rebalance(rebalanceParams);
 
         rebalanceParams.data = new bytes(0);
@@ -364,14 +364,14 @@ contract Unit is Fixture {
         depositParams.callbackParams = new bytes(123);
 
         depositParams.ammPositionIds[0] = tokenId;
-        vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
+        vm.expectRevert(ICore.InvalidLength.selector);
         core.deposit(depositParams);
 
         depositParams.callbackParams = abi.encode(
             IVeloAmmModule.CallbackParams({gauge: address(pool.gauge()), farm: address(1)})
         );
 
-        vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
+        vm.expectRevert(ICore.InvalidLength.selector);
         core.deposit(depositParams);
 
         depositParams.strategyParams = abi.encode(
@@ -384,13 +384,13 @@ contract Unit is Fixture {
             })
         );
 
-        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        vm.expectRevert(ICore.InvalidDepositParams.selector);
         core.deposit(depositParams);
 
         depositParams.slippageD9 = 1 * 1e5;
         depositParams.securityParams = new bytes(123);
 
-        vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
+        vm.expectRevert(ICore.InvalidLength.selector);
         core.deposit(depositParams);
 
         depositParams.securityParams = abi.encode(
@@ -400,17 +400,17 @@ contract Unit is Fixture {
         assertEq(positionManager.ownerOf(tokenId), Constants.OPTIMISM_DEPLOYER);
 
         depositParams.owner = address(0);
-        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        vm.expectRevert(ICore.InvalidDepositParams.selector);
         core.deposit(depositParams);
 
         depositParams.owner = Constants.OPTIMISM_DEPLOYER;
 
         depositParams.ammPositionIds[0] = 0;
-        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        vm.expectRevert(ICore.InvalidPositionParams.selector);
         core.deposit(depositParams);
 
         depositParams.ammPositionIds[0] = tokenIdEmpty;
-        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        vm.expectRevert(ICore.InvalidPositionParams.selector);
         core.deposit(depositParams);
 
         depositParams.ammPositionIds[0] = tokenId2;
@@ -426,7 +426,7 @@ contract Unit is Fixture {
         depositParams.ammPositionIds[0] = tokenId1;
         depositParams.ammPositionIds[1] = tokenId2;
 
-        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        vm.expectRevert(ICore.InvalidPositionParams.selector);
         core.deposit(depositParams);
 
         vm.stopPrank();
@@ -514,9 +514,9 @@ contract Unit is Fixture {
         core.setPositionParams(positionId, 0, new bytes(0), new bytes(0), new bytes(0));
 
         vm.startPrank(Constants.OPTIMISM_DEPLOYER);
-        vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
+        vm.expectRevert(ICore.InvalidLength.selector);
         core.setPositionParams(positionId, 1, new bytes(123), new bytes(0), new bytes(0));
-        vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
+        vm.expectRevert(ICore.InvalidLength.selector);
         core.setPositionParams(positionId, 1, new bytes(0), new bytes(123), new bytes(0));
 
         bytes memory defaultStrategyParams = abi.encode(
@@ -529,18 +529,18 @@ contract Unit is Fixture {
             })
         );
 
-        vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
+        vm.expectRevert(ICore.InvalidLength.selector);
         core.setPositionParams(positionId, 1, new bytes(0), defaultStrategyParams, new bytes(123));
 
-        vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
+        vm.expectRevert(ICore.InvalidLength.selector);
         core.setPositionParams(positionId, 0, new bytes(0), defaultStrategyParams, new bytes(0));
 
-        vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
+        vm.expectRevert(ICore.InvalidLength.selector);
         core.setPositionParams(
             positionId, uint32(D9 / 20 + 1), new bytes(0), defaultStrategyParams, new bytes(0)
         );
 
-        vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
+        vm.expectRevert(ICore.InvalidLength.selector);
         core.setPositionParams(
             positionId, uint32(D9 / 20), new bytes(0), defaultStrategyParams, new bytes(0)
         );
@@ -552,7 +552,7 @@ contract Unit is Fixture {
             IVeloOracle.SecurityParams({lookback: 100, maxAllowedDelta: 100, maxAge: 7 days})
         );
 
-        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        vm.expectRevert(ICore.InvalidSlippageParams.selector);
         core.setPositionParams(
             positionId,
             uint32(D9 / 4 + 1),
@@ -577,7 +577,7 @@ contract Unit is Fixture {
         core.setProtocolParams(new bytes(123));
 
         vm.startPrank(params.mellowAdmin);
-        vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
+        vm.expectRevert(ICore.InvalidLength.selector);
         core.setProtocolParams(new bytes(123));
 
         vm.expectRevert(abi.encodeWithSignature("AddressZero()"));

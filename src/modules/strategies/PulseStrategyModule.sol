@@ -311,17 +311,17 @@ contract PulseStrategyModule is IPulseStrategyModule {
             params.width == 0 || params.tickSpacing == 0 || params.width % params.tickSpacing != 0
                 || params.strategyType > StrategyType.Tamper
         ) {
-            revert InvalidParams();
+            revert InvalidStrategyParams();
         }
 
         if (params.strategyType == StrategyType.Original) {
             // can be negative
             if (params.tickNeighborhood * 2 > params.width) {
-                revert InvalidParams();
+                revert InvalidStrategyParams();
             }
         } else {
             if (params.tickNeighborhood != 0) {
-                revert InvalidParams();
+                revert InvalidStrategyParams();
             }
         }
         if (params.strategyType == StrategyType.Tamper) {
@@ -330,11 +330,11 @@ contract PulseStrategyModule is IPulseStrategyModule {
                     || params.maxLiquidityRatioDeviationX96 == 0
                     || params.maxLiquidityRatioDeviationX96 >= Q96
             ) {
-                revert InvalidParams();
+                revert InvalidStrategyParams();
             }
         } else {
             if (params.maxLiquidityRatioDeviationX96 != 0) {
-                revert InvalidParams();
+                revert InvalidStrategyParams();
             }
         }
     }

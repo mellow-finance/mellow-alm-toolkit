@@ -254,7 +254,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
                 })
             )
         );
-        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        vm.expectRevert(IPulseStrategyModule.InvalidStrategyParams.selector);
         pulseStrategyModule.validateStrategyParams(
             abi.encode(
                 IPulseStrategyModule.StrategyParams({
@@ -266,7 +266,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
                 })
             )
         );
-        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        vm.expectRevert(IPulseStrategyModule.InvalidStrategyParams.selector);
         pulseStrategyModule.validateStrategyParams(
             abi.encode(
                 IPulseStrategyModule.StrategyParams({
@@ -278,7 +278,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
                 })
             )
         );
-        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        vm.expectRevert(IPulseStrategyModule.InvalidStrategyParams.selector);
         pulseStrategyModule.validateStrategyParams(
             abi.encode(
                 IPulseStrategyModule.StrategyParams({
@@ -290,7 +290,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
                 })
             )
         );
-        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        vm.expectRevert(IPulseStrategyModule.InvalidStrategyParams.selector);
         pulseStrategyModule.validateStrategyParams(
             abi.encode(
                 IPulseStrategyModule.StrategyParams({
@@ -302,7 +302,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
                 })
             )
         );
-        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        vm.expectRevert(IPulseStrategyModule.InvalidStrategyParams.selector);
         pulseStrategyModule.validateStrategyParams(
             abi.encode(
                 IPulseStrategyModule.StrategyParams({
@@ -339,7 +339,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
             )
         );
 
-        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        vm.expectRevert(IPulseStrategyModule.InvalidStrategyParams.selector);
         pulseStrategyModule.validateStrategyParams(
             abi.encode(
                 IPulseStrategyModule.StrategyParams({
@@ -352,7 +352,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
             )
         );
 
-        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        vm.expectRevert(IPulseStrategyModule.InvalidStrategyParams.selector);
         pulseStrategyModule.validateStrategyParams(
             abi.encode(
                 IPulseStrategyModule.StrategyParams({
@@ -365,7 +365,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
             )
         );
 
-        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        vm.expectRevert(IPulseStrategyModule.InvalidStrategyParams.selector);
         pulseStrategyModule.validateStrategyParams(
             abi.encode(
                 IPulseStrategyModule.StrategyParams({
@@ -378,7 +378,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
             )
         );
 
-        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        vm.expectRevert(IPulseStrategyModule.InvalidStrategyParams.selector);
         pulseStrategyModule.validateStrategyParams(
             abi.encode(
                 IPulseStrategyModule.StrategyParams({
@@ -391,7 +391,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
             )
         );
 
-        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        vm.expectRevert(IPulseStrategyModule.InvalidStrategyParams.selector);
         pulseStrategyModule.validateStrategyParams(
             abi.encode(
                 IPulseStrategyModule.StrategyParams({

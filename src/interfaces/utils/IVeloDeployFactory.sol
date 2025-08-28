@@ -22,6 +22,26 @@ interface IVeloDeployFactory is IAccessControlEnumerable {
     error InvalidParams();
 
     /**
+     * @notice Thrown when the deployment parameters are invalid.
+     */
+    error InvalidDeployParams();
+
+    /**
+     * @notice Thrown when the total supply value is invalid.
+     */
+    error InvalidTotalSupplyValue();
+
+    /**
+     * @notice Thrown when an LP wrapper already exists for a pool.
+     */
+    error LpWrapperAlreadyExists();
+
+    /**
+     * @notice Thrown when an LP wrapper does not exist for a pool.
+     */
+    error LpWrapperNotExists();
+
+    /**
      * @notice Thrown when attempting to perform an operation on a forbidden pool.
      */
     error ForbiddenPool();

@@ -67,7 +67,7 @@ contract VeloOracle is IVeloOracle {
             securityParams.lookback == 0 || securityParams.maxAge == 0
                 || securityParams.maxAge > 7 days || securityParams.maxAllowedDelta < 0
         ) {
-            revert InvalidParams();
+            revert InvalidSecurityParams();
         }
     }
 }
