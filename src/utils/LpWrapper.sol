@@ -262,15 +262,6 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
     }
 
     /// @inheritdoc ILpWrapper
-    function getInfo() external view returns (PositionLibrary.Position[] memory data) {
-        ICore.ManagedPositionInfo memory info = core.managedPositionAt(positionId);
-        data = new PositionLibrary.Position[](info.ammPositionIds.length);
-        for (uint256 i = 0; i < info.ammPositionIds.length; i++) {
-            data[i] = PositionLibrary.getPosition(positionManager, info.ammPositionIds[i]);
-        }
-    }
-
-    /// @inheritdoc ILpWrapper
     function previewMint(uint256 lpAmount)
         external
         view
@@ -296,7 +287,7 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
         uint256 totalSupply_ = totalSupply();
         for (uint256 i = 0; i < positions.length; i++) {
             uint256 liquidity = lpAmount.mulDiv(positions[i].liquidity, totalSupply_);
-            (uint256 amount0_, uint256 amount1_) = ammModule.getAmountsForLiquidity(
+            (uint256 amount0_, uint256 amount1_) = PositionMath.getAmountsForLiquidity(
                 liquidity, sqrtPriceX96, positions[i].tickLower, positions[i].tickUpper
             );
             amount0 += amount0_;
@@ -317,7 +308,7 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
         uint256[] memory amount1 = new uint256[](positions.length);
         /// @dev step #1: get amounts that are hold at current positions
         for (uint256 i = 0; i < positions.length; i++) {
-            (amount0[i], amount1[i]) = ammModule.getAmountsForLiquidityCeil(
+            (amount0[i], amount1[i]) = PositionMath.getAmountsForLiquidityCeil(
                 positions[i].liquidity, sqrtPriceX96, positions[i].tickLower, positions[i].tickUpper
             );
             amount0Total += amount0[i];
@@ -359,12 +350,12 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
         uint256 totalSupply_,
         IAmmModule.AmmPosition memory position,
         uint160 sqrtPriceX96
-    ) public view returns (uint256 amount0, uint256 amount1, uint256 liquidity) {
+    ) public pure returns (uint256 amount0, uint256 amount1, uint256 liquidity) {
         liquidity = lpAmount.mulDiv(position.liquidity, totalSupply_, Math.Rounding.Ceil);
         if (liquidity > type(uint128).max) {
             revert LiquidityOverflow();
         }
-        (amount0, amount1) = ammModule.getAmountsForLiquidityCeil(
+        (amount0, amount1) = PositionMath.getAmountsForLiquidityCeil(
             liquidity, sqrtPriceX96, position.tickLower, position.tickUpper
         );
     }

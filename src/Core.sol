@@ -10,10 +10,6 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     uint256 private constant D9 = 1000000000;
-    uint256 private constant Q64 = 0x10000000000000000;
-    uint256 private constant Q96 = 0x1000000000000000000000000;
-    uint256 private constant Q128 = 0x100000000000000000000000000000000;
-    uint256 private constant Q192 = 0x1000000000000000000000000000000000000000000000000;
 
     address public immutable weth;
 
@@ -385,9 +381,8 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     ) private returns (uint256 capital) {
         for (uint256 i = 0; i < info.ammPositionIds.length; i++) {
             uint256 tokenId = info.ammPositionIds[i];
-            (uint256 amount0, uint256 amount1) =
-                ammModule.tvl(tokenId, sqrtPriceX96, info.callbackParams, protocolParams_);
-            capital += _calculateCapital(amount0, amount1, sqrtPriceX96);
+            (uint256 amount0, uint256 amount1) = ammModule.tvl(tokenId);
+            capital += PositionMath.calculateCapital(amount0, amount1, sqrtPriceX96);
             _beforeRebalance(tokenId, info.callbackParams, protocolParams_);
             _transferFrom(address(this), params.callback, tokenId);
         }
@@ -444,7 +439,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     {
         IAmmModule.AmmPosition memory info = ammModule.getAmmPosition(tokenIdAfter);
         (uint160 sqrtPriceX96,) = oracle.getOraclePrice(pool);
-        (uint256 amount0, uint256 amount1) = ammModule.getAmountsForLiquidity(
+        (uint256 amount0, uint256 amount1) = PositionMath.getAmountsForLiquidity(
             info.liquidity, sqrtPriceX96, info.tickLower, info.tickUpper
         );
 
@@ -463,32 +458,19 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
 
     /// ---------------------- PRIVATE VIEW FUNCTIONS ----------------------
 
-    function _calculateCapital(uint256 amount0, uint256 amount1, uint256 sqrtPriceX96)
-        internal
-        pure
-        returns (uint256)
-    {
-        if (sqrtPriceX96 < Q128) {
-            return Math.mulDiv(amount0, sqrtPriceX96 * sqrtPriceX96, Q192) + amount1;
-        } else {
-            uint256 priceX128 = Math.mulDiv(sqrtPriceX96, sqrtPriceX96, Q64);
-            return Math.mulDiv(amount0, priceX128, Q128) + amount1;
-        }
-    }
-
     function _calculateTargetCapitalX96(TargetPositionInfo memory target, uint160 sqrtPriceX96)
         private
-        view
+        pure
         returns (uint256 capitalX96)
     {
         for (uint256 j = 0; j < target.lowerTicks.length; j++) {
-            (uint256 amount0, uint256 amount1) = ammModule.getAmountsForLiquidity(
+            (uint256 amount0, uint256 amount1) = PositionMath.getAmountsForLiquidity(
                 uint128(target.liquidityRatiosX96[j]),
                 sqrtPriceX96,
                 target.lowerTicks[j],
                 target.upperTicks[j]
             );
-            capitalX96 += _calculateCapital(amount0, amount1, sqrtPriceX96);
+            capitalX96 += PositionMath.calculateCapital(amount0, amount1, sqrtPriceX96);
         }
     }
 
@@ -535,7 +517,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         for (uint256 i = 0; i < n; i++) {
             cumulativeLiquidityX96 += target.liquidityRatiosX96[i];
         }
-        if (cumulativeLiquidityX96 != Q96) {
+        if (cumulativeLiquidityX96 != PositionMath.Q96) {
             revert InvalidTarget();
         }
         for (uint256 i = 0; i < n; i++) {

@@ -58,10 +58,10 @@ contract IntegrationTest is Test, DeployScript {
         uint256 totalAmount1 = 0;
         for (uint256 i = 0; i < info.ammPositionIds.length; i++) {
             uint256 tokenId = info.ammPositionIds[i];
-            PositionLibrary.Position memory position =
-                PositionLibrary.getPosition(coreParams.positionManager, tokenId);
-            (uint256 amount0, uint256 amount1) =
-                contracts.ammModule.tvl(tokenId, sqrtPriceX96, info.callbackParams, new bytes(0));
+            IVeloAmmModule.Position memory position = contracts.ammModule.getPosition(tokenId);
+            (uint256 amount0, uint256 amount1) = contracts.ammModule.tvl(
+                tokenId /* , sqrtPriceX96, info.callbackParams, new bytes(0) */
+            );
 
             string memory positionStr = string(
                 abi.encodePacked(

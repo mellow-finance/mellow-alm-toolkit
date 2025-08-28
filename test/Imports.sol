@@ -5,7 +5,6 @@ import "../src/Core.sol";
 import "../src/interfaces/external/velo/ICLFactory.sol";
 import "../src/interfaces/external/velo/ICLPool.sol";
 import "../src/interfaces/external/velo/INonfungiblePositionManager.sol";
-import "../src/libraries/PositionValue.sol";
 import "../src/modules/strategies/PulseStrategyModule.sol";
 import "../src/modules/strategies/PulseStrategyModule.sol";
 import "../src/modules/velo/VeloAmmModule.sol";

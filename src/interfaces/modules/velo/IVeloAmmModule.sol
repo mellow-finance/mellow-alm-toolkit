@@ -3,10 +3,14 @@ pragma solidity 0.8.25;
 
 import "../../external/velo/ICLFactory.sol";
 import "../../external/velo/ICLGauge.sol";
+
+import "../../external/velo/INonfungiblePositionManager.sol";
 import "../../external/velo/callback/ICLSwapCallback.sol";
 import "../../utils/IVeloFarm.sol";
+
 import "../IAmmModule.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "src/libraries/PositionMath.sol";
 
 /**
  * @title IVeloAmmModule Interface
@@ -69,6 +73,66 @@ interface IVeloAmmModule is IAmmModule {
     }
 
     /**
+     * @notice Represents a position in an AMM pool with detailed attributes.
+     * @dev This struct contains information about a specific position, including liquidity, fee growth, and token owed data.
+     * @param nonce A unique identifier for each position to prevent replay attacks.
+     * @param operator The address authorized to manage this position.
+     * @param token0 The address of the first token in the position pair.
+     * @param token1 The address of the second token in the position pair.
+     * @param tickSpacing The spacing between ticks in the AMM pool.
+     * @param tickLower The lower tick boundary for this position.
+     * @param tickUpper The upper tick boundary for this position.
+     * @param liquidity The amount of liquidity provided by this position.
+     * @param feeGrowthInside0LastX128 The fee growth of token0 inside the position’s tick range since the last action.
+     * @param feeGrowthInside1LastX128 The fee growth of token1 inside the position’s tick range since the last action.
+     * @param tokensOwed0 The amount of token0 owed to the position.
+     * @param tokensOwed1 The amount of token1 owed to the position.
+     * @param tokenId The unique identifier of the position token.
+     */
+    struct Position {
+        uint96 nonce;
+        address operator;
+        address token0;
+        address token1;
+        int24 tickSpacing;
+        int24 tickLower;
+        int24 tickUpper;
+        uint128 liquidity;
+        uint256 feeGrowthInside0LastX128;
+        uint256 feeGrowthInside1LastX128;
+        uint128 tokensOwed0;
+        uint128 tokensOwed1;
+        uint256 tokenId;
+    }
+
+    /**
+     * @notice Parameters needed to calculate the fees for a Uniswap V3 position.
+     * @dev The struct stores position-specific information to facilitate fee calculation.
+     * @param token0 The address of token0.
+     * @param token1 The address of token1.
+     * @param tickSpacing The tick spacing of the AMM pool.
+     * @param tickLower The lower tick boundary of the position.
+     * @param tickUpper The upper tick boundary of the position.
+     * @param liquidity The liquidity of the position.
+     * @param positionFeeGrowthInside0LastX128 The last recorded fee growth inside the position’s range for token0.
+     * @param positionFeeGrowthInside1LastX128 The last recorded fee growth inside the position’s range for token1.
+     * @param tokensOwed0 The amount of token0 owed to the position.
+     * @param tokensOwed1 The amount of token1 owed to the position.
+     */
+    struct FeeParams {
+        address token0;
+        address token1;
+        int24 tickSpacing;
+        int24 tickLower;
+        int24 tickUpper;
+        uint128 liquidity;
+        uint256 positionFeeGrowthInside0LastX128;
+        uint256 positionFeeGrowthInside1LastX128;
+        uint128 tokensOwed0;
+        uint128 tokensOwed1;
+    }
+
+    /**
      * @dev Returns 10 ** 9, the base for fixed-point calculations.
      * @return uint256 representing 10^9 for fixed-point arithmetic.
      */
@@ -91,4 +155,33 @@ interface IVeloAmmModule is IAmmModule {
      * @return bytes4 function selector.
      */
     function selectorIsPool() external view returns (bytes4);
+
+    /**
+     * @dev Returns corresponding position info
+     * @return PositionData struct containing the position's data
+     */
+    function getInfo(uint256[] memory tokenIds) external view returns (Position[] memory);
+
+    /**
+     * @notice Fetches position details for a specific tokenId from the position manager.
+     * @dev Uses an optimized `staticcall` in assembly for reduced gas consumption.
+     *      Consumes ~22,232 gas, which is more efficient than the ~23,141 gas required for a typical call to NonfungiblePositionManager::positions.
+     *      Stores the function selector and tokenId in memory and performs a staticcall to retrieve data.
+     * @param tokenId The unique identifier of the position token.
+     * @return The position struct with detailed information.
+     */
+    function getPosition(uint256 tokenId) external view returns (Position memory);
+
+    /**
+     * @notice Returns the total amounts of token0 and token1 held by a Uniswap V3 NFT position, including both principal and fees.
+     * @dev Fetches principal amounts via `principal` and accrued fees via `fees`, then sums them for a complete value.
+     * @param tokenId The ID of the NFT position token to calculate the total value for.
+     * @param sqrtRatioX96 The square root of the current price, in Q96 format, used for calculating principal.
+     * @return amount0 The total amount of token0 including principal and fees.
+     * @return amount1 The total amount of token1 including principal and fees.
+     */
+    function total(uint256 tokenId, uint160 sqrtRatioX96)
+        external
+        view
+        returns (uint256 amount0, uint256 amount1);
 }

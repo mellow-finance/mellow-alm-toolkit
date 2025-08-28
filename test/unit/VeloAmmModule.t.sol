@@ -55,7 +55,7 @@ contract Unit is Fixture {
             int24 tickLower = -1234;
             int24 tickUpper = 1234;
             (uint256 amount0, uint256 amount1) =
-                module.getAmountsForLiquidity(1000, sqrtRatioX96, tickLower, tickUpper);
+                PositionMath.getAmountsForLiquidity(1000, sqrtRatioX96, tickLower, tickUpper);
             assertTrue(amount0 == 0);
             assertTrue(amount1 > 0);
         }
@@ -65,7 +65,7 @@ contract Unit is Fixture {
             int24 tickLower = -1234;
             int24 tickUpper = 1234;
             (uint256 amount0, uint256 amount1) =
-                module.getAmountsForLiquidity(1000, sqrtRatioX96, tickLower, tickUpper);
+                PositionMath.getAmountsForLiquidity(1000, sqrtRatioX96, tickLower, tickUpper);
             assertTrue(amount0 > 0);
             assertTrue(amount1 == 0);
         }
@@ -75,7 +75,7 @@ contract Unit is Fixture {
             int24 tickLower = -1234;
             int24 tickUpper = 1234;
             (uint256 amount0, uint256 amount1) =
-                module.getAmountsForLiquidity(1000, sqrtRatioX96, tickLower, tickUpper);
+                PositionMath.getAmountsForLiquidity(1000, sqrtRatioX96, tickLower, tickUpper);
             assertTrue(amount0 == amount1);
             assertTrue(amount0 > 0);
         }
@@ -85,7 +85,7 @@ contract Unit is Fixture {
             int24 tickLower = -1234;
             int24 tickUpper = 1234;
             (uint256 amount0, uint256 amount1) =
-                module.getAmountsForLiquidity(1000, sqrtRatioX96, tickLower, tickUpper);
+                PositionMath.getAmountsForLiquidity(1000, sqrtRatioX96, tickLower, tickUpper);
             assertTrue(amount0 > 0);
             assertTrue(amount1 > 0);
             assertTrue(amount0 != amount1);
@@ -108,11 +108,11 @@ contract Unit is Fixture {
         deal(Constants.OPTIMISM_OP, address(this), 1e10 ether);
 
         {
-            (uint256 amount0, uint256 amount1) =
-                module.tvl(tokenId, sqrtPriceX96, defaultCallbackParams, defaultProtocolParams);
+            (uint256 amount0, uint256 amount1) = module.tvl(
+                tokenId, sqrtPriceX96 /*, defaultCallbackParams, defaultProtocolParams */
+            );
             assertTrue(amount0 > 0 && amount1 > 0);
-            (uint256 expected0, uint256 expected1) =
-                PositionValue.total(positionManager, tokenId, sqrtPriceX96);
+            (uint256 expected0, uint256 expected1) = module.total(tokenId, sqrtPriceX96);
 
             assertEq(amount0, expected0);
             assertEq(amount1, expected1);
@@ -124,11 +124,11 @@ contract Unit is Fixture {
 
             movePrice(pool, TickMath.getSqrtRatioAtTick(tick + int24(i - 5) * 100));
 
-            (uint256 amount0, uint256 amount1) =
-                module.tvl(tokenId, sqrtPriceX96, defaultCallbackParams, defaultProtocolParams);
+            (uint256 amount0, uint256 amount1) = module.tvl(
+                tokenId, sqrtPriceX96 /*, defaultCallbackParams, defaultProtocolParams */
+            );
             assertTrue(amount0 + amount1 > 0);
-            (uint256 expected0, uint256 expected1) =
-                PositionValue.total(positionManager, tokenId, sqrtPriceX96);
+            (uint256 expected0, uint256 expected1) = module.total(tokenId, sqrtPriceX96);
             assertEq(amount0, expected0);
             assertEq(amount1, expected1);
         }
@@ -145,8 +145,7 @@ contract Unit is Fixture {
             Constants.OPTIMISM_DEPLOYER
         );
         IAmmModule.AmmPosition memory position = module.getAmmPosition(tokenId);
-        PositionLibrary.Position memory position_ =
-            PositionLibrary.getPosition(address(positionManager), tokenId);
+        IVeloAmmModule.Position memory position_ = module.getPosition(tokenId);
         assertEq(position.tickLower, position_.tickLower, "tickLower should be equal");
         assertEq(position.tickUpper, position_.tickUpper, "tickUpper should be equal");
         assertEq(position.liquidity, position_.liquidity, "liquidity should be equal");

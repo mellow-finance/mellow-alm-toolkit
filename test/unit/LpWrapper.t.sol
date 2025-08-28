@@ -367,7 +367,8 @@ contract Unit is Fixture {
 
         ICore.ManagedPositionInfo memory coreInfo =
             contracts.core.managedPositionAt(lpWrapper.positionId());
-        PositionLibrary.Position[] memory positionInfo = lpWrapper.getInfo();
+        IVeloAmmModule.Position[] memory positionInfo =
+            contracts.ammModule.getInfo(coreInfo.ammPositionIds);
         assertEq(positionInfo.length, coreInfo.ammPositionIds.length);
 
         for (uint256 i = 0; i < positionInfo.length; i++) {

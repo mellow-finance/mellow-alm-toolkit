@@ -88,10 +88,8 @@ contract SolvencyRunner is Test, DeployScript {
         uint256 length = tokenIds.length;
         totalSupply = _wrapper.totalSupply();
         IAmmModule ammModule = _core.ammModule();
-        (uint160 sqrtPriceX96,,,,,) = pool.slot0();
         for (uint256 i = 0; i < length; i++) {
-            (uint256 position0, uint256 position1) =
-                ammModule.tvl(tokenIds[i], sqrtPriceX96, info.callbackParams, new bytes(0));
+            (uint256 position0, uint256 position1) = ammModule.tvl(tokenIds[i]);
             amount0 += position0;
             amount1 += position1;
         }

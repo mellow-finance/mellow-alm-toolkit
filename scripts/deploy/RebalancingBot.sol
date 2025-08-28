@@ -7,18 +7,19 @@ import "../../src/modules/velo/VeloAmmModule.sol";
 contract RebalancingBot is IRebalanceCallback {
     using SafeERC20 for IERC20;
 
+    IVeloAmmModule public ammModule;
     INonfungiblePositionManager public immutable positionManager;
 
     constructor(INonfungiblePositionManager positionManager_) {
         positionManager = positionManager_;
+        ammModule = new VeloAmmModule(positionManager_, 0xe5e31b13);
     }
 
     function _pullLiquidity(uint256 tokenId) internal {
         if (tokenId == 0) {
             return;
         }
-        PositionLibrary.Position memory position =
-            PositionLibrary.getPosition(address(positionManager), tokenId);
+        IVeloAmmModule.Position memory position = ammModule.getPosition(tokenId);
         if (position.liquidity == 0) {
             return;
         }

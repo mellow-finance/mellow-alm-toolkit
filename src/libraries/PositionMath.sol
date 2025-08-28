@@ -2,16 +2,29 @@
 pragma solidity 0.8.25;
 
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {TickMath} from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
+import {LiquidityAmounts} from "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 
 /**
  * @title PositionMath
+ * @notice Library for common mathematical operations related to positions in a UniswapV3 liquidity pool.
+ * This library provides functions to calculate capital, liquidity, and token amounts for a given position.
  */
 library PositionMath {
-    uint256 public constant Q64 = 2 ** 64;
-    uint256 public constant Q96 = 2 ** 96;
-    uint256 public constant Q128 = 2 ** 128;
-    uint256 public constant Q192 = 2 ** 192;
+    using Math for uint256;
 
+    uint256 internal constant Q64 = 0x10000000000000000;
+    uint256 internal constant Q96 = 0x1000000000000000000000000;
+    uint256 internal constant Q128 = 0x100000000000000000000000000000000;
+    uint256 internal constant Q192 = 0x1000000000000000000000000000000000000000000000000;
+
+    /**
+     * @dev Calculates the capital for a given position based on its token amounts and current price.
+     * @param amount0 Amount of token0.
+     * @param amount1 Amount of token1.
+     * @param sqrtPriceX96 Square root of the current price in the pool.
+     * @return Capital amount.
+     */
     function calculateCapital(uint256 amount0, uint256 amount1, uint256 sqrtPriceX96)
         internal
         pure
@@ -22,6 +35,93 @@ library PositionMath {
         } else {
             uint256 priceX128 = Math.mulDiv(sqrtPriceX96, sqrtPriceX96, Q64);
             return Math.mulDiv(amount0, priceX128, Q128) + amount1;
+        }
+    }
+
+    /**
+     * @dev Calculates liquidity for given token amounts and position parameters.
+     * @param amount0 Amount of token0.
+     * @param amount1 Amount of token1.
+     * @param sqrtPriceX96 Square root of the current price in the pool.
+     * @param tickLower Lower tick of the position.
+     * @param tickUpper Upper tick of the position.
+     * @return Liquidity amount.
+     */
+    function getLiquidityForAmounts(
+        uint256 amount0,
+        uint256 amount1,
+        uint160 sqrtPriceX96,
+        int24 tickLower,
+        int24 tickUpper
+    ) internal pure returns (uint128) {
+        return LiquidityAmounts.getLiquidityForAmounts(
+            sqrtPriceX96,
+            TickMath.getSqrtRatioAtTick(tickLower),
+            TickMath.getSqrtRatioAtTick(tickUpper),
+            amount0,
+            amount1
+        );
+    }
+
+    /**
+     * @dev Calculates token amounts for a given liquidity amount in a position, rounding down.
+     * @param liquidity Liquidity amount.
+     * @param sqrtPriceX96 Square root of the current price in the pool.
+     * @param tickLower Lower tick of the position.
+     * @param tickUpper Upper tick of the position.
+     * @return amount0 Amount of token0.
+     * @return amount1 Amount of token1.
+     */
+    function getAmountsForLiquidity(
+        uint256 liquidity,
+        uint160 sqrtPriceX96,
+        int24 tickLower,
+        int24 tickUpper
+    ) internal pure returns (uint256 amount0, uint256 amount1) {
+        uint256 sqrtPriceAX96 = TickMath.getSqrtRatioAtTick(tickLower);
+        uint256 sqrtPriceBX96 = TickMath.getSqrtRatioAtTick(tickUpper);
+        if (sqrtPriceX96 < sqrtPriceBX96) {
+            uint256 sqrtRatioAX96_ = sqrtPriceAX96.max(sqrtPriceX96);
+            amount0 = (liquidity << 96).mulDiv(sqrtPriceBX96 - sqrtRatioAX96_, sqrtPriceBX96)
+                / sqrtRatioAX96_;
+        }
+
+        if (sqrtPriceX96 > sqrtPriceAX96) {
+            amount1 = liquidity.mulDiv(sqrtPriceBX96.min(sqrtPriceX96) - sqrtPriceAX96, Q96);
+        }
+    }
+
+    /**
+     * @dev Calculates token amounts for a given liquidity amount in a position, rounding up.
+     * @param liquidity Liquidity amount.
+     * @param sqrtPriceX96 Square root of the current price in the pool.
+     * @param tickLower Lower tick of the position.
+     * @param tickUpper Upper tick of the position.
+     * @return amount0 Amount of token0.
+     * @return amount1 Amount of token1.
+     */
+    function getAmountsForLiquidityCeil(
+        uint256 liquidity,
+        uint160 sqrtPriceX96,
+        int24 tickLower,
+        int24 tickUpper
+    ) internal pure returns (uint256 amount0, uint256 amount1) {
+        uint256 sqrtPriceAX96 = TickMath.getSqrtRatioAtTick(tickLower);
+        uint256 sqrtPriceBX96 = TickMath.getSqrtRatioAtTick(tickUpper);
+        if (sqrtPriceX96 < sqrtPriceBX96) {
+            uint256 sqrtRatioAX96_ = sqrtPriceAX96.max(sqrtPriceX96);
+            amount0 = Math.ceilDiv(
+                (liquidity << 96).mulDiv(
+                    sqrtPriceBX96 - sqrtRatioAX96_, sqrtPriceBX96, Math.Rounding.Ceil
+                ),
+                sqrtRatioAX96_
+            );
+        }
+
+        if (sqrtPriceX96 > sqrtPriceAX96) {
+            amount1 = liquidity.mulDiv(
+                sqrtPriceBX96.min(sqrtPriceX96) - sqrtPriceAX96, Q96, Math.Rounding.Ceil
+            );
         }
     }
 }

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.25;
 
-import "../../libraries/PositionLibrary.sol";
+import "../../libraries/PositionMath.sol";
 import "../modules/strategies/IPulseStrategyModule.sol";
 import "../modules/velo/IVeloAmmModule.sol";
 import "../oracles/IVeloOracle.sol";
@@ -116,12 +116,6 @@ interface ILpWrapper is IVeloFarm, IAccessControlEnumerable, IERC20 {
     event TotalSupplyLimitUpdated(
         uint256 newTotalSupplyLimit, uint256 totalSupplyLimitOld, uint256 totalSupplyCurrent
     );
-
-    /**
-     * @dev Returns corresponding position info
-     * @return data - PositionData struct containing the position's data
-     */
-    function getInfo() external view returns (PositionLibrary.Position[] memory data);
 
     /**
      * @dev Returns protocol params of the corresponding Core.sol
