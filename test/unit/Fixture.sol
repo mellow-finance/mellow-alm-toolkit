@@ -300,6 +300,46 @@ contract Fixture is DeployScript, Test {
         vm.stopPrank();
     }
 
+    function getValidDeployParams(ICLPool pool, IPulseStrategyModule.StrategyType strategyType)
+        internal
+        view
+        returns (IVeloDeployFactory.DeployParams memory deployParams)
+    {
+        deployParams.slippageD9 = 1e6;
+        deployParams.strategyParams = IPulseStrategyModule.StrategyParams({
+            strategyType: strategyType,
+            tickNeighborhood: 0, // Neighborhood of ticks to consider for rebalancing
+            tickSpacing: pool.tickSpacing(), // tickSpacing of the corresponding amm pool
+            width: pool.tickSpacing() * 2, // Width of the interval
+            maxLiquidityRatioDeviationX96: strategyType == IPulseStrategyModule.StrategyType.Tamper
+                ? Q96 / 20
+                : 0
+        });
+
+        int24 maxAllowedDelta = deployParams.strategyParams.tickSpacing == 1
+            ? int24(1)
+            : deployParams.strategyParams.width / 10;
+        deployParams.securityParams = IVeloOracle.SecurityParams({
+            lookback: 10,
+            maxAge: 1 hours,
+            maxAllowedDelta: maxAllowedDelta
+        });
+
+        deployParams.pool = address(pool);
+        deployParams.maxAmount0 = 10 ** (ERC20(pool.token0()).decimals() / 2 + 1);
+        deployParams.maxAmount1 = 10 ** (ERC20(pool.token1()).decimals() / 2 + 1);
+        deployParams.initialTotalSupply =
+            10 ** ((ERC20(pool.token0()).decimals() + ERC20(pool.token1()).decimals()) / 4 + 1);
+        deployParams.totalSupplyLimit = 1000 ether;
+    }
+
+    function compareDeployParams(
+        IVeloDeployFactory.DeployParams memory l,
+        IVeloDeployFactory.DeployParams memory r
+    ) internal pure returns (bool) {
+        return keccak256(abi.encode(l)) == keccak256(abi.encode(r));
+    }
+
     function deployLpWrapper(
         ICLPool pool,
         IPulseStrategyModule.StrategyType strategyType,
@@ -332,7 +372,6 @@ contract Fixture is DeployScript, Test {
             10 ** ((ERC20(pool.token0()).decimals() + ERC20(pool.token1()).decimals()) / 4 + 1);
         deployParams.totalSupplyLimit = 1000 ether;
 
-        vm.startPrank(params.factoryOperator);
         if (
             IERC20(pool.token0()).balanceOf(address(contracts.deployFactory))
                 < deployParams.maxAmount0
@@ -345,7 +384,45 @@ contract Fixture is DeployScript, Test {
         ) {
             deal(pool.token1(), address(contracts.deployFactory), deployParams.maxAmount1);
         }
-        lpWrapper = deployStrategy(contracts, deployParams);
+
+        uint160 status = contracts.deployFactory.getDeployParamsStatus(deployParams);
+        bytes32 proposalId;
+        if (status == uint160(IVeloDeployFactory.DeployParamsStatus.None)) {
+            vm.prank(params.factoryProposer);
+            proposalId = contracts.deployFactory.proposeDeployParams(deployParams);
+            vm.startPrank(params.factoryOperator);
+            contracts.deployFactory.acceptDeployParams(proposalId);
+            lpWrapper = deployStrategy(contracts, proposalId);
+            vm.stopPrank();
+        } else if (status == uint160(IVeloDeployFactory.DeployParamsStatus.Proposed)) {
+            vm.startPrank(params.factoryOperator);
+            proposalId = contracts.deployFactory.deployParamsHash(deployParams);
+            contracts.deployFactory.acceptDeployParams(proposalId);
+            lpWrapper = deployStrategy(contracts, proposalId);
+            vm.stopPrank();
+        } else if (status == uint160(IVeloDeployFactory.DeployParamsStatus.Accepted)) {
+            proposalId = contracts.deployFactory.deployParamsHash(deployParams);
+            vm.prank(params.factoryOperator);
+            lpWrapper = deployStrategy(contracts, proposalId);
+        } else {
+            lpWrapper = ILpWrapper(address(status));
+        }
+    }
+
+    function deployLpWrapper(
+        DeployScript.CoreDeployment memory contracts,
+        IVeloDeployFactory.DeployParams memory deployParams
+    ) internal returns (ILpWrapper lpWrapper) {
+        vm.prank(params.factoryProposer);
+        bytes32 proposalId = contracts.deployFactory.proposeDeployParams(deployParams);
+
+        ICLPool pool = ICLPool(deployParams.pool);
+
+        vm.startPrank(params.factoryOperator);
+        IERC20(pool.token0()).approve(address(contracts.deployFactory), deployParams.maxAmount0);
+        IERC20(pool.token1()).approve(address(contracts.deployFactory), deployParams.maxAmount1);
+        contracts.deployFactory.acceptDeployParams(proposalId);
+        lpWrapper = deployStrategy(contracts, proposalId);
         vm.stopPrank();
     }
 

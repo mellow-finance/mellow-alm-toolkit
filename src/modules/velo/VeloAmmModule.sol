@@ -7,6 +7,15 @@ contract VeloAmmModule is IVeloAmmModule {
     using SafeERC20 for IERC20;
     using Math for uint256;
 
+    /// @inheritdoc IAmmModule
+    string public constant protocolName = "Velodrome";
+
+    /// @inheritdoc IAmmModule
+    string public constant protocolSymbol = "VELO";
+
+    /// @inheritdoc IAmmModule
+    string public constant protocolLetter = "V";
+
     /// @inheritdoc IVeloAmmModule
     uint256 public constant D9 = 1e9;
 

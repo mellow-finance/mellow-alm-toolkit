@@ -46,23 +46,165 @@ contract Unit is Fixture {
         );
     }
 
-    function testRemoveWrapperForPool() public {
+    function testProposeStrategy() public {
         DeployScript.CoreDeployment memory contracts = deployContracts();
+        IVeloDeployFactory factory = contracts.deployFactory;
 
-        assertTrue(contracts.deployFactory.poolToWrappers(address(pool)).length == 0);
+        IVeloDeployFactory.DeployParams memory deployParams =
+            getValidDeployParams(pool, IPulseStrategyModule.StrategyType.LazySyncing);
 
-        (ILpWrapper lpWrapper,) =
-            deployLpWrapper(pool, IPulseStrategyModule.StrategyType.LazySyncing, contracts);
+        vm.prank(params.factoryProposer);
+        bytes32 proposalId = factory.proposeDeployParams(deployParams);
 
-        assertTrue(address(lpWrapper) != address(0));
-        assertTrue(contracts.deployFactory.poolToWrappers(address(pool))[0] == address(lpWrapper));
+        assertTrue(
+            proposalId == factory.deployParamsHash(deployParams), "Proposal ID does not match hash"
+        );
 
-        vm.expectRevert(abi.encodeWithSignature("Forbidden()"));
-        contracts.deployFactory.removeWrapperForPool(address(pool), address(lpWrapper));
+        assertTrue(
+            factory.isProposedDeployParams(deployParams), "Deployment parameters were not proposed"
+        );
+        assertFalse(
+            factory.isAcceptedDeployParams(deployParams), "Deployment parameters were accepted"
+        );
 
-        vm.prank(params.mellowAdmin);
-        contracts.deployFactory.removeWrapperForPool(address(pool), address(lpWrapper));
-        assertTrue(contracts.deployFactory.poolToWrappers(address(pool)).length == 0);
+        IVeloDeployFactory.DeployParams memory proposedParams =
+            factory.getDeployParamsById(proposalId);
+        assertTrue(
+            compareDeployParams(deployParams, proposedParams), "Proposed parameters do not match"
+        );
+
+        proposalId = factory.deployParamsHash(deployParams);
+
+        vm.prank(params.factoryProposer);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IVeloDeployFactory.DeployParamsAlreadyProposed.selector, proposalId
+            )
+        );
+        proposalId = factory.proposeDeployParams(deployParams);
+
+        /// @dev a bit change deploy params
+        deployParams.slippageD9 *= 2;
+
+        vm.prank(params.factoryProposer);
+        proposalId = factory.proposeDeployParams(deployParams);
+
+        assertTrue(
+            factory.isProposedDeployParams(deployParams), "Deployment parameters were not proposed"
+        );
+        assertFalse(
+            factory.isAcceptedDeployParams(deployParams), "Deployment parameters were accepted"
+        );
+
+        proposedParams = factory.getDeployParamsById(proposalId);
+        assertTrue(
+            compareDeployParams(deployParams, proposedParams), "Proposed parameters do not match"
+        );
+    }
+
+    function testAcceptProposedStrategy() external {
+        DeployScript.CoreDeployment memory contracts = deployContracts();
+        IVeloDeployFactory factory = contracts.deployFactory;
+
+        IVeloDeployFactory.DeployParams memory deployParams =
+            getValidDeployParams(pool, IPulseStrategyModule.StrategyType.LazySyncing);
+
+        vm.prank(params.factoryProposer);
+        bytes32 proposalId = factory.proposeDeployParams(deployParams);
+
+        assertTrue(
+            factory.isProposedDeployParams(deployParams), "Deployment parameters were not proposed"
+        );
+
+        vm.startPrank(params.factoryOperator);
+
+        bytes32 invalidProposalId = keccak256("invalid");
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IVeloDeployFactory.DeployParamsNotProposed.selector, invalidProposalId
+            )
+        );
+        factory.acceptDeployParams(invalidProposalId);
+
+        factory.acceptDeployParams(proposalId);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IVeloDeployFactory.DeployParamsAlreadyAccepted.selector, proposalId
+            )
+        );
+        factory.acceptDeployParams(proposalId);
+
+        assertTrue(
+            factory.isAcceptedDeployParams(deployParams), "Deployment parameters were not accepted"
+        );
+        vm.stopPrank();
+    }
+
+    function testDeployStrategyReverts() external {
+        DeployScript.CoreDeployment memory contracts = deployContracts();
+        IVeloDeployFactory factory = contracts.deployFactory;
+
+        IVeloDeployFactory.DeployParams memory deployParams =
+            getValidDeployParams(pool, IPulseStrategyModule.StrategyType.LazySyncing);
+
+        bytes32 invalidProposalId = keccak256("invalid");
+
+        vm.prank(params.factoryOperator);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IVeloDeployFactory.DeployParamsNotProposed.selector, invalidProposalId
+            )
+        );
+        factory.deployStrategy(invalidProposalId);
+
+        vm.prank(params.factoryProposer);
+        bytes32 proposalId = factory.proposeDeployParams(deployParams);
+
+        assertTrue(
+            factory.isProposedDeployParams(deployParams), "Deployment parameters were not proposed"
+        );
+
+        vm.startPrank(params.factoryOperator);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IVeloDeployFactory.DeployParamsNotProposed.selector, invalidProposalId
+            )
+        );
+        factory.deployStrategy(invalidProposalId);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(IVeloDeployFactory.DeployParamsNotAccepted.selector, proposalId)
+        );
+        factory.deployStrategy(proposalId);
+
+        factory.acceptDeployParams(proposalId);
+
+        assertTrue(
+            factory.isAcceptedDeployParams(deployParams), "Deployment parameters were not accepted"
+        );
+
+        deal(pool.token0(), address(contracts.deployFactory), deployParams.maxAmount0);
+        deal(pool.token1(), address(contracts.deployFactory), deployParams.maxAmount1);
+        IERC20(pool.token0()).approve(address(factory), deployParams.maxAmount0);
+        IERC20(pool.token1()).approve(address(factory), deployParams.maxAmount1);
+        ILpWrapper lpWrapper = factory.deployStrategy(proposalId);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IVeloDeployFactory.DeployParamsAlreadyDeployed.selector,
+                proposalId,
+                address(lpWrapper)
+            )
+        );
+        factory.deployStrategy(proposalId);
+
+        factory.deployParamsHash(deployParams);
+        assertTrue(
+            factory.isDeployedDeployParams(deployParams), "Deployment parameters were not deployed"
+        );
+
+        vm.stopPrank();
     }
 
     function testSetLpWrapperAdmin() public {
@@ -122,18 +264,45 @@ contract Unit is Fixture {
         deployParams.initialTotalSupply = 1000 wei;
         deployParams.totalSupplyLimit = 1000 ether;
 
-        vm.startPrank(params.factoryOperator);
-        deal(poolBad.token0(), address(contracts.deployFactory), 1 ether);
-        deal(poolBad.token1(), address(contracts.deployFactory), 1 ether);
+        {
+            vm.prank(params.factoryProposer);
+            vm.expectRevert(IVeloDeployFactory.ForbiddenPool.selector);
+            bytes32 proposalId = contracts.deployFactory.proposeDeployParams(deployParams);
 
-        vm.expectRevert(abi.encodeWithSignature("ForbiddenPool()"));
-        contracts.deployFactory.createStrategy(deployParams);
+            vm.startPrank(params.factoryOperator);
+            vm.expectRevert(
+                abi.encodeWithSelector(
+                    IVeloDeployFactory.DeployParamsNotProposed.selector, proposalId
+                )
+            );
+            contracts.deployFactory.acceptDeployParams(proposalId);
 
-        deployParams.pool = address(pool);
-        deployParams.strategyParams.width = pool.tickSpacing() * 10;
-        deployParams.strategyParams.tickSpacing = pool.tickSpacing() / 2;
-        vm.expectRevert(IVeloDeployFactory.InvalidDeployParams.selector);
-        contracts.deployFactory.createStrategy(deployParams);
+            vm.expectRevert(
+                abi.encodeWithSelector(
+                    IVeloDeployFactory.DeployParamsNotProposed.selector, proposalId
+                )
+            );
+            contracts.deployFactory.deployStrategy(proposalId);
+            vm.stopPrank();
+        }
+        {
+            deployParams.pool = address(pool);
+            deployParams.strategyParams.width = pool.tickSpacing() * 10;
+            deployParams.strategyParams.tickSpacing = pool.tickSpacing() / 2;
+
+            vm.prank(params.factoryProposer);
+            vm.expectRevert(IVeloDeployFactory.InvalidDeployParams.selector);
+            bytes32 proposalId = contracts.deployFactory.proposeDeployParams(deployParams);
+
+            vm.startPrank(params.factoryOperator);
+            vm.expectRevert(
+                abi.encodeWithSelector(
+                    IVeloDeployFactory.DeployParamsNotProposed.selector, proposalId
+                )
+            );
+            contracts.deployFactory.deployStrategy(proposalId);
+            vm.stopPrank();
+        }
     }
 
     function testCreateStrategy() public {
@@ -144,14 +313,14 @@ contract Unit is Fixture {
         assertFalse(address(lpWrapper) == address(0));
         assertEq(contracts.core.positionCount(), 1);
 
-        ICore.ManagedPositionInfo memory postition = contracts.core.managedPositionAt(0);
-        assertEq(postition.slippageD9, deployParams.slippageD9);
-        assertEq(postition.property, uint24(tickSpacing));
-        assertEq(postition.owner, address(lpWrapper));
-        assertEq(postition.pool, address(pool));
+        ICore.ManagedPositionInfo memory position = contracts.core.managedPositionAt(0);
+        assertEq(position.slippageD9, deployParams.slippageD9);
+        assertEq(position.property, uint24(tickSpacing));
+        assertEq(position.owner, address(lpWrapper));
+        assertEq(position.pool, address(pool));
 
         IAmmModule.AmmPosition memory ammPosition =
-            contracts.core.ammModule().getAmmPosition(postition.ammPositionIds[0]);
+            contracts.core.ammModule().getAmmPosition(position.ammPositionIds[0]);
         assertEq(ammPosition.token0, address(token0));
         assertEq(ammPosition.token1, address(token1));
         assertEq(ammPosition.property, uint24(tickSpacing));
@@ -159,7 +328,7 @@ contract Unit is Fixture {
         assertTrue(ammPosition.liquidity > 0);
 
         IPulseStrategyModule.StrategyParams memory strategyParams =
-            abi.decode(postition.strategyParams, (IPulseStrategyModule.StrategyParams));
+            abi.decode(position.strategyParams, (IPulseStrategyModule.StrategyParams));
         assertEq(
             uint256(strategyParams.strategyType), uint256(deployParams.strategyParams.strategyType)
         );
@@ -172,11 +341,11 @@ contract Unit is Fixture {
         );
 
         IVeloAmmModule.CallbackParams memory callbackParams =
-            abi.decode(postition.callbackParams, (IVeloAmmModule.CallbackParams));
+            abi.decode(position.callbackParams, (IVeloAmmModule.CallbackParams));
         assertEq(callbackParams.gauge, address(pool.gauge()));
 
         IVeloOracle.SecurityParams memory securityParams =
-            abi.decode(postition.securityParams, (IVeloOracle.SecurityParams));
+            abi.decode(position.securityParams, (IVeloOracle.SecurityParams));
         assertEq(securityParams.lookback, deployParams.securityParams.lookback);
         assertEq(securityParams.maxAllowedDelta, deployParams.securityParams.maxAllowedDelta);
         assertEq(securityParams.maxAge, deployParams.securityParams.maxAge);
@@ -209,18 +378,23 @@ contract Unit is Fixture {
         deal(pool.token0(), address(contracts.deployFactory), 1 ether);
         deal(pool.token1(), address(contracts.deployFactory), 1 ether);
 
+        vm.prank(params.factoryProposer);
+        bytes32 proposalId = contracts.deployFactory.proposeDeployParams(deployParams);
+
         vm.startPrank(params.factoryOperator);
         IERC20(pool.token0()).approve(address(contracts.deployFactory), 100 ether);
         IERC20(pool.token1()).approve(address(contracts.deployFactory), 1 ether);
-        contracts.deployFactory.createStrategy(deployParams);
 
-        ICore.ManagedPositionInfo memory postition = contracts.core.managedPositionAt(0);
-        assertEq(postition.ammPositionIds.length, 2);
+        contracts.deployFactory.acceptDeployParams(proposalId);
+        contracts.deployFactory.deployStrategy(proposalId);
+
+        ICore.ManagedPositionInfo memory position = contracts.core.managedPositionAt(0);
+        assertEq(position.ammPositionIds.length, 2);
         (uint160 sqrtPriceX96, int24 tick,,,,) = pool.slot0();
 
         IAmmModule.AmmPosition[] memory positions = new IAmmModule.AmmPosition[](2);
-        positions[0] = contracts.ammModule.getAmmPosition(postition.ammPositionIds[0]);
-        positions[1] = contracts.ammModule.getAmmPosition(postition.ammPositionIds[1]);
+        positions[0] = contracts.ammModule.getAmmPosition(position.ammPositionIds[0]);
+        positions[1] = contracts.ammModule.getAmmPosition(position.ammPositionIds[1]);
 
         (bool isRebalanceRequired,) = contracts.strategyModule.calculateTargetTamper(
             sqrtPriceX96, tick, positions, deployParams.strategyParams
@@ -232,41 +406,31 @@ contract Unit is Fixture {
     function testManyLpWrappers() public {
         DeployScript.CoreDeployment memory contracts = deployContracts();
         IVeloDeployFactory factory = contracts.deployFactory;
+        IVeloDeployFactory.DeployParams memory deployParams =
+            getValidDeployParams(pool, IPulseStrategyModule.StrategyType.LazySyncing);
 
         assertTrue(factory.poolToWrappers(address(pool)).length == 0);
 
         address[] memory lpWrappers = new address[](5);
         for (uint256 index = 0; index < lpWrappers.length; index++) {
-            (ILpWrapper lpWrapper,) =
-                deployLpWrapper(pool, IPulseStrategyModule.StrategyType.LazySyncing, contracts);
+            vm.prank(params.factoryProposer);
+            bytes32 proposalId = factory.proposeDeployParams(deployParams);
+            vm.startPrank(params.factoryOperator);
+            factory.acceptDeployParams(proposalId);
 
-            lpWrappers[index] = address(lpWrapper);
+            deal(pool.token0(), address(contracts.deployFactory), deployParams.maxAmount0);
+            deal(pool.token1(), address(contracts.deployFactory), deployParams.maxAmount1);
+            IERC20(pool.token0()).approve(address(factory), deployParams.maxAmount0);
+            IERC20(pool.token1()).approve(address(factory), deployParams.maxAmount1);
+            lpWrappers[index] = address(factory.deployStrategy(proposalId));
+            vm.stopPrank();
 
             assertTrue(factory.poolToWrappers(address(pool)).length == index + 1);
             assertTrue(factory.isEntity(lpWrappers[index]));
             assertTrue(factory.isEntity(lpWrappers[index], address(pool)));
+
+            /// @dev a bit change params to have new entity
+            deployParams.slippageD9 += 1;
         }
-
-        vm.expectRevert(IVeloDeployFactory.LpWrapperNotExists.selector);
-        vm.prank(params.mellowAdmin);
-        factory.removeWrapperForPool(address(pool), address(0));
-
-        address poolWrong = vm.addr(uint256(keccak256("wrong pool")));
-        for (uint256 index = 0; index < lpWrappers.length; index++) {
-            vm.expectRevert(IVeloDeployFactory.LpWrapperNotExists.selector);
-            vm.prank(params.mellowAdmin);
-            factory.removeWrapperForPool(poolWrong, lpWrappers[index]);
-        }
-
-        for (uint256 index = 0; index < lpWrappers.length; index++) {
-            vm.prank(params.mellowAdmin);
-            factory.removeWrapperForPool(address(pool), lpWrappers[index]);
-            assertFalse(factory.isEntity(lpWrappers[index]));
-            assertTrue(
-                factory.poolToWrappers(address(pool)).length == lpWrappers.length - index - 1
-            );
-        }
-
-        assertTrue(factory.poolToWrappers(address(pool)).length == 0);
     }
 }

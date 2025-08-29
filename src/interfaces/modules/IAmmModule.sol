@@ -21,6 +21,21 @@ interface IAmmModule {
     }
 
     /**
+     * @dev Returns the name of the AMM protocol.
+     */
+    function protocolName() external view returns (string memory);
+
+    /**
+     * @dev Returns the symbol of the AMM protocol.
+     */
+    function protocolSymbol() external view returns (string memory);
+
+    /**
+     * @dev Returns the letter of the AMM protocol.
+     */
+    function protocolLetter() external view returns (string memory);
+
+    /**
      * @dev Validates protocol parameters.
      * @param params The protocol parameters to be validated.
      */

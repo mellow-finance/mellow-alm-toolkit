@@ -258,10 +258,7 @@ contract Unit is Fixture {
         deal(pool.token0(), address(contracts.deployFactory), 1 ether);
         deal(pool.token1(), address(contracts.deployFactory), 1 ether);
 
-        vm.startPrank(params.factoryOperator);
-        IERC20(pool.token0()).approve(address(contracts.deployFactory), 100 ether);
-        IERC20(pool.token1()).approve(address(contracts.deployFactory), 1 ether);
-        contracts.deployFactory.createStrategy(deployParams_);
+        deployLpWrapper(contracts, deployParams_);
 
         (sqrtPriceX96, tick,,,,) = pool.slot0();
         movePrice(pool, TickMath.getSqrtRatioAtTick(tick + 1000));

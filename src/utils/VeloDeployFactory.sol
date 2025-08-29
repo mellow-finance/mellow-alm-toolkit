@@ -10,11 +10,19 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
     using EnumerableSet for EnumerableSet.AddressSet;
     using SafeERC20 for IERC20;
 
-    string public constant factoryName = "MellowVelodromeStrategy";
-    string public constant factorySymbol = "MVS";
-    EnumerableSet.AddressSet private _lpWrappers;
+    /// @dev Mapping of pool addresses to their corresponding LpWrapper sets
     mapping(address => EnumerableSet.AddressSet) private _poolWrappers;
-    address public immutable lpWrapperImplementation;
+
+    /// @dev Set of all deployed LP wrappers
+    EnumerableSet.AddressSet private _lpWrappers;
+
+    /// @dev Mapping of proposal DeployParams IDs
+    mapping(bytes32 => DeployParams) private _deployParams;
+
+    /// @dev Mapping of proposal DeployParams IDs to their corresponding status or LpWrapper address, see @param DeployParamsStatus
+    mapping(bytes32 => uint160) private _deployParamsStatus;
+
+    /// @dev Position parameters for minting
 
     address public lpWrapperAdmin;
     address public lpWrapperManager;
@@ -24,6 +32,7 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
     IAmmModule public immutable ammModule;
     IPulseStrategyModule public immutable strategyModule;
     INonfungiblePositionManager public immutable positionManager;
+    address public immutable lpWrapperImplementation;
 
     /// ---------------------- INITIALIZER FUNCTIONS ----------------------
 
@@ -58,16 +67,65 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
     }
 
     /// @inheritdoc IVeloDeployFactory
-    function createStrategy(DeployParams calldata params) external returns (ILpWrapper lpWrapper) {
-        _requireAtLeastOperator();
-
+    function proposeDeployParams(DeployParams memory params)
+        external
+        returns (bytes32 proposalId)
+    {
+        _requireAtLeastProposer();
+        if (!core.ammModule().isPool(params.pool)) {
+            revert ForbiddenPool();
+        }
         core.strategyModule().validateStrategyParams(abi.encode(params.strategyParams));
+        core.oracle().validateSecurityParams(abi.encode(params.securityParams));
         if (
             ammModule.getProperty(params.pool) != uint24(params.strategyParams.tickSpacing)
                 || minInitialTotalSupply > params.initialTotalSupply
         ) {
             revert InvalidDeployParams();
         }
+
+        proposalId = deployParamsHash(params);
+
+        if (_deployParamsStatus[proposalId] > uint160(DeployParamsStatus.None)) {
+            revert DeployParamsAlreadyProposed(proposalId);
+        }
+        _deployParamsStatus[proposalId] = uint160(DeployParamsStatus.Proposed);
+        _deployParams[proposalId] = params;
+
+        emit DeployParamsProposed(proposalId, msg.sender, params);
+    }
+
+    /// @inheritdoc IVeloDeployFactory
+    function acceptDeployParams(bytes32 proposalId) external {
+        _requireAtLeastOperator();
+
+        uint160 status = _deployParamsStatus[proposalId];
+        if (status == uint160(DeployParamsStatus.None)) {
+            revert DeployParamsNotProposed(proposalId);
+        } else if (status == uint160(DeployParamsStatus.Accepted)) {
+            revert DeployParamsAlreadyAccepted(proposalId);
+        } else if (status != uint160(DeployParamsStatus.Proposed)) {
+            revert DeployParamsAlreadyDeployed(proposalId, address(status));
+        }
+        _deployParamsStatus[proposalId] = uint160(DeployParamsStatus.Accepted);
+
+        emit DeployParamsAccepted(proposalId);
+    }
+
+    /// @inheritdoc IVeloDeployFactory
+    function deployStrategy(bytes32 proposalId) external returns (ILpWrapper lpWrapper) {
+        _requireAtLeastOperator();
+
+        uint160 status = _deployParamsStatus[proposalId];
+        if (status == uint160(DeployParamsStatus.None)) {
+            revert DeployParamsNotProposed(proposalId);
+        } else if (status == uint160(DeployParamsStatus.Proposed)) {
+            revert DeployParamsNotAccepted(proposalId);
+        } else if (status > uint160(DeployParamsStatus.Accepted)) {
+            revert DeployParamsAlreadyDeployed(proposalId, address(status));
+        }
+
+        DeployParams memory params = _deployParams[proposalId];
 
         lpWrapper = ILpWrapper(Clones.clone(lpWrapperImplementation));
 
@@ -109,15 +167,14 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
             name,
             symbol
         );
-        _addLpWrapper(params.pool, address(lpWrapper));
-        _emitStrategyCreated(positionId, address(lpWrapper), params.strategyParams);
-    }
 
-    /// @inheritdoc IVeloDeployFactory
-    function removeWrapperForPool(address pool, address lpWrapper) external {
-        _requireAdmin();
-        _removeLpWrapper(pool, lpWrapper);
-        emit WrapperRemoved(pool, lpWrapper, msg.sender);
+        _poolWrappers[params.pool].add(address(lpWrapper));
+        _deployParamsStatus[proposalId] = uint160(address(lpWrapper));
+        if (!_lpWrappers.add(address(lpWrapper))) {
+            revert LpWrapperAlreadyExists(address(lpWrapper));
+        }
+
+        _emitStrategyCreated(positionId, address(lpWrapper), params.strategyParams);
     }
 
     /// @inheritdoc IVeloDeployFactory
@@ -148,6 +205,94 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
     }
 
     /// ---------------------- EXTERNAL VIEW FUNCTIONS ----------------------
+
+    /// @inheritdoc IVeloDeployFactory
+    function deployParamsHash(DeployParams memory deployParams) public pure returns (bytes32) {
+        return keccak256(
+            abi.encode(
+                deployParams.slippageD9,
+                deployParams.strategyParams,
+                deployParams.securityParams,
+                deployParams.pool
+            )
+        );
+    }
+
+    /// @inheritdoc IVeloDeployFactory
+    function getLpWrapperCount() external view returns (uint256) {
+        return _lpWrappers.length();
+    }
+
+    /// @inheritdoc IVeloDeployFactory
+    function getLpWrapperByIndex(uint256 index) external view returns (ILpWrapper) {
+        if (index >= _lpWrappers.length()) {
+            revert InvalidIndex();
+        }
+        return ILpWrapper(_lpWrappers.at(index));
+    }
+
+    /// @inheritdoc IVeloDeployFactory
+    function getDeployParamsById(bytes32 proposalId) external view returns (DeployParams memory) {
+        return _deployParams[proposalId];
+    }
+
+    /// @inheritdoc IVeloDeployFactory
+    function getDeployParamsStatusById(bytes32 proposalId) external view returns (uint160) {
+        return _deployParamsStatus[proposalId];
+    }
+
+    /// @inheritdoc IVeloDeployFactory
+    function getDeployParamsStatus(DeployParams memory deployParams)
+        external
+        view
+        returns (uint160)
+    {
+        return _deployParamsStatus[deployParamsHash(deployParams)];
+    }
+
+    /// @inheritdoc IVeloDeployFactory
+    function isProposedDeployParams(DeployParams memory deployParams)
+        external
+        view
+        returns (bool)
+    {
+        return _deployParamsStatus[deployParamsHash(deployParams)]
+            == uint160(DeployParamsStatus.Proposed);
+    }
+
+    /// @inheritdoc IVeloDeployFactory
+    function isAcceptedDeployParams(DeployParams memory deployParams)
+        external
+        view
+        returns (bool)
+    {
+        return _deployParamsStatus[deployParamsHash(deployParams)]
+            == uint160(DeployParamsStatus.Accepted);
+    }
+
+    /// @inheritdoc IVeloDeployFactory
+    function isDeployedDeployParams(DeployParams memory deployParams)
+        external
+        view
+        returns (bool)
+    {
+        return _deployParamsStatus[deployParamsHash(deployParams)]
+            > uint160(DeployParamsStatus.Accepted);
+    }
+
+    /// @inheritdoc IVeloDeployFactory
+    function deployParamsToWrapper(DeployParams memory deployParams)
+        external
+        view
+        returns (ILpWrapper)
+    {
+        bytes32 proposalId = deployParamsHash(deployParams);
+        uint160 status = _deployParamsStatus[proposalId];
+        if (status <= uint160(DeployParamsStatus.Accepted)) {
+            revert DeployParamsNotDeployed(proposalId);
+        }
+        return ILpWrapper(address(status));
+    }
 
     /// @inheritdoc IVeloDeployFactory
     function isEntity(address lpWrapper) external view returns (bool) {
@@ -182,8 +327,8 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
             )
         );
 
-        name = string(abi.encodePacked(factoryName, suffix));
-        symbol = string(abi.encodePacked(factorySymbol, suffix));
+        name = string(abi.encodePacked("Mellow", ammModule.protocolName(), "Strategy", suffix));
+        symbol = string(abi.encodePacked("M", ammModule.protocolLetter(), "S", suffix));
     }
 
     /// ----------------  PRIVATE MUTABLE FUNCTIONS  ----------------
@@ -192,10 +337,6 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
         private
         returns (uint256[] memory tokenIds)
     {
-        if (!core.ammModule().isPool(params.pool)) {
-            revert ForbiddenPool();
-        }
-
         core.oracle().ensureNoMEV(params.pool, params.securityParams);
 
         bool isTamper =
@@ -260,20 +401,6 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
         }
 
         emit StrategyCreated(strategyCreatedParams);
-    }
-
-    function _addLpWrapper(address pool, address lpWrapper) private {
-        bool success = _lpWrappers.add(lpWrapper) && _poolWrappers[pool].add(lpWrapper);
-        if (!success) {
-            revert LpWrapperAlreadyExists();
-        }
-    }
-
-    function _removeLpWrapper(address pool, address lpWrapper) private {
-        bool success = _lpWrappers.remove(lpWrapper) && _poolWrappers[pool].remove(lpWrapper);
-        if (!success) {
-            revert LpWrapperNotExists();
-        }
     }
 
     /// ----------------  PRIVATE VIEW FUNCTIONS  ----------------

@@ -3,6 +3,7 @@ pragma solidity 0.8.25;
 
 import "./DeployScript.sol";
 import "./RebalancingBot.sol";
+import "forge-std/Test.sol";
 
 library Constants {
     address internal constant OPTIMISM_DEPLOYER = address(1);
@@ -14,15 +15,25 @@ library Constants {
     address internal constant OPTIMISM_OP = 0x4200000000000000000000000000000000000042;
     address internal constant OPTIMISM_WETH = 0x4200000000000000000000000000000000000006;
     address internal constant OPTIMISM_WSTETH = 0x1F32b1c2345538c0c6f582fCB022739c4A194Ebb;
-    address internal constant OPTIMISM_LP_WRAPPER_ADMIN = address(3);
-    address internal constant OPTIMISM_LP_WRAPPER_MANAGER = address(0);
 
     uint256 internal constant OPTIMISM_MIN_INITIAL_TOTAL_SUPPLY = 1000 wei;
-    address internal constant OPTIMISM_FACTORY_OPERATOR = address(4);
-    address internal constant OPTIMISM_CORE_OPERATOR = address(5);
 
-    address internal constant OPTIMISM_MELLOW_TREASURY = address(6);
     uint32 internal constant OPTIMISM_FEE_D9 = 1e7; // 10% fee
+
+    address internal constant OPTIMISM_LP_WRAPPER_ADMIN =
+        address(uint160(uint256(keccak256("OPTIMISM_LP_WRAPPER_ADMIN"))));
+    address internal constant OPTIMISM_LP_WRAPPER_MANAGER =
+        address(uint160(uint256(keccak256("OPTIMISM_LP_WRAPPER_MANAGER"))));
+
+    address internal constant OPTIMISM_FACTORY_OPERATOR =
+        address(uint160(uint256(keccak256("OPTIMISM_FACTORY_OPERATOR"))));
+    address internal constant OPTIMISM_CORE_OPERATOR =
+        address(uint160(uint256(keccak256("OPTIMISM_CORE_OPERATOR"))));
+
+    address internal constant OPTIMISM_MELLOW_TREASURY =
+        address(uint160(uint256(keccak256("OPTIMISM_MELLOW_TREASURY"))));
+    address internal constant OPTIMISM_FACTORY_PROPOSER =
+        address(uint160(uint256(keccak256("OPTIMISM_FACTORY_PROPOSER"))));
 
     function getDeploymentParams()
         internal
@@ -40,6 +51,7 @@ library Constants {
                 lpWrapperManager: OPTIMISM_LP_WRAPPER_MANAGER,
                 minInitialTotalSupply: OPTIMISM_MIN_INITIAL_TOTAL_SUPPLY,
                 factoryOperator: OPTIMISM_FACTORY_OPERATOR,
+                factoryProposer: OPTIMISM_FACTORY_PROPOSER,
                 coreOperator: OPTIMISM_CORE_OPERATOR,
                 protocolParams: IVeloAmmModule.ProtocolParams({
                     treasury: OPTIMISM_MELLOW_TREASURY,

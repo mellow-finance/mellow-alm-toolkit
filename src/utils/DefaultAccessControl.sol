@@ -13,37 +13,47 @@ abstract contract DefaultAccessControl is AccessControlEnumerableUpgradeable {
     error Forbidden();
     error AddressZero();
 
-    bytes32 public constant OPERATOR = keccak256("operator");
     bytes32 public constant ADMIN_ROLE = keccak256("admin");
     bytes32 public constant ADMIN_DELEGATE_ROLE = keccak256("admin_delegate");
+    bytes32 public constant OPERATOR_ROLE = keccak256("operator");
+    bytes32 public constant PROPOSER_ROLE = keccak256("proposer");
 
     function __DefaultAccessControl_init(address admin) internal onlyInitializing {
         if (admin == address(0)) {
             revert AddressZero();
         }
 
-        _grantRole(OPERATOR, admin);
         _grantRole(ADMIN_ROLE, admin);
+        _grantRole(OPERATOR_ROLE, admin);
+        _grantRole(PROPOSER_ROLE, admin);
 
         _setRoleAdmin(ADMIN_ROLE, ADMIN_ROLE);
         _setRoleAdmin(ADMIN_DELEGATE_ROLE, ADMIN_ROLE);
-        _setRoleAdmin(OPERATOR, ADMIN_DELEGATE_ROLE);
+        _setRoleAdmin(OPERATOR_ROLE, ADMIN_DELEGATE_ROLE);
+        _setRoleAdmin(PROPOSER_ROLE, ADMIN_DELEGATE_ROLE);
     }
 
     // -------------------------  EXTERNAL, VIEW  ------------------------------
 
     /// @notice Checks if the address is ADMIN or ADMIN_DELEGATE.
-    /// @param sender Adddress to check
+    /// @param sender Address to check
     /// @return `true` if sender is an admin, `false` otherwise
     function isAdmin(address sender) public view returns (bool) {
         return hasRole(ADMIN_ROLE, sender) || hasRole(ADMIN_DELEGATE_ROLE, sender);
     }
 
     /// @notice Checks if the address is OPERATOR.
-    /// @param sender Adddress to check
+    /// @param sender Address to check
     /// @return `true` if sender is an admin, `false` otherwise
     function isOperator(address sender) public view returns (bool) {
-        return hasRole(OPERATOR, sender);
+        return hasRole(OPERATOR_ROLE, sender);
+    }
+
+    /// @notice Checks if the address is OPERATOR.
+    /// @param sender Address to check
+    /// @return `true` if sender is an proposer, `false` otherwise
+    function isProposer(address sender) public view returns (bool) {
+        return hasRole(PROPOSER_ROLE, sender);
     }
 
     // -------------------------  INTERNAL, VIEW  ------------------------------
@@ -56,6 +66,12 @@ abstract contract DefaultAccessControl is AccessControlEnumerableUpgradeable {
 
     function _requireAtLeastOperator() internal view {
         if (!isAdmin(msg.sender) && !isOperator(msg.sender)) {
+            revert Forbidden();
+        }
+    }
+
+    function _requireAtLeastProposer() internal view {
+        if (!isAdmin(msg.sender) && !isOperator(msg.sender) && !isProposer(msg.sender)) {
             revert Forbidden();
         }
     }

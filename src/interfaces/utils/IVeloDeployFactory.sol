@@ -27,6 +27,36 @@ interface IVeloDeployFactory is IAccessControlEnumerable {
     error InvalidDeployParams();
 
     /**
+     * @notice Thrown when the deployment parameters are already accepted.
+     */
+    error DeployParamsAlreadyAccepted(bytes32);
+
+    /**
+     * @notice Thrown when the deployment parameters are not proposed.
+     */
+    error DeployParamsNotProposed(bytes32);
+
+    /**
+     * @notice Thrown when the deployment parameters are already proposed.
+     */
+    error DeployParamsAlreadyProposed(bytes32);
+
+    /**
+     * @notice Thrown when the deployment parameters are not accepted.
+     */
+    error DeployParamsNotAccepted(bytes32);
+
+    /**
+     * @notice Thrown when the deployment parameters are already deployed.
+     */
+    error DeployParamsAlreadyDeployed(bytes32, address);
+
+    /**
+     * @notice Thrown when the deployment parameters are not deployed.
+     */
+    error DeployParamsNotDeployed(bytes32);
+
+    /**
      * @notice Thrown when the total supply value is invalid.
      */
     error InvalidTotalSupplyValue();
@@ -34,17 +64,23 @@ interface IVeloDeployFactory is IAccessControlEnumerable {
     /**
      * @notice Thrown when an LP wrapper already exists for a pool.
      */
-    error LpWrapperAlreadyExists();
+    error LpWrapperAlreadyExists(address);
 
     /**
-     * @notice Thrown when an LP wrapper does not exist for a pool.
+     * @notice Thrown when the provided index is invalid.
      */
-    error LpWrapperNotExists();
+    error InvalidIndex();
 
     /**
      * @notice Thrown when attempting to perform an operation on a forbidden pool.
      */
     error ForbiddenPool();
+
+    enum DeployParamsStatus {
+        None,
+        Proposed,
+        Accepted
+    }
 
     /**
      * @notice Parameters for a newly created strategy.
@@ -61,6 +97,22 @@ interface IVeloDeployFactory is IAccessControlEnumerable {
         address lpWrapper;
         address caller;
     }
+
+    /**
+     * @notice Emitted when deployment parameters are proposed.
+     * @param proposalId The ID of the proposal.
+     * @param proposer The address of the proposer.
+     * @param params The deployment parameters.
+     */
+    event DeployParamsProposed(
+        bytes32 indexed proposalId, address indexed proposer, DeployParams params
+    );
+
+    /**
+     * @notice Emitted when deployment parameters are accepted.
+     * @param proposalId The ID of the proposal.
+     */
+    event DeployParamsAccepted(bytes32 indexed proposalId);
 
     /**
      * @notice Emitted when a strategy is successfully created.
@@ -150,27 +202,35 @@ interface IVeloDeployFactory is IAccessControlEnumerable {
     }
 
     /**
-     * @notice Creates a strategy based on provided deployment parameters.
-     * @param params The parameters for deploying the strategy, encapsulated in `DeployParams`.
-     * @return lpWrapper The address of the LP wrapper, which is an ERC20 representation of the LP token.
+     * @notice Proposes a new set of deployment parameters. Make all possible parameter checks.
+     * If any check fails, revert with an appropriate error.
+     * @param params The deployment parameters to propose.
+     * @return The ID of the created proposal.
      */
-    function createStrategy(DeployParams calldata params) external returns (ILpWrapper lpWrapper);
+    function proposeDeployParams(DeployParams memory params) external returns (bytes32);
 
     /**
-     * @dev Removes the addresses associated with a specific pool from the contract's records. This action is irreversible
-     * and should be performed with caution. Only users with the ADMIN role are authorized to execute this function,
-     * ensuring that such a critical operation is tightly controlled and aligned with the protocol's governance policies.
-     *
-     * Removing a pool's addresses can be necessary for protocol maintenance, updates, or in response to security concerns.
-     * It effectively unlinks the pool from the factory's management and operational framework, requiring careful consideration
-     * and alignment with strategic objectives.
-     *
-     * @param pool The address of the pool for which associated addresses are to be removed. This could include any contracts
-     * or entities tied to the pool's operational lifecycle within the Velo ecosystem, such as LP wrappers or strategy modules.
-     * Requirements:
-     * - Caller must have the ADMIN role, ensuring that only authorized personnel can alter the protocol's configuration in this manner.
+     * @notice Accepts a proposed set of deployment parameters.
+     * @param proposalId The ID of the proposal to accept.
      */
-    function removeWrapperForPool(address pool, address lpWrapper) external;
+    function acceptDeployParams(bytes32 proposalId) external;
+
+    /**
+     * @notice Creates a strategy based on provided deployment parameters.
+     * @param proposalId The ID of the accepted proposal containing the deployment parameters.
+     * @return The address of the LP wrapper, which is an ERC20 representation of the LP token.
+     */
+    function deployStrategy(bytes32 proposalId) external returns (ILpWrapper);
+
+    /**
+     * @notice Retrieves the LP wrapper associated with the given deployment parameters.
+     * @param deployParams The deployment parameters for which to retrieve the LP wrapper.
+     * @return The address of the LP wrapper associated with the given deployment parameters.
+     */
+    function deployParamsToWrapper(DeployParams memory deployParams)
+        external
+        view
+        returns (ILpWrapper);
 
     /**
      * @notice Sets a new LP wrapper admin address.
@@ -211,9 +271,83 @@ interface IVeloDeployFactory is IAccessControlEnumerable {
         returns (string memory name, string memory symbol);
 
     /**
-     * @notice Checks if a given address is an LP wrapper belongs to the factory.
-     * @param lpWrapper The address to check.
-     * @return isEntity True if the address is an LP wrapper, false otherwise.
+     * @notice Computes the hash of the deployment parameters.
+     * @param deployParams The deployment parameters to hash.
+     * @return The hash of the deployment parameters.
+     */
+    function deployParamsHash(DeployParams memory deployParams) external pure returns (bytes32);
+
+    /**
+     * @notice Retrieves the deployment parameters status associated with a specific proposal ID.
+     * @param proposalId The ID of the proposal to retrieve.
+     * @return The deployment parameters status associated with the specified proposal ID.
+     */
+    function getDeployParamsStatusById(bytes32 proposalId) external view returns (uint160);
+
+    /**
+     * @notice Retrieves the deployment parameters status associated with a specific set of deployment parameters.
+     * @param deployParams The deployment parameters to retrieve the status for.
+     * @return The deployment parameters status associated with the specified set of deployment parameters.
+     */
+    function getDeployParamsStatus(DeployParams memory deployParams)
+        external
+        view
+        returns (uint160);
+
+    /**
+     * @notice Retrieves the total count of LP wrappers.
+     * @return The total count of LP wrappers.
+     */
+    function getLpWrapperCount() external view returns (uint256);
+
+    /**
+     * @notice Retrieves the LP wrapper associated with a specific index.
+     * @param index The index of the LP wrapper to retrieve.
+     * @return The LP wrapper associated with the specified index.
+     */
+    function getLpWrapperByIndex(uint256 index) external view returns (ILpWrapper);
+
+    /**
+     * @notice Retrieves the deployment parameters associated with a specific proposal ID.
+     * @param proposalId The ID of the proposal to retrieve.
+     * @return The deployment parameters associated with the specified proposal ID.
+     */
+    function getDeployParamsById(bytes32 proposalId) external view returns (DeployParams memory);
+
+    /**
+     * @notice Checks if a given set of deployment parameters has been proposed.
+     * @param deployParams The deployment parameters to check.
+     * @return isProposed True if the deployment parameters have been proposed, false otherwise.
+     */
+    function isProposedDeployParams(DeployParams memory deployParams)
+        external
+        view
+        returns (bool);
+
+    /**
+     * @notice Checks if a given set of deployment parameters has been accepted.
+     * @param deployParams The deployment parameters to check.
+     * @return isAccepted True if the deployment parameters have been accepted, false otherwise.
+     */
+    function isAcceptedDeployParams(DeployParams memory deployParams)
+        external
+        view
+        returns (bool);
+
+    /**
+     * @notice Checks if a given set of deployment parameters has been deployed.
+     * @param deployParams The deployment parameters to check.
+     * @return isDeployed True if the deployment parameters have been deployed, false otherwise.
+     */
+    function isDeployedDeployParams(DeployParams memory deployParams)
+        external
+        view
+        returns (bool);
+
+    /**
+     * @notice Checks if a given LP wrapper is an entity.
+     * @param lpWrapper The address of the LP wrapper.
+     * @return isEntity True if the LP wrapper is an entity, false otherwise.
      */
     function isEntity(address lpWrapper) external view returns (bool);
 

@@ -42,10 +42,15 @@ contract IntegrationTest is Test, DeployScript {
         params.totalSupplyLimit = 1000 ether;
 
         vm.stopPrank();
+
+        vm.prank(coreParams.factoryProposer);
+        bytes32 proposalId = contracts.deployFactory.proposeDeployParams(params);
+
         vm.startPrank(coreParams.factoryOperator);
         deal(Constants.OPTIMISM_WETH, address(contracts.deployFactory), 1 ether);
         deal(Constants.OPTIMISM_WSTETH, address(contracts.deployFactory), 1 ether);
-        wstethWeth1Wrapper = deployStrategy(contracts, params);
+        contracts.deployFactory.acceptDeployParams(proposalId);
+        wstethWeth1Wrapper = contracts.deployFactory.deployStrategy(proposalId);
         vm.stopPrank();
     }
 

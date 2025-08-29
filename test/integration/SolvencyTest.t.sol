@@ -45,10 +45,14 @@ contract SolvencyTest is SolvencyRunner {
         params.initialTotalSupply = 1000 gwei;
         params.totalSupplyLimit = 1e6 ether;
 
+        vm.prank(coreParams.factoryProposer);
+        bytes32 proposalId = contracts.deployFactory.proposeDeployParams(params);
+
         vm.startPrank(coreParams.factoryOperator);
         deal(Constants.OPTIMISM_WETH, address(contracts.deployFactory), 1000 gwei);
         deal(Constants.OPTIMISM_WSTETH, address(contracts.deployFactory), 1000 gwei);
-        ILpWrapper wrapper = deployStrategy(contracts, params);
+        contracts.deployFactory.acceptDeployParams(proposalId);
+        ILpWrapper wrapper = contracts.deployFactory.deployStrategy(proposalId);
         vm.stopPrank();
 
         __SolvencyRunner_init(contracts.core, wrapper);

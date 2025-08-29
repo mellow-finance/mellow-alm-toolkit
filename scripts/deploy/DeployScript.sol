@@ -17,6 +17,7 @@ abstract contract DeployScript {
         address lpWrapperManager;
         uint256 minInitialTotalSupply;
         address factoryOperator;
+        address factoryProposer;
         // Core
         address coreOperator;
         IVeloAmmModule.ProtocolParams protocolParams;
@@ -33,7 +34,8 @@ abstract contract DeployScript {
     }
 
     bytes32 public constant ADMIN_ROLE = keccak256("admin");
-    bytes32 public constant OPERATOR = keccak256("operator");
+    bytes32 public constant OPERATOR_ROLE = keccak256("operator");
+    bytes32 public constant PROPOSER_ROLE = keccak256("proposer");
     bytes32 public constant ADMIN_DELEGATE_ROLE = keccak256("admin_delegate");
 
     function deployCore(CoreDeploymentParams memory params)
@@ -72,25 +74,27 @@ abstract contract DeployScript {
         contracts.core.grantRole(ADMIN_ROLE, params.mellowAdmin);
         if (params.coreOperator != address(0)) {
             contracts.core.grantRole(ADMIN_DELEGATE_ROLE, params.deployer);
-            contracts.core.grantRole(OPERATOR, params.coreOperator);
+            contracts.core.grantRole(OPERATOR_ROLE, params.coreOperator);
             contracts.core.renounceRole(ADMIN_DELEGATE_ROLE, params.deployer);
         }
         contracts.core.renounceRole(ADMIN_ROLE, params.deployer);
-        contracts.core.renounceRole(OPERATOR, params.deployer);
+        contracts.core.renounceRole(OPERATOR_ROLE, params.deployer);
 
         contracts.deployFactory.grantRole(ADMIN_ROLE, params.mellowAdmin);
         contracts.deployFactory.grantRole(ADMIN_DELEGATE_ROLE, params.deployer);
-        contracts.deployFactory.grantRole(OPERATOR, params.factoryOperator);
-        contracts.deployFactory.renounceRole(OPERATOR, params.deployer);
+        contracts.deployFactory.grantRole(OPERATOR_ROLE, params.factoryOperator);
+        contracts.deployFactory.grantRole(PROPOSER_ROLE, params.factoryProposer);
+
+        contracts.deployFactory.renounceRole(OPERATOR_ROLE, params.deployer);
         contracts.deployFactory.renounceRole(ADMIN_DELEGATE_ROLE, params.deployer);
         contracts.deployFactory.renounceRole(ADMIN_ROLE, params.deployer);
     }
 
-    function deployStrategy(
-        CoreDeployment memory contracts,
-        IVeloDeployFactory.DeployParams memory params
-    ) internal returns (ILpWrapper) {
-        return contracts.deployFactory.createStrategy(params);
+    function deployStrategy(CoreDeployment memory contracts, bytes32 proposalId)
+        internal
+        returns (ILpWrapper)
+    {
+        return contracts.deployFactory.deployStrategy(proposalId);
     }
 
     function testDeployScript() internal pure {}
