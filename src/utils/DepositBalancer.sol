@@ -17,8 +17,6 @@ contract DepositBalancer is IDepositBalancer, Context, ReentrancyGuard {
     IAmmModule public immutable ammModule;
     IVeloDeployFactory public immutable factory;
 
-    uint256 public constant D9 = 10 ** 9;
-
     constructor(address factory_, address core_) {
         core = ICore(core_);
         oracle = core.oracle();
