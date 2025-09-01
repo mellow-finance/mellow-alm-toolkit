@@ -290,6 +290,10 @@ contract VeloAmmModule is IVeloAmmModule {
             revert ForbiddenCallback();
         }
 
+        if (!isPool(pool)) {
+            revert ForbiddenPool();
+        }
+
         (int256 amount0Delta, int256 amount1Delta,) =
             abi.decode(callbackData, (int256, int256, bytes));
 

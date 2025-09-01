@@ -45,6 +45,11 @@ interface IVeloAmmModule is IAmmModule {
     error ForbiddenCallback();
 
     /**
+     * @notice Thrown when the specified pool does not belong to the Factory.
+     */
+    error ForbiddenPool();
+
+    /**
      * @dev Struct representing callback parameters for operations associated with the Velo protocol.
      * @param farm Address of the VeloFarm contract. It acts as a central hub for yield farming activities, interfacing directly
      * with users and other contracts to manage and allocate yield farming rewards based on defined criteria.
