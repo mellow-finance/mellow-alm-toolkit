@@ -17,11 +17,6 @@ interface IPulseStrategyModule is IStrategyModule {
     error InvalidStrategyParams();
 
     /**
-     * @notice Thrown when an unsupported strategy type is encountered.
-     */
-    error InvalidStrategyType();
-
-    /**
      * @notice Thrown when an array length is incorrect.
      */
     error InvalidLength();

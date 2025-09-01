@@ -386,14 +386,13 @@ contract PulseStrategyModule is IPulseStrategyModule {
         } else {
             return getPositionParamPulse(params, sqrtPriceX96, tick);
         }
-        revert InvalidStrategyType();
     }
 
     function getPositionParamTamper(
         PoolStrategyParameter memory params,
         uint160 sqrtPriceX96,
         int24 tick
-    ) internal view returns (IAmmModule.MintInfo[] memory mintInfo) {
+    ) internal pure returns (IAmmModule.MintInfo[] memory mintInfo) {
         (, ICore.TargetPositionInfo memory target) = calculateTargetTamper(
             sqrtPriceX96, tick, new IAmmModule.AmmPosition[](0), params.strategyParams
         );
@@ -435,7 +434,7 @@ contract PulseStrategyModule is IPulseStrategyModule {
         PoolStrategyParameter memory params,
         uint160 sqrtPriceX96,
         int24 tick
-    ) internal view returns (IAmmModule.MintInfo[] memory mintInfo) {
+    ) internal pure returns (IAmmModule.MintInfo[] memory mintInfo) {
         (, ICore.TargetPositionInfo memory target) = calculateTargetPulse(
             sqrtPriceX96, tick, new IAmmModule.AmmPosition[](0), params.strategyParams
         );
