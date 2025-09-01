@@ -130,7 +130,7 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
         ICore.DepositParams memory depositParams;
         depositParams.ammPositionIds = _create(
             msg.sender,
-            PoolStrategyParameter({
+            IPulseStrategyModule.PoolStrategyParameter({
                 pool: params.pool,
                 strategyParams: params.strategyParams,
                 maxAmount0: params.maxAmount0,
@@ -341,17 +341,13 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
 
     /// ----------------  PRIVATE MUTABLE FUNCTIONS  ----------------
 
-    function _create(address depositor, PoolStrategyParameter memory params)
+    function _create(address depositor, IPulseStrategyModule.PoolStrategyParameter memory params)
         private
         returns (uint256[] memory tokenIds)
     {
         core.oracle().ensureNoMEV(params.pool, params.securityParams);
 
-        IAmmModule.MintInfo[] memory mintInfo = (
-            params.strategyParams.strategyType == IPulseStrategyModule.StrategyType.Tamper
-                ? _getPositionParamTamper
-                : _getPositionParamPulse
-        )(params);
+        IAmmModule.MintInfo[] memory mintInfo = strategyModule.getMintParams(params, ammModule);
 
         bytes memory response = Address.functionDelegateCall(
             address(ammModule),
@@ -384,69 +380,5 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
         }
 
         emit StrategyCreated(strategyCreatedParams);
-    }
-
-    /// ----------------  PRIVATE VIEW FUNCTIONS  ----------------
-
-    function _getPositionParamTamper(PoolStrategyParameter memory params)
-        private
-        view
-        returns (IAmmModule.MintInfo[] memory mintInfo)
-    {
-        (uint160 sqrtPriceX96, int24 tick) = ammModule.getSqrtPriceX96AndTick(params.pool);
-        (, ICore.TargetPositionInfo memory target) = strategyModule.calculateTargetTamper(
-            sqrtPriceX96, tick, new IAmmModule.AmmPosition[](0), params.strategyParams
-        );
-        (uint256 lowerAmount0X96, uint256 lowerAmount1X96) = LiquidityAmounts.getAmountsForLiquidity(
-            sqrtPriceX96,
-            TickMath.getSqrtRatioAtTick(target.lowerTicks[0]),
-            TickMath.getSqrtRatioAtTick(target.upperTicks[0]),
-            uint128(target.liquidityRatiosX96[0])
-        );
-        (uint256 upperAmount0X96, uint256 upperAmount1X96) = LiquidityAmounts.getAmountsForLiquidity(
-            sqrtPriceX96,
-            TickMath.getSqrtRatioAtTick(target.lowerTicks[1]),
-            TickMath.getSqrtRatioAtTick(target.upperTicks[1]),
-            uint128(PositionMath.Q96 - target.liquidityRatiosX96[0])
-        );
-        uint256 coefficient = Math.max(
-            Math.ceilDiv(lowerAmount0X96 + upperAmount0X96, params.maxAmount0),
-            Math.ceilDiv(lowerAmount1X96 + upperAmount1X96, params.maxAmount1)
-        );
-
-        mintInfo = new IAmmModule.MintInfo[](2);
-        mintInfo[0] = IAmmModule.MintInfo({
-            pool: params.pool,
-            tickLower: target.lowerTicks[0],
-            tickUpper: target.upperTicks[0],
-            amount0: lowerAmount0X96 / coefficient,
-            amount1: lowerAmount1X96 / coefficient
-        });
-        mintInfo[1] = IAmmModule.MintInfo({
-            pool: params.pool,
-            tickLower: target.lowerTicks[1],
-            tickUpper: target.upperTicks[1],
-            amount0: upperAmount0X96 / coefficient,
-            amount1: upperAmount1X96 / coefficient
-        });
-    }
-
-    function _getPositionParamPulse(PoolStrategyParameter memory params)
-        private
-        view
-        returns (IAmmModule.MintInfo[] memory mintInfo)
-    {
-        (uint160 sqrtPriceX96, int24 tick) = ammModule.getSqrtPriceX96AndTick(params.pool);
-        (, ICore.TargetPositionInfo memory target) = strategyModule.calculateTargetPulse(
-            sqrtPriceX96, tick, new IAmmModule.AmmPosition[](0), params.strategyParams
-        );
-        mintInfo = new IAmmModule.MintInfo[](1);
-        mintInfo[0] = IAmmModule.MintInfo({
-            pool: params.pool,
-            tickLower: target.lowerTicks[0],
-            tickUpper: target.upperTicks[0],
-            amount0: params.maxAmount0,
-            amount1: params.maxAmount1
-        });
     }
 }

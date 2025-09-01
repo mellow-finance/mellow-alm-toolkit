@@ -4,6 +4,7 @@ pragma solidity 0.8.25;
 import "../IStrategyModule.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
+import "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 
 /**
  * @title PulseStrategyModule
@@ -14,6 +15,11 @@ interface IPulseStrategyModule is IStrategyModule {
      * @notice Thrown when input parameters are invalid.
      */
     error InvalidStrategyParams();
+
+    /**
+     * @notice Thrown when an unsupported strategy type is encountered.
+     */
+    error InvalidStrategyType();
 
     /**
      * @notice Thrown when an array length is incorrect.
@@ -53,6 +59,22 @@ interface IPulseStrategyModule is IStrategyModule {
         int24 tickSpacing;
         int24 width;
         uint256 maxLiquidityRatioDeviationX96;
+    }
+
+    /**
+     * @notice Parameters for configuring a pool strategy.
+     * @param pool The address of the CLPool.
+     * @param strategyParams Strategy parameters defining behavior for the pool.
+     * @param maxAmount0 Maximum amount of token0 allowed for the strategy.
+     * @param maxAmount1 Maximum amount of token1 allowed for the strategy.
+     * @param securityParams Additional security parameters, encoded as bytes, for risk control.
+     */
+    struct PoolStrategyParameter {
+        address pool;
+        StrategyParams strategyParams;
+        uint256 maxAmount0;
+        uint256 maxAmount1;
+        bytes securityParams;
     }
 
     /**
@@ -143,4 +165,15 @@ interface IPulseStrategyModule is IStrategyModule {
         IAmmModule.AmmPosition[] memory positions,
         StrategyParams memory params
     ) external pure returns (bool isRebalanceRequired, ICore.TargetPositionInfo memory target);
+
+    /**
+     * @dev Retrieves the mint parameters for a given pool strategy.
+     * @param params The pool strategy parameters.
+     * @param ammModule The AMM module instance.
+     * @return mintInfo An array of mint information for the specified strategy.
+     */
+    function getMintParams(PoolStrategyParameter memory params, IAmmModule ammModule)
+        external
+        view
+        returns (IAmmModule.MintInfo[] memory mintInfo);
 }

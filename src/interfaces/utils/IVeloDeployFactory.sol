@@ -6,7 +6,6 @@ import "./ILpWrapper.sol";
 import "@openzeppelin/contracts/access/extensions/IAccessControlEnumerable.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
-import "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 
 /**
  * @title IVeloDeployFactory Interface
@@ -179,22 +178,6 @@ interface IVeloDeployFactory is IAccessControlEnumerable {
         uint256 maxAmount1;
         uint256 initialTotalSupply;
         uint256 totalSupplyLimit;
-    }
-
-    /**
-     * @notice Parameters for configuring a pool strategy.
-     * @param pool The address of the CLPool.
-     * @param strategyParams Strategy parameters defining behavior for the pool.
-     * @param maxAmount0 Maximum amount of token0 allowed for the strategy.
-     * @param maxAmount1 Maximum amount of token1 allowed for the strategy.
-     * @param securityParams Additional security parameters, encoded as bytes, for risk control.
-     */
-    struct PoolStrategyParameter {
-        address pool;
-        IPulseStrategyModule.StrategyParams strategyParams;
-        uint256 maxAmount0;
-        uint256 maxAmount1;
-        bytes securityParams;
     }
 
     /**
