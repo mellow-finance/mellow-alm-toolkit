@@ -82,6 +82,10 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
             revert InvalidDeployParams();
         }
 
+        if (params.slippageD9 > core.MAX_SLIPPAGE_D9() || params.slippageD9 == 0) {
+            revert InvalidDeployParams();
+        }
+
         proposalId = deployParamsHash(params);
 
         if (_deployParamsStatus[proposalId] > uint160(DeployParamsStatus.None)) {

@@ -11,6 +11,9 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
 
     uint256 private constant D9 = 1000000000;
 
+    /// @inheritdoc ICore
+    uint256 public constant MAX_SLIPPAGE_D9 = D9 / 4;
+
     address public immutable weth;
 
     /// @inheritdoc ICore
@@ -79,7 +82,10 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         ammModule.validateCallbackParams(pool, params.callbackParams);
         strategyModule.validateStrategyParams(params.strategyParams);
         oracle.validateSecurityParams(params.securityParams);
-        if (params.slippageD9 > D9 / 4 || params.slippageD9 == 0 || params.owner == address(0)) {
+        if (params.slippageD9 > MAX_SLIPPAGE_D9 || params.slippageD9 == 0) {
+            revert InvalidSlippageParams();
+        }
+        if (params.owner == address(0)) {
             revert InvalidDepositParams();
         }
 
@@ -322,7 +328,7 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         ammModule.validateCallbackParams(info.pool, callbackParams);
         strategyModule.validateStrategyParams(strategyParams);
         oracle.validateSecurityParams(securityParams);
-        if (slippageD9 > D9 / 4 || slippageD9 == 0) {
+        if (slippageD9 > MAX_SLIPPAGE_D9 || slippageD9 == 0) {
             revert InvalidSlippageParams();
         }
         info.callbackParams = callbackParams;

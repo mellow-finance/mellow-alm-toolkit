@@ -381,7 +381,7 @@ contract Unit is Fixture {
             })
         );
 
-        vm.expectRevert(ICore.InvalidDepositParams.selector);
+        vm.expectRevert(ICore.InvalidSlippageParams.selector);
         core.deposit(depositParams);
 
         depositParams.slippageD9 = 1 * 1e5;

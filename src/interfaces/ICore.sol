@@ -274,6 +274,12 @@ interface ICore is IERC721Receiver, IAccessControlEnumerable {
     error InsufficientAmount();
 
     /**
+     * @dev Returns the maximum slippage allowed for deposits, in D9 format.
+     * @return uint256 - maximum slippage in D9 format.
+     */
+    function MAX_SLIPPAGE_D9() external view returns (uint256);
+
+    /**
      * @dev Returns the address of the AMM module.
      * @return address of the AMM module.
      */
