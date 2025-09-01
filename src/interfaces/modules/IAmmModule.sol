@@ -21,6 +21,21 @@ interface IAmmModule {
     }
 
     /**
+     * @notice Information about minting in a specified tick range.
+     * @param amount0 Amount of token0 for the mint operation.
+     * @param amount1 Amount of token1 for the mint operation.
+     * @param tickLower Lower bound of the tick range for minting.
+     * @param tickUpper Upper bound of the tick range for minting.
+     */
+    struct MintInfo {
+        address pool;
+        uint256 amount0;
+        uint256 amount1;
+        int24 tickLower;
+        int24 tickUpper;
+    }
+
+    /**
      * @dev Returns the name of the AMM protocol.
      */
     function protocolName() external view returns (string memory);
@@ -177,6 +192,23 @@ interface IAmmModule {
      * @param tokenId Token ID to be transferred.
      */
     function transferFrom(address from, address to, uint256 tokenId) external;
+
+    /**
+     * @dev Mints new tokens.
+     * @param depositor Address of the depositor.
+     * @param mintInfo Array of minting information.
+     * @return tokenIds Array of minted token IDs.
+     */
+    function mint(address depositor, MintInfo[] memory mintInfo)
+        external
+        returns (uint256[] memory tokenIds);
+
+    /**
+     * @dev Approves a token ID for a specific address.
+     * @param to Address to approve.
+     * @param tokenId Token ID to be approved.
+     */
+    function approveTokenId(address to, uint256 tokenId) external;
 
     /**
      * @dev Returns the address of the position manager.

@@ -31,7 +31,6 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
     ICore public immutable core;
     IAmmModule public immutable ammModule;
     IPulseStrategyModule public immutable strategyModule;
-    INonfungiblePositionManager public immutable positionManager;
     address public immutable lpWrapperImplementation;
 
     /// ---------------------- INITIALIZER FUNCTIONS ----------------------
@@ -46,7 +45,6 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
         core = core_;
         strategyModule = strategyModule_;
         ammModule = core.ammModule();
-        positionManager = INonfungiblePositionManager(core.ammModule().positionManager());
 
         lpWrapperImplementation = lpWrapperImplementation_;
     }
@@ -153,7 +151,17 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
         depositParams.securityParams = abi.encode(params.securityParams);
 
         for (uint256 i = 0; i < depositParams.ammPositionIds.length; i++) {
-            positionManager.approve(address(core), depositParams.ammPositionIds[i]);
+            bytes memory response = Address.functionDelegateCall(
+                address(ammModule),
+                abi.encodeWithSelector(
+                    IAmmModule.approveTokenId.selector,
+                    address(core),
+                    depositParams.ammPositionIds[i]
+                )
+            );
+            if (response.length > 0) {
+                revert NonfungiblePositionApproveFailed();
+            }
         }
 
         uint256 positionId = core.deposit(depositParams);
@@ -339,47 +347,22 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
     {
         core.oracle().ensureNoMEV(params.pool, params.securityParams);
 
-        bool isTamper =
-            params.strategyParams.strategyType == IPulseStrategyModule.StrategyType.Tamper;
-        tokenIds = new uint256[](isTamper ? 2 : 1);
-        MintInfo[] memory mintInfo =
-            (isTamper ? _getPositionParamTamper : _getPositionParamPulse)(params);
+        IAmmModule.MintInfo[] memory mintInfo = (
+            params.strategyParams.strategyType == IPulseStrategyModule.StrategyType.Tamper
+                ? _getPositionParamTamper
+                : _getPositionParamPulse
+        )(params);
 
-        (address token0, address token1) = ammModule.getPoolTokens(params.pool);
-        int24 tickSpacing = int24(ammModule.getProperty(params.pool));
+        bytes memory response = Address.functionDelegateCall(
+            address(ammModule),
+            abi.encodeWithSelector(IAmmModule.mint.selector, depositor, mintInfo)
+        );
 
-        _handleToken(depositor, token0, params.maxAmount0);
-        _handleToken(depositor, token1, params.maxAmount1);
-
-        for (uint256 i = 0; i < mintInfo.length; i++) {
-            (tokenIds[i],,,) = positionManager.mint(
-                INonfungiblePositionManager.MintParams({
-                    token0: token0,
-                    token1: token1,
-                    tickLower: mintInfo[i].tickLower,
-                    tickUpper: mintInfo[i].tickUpper,
-                    tickSpacing: tickSpacing,
-                    amount0Desired: mintInfo[i].amount0,
-                    amount1Desired: mintInfo[i].amount1,
-                    amount0Min: 0,
-                    amount1Min: 0,
-                    recipient: address(this),
-                    deadline: type(uint256).max,
-                    sqrtPriceX96: 0
-                })
-            );
+        if (response.length != 0x40 + 0x20 * mintInfo.length) {
+            revert NonfungiblePositionMintError();
         }
-    }
 
-    function _handleToken(address depositor, address token, uint256 amount) private {
-        address this_ = address(this);
-        uint256 balance = IERC20(token).balanceOf(this_);
-        if (balance < amount) {
-            IERC20(token).safeTransferFrom(depositor, this_, amount - balance);
-        }
-        if (IERC20(token).allowance(this_, address(positionManager)) == 0) {
-            IERC20(token).forceApprove(address(positionManager), type(uint256).max);
-        }
+        return abi.decode(response, (uint256[]));
     }
 
     function _emitStrategyCreated(
@@ -408,7 +391,7 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
     function _getPositionParamTamper(PoolStrategyParameter memory params)
         private
         view
-        returns (MintInfo[] memory mintInfo)
+        returns (IAmmModule.MintInfo[] memory mintInfo)
     {
         (uint160 sqrtPriceX96, int24 tick) = ammModule.getSqrtPriceX96AndTick(params.pool);
         (, ICore.TargetPositionInfo memory target) = strategyModule.calculateTargetTamper(
@@ -431,14 +414,16 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
             Math.ceilDiv(lowerAmount1X96 + upperAmount1X96, params.maxAmount1)
         );
 
-        mintInfo = new MintInfo[](2);
-        mintInfo[0] = MintInfo({
+        mintInfo = new IAmmModule.MintInfo[](2);
+        mintInfo[0] = IAmmModule.MintInfo({
+            pool: params.pool,
             tickLower: target.lowerTicks[0],
             tickUpper: target.upperTicks[0],
             amount0: lowerAmount0X96 / coefficient,
             amount1: lowerAmount1X96 / coefficient
         });
-        mintInfo[1] = MintInfo({
+        mintInfo[1] = IAmmModule.MintInfo({
+            pool: params.pool,
             tickLower: target.lowerTicks[1],
             tickUpper: target.upperTicks[1],
             amount0: upperAmount0X96 / coefficient,
@@ -449,14 +434,15 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
     function _getPositionParamPulse(PoolStrategyParameter memory params)
         private
         view
-        returns (MintInfo[] memory mintInfo)
+        returns (IAmmModule.MintInfo[] memory mintInfo)
     {
         (uint160 sqrtPriceX96, int24 tick) = ammModule.getSqrtPriceX96AndTick(params.pool);
         (, ICore.TargetPositionInfo memory target) = strategyModule.calculateTargetPulse(
             sqrtPriceX96, tick, new IAmmModule.AmmPosition[](0), params.strategyParams
         );
-        mintInfo = new MintInfo[](1);
-        mintInfo[0] = MintInfo({
+        mintInfo = new IAmmModule.MintInfo[](1);
+        mintInfo[0] = IAmmModule.MintInfo({
+            pool: params.pool,
             tickLower: target.lowerTicks[0],
             tickUpper: target.upperTicks[0],
             amount0: params.maxAmount0,

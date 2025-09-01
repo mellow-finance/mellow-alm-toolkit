@@ -62,6 +62,16 @@ interface IVeloDeployFactory is IAccessControlEnumerable {
     error InvalidTotalSupplyValue();
 
     /**
+     * @notice Thrown when the minting of a non-fungible position fails.
+     */
+    error NonfungiblePositionMintError();
+
+    /**
+     * @notice Thrown when the approval of a non-fungible position fails.
+     */
+    error NonfungiblePositionApproveFailed();
+
+    /**
      * @notice Thrown when an LP wrapper already exists for a pool.
      */
     error LpWrapperAlreadyExists(address);

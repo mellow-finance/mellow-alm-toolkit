@@ -88,6 +88,51 @@ contract VeloAmmModule is IVeloAmmModule {
         }
     }
 
+    /// @inheritdoc IAmmModule
+    function mint(address depositor, MintInfo[] memory mintInfo)
+        external
+        returns (uint256[] memory tokenIds)
+    {
+        uint256 maxAmount0;
+        uint256 maxAmount1;
+        for (uint256 i = 0; i < mintInfo.length; i++) {
+            maxAmount0 += mintInfo[i].amount0;
+            maxAmount1 += mintInfo[i].amount1;
+        }
+        address pool = mintInfo[0].pool;
+        address token0 = ICLPool(pool).token0();
+        address token1 = ICLPool(pool).token1();
+        int24 tickSpacing = ICLPool(pool).tickSpacing();
+
+        _handleToken(depositor, token0, maxAmount0);
+        _handleToken(depositor, token1, maxAmount1);
+
+        tokenIds = new uint256[](mintInfo.length);
+        for (uint256 i = 0; i < mintInfo.length; i++) {
+            (tokenIds[i],,,) = INonfungiblePositionManager(positionManager).mint(
+                INonfungiblePositionManager.MintParams({
+                    token0: token0,
+                    token1: token1,
+                    tickLower: mintInfo[i].tickLower,
+                    tickUpper: mintInfo[i].tickUpper,
+                    tickSpacing: tickSpacing,
+                    amount0Desired: mintInfo[i].amount0,
+                    amount1Desired: mintInfo[i].amount1,
+                    amount0Min: 0,
+                    amount1Min: 0,
+                    recipient: address(this),
+                    deadline: type(uint256).max,
+                    sqrtPriceX96: 0
+                })
+            );
+        }
+    }
+
+    /// @inheritdoc IAmmModule
+    function approveTokenId(address to, uint256 tokenId) external {
+        INonfungiblePositionManager(positionManager).approve(to, tokenId);
+    }
+
     /// ---------------------- EXTERNAL VIEW FUNCTIONS ----------------------
 
     /// @inheritdoc IAmmModule
@@ -354,6 +399,17 @@ contract VeloAmmModule is IVeloAmmModule {
 
     function _isStaked(address gauge, uint256 tokenId) internal view returns (bool) {
         return IERC721(positionManager).ownerOf(tokenId) == gauge;
+    }
+
+    function _handleToken(address depositor, address token, uint256 amount) internal {
+        address this_ = address(this);
+        uint256 balance = IERC20(token).balanceOf(this_);
+        if (balance < amount) {
+            IERC20(token).safeTransferFrom(depositor, this_, amount - balance);
+        }
+        if (IERC20(token).allowance(this_, address(positionManager)) == 0) {
+            IERC20(token).forceApprove(address(positionManager), type(uint256).max);
+        }
     }
 
     // =======================================================================================
