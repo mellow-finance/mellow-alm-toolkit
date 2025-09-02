@@ -2,7 +2,6 @@
 pragma solidity 0.8.25;
 
 import "./external/IWETH9.sol";
-import "./modules/IAmmDepositWithdrawModule.sol";
 import "./modules/IAmmModule.sol";
 
 import "../libraries/PositionMath.sol";
@@ -284,12 +283,6 @@ interface ICore is IERC721Receiver, IAccessControlEnumerable {
      * @return address of the AMM module.
      */
     function ammModule() external view returns (IAmmModule);
-
-    /**
-     * @dev Returns the address of the AMM deposit/withdraw module.
-     * @return address of the AMM deposit/withdraw module.
-     */
-    function ammDepositWithdrawModule() external view returns (IAmmDepositWithdrawModule);
 
     /**
      * @dev Returns the address of the oracle contract.
