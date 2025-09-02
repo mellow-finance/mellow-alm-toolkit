@@ -3,63 +3,6 @@ pragma solidity 0.8.25;
 
 import "../../scripts/deploy/Constants.sol";
 
-contract MockVeloFarm is VeloFarm {
-    using SafeERC20 for IERC20;
-
-    address public immutable user = address(bytes20(keccak256("user-1")));
-    uint256 public totalDistributed = 0;
-
-    constructor(address rewardToken_, string memory name_, string memory symbol_)
-        initializer
-        VeloFarm(address(this))
-    {
-        __VeloFarm_init(rewardToken_, name_, symbol_);
-    }
-
-    uint256 public newRewards = 0;
-    uint256 public lastDistributionTimestamp;
-
-    function setRewardsForDistribution(uint256 amount) external {
-        newRewards = amount;
-    }
-
-    function mint(address to, uint256 amount) external {
-        _mint(to, amount);
-    }
-
-    function burn(address from, uint256 amount) external {
-        _burn(from, amount);
-    }
-
-    function _collectRewardsImplementation() internal override {
-        uint256 rewards = 0;
-        if (lastDistributionTimestamp < block.timestamp) {
-            rewards = newRewards;
-            lastDistributionTimestamp = block.timestamp;
-        }
-        if (rewards != 0) {
-            IERC20(rewardToken).safeTransferFrom(user, address(this), rewards);
-            totalDistributed += rewards;
-        }
-        VeloFarm(address(this)).distribute(rewards, rewardToken);
-    }
-
-    function doAndDone(address account) external returns (uint256) {
-        _collectRewards();
-        uint256 amount = VeloFarm(address(this)).earned(account);
-        revert(string(abi.encodePacked("actual earned: ", Strings.toString(amount), "\n")));
-    }
-
-    function logEarned(address account) external {
-        try MockVeloFarm(address(this)).doAndDone(account) returns (uint256 /* earned */ ) {}
-        catch Error(string memory log_) {
-            console2.log(string(log_));
-        }
-    }
-
-    function test() internal pure {}
-}
-
 contract IntegrationTest is Test {
     using SafeERC20 for IERC20;
 
@@ -73,7 +16,7 @@ contract IntegrationTest is Test {
     }
 
     function testVeloFarm() external {
-        MockVeloFarm veloFarm = new MockVeloFarm(rewardToken, "VeloFarm", "VF");
+        VeloFarmMock veloFarm = new VeloFarmMock(rewardToken, "VeloFarmMock", "VFM", address(0));
         address user = address(bytes20(keccak256("user-1")));
         vm.startPrank(user);
         deal(rewardToken, user, 1000 ether);
@@ -82,7 +25,6 @@ contract IntegrationTest is Test {
         veloFarm.collectRewards();
 
         veloFarm.mint(user, 1 ether);
-        // veloFarm.mint(address(4124123), 10 ether);
 
         seed_ = 15;
         uint256 iterations = 100;

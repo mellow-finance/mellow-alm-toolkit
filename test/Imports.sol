@@ -12,6 +12,14 @@ import "../src/oracles/VeloOracle.sol";
 import "../src/utils/LpWrapper.sol";
 import "../src/utils/VeloDeployFactory.sol";
 
+import "test/mocks/CLPoolMock.sol";
+import "test/mocks/GaugeMock.sol";
+import "test/mocks/NonfungiblePositionManagerMock.sol";
+import "test/mocks/RebalancingBotMock.sol";
+import "test/mocks/VeloAmmModuleMock.sol";
+import "test/mocks/VeloFarmMock.sol";
+import "test/mocks/VoterMock.sol";
+
 import "./RandomLib.sol";
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";

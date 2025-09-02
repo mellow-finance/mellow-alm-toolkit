@@ -13,9 +13,9 @@ contract Unit is Fixture {
 
     ICLPool public pool =
         ICLPool(factory.getPool(Constants.OPTIMISM_WETH, Constants.OPTIMISM_OP, 200));
-    address public VELO = ICLGauge(pool.gauge()).rewardToken();
+    address public VELO = module.getRewardToken(address(pool));
 
-    address farm = address(new VeloFarmMock());
+    address farm = address(new VeloFarmMock(VELO, "VeloFarmMock", "VFM", address(this)));
 
     bytes public defaultCallbackParams =
         abi.encode(IVeloAmmModule.CallbackParams({farm: farm, gauge: address(pool.gauge())}));
@@ -198,6 +198,8 @@ contract Unit is Fixture {
             address(this)
         );
 
+        VeloFarmMock(farm).mint(address(this), 100 ether);
+
         positionManager.approve(pool.gauge(), tokenId);
         (bool success,) = address(module).delegatecall(
             abi.encodeWithSelector(
@@ -207,7 +209,7 @@ contract Unit is Fixture {
                 defaultProtocolParams
             )
         );
-        assertTrue(success);
+        assertTrue(success, "beforeRebalance call failed");
         ICLGauge(pool.gauge()).deposit(tokenId);
 
         addRewardToGauge(10 ether, ICLGauge(pool.gauge()));
@@ -221,8 +223,7 @@ contract Unit is Fixture {
                 defaultProtocolParams
             )
         );
-        assertTrue(success);
-
+        assertTrue(success, "beforeRebalance call failed");
         assertTrue(IERC20(VELO).balanceOf(farm) > 0);
         assertTrue(IERC20(VELO).balanceOf(Constants.OPTIMISM_MELLOW_TREASURY) > 0);
         assertEq(positionManager.ownerOf(tokenId), address(this));

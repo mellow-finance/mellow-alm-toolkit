@@ -124,7 +124,14 @@ contract Unit is Fixture {
         depositParams.callbackParams = abi.encode(
             IVeloAmmModule.CallbackParams({
                 gauge: address(pool.gauge()),
-                farm: address(new VeloFarmMock())
+                farm: address(
+                    new VeloFarmMock(
+                        contracts.ammModule.getRewardToken(address(pool)),
+                        "VeloFarmMock",
+                        "VFM",
+                        address(coreBroken)
+                    )
+                )
             })
         );
 

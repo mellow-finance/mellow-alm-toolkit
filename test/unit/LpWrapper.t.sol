@@ -223,7 +223,19 @@ contract Unit is Fixture {
             "Symbol"
         );
 
-        (positionId,) = _depositCore(pool, address(lpWrapper), address(new VeloFarmMock()));
+        (positionId,) = _depositCore(
+            pool,
+            address(lpWrapper),
+            address(
+                new VeloFarmMock(
+                    contracts.ammModule.getRewardToken(address(pool)),
+                    "VeloFarmMock",
+                    "VFM",
+                    address(core)
+                )
+            )
+        );
+
         vm.expectRevert(abi.encodeWithSignature("InvalidState()"));
         lpWrapper.initialize(
             positionId,
