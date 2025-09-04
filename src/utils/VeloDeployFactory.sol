@@ -3,8 +3,8 @@ pragma solidity 0.8.25;
 
 import "../interfaces/utils/IVeloDeployFactory.sol";
 
-import "../modules/strategies/PulseStrategyModule.sol";
 import "./DefaultAccessControl.sol";
+import "src/libraries/PulseStrategyModuleHelper.sol";
 
 contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -134,7 +134,7 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
         ICore.DepositParams memory depositParams;
         depositParams.ammPositionIds = _create(
             msg.sender,
-            IPulseStrategyModule.PoolStrategyParameter({
+            PulseStrategyModuleHelper.PoolStrategyParameter({
                 pool: params.pool,
                 strategyParams: params.strategyParams,
                 maxAmount0: params.maxAmount0,
@@ -345,13 +345,14 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
 
     /// ----------------  PRIVATE MUTABLE FUNCTIONS  ----------------
 
-    function _create(address depositor, IPulseStrategyModule.PoolStrategyParameter memory params)
-        private
-        returns (uint256[] memory tokenIds)
-    {
+    function _create(
+        address depositor,
+        PulseStrategyModuleHelper.PoolStrategyParameter memory params
+    ) private returns (uint256[] memory tokenIds) {
         core.oracle().ensureNoMEV(params.pool, params.securityParams);
 
-        IAmmModule.MintInfo[] memory mintInfo = strategyModule.getMintParams(params, ammModule);
+        IAmmModule.MintInfo[] memory mintInfo =
+            PulseStrategyModuleHelper.getMintParams(params, ammModule, strategyModule);
 
         bytes memory response = Address.functionDelegateCall(
             address(ammModule),

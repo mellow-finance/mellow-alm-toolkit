@@ -57,22 +57,6 @@ interface IPulseStrategyModule is IStrategyModule {
     }
 
     /**
-     * @notice Parameters for configuring a pool strategy.
-     * @param pool The address of the CLPool.
-     * @param strategyParams Strategy parameters defining behavior for the pool.
-     * @param maxAmount0 Maximum amount of token0 allowed for the strategy.
-     * @param maxAmount1 Maximum amount of token1 allowed for the strategy.
-     * @param securityParams Additional security parameters, encoded as bytes, for risk control.
-     */
-    struct PoolStrategyParameter {
-        address pool;
-        StrategyParams strategyParams;
-        uint256 maxAmount0;
-        uint256 maxAmount1;
-        bytes securityParams;
-    }
-
-    /**
      * @dev Calculates the target position after rebalance based on the provided strategy parameters and the current market state.
      * This function's behavior varies with the chosen strategy type, adapting to market movements and strategic requirements:
      *
@@ -160,15 +144,4 @@ interface IPulseStrategyModule is IStrategyModule {
         IAmmModule.AmmPosition[] memory positions,
         StrategyParams memory params
     ) external pure returns (bool isRebalanceRequired, ICore.TargetPositionInfo memory target);
-
-    /**
-     * @dev Retrieves the mint parameters for a given pool strategy.
-     * @param params The pool strategy parameters.
-     * @param ammModule The AMM module instance.
-     * @return mintInfo An array of mint information for the specified strategy.
-     */
-    function getMintParams(PoolStrategyParameter memory params, IAmmModule ammModule)
-        external
-        view
-        returns (IAmmModule.MintInfo[] memory mintInfo);
 }
