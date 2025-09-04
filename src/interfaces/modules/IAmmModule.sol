@@ -131,13 +131,13 @@ interface IAmmModule {
      * @dev Returns the token0 address for a given pool.
      * @param pool Address of the pool.
      */
-    function token0(address pool) external view returns (address);
+    function getToken0(address pool) external view returns (address);
 
     /**
      * @dev Returns the token1 address for a given pool.
      * @param pool Address of the pool.
      */
-    function token1(address pool) external view returns (address);
+    function getToken1(address pool) external view returns (address);
 
     /**
      * @dev Returns the token addresses for a given pool.

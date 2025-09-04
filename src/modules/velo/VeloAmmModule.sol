@@ -264,12 +264,12 @@ contract VeloAmmModule is IVeloAmmModule {
     }
 
     /// @inheritdoc IAmmModule
-    function token0(address pool) external view returns (address) {
+    function getToken0(address pool) external view returns (address) {
         return ICLPool(pool).token0();
     }
 
     /// @inheritdoc IAmmModule
-    function token1(address pool) external view returns (address) {
+    function getToken1(address pool) external view returns (address) {
         return ICLPool(pool).token1();
     }
 
