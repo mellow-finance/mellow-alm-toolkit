@@ -264,6 +264,16 @@ contract VeloAmmModule is IVeloAmmModule {
     }
 
     /// @inheritdoc IAmmModule
+    function token0(address pool) external view returns (address) {
+        return ICLPool(pool).token0();
+    }
+
+    /// @inheritdoc IAmmModule
+    function token1(address pool) external view returns (address) {
+        return ICLPool(pool).token1();
+    }
+
+    /// @inheritdoc IAmmModule
     function getPoolTokens(address pool) external view returns (address, address) {
         return (ICLPool(pool).token0(), ICLPool(pool).token1());
     }

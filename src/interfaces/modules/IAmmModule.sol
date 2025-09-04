@@ -128,6 +128,18 @@ interface IAmmModule {
     function getSqrtPriceX96AndTick(address pool) external view returns (uint160, int24);
 
     /**
+     * @dev Returns the token0 address for a given pool.
+     * @param pool Address of the pool.
+     */
+    function token0(address pool) external view returns (address);
+
+    /**
+     * @dev Returns the token1 address for a given pool.
+     * @param pool Address of the pool.
+     */
+    function token1(address pool) external view returns (address);
+
+    /**
      * @dev Returns the token addresses for a given pool.
      * @param pool Address of the pool.
      * @return token0 Address of the first token.
