@@ -24,6 +24,7 @@ contract Unit is Fixture {
         vm.expectRevert(abi.encodeWithSignature("AddressZero()"));
         Core core = new Core(
             contracts.ammModule,
+            contracts.depositWithdrawModule,
             contracts.strategyModule,
             contracts.oracle,
             address(0),
@@ -32,6 +33,7 @@ contract Unit is Fixture {
 
         core = new Core(
             contracts.ammModule,
+            contracts.depositWithdrawModule,
             contracts.strategyModule,
             contracts.oracle,
             Constants.OPTIMISM_DEPLOYER,
@@ -83,11 +85,13 @@ contract Unit is Fixture {
     }
 
     function testDirectDepositWithdrawRevert() public {
-        VeloAmmModuleMock module = new VeloAmmModuleMock(contracts.ammModule);
+        VeloDepositWithdrawModuleMock module =
+            new VeloDepositWithdrawModuleMock(contracts.depositWithdrawModule);
         uint256 specificValueRevert = module.specificValueRevert();
 
         ICore coreBroken = new Core(
-            IAmmModule(address(module)),
+            contracts.ammModule,
+            IAmmDepositWithdrawModule(address(module)),
             contracts.strategyModule,
             contracts.oracle,
             Constants.OPTIMISM_DEPLOYER,
@@ -286,6 +290,7 @@ contract Unit is Fixture {
     function testDeposit() external {
         Core core = new Core(
             contracts.ammModule,
+            contracts.depositWithdrawModule,
             contracts.strategyModule,
             contracts.oracle,
             Constants.OPTIMISM_DEPLOYER,
@@ -334,8 +339,10 @@ contract Unit is Fixture {
 
         IAmmModule.AmmPosition memory position = contracts.ammModule.getAmmPosition(tokenIdEmpty);
         vm.startPrank(positionManager.ownerOf(tokenIdEmpty));
-        positionManager.approve(address(contracts.ammModule), tokenIdEmpty);
-        contracts.ammModule.withdraw(tokenIdEmpty, position.liquidity, Constants.OPTIMISM_DEPLOYER);
+        positionManager.approve(address(contracts.depositWithdrawModule), tokenIdEmpty);
+        contracts.depositWithdrawModule.withdraw(
+            tokenIdEmpty, position.liquidity, Constants.OPTIMISM_DEPLOYER
+        );
         vm.stopPrank();
         position = contracts.ammModule.getAmmPosition(tokenIdEmpty);
         assertEq(position.liquidity, 0);

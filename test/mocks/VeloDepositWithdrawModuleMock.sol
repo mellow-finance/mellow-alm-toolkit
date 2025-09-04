@@ -5,17 +5,17 @@ import "./Mock.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "@openzeppelin/contracts/utils/Address.sol";
-import "src/interfaces/modules/IAmmModule.sol";
+import "src/interfaces/modules/IAmmDepositWithdrawModule.sol";
 
-contract VeloAmmModuleMock is Mock {
+contract VeloDepositWithdrawModuleMock is Mock {
     using SafeERC20 for IERC20;
 
     bool private state_;
     uint256 public immutable specificValueRevert = 1234e5;
-    IAmmModule public immutable ammModule;
+    IAmmDepositWithdrawModule public immutable ammModule;
     address private immutable __SELF = address(this);
 
-    constructor(IAmmModule ammModule_) {
+    constructor(IAmmDepositWithdrawModule ammModule_) {
         assert(address(ammModule_) != address(0));
         ammModule = ammModule_;
     }

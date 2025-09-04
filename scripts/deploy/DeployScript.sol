@@ -26,6 +26,7 @@ abstract contract DeployScript {
     struct CoreDeployment {
         ICore core;
         IVeloAmmModule ammModule;
+        IVeloDepositWithdrawModule depositWithdrawModule;
         IVeloOracle oracle;
         IPulseStrategyModule strategyModule;
         IVeloDeployFactory deployFactory;
@@ -44,10 +45,13 @@ abstract contract DeployScript {
         contracts.ammModule = new VeloAmmModule(
             INonfungiblePositionManager(params.positionManager), params.isPoolSelector
         );
+        contracts.depositWithdrawModule =
+            new VeloDepositWithdrawModule(INonfungiblePositionManager(params.positionManager));
         contracts.oracle = new VeloOracle();
         contracts.strategyModule = new PulseStrategyModule();
         contracts.core = new Core(
             contracts.ammModule,
+            contracts.depositWithdrawModule,
             contracts.strategyModule,
             contracts.oracle,
             params.deployer,
