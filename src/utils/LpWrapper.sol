@@ -12,8 +12,6 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
     uint256 public constant D9 = 1e9;
 
     /// @inheritdoc ILpWrapper
-    address public immutable positionManager;
-    /// @inheritdoc ILpWrapper
     ICore public immutable core;
     /// @inheritdoc ILpWrapper
     IVeloAmmModule public immutable ammModule;
@@ -41,7 +39,6 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
         core = ICore(core_);
         oracle = core.oracle();
         ammModule = IVeloAmmModule(address(core.ammModule()));
-        positionManager = ammModule.positionManager();
     }
 
     /// @inheritdoc ILpWrapper
