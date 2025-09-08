@@ -19,6 +19,8 @@ import "test/mocks/CLPoolMock.sol";
 import "test/mocks/GaugeMock.sol";
 import "test/mocks/NonfungiblePositionManagerMock.sol";
 import "test/mocks/RebalancingBotMock.sol";
+
+import "test/mocks/SwapRouterMock.sol";
 import "test/mocks/VeloDepositWithdrawModuleMock.sol";
 import "test/mocks/VeloFarmMock.sol";
 import "test/mocks/VoterMock.sol";

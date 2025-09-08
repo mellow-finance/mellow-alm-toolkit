@@ -14,33 +14,33 @@ interface ILpStaker {
     error InvalidLpWrapper();
 
     /// @dev Thrown when trying to swap rewards on a reward pool and the swap fails
-    error RewardSwapFailed(address pool, bool zeroForOne, uint256 amountIn);
+    error RewardSwapFailed(address target, uint256 amountIn, address tokenOut);
 
     /**
-     * --- Emitted when rewards are updated on the staker ---
+     * --- Emitted when rewards are compounded on the staker ---
      * @param rewardAmount The amount of reward tokens that were collected and reinvested.
      * @param lpAmount The amount of LP tokens that were minted from the reinvested rewards.
      * @param lpPrice The updated price of 1 LP token in shares, multiplied by 1 ether.
      */
-    event RewardsUpdated(uint256 rewardAmount, uint256 lpAmount, uint256 lpPrice);
+    event RewardsCompounded(uint256 rewardAmount, uint256 lpAmount, uint256 lpPrice);
 
     /**
-     * --- Emitted when a user stakes their LP tokens ---
-     * @param user The address of the user who performed the stake.
-     * @param amount The amount of LP tokens staked by the user.
-     * @param shares The amount of shares minted to the user during the stake.
+     * --- Emitted when a account stakes their LP tokens ---
+     * @param account The address of the account who performed the stake.
+     * @param amount The amount of LP tokens staked by the account.
+     * @param shares The amount of shares minted to the account during the stake.
      * @param lpPrice The price of 1 LP token in shares at the time of staking, multiplied by 1 ether.
      */
-    event Staked(address indexed user, uint256 amount, uint256 shares, uint256 lpPrice);
+    event Staked(address indexed account, uint256 amount, uint256 shares, uint256 lpPrice);
 
     /**
-     * --- Emitted when a user unstakes their shares ---
-     * @param user The address of the user who performed the unstake.
+     * --- Emitted when a account unstakes their shares ---
+     * @param account The address of the account who performed the unstake.
      * @param amount The amount of underlying assets withdrawn from the liquidity pool.
      * @param shares The amount of shares that were burned during the unstake.
      * @param lpPrice The price of 1 LP token in shares at the time of unstaking, multiplied by 1 ether.
      */
-    event Unstaked(address indexed user, uint256 amount, uint256 shares, uint256 lpPrice);
+    event Unstaked(address indexed account, uint256 amount, uint256 shares, uint256 lpPrice);
 
     /**
      * --- Emitted when rewards are swapped on a reward pool ---
@@ -59,22 +59,73 @@ interface ILpStaker {
     );
 
     /**
+     * --- Emitted when a target call is approved for swapping rewards ---
+     * @param targetHash The hash of the target address and selector that was approved.
+     * @param target The address of the target contract where the call will be made.
+     * @param selector The function selector of the target call that was approved.
+     */
+    event TargetCallAllowed(bytes32 indexed targetHash, address indexed target, bytes4 selector);
+
+    /**
+     * --- Emitted when a target call is forbidden for swapping rewards ---
+     * @param targetHash The hash of the target address and selector that was forbidden.
+     * @param target The address of the target contract where the call will be made.
+     * @param selector The function selector of the target call that was forbidden.
+     */
+    event TargetCallDisallowed(bytes32 indexed targetHash, address indexed target, bytes4 selector);
+
+    /**
+     * --- Struct for parameters required to quote swap amounts ---
+     * @param tokenIn The address of the token to be swapped.
+     * @param tokenOut The address of the token to be received from the swap.
+     * @param amountIn The amount of the token to be swapped.
+     */
+    struct QuoteParams {
+        address tokenIn;
+        address tokenOut;
+        uint256 amountIn;
+    }
+
+    /**
+     * --- Struct for parameters required to perform a swap on a reward pool ---
+     * @param target The address of the target contract where the call will be made.
+     * @param amountIn The amount of the rewards token to be swapped.
+     * @param tokenOut The address of the token to be received from the swap.
+     * @param minAmountOut The minimum acceptable amount of tokenOut to be received from the swap.
+     * @param data The calldata to be sent to the target contract to perform the swap
+     */
+    struct SwapParams {
+        address target;
+        uint256 amountIn;
+        address tokenOut;
+        uint256 minAmountOut;
+        bytes data;
+    }
+
+    /**
      * @dev Initializes the staker with the given parameters.
-     * This function sets up the staker with the specified LP wrapper, reward pools,
-     * admin, and manager. It can only be called once.
+     * This function sets up the staker with the specified LP wrapper, admin, and manager. It can only be called once.
      * @param lpWrapper_ The LP wrapper contract to be used by the staker.
-     * @param pool0_ The address of the first reward pool.
-     * @param pool1_ The address of the second reward pool.
      * @param admin_ The address of the admin for access control.
      * @param manager_ The address of the manager for access control.
+     * @param operator_ The address of the operator for access control.
      */
-    function initialize(
-        ILpWrapper lpWrapper_,
-        address pool0_,
-        address pool1_,
-        address admin_,
-        address manager_
-    ) external;
+    function initialize(ILpWrapper lpWrapper_, address admin_, address manager_, address operator_)
+        external;
+
+    /**
+     * @dev Approves a target call for swapping rewards.
+     * @param target The address of the target contract where the call will be made.
+     * @param selector The function selector of the target call that will be approved.
+     */
+    function allowTargetCall(address target, bytes4 selector) external;
+
+    /**
+     * @dev Forbids a target call for swapping rewards.
+     * @param target The address of the target contract where the call will be made.
+     * @param selector The function selector of the target call that will be forbidden.
+     */
+    function disallowTargetCall(address target, bytes4 selector) external;
 
     /**
      * @dev Stakes the specified amount of LP tokens into the staker.
@@ -97,11 +148,33 @@ interface ILpStaker {
     function unstake(uint256 shares) external returns (uint256 amount);
 
     /**
-     * @dev Updates the rewards for the staker.
+     * @dev Compounds the rewards for the staker.
      * This function collects any pending rewards from the underlying liquidity pool,
      * swaps them for the appropriate tokens, and reinvests them back into the liquidity pool.
      * It ensures that the pools are not under MEV.
      * Emits a `RewardsUpdated` event upon successful completion.
+     * @param swapParams An array of SwapParams structs containing the parameters for swapping rewards.
      */
-    function updateRewards() external;
+    function compoundRewards(SwapParams[2] memory swapParams) external;
+
+    /**
+     * @dev Quotes the amounts to swap for the specified reward tokens.
+     * @return quoteParams An array of QuoteParams structs containing the parameters for each swap.
+     */
+    function quoteSwapAmounts() external view returns (QuoteParams[2] memory quoteParams);
+
+    /**
+     * @dev Returns the current price of 1 LP token in shares, multiplied by 1e18.
+     */
+    function lpPrice() external view returns (uint256);
+
+    /**
+     * @dev Returns the current shares of the specified account.
+     */
+    function sharesOf(address account) external view returns (uint256);
+
+    /**
+     * @dev Returns the current assets of the specified account.
+     */
+    function assetsOf(address account) external view returns (uint256);
 }
