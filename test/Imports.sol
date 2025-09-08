@@ -10,6 +10,8 @@ import "../src/modules/strategies/PulseStrategyModule.sol";
 import "../src/modules/velo/VeloAmmModule.sol";
 import "../src/modules/velo/VeloDepositWithdrawModule.sol";
 import "../src/oracles/VeloOracle.sol";
+
+import "../src/utils/LpStaker.sol";
 import "../src/utils/LpWrapper.sol";
 import "../src/utils/VeloDeployFactory.sol";
 
@@ -23,6 +25,7 @@ import "test/mocks/VoterMock.sol";
 
 import "./RandomLib.sol";
 
+import "@openzeppelin/contracts/proxy/Clones.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
