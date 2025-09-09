@@ -3,8 +3,10 @@ pragma solidity 0.8.25;
 
 import "../interfaces/utils/ILpStaker.sol";
 import "./AccessControlCalls.sol";
+import "@openzeppelin/contracts/utils/structs/Checkpoints.sol";
 
 contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControlCalls {
+    using Checkpoints for Checkpoints.Trace224;
     using SafeERC20 for IERC20;
     using Math for uint256;
 
@@ -18,8 +20,20 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
 
     address public rewardToken;
 
+    /// @dev Duration of the timeLock for locked amounts
+    uint32 public timeLock;
+
+    /// @dev Minimum duration of the timeLock for locked amounts
+    uint32 public constant MIN_TIMELOCK_DURATION = 4 hours;
+
+    /// @dev Maximum duration of the timeLock for locked amounts
+    uint32 public constant MAX_TIMELOCK_DURATION = 7 days;
+
     /// @dev Price of 1 LP token in shares, multiplied by 1 ether
     uint256 private _lpPrice;
+
+    /// @dev A record of locked amounts for each account
+    mapping(address => Checkpoints.Trace224) private lockedCheckpoints;
 
     constructor(address core_) {
         if (core_ == address(0)) {
@@ -35,10 +49,13 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
      * ------------------------------------------------------------------------------- */
 
     /// @inheritdoc ILpStaker
-    function initialize(ILpWrapper lpWrapper_, address admin_, address manager_, address operator_)
-        external
-        initializer
-    {
+    function initialize(
+        ILpWrapper lpWrapper_,
+        address admin_,
+        address manager_,
+        address operator_,
+        uint32 timeLock_
+    ) external initializer {
         if (address(lpWrapper_) == address(0)) {
             revert AddressZero();
         }
@@ -79,6 +96,8 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
         IERC20(address(lpWrapper.token1())).safeIncreaseAllowance(
             address(lpWrapper_), type(uint256).max
         );
+
+        _updateTimeLock(timeLock_);
     }
 
     /// @inheritdoc ILpStaker
@@ -91,7 +110,7 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
 
         IERC20(address(lpWrapper)).safeTransferFrom(_sender, address(this), lpAmount);
 
-        shares = mintShares(_sender, lpAmount);
+        shares = _mintShares(_sender, lpAmount);
     }
 
     /// @inheritdoc ILpStaker
@@ -102,7 +121,7 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
             revert ZeroAmount();
         }
 
-        lpAmount = burnShares(_sender, shares);
+        lpAmount = _burnShares(_sender, shares);
 
         IERC20(address(lpWrapper)).safeTransfer(_sender, lpAmount);
     }
@@ -141,7 +160,7 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
             })
         );
 
-        shares = mintShares(_sender, actualLpAmount);
+        shares = _mintShares(_sender, actualLpAmount);
     }
 
     /// @inheritdoc ILpStaker
@@ -162,7 +181,7 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
             revert ZeroAmount();
         }
 
-        actualLpAmount = burnShares(_sender, shares);
+        actualLpAmount = _burnShares(_sender, shares);
 
         (actualAmount0, actualAmount1, actualLpAmount) =
             _lpWrapper.withdraw(actualLpAmount, amount0Min, amount1Min, _this, type(uint256).max);
@@ -194,7 +213,7 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
             revert SlippageExceeded();
         }
 
-        swapRewards(swapParams);
+        _swapRewards(swapParams);
 
         uint256 balance0 = IERC20(lpWrapper_.token0()).balanceOf(_this);
         uint256 balance1 = IERC20(lpWrapper_.token1()).balanceOf(_this);
@@ -217,6 +236,11 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
         emit RewardsCompounded(rewardBalance - rewardBalanceAfter, deltaLpAmount, _lpPrice);
     }
 
+    /// @inheritdoc ILpStaker
+    function updateTimeLock(uint32 newTimeLock) external onlyRole(ADMIN_ROLE) {
+        _updateTimeLock(newTimeLock);
+    }
+
     /* -------------------------------------------------------------------------------
      *                     External view functions
      * ------------------------------------------------------------------------------- */
@@ -229,7 +253,7 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
         /// @dev get total rewards (already hold on _this + not yet claimed from lpWrapper)
         uint256 rewardBalance = lpWrapper.earned(_this) + IERC20(_rewardToken).balanceOf(_this);
 
-        (uint256 rewardAmount0, uint256 rewardAmount1) = splitRewards(rewardBalance);
+        (uint256 rewardAmount0, uint256 rewardAmount1) = _splitRewards(rewardBalance);
 
         quoteParams[0] = QuoteParams({
             tokenIn: _rewardToken,
@@ -264,11 +288,31 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
         return lpWrapper.previewBurn(balanceOf(account).mulDiv(_lpPrice, 1 ether));
     }
 
+    /// @inheritdoc ILpStaker
+    function getLockedAmount(address account, uint32 timestamp)
+        public
+        view
+        returns (uint256 lockedAmount, uint32 activeCheckpoints)
+    {
+        uint32 len = uint32(lockedCheckpoints[account].length());
+        if (len == 0) {
+            return (0, 0);
+        }
+        for (int32 index = int32(len) - 1; index >= 0; --index) {
+            Checkpoints.Checkpoint224 memory checkpoint =
+                lockedCheckpoints[account].at(uint32(index));
+            if (checkpoint._key > timestamp) {
+                lockedAmount += checkpoint._value;
+                activeCheckpoints++;
+            }
+        }
+    }
+
     /* -------------------------------------------------------------------------------
      *                     Internal mutable functions
      * ------------------------------------------------------------------------------- */
 
-    function mintShares(address to, uint256 lpAmount) internal returns (uint256 shares) {
+    function _mintShares(address to, uint256 lpAmount) internal returns (uint256 shares) {
         uint256 lpPrice_ = _lpPrice;
 
         shares = lpAmount.mulDiv(1 ether, lpPrice_);
@@ -277,7 +321,7 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
         emit Staked(to, lpAmount, shares, lpPrice_);
     }
 
-    function burnShares(address from, uint256 shares) internal returns (uint256 lpAmount) {
+    function _burnShares(address from, uint256 shares) internal returns (uint256 lpAmount) {
         uint256 lpPrice_ = _lpPrice;
 
         lpAmount = shares.mulDiv(lpPrice_, 1 ether);
@@ -286,11 +330,39 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
         emit Unstaked(from, lpAmount, shares, lpPrice_);
     }
 
+    /// @dev Override the _update function to enforce locked shares during transfers and burns
+    function _update(address from, address to, uint256 value) internal override {
+        super._update(from, to, value);
+
+        if (from != address(0)) {
+            /// @dev when not mint (burn or transfer): check the available shares (not locked)
+            (uint256 lockedAmount,) = getLockedAmount(from, uint32(block.timestamp));
+            uint256 remainBalance = balanceOf(from);
+            if (remainBalance < lockedAmount) {
+                revert InsufficientUnlockedShares(from, remainBalance, value);
+            }
+        } else {
+            /// @dev greatest possible timestamp for the locked checkpoint
+            uint32 timestamp_ = uint32(block.timestamp) + timeLock;
+
+            /// @dev if number of active locks less than threshold
+            (, uint32 activeCheckpoints) = getLockedAmount(to, timestamp_);
+
+            /// @dev limit the number of active locks to prevent OOG
+            if (activeCheckpoints >= 50) {
+                revert TooManyActiveLocks(to, activeCheckpoints);
+            }
+
+            /// @dev when mint: just add a new locked checkpoint for the receiver
+            lockedCheckpoints[to].push(timestamp_, uint224(value));
+        }
+    }
+
     /**
      * @dev Swaps the rewards on the specified target address provided in `swapParams`.
      * @param swapParams An array of SwapParams structs containing the parameters for each swap.
      */
-    function swapRewards(SwapParams[2] memory swapParams) internal {
+    function _swapRewards(SwapParams[2] memory swapParams) internal {
         address _this = address(this);
 
         for (uint256 index = 0; index < swapParams.length; index++) {
@@ -312,6 +384,23 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
         }
     }
 
+    /**
+     * @dev Updates the duration of the timeLock for unstaking. Updating does not affect already locked amounts.
+     * This function allows to change the duration of the timeLock within the allowed range.
+     * Emits a `TimeLockUpdated` event upon successful completion.
+     * @param newTimeLock The new duration for the timeLock, in seconds.
+     */
+    function _updateTimeLock(uint32 newTimeLock) internal {
+        if (newTimeLock < MIN_TIMELOCK_DURATION || newTimeLock > MAX_TIMELOCK_DURATION) {
+            revert InvalidTimeLock(newTimeLock);
+        }
+
+        uint32 oldTimeLock = timeLock;
+        timeLock = newTimeLock;
+
+        emit TimeLockUpdated(oldTimeLock, newTimeLock);
+    }
+
     /* -------------------------------------------------------------------------------
      *                     Internal view functions
      * ------------------------------------------------------------------------------- */
@@ -322,7 +411,7 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
      * @return rewardAmount0 The amount of rewards should be swapped into token0.
      * @return rewardAmount1 The amount of rewards should be swapped into token1.
      */
-    function splitRewards(uint256 rewardAmount)
+    function _splitRewards(uint256 rewardAmount)
         internal
         view
         returns (uint256 rewardAmount0, uint256 rewardAmount1)

@@ -20,6 +20,8 @@ contract Unit is Fixture {
 
     address lpStakerImplementation;
 
+    uint32 constant defaultTimeLock = 1 days;
+
     DeployScript.CoreDeployment contracts;
 
     function setUp() external {
@@ -34,7 +36,7 @@ contract Unit is Fixture {
     function testStake(uint32 lpAmountX32) external {
         vm.assume(lpAmountX32 > 0);
         ICLPool pool = ICLPool(factory.getPool(Constants.OPTIMISM_WETH, Constants.OPTIMISM_OP, 200));
-        (ILpStaker lpStaker, ILpWrapper lpWrapper) = _initLpStaker(pool);
+        (ILpStaker lpStaker, ILpWrapper lpWrapper) = _initLpStaker(pool, defaultTimeLock);
 
         uint256 lpAmount = uint256(lpAmountX32).mulDiv(1 ether, type(uint32).max);
         (uint256 amount0, uint256 amount1) = lpWrapper.previewMint(lpAmount);
@@ -54,6 +56,8 @@ contract Unit is Fixture {
         assertEq(IERC20(address(lpStaker)).balanceOf(user), shares);
         assertEq(lpStaker.lpAmountOf(user), lpAmount);
 
+        skip(defaultTimeLock);
+
         uint256 amountExpected = lpStaker.lpAmountOf(user);
         vm.prank(user);
         uint256 amount = lpStaker.unstake(shares);
@@ -66,7 +70,7 @@ contract Unit is Fixture {
     function testMintAndStake() external {
         uint32 lpAmountX32 = type(uint32).max; //vm.assume(lpAmountX32 > 0);
         ICLPool pool = ICLPool(factory.getPool(Constants.OPTIMISM_WETH, Constants.OPTIMISM_OP, 200));
-        (ILpStaker lpStaker, ILpWrapper lpWrapper) = _initLpStaker(pool);
+        (ILpStaker lpStaker, ILpWrapper lpWrapper) = _initLpStaker(pool, defaultTimeLock);
 
         uint256 lpAmount = uint256(lpAmountX32).mulDiv(1 ether, type(uint32).max);
         (uint256 amount0, uint256 amount1) = lpWrapper.previewMint(lpAmount);
@@ -99,6 +103,8 @@ contract Unit is Fixture {
             "token1 too much dust after mint"
         );
 
+        skip(defaultTimeLock);
+
         uint256 amountExpected = lpStaker.lpAmountOf(user);
         vm.prank(user);
         (uint256 actualAmount0, uint256 actualAmount1, uint256 actualLpAmount) =
@@ -114,7 +120,7 @@ contract Unit is Fixture {
 
     function testQuoteSwap() external {
         ICLPool pool = ICLPool(factory.getPool(Constants.OPTIMISM_WETH, Constants.OPTIMISM_OP, 200));
-        (ILpStaker lpStaker, ILpWrapper lpWrapper) = _initLpStaker(pool);
+        (ILpStaker lpStaker, ILpWrapper lpWrapper) = _initLpStaker(pool, defaultTimeLock);
 
         (address token0, address token1) = contracts.ammModule.getPoolTokens(address(pool));
 
@@ -152,6 +158,8 @@ contract Unit is Fixture {
         }
         assertEq(swapRewardAmount, earned, "total amount rewards mismatch");
 
+        skip(defaultTimeLock);
+
         uint256 amountExpected = lpStaker.lpAmountOf(user);
         vm.prank(user);
         uint256 amount = lpStaker.unstake(shares);
@@ -163,7 +171,7 @@ contract Unit is Fixture {
 
     function testSwapRewards() external {
         ICLPool pool = ICLPool(factory.getPool(Constants.OPTIMISM_WETH, Constants.OPTIMISM_OP, 200));
-        (ILpStaker lpStaker, ILpWrapper lpWrapper) = _initLpStaker(pool);
+        (ILpStaker lpStaker, ILpWrapper lpWrapper) = _initLpStaker(pool, defaultTimeLock);
 
         (address token0, address token1) = contracts.ammModule.getPoolTokens(address(pool));
 
@@ -218,6 +226,8 @@ contract Unit is Fixture {
             lpStaker.lpAmountOf(user), IERC20(address(lpWrapper)).balanceOf(address(lpStaker)), 1
         );
 
+        skip(defaultTimeLock);
+
         uint256 amountExpected = lpStaker.lpAmountOf(user);
         vm.prank(user);
         uint256 amount = lpStaker.unstake(shares);
@@ -229,7 +239,7 @@ contract Unit is Fixture {
 
     function testSwapRewardsFuzz() external {
         ICLPool pool = ICLPool(factory.getPool(Constants.OPTIMISM_WETH, Constants.OPTIMISM_OP, 200));
-        (ILpStaker lpStaker, ILpWrapper lpWrapper) = _initLpStaker(pool);
+        (ILpStaker lpStaker, ILpWrapper lpWrapper) = _initLpStaker(pool, defaultTimeLock);
 
         (address token0, address token1) = contracts.ammModule.getPoolTokens(address(pool));
 
@@ -311,7 +321,7 @@ contract Unit is Fixture {
         }
     }
 
-    function _initLpStaker(ICLPool pool)
+    function _initLpStaker(ICLPool pool, uint32 timeLock)
         internal
         returns (ILpStaker lpStaker, ILpWrapper lpWrapper)
     {
@@ -319,6 +329,6 @@ contract Unit is Fixture {
             deployLpWrapper(pool, IPulseStrategyModule.StrategyType.LazySyncing, contracts);
 
         lpStaker = ILpStaker(Clones.clone(lpStakerImplementation));
-        lpStaker.initialize(lpWrapper, admin, manager, operator);
+        lpStaker.initialize(lpWrapper, admin, manager, operator, timeLock);
     }
 }

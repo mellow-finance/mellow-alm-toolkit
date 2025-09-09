@@ -19,8 +19,17 @@ interface ILpStaker {
     /// @dev Thrown when the slippage is exceeded during swap amounts
     error SlippageExceeded();
 
+    /// @dev Thrown when trying to unstake more shares than the account has unlocked
+    error InsufficientUnlockedShares(address account, uint256 unlockedShares, uint256 shares);
+
+    /// @dev Thrown when trying to create too many active locks for an account
+    error TooManyActiveLocks(address account, uint32 activeLocks);
+
+    /// @dev Thrown when trying to set a timelock duration that out of allowed range
+    error InvalidTimeLock(uint32 newDuration);
+
     /**
-     * --- Emitted when rewards are compounded on the staker ---
+     * @notice Emitted when rewards are compounded on the staker
      * @param rewardAmount The amount of reward tokens that were collected and reinvested.
      * @param lpAmount The amount of LP tokens that were minted from the reinvested rewards.
      * @param lpPrice The updated price of 1 LP token in shares, multiplied by 1 ether.
@@ -28,7 +37,7 @@ interface ILpStaker {
     event RewardsCompounded(uint256 rewardAmount, uint256 lpAmount, uint256 lpPrice);
 
     /**
-     * --- Emitted when a account stakes their LP tokens ---
+     * @notice Emitted when a account stakes their LP tokens
      * @param account The address of the account who performed the stake.
      * @param lpAmount The amount of LP tokens staked by the account.
      * @param shares The amount of shares minted to the account during the stake.
@@ -37,7 +46,7 @@ interface ILpStaker {
     event Staked(address indexed account, uint256 lpAmount, uint256 shares, uint256 lpPrice);
 
     /**
-     * --- Emitted when a account unstakes their shares ---
+     * @notice Emitted when a account unstakes their shares
      * @param account The address of the account who performed the unstake.
      * @param lpAmount The amount of underlying assets withdrawn from the liquidity pool.
      * @param shares The amount of shares that were burned during the unstake.
@@ -46,7 +55,7 @@ interface ILpStaker {
     event Unstaked(address indexed account, uint256 lpAmount, uint256 shares, uint256 lpPrice);
 
     /**
-     * --- Emitted when rewards are swapped on a reward pool ---
+     * @notice Emitted when rewards are swapped on a reward pool
      * @param pool The address of the reward pool where the swap occurred.
      * @param rewardsToken The address of the token that was swapped from (the rewards token).
      * @param tokenOut The address of the token that was received from the swap.
@@ -62,7 +71,14 @@ interface ILpStaker {
     );
 
     /**
-     * --- Struct for parameters required to quote swap amounts ---
+     * @notice Emitted when the timelock duration is updated
+     * @param oldDuration The previous duration of the timelock.
+     * @param newDuration The new duration of the timelock.
+     */
+    event TimeLockUpdated(uint32 oldDuration, uint32 newDuration);
+
+    /**
+     * @notice Struct for parameters required to quote swap amounts
      * @param tokenIn The address of the token to be swapped.
      * @param tokenOut The address of the token to be received from the swap.
      * @param amountIn The amount of the token to be swapped.
@@ -74,7 +90,7 @@ interface ILpStaker {
     }
 
     /**
-     * --- Struct for parameters required to perform a swap on a reward pool ---
+     * @notice Struct for parameters required to perform a swap on a reward pool
      * @param target The address of the target contract where the call will be made.
      * @param amountIn The amount of the rewards token to be swapped.
      * @param tokenOut The address of the token to be received from the swap.
@@ -96,9 +112,15 @@ interface ILpStaker {
      * @param admin_ The address of the admin for access control.
      * @param manager_ The address of the manager for access control.
      * @param operator_ The address of the operator for access control.
+     * @param timelockDuration_ The initial duration for the timelock on unstaking.
      */
-    function initialize(ILpWrapper lpWrapper_, address admin_, address manager_, address operator_)
-        external;
+    function initialize(
+        ILpWrapper lpWrapper_,
+        address admin_,
+        address manager_,
+        address operator_,
+        uint32 timelockDuration_
+    ) external;
 
     /**
      * @dev Stakes the specified amount of LP tokens into the staker.
@@ -171,6 +193,14 @@ interface ILpStaker {
     function compoundRewards(SwapParams[2] memory swapParams) external;
 
     /**
+     * @dev Updates the duration of the timeLock for unstaking.
+     * This function allows the admin to change the duration of the timeLock within the allowed range.
+     * Emits a `TimeLockUpdated` event upon successful completion.
+     * @param newTimeLock The new duration for the timeLock, in seconds.
+     */
+    function updateTimeLock(uint32 newTimeLock) external;
+
+    /**
      * @dev Quotes the amounts to swap for the specified reward tokens.
      * It returns precise amounts to swap without slippage at the call moment.
      * In this case real amounts to swap should be decreased by some slippage tolerance.
@@ -197,4 +227,16 @@ interface ILpStaker {
      * @dev Returns the current underlying assets of the specified account.
      */
     function assetsOf(address account) external view returns (uint256, uint256);
+
+    /**
+     * @dev Returns the current locked amount and active checkpoints for the specified account.
+     * @param account The address of the account to query.
+     * @param timestamp The timestamp to check the locked amount against.
+     * @return lockedAmount The amount of shares that are currently locked for the account.
+     * @return activeCheckpoints The number of active lock checkpoints for the account.
+     */
+    function getLockedAmount(address account, uint32 timestamp)
+        external
+        view
+        returns (uint256 lockedAmount, uint32 activeCheckpoints);
 }
