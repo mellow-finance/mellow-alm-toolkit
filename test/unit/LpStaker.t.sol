@@ -149,7 +149,9 @@ contract Unit is Fixture {
         lpStaker.compoundRewards(swapParams);
 
         vm.prank(manager);
-        lpStaker.allowTargetCall(address(target), SwapRouterMock.swap.selector);
+        IAccessControlCalls(address(lpStaker)).allowTargetCall(
+            address(target), SwapRouterMock.swap.selector
+        );
 
         vm.expectRevert(DefaultAccessControl.Forbidden.selector);
         lpStaker.compoundRewards(swapParams);
@@ -198,7 +200,9 @@ contract Unit is Fixture {
         target.setPriceX96(token1, VELO, 15 * Q96);
 
         vm.prank(manager);
-        lpStaker.allowTargetCall(address(target), SwapRouterMock.swap.selector);
+        IAccessControlCalls(address(lpStaker)).allowTargetCall(
+            address(target), SwapRouterMock.swap.selector
+        );
 
         vm.startPrank(user);
         IERC20(address(lpWrapper)).safeIncreaseAllowance(address(lpStaker), lpAmount);

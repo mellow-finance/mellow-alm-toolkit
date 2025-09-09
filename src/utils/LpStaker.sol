@@ -2,9 +2,9 @@
 pragma solidity 0.8.25;
 
 import "../interfaces/utils/ILpStaker.sol";
-import "./DefaultAccessControl.sol";
+import "./AccessControlCalls.sol";
 
-contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, DefaultAccessControl {
+contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControlCalls {
     using SafeERC20 for IERC20;
     using Math for uint256;
 
@@ -18,8 +18,6 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, DefaultAccess
 
     address public rewardToken;
 
-    mapping(bytes32 => bool) public allowedCalls;
-
     /// @dev Price of 1 LP token in shares, multiplied by 1 ether
     uint256 private _lpPrice;
 
@@ -30,25 +28,6 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, DefaultAccess
         core = ICore(core_);
         oracle = core.oracle();
         ammModule = IVeloAmmModule(address(core.ammModule()));
-    }
-
-    /* -------------------------------------------------------------------------------
-     *                     External view functions
-     * ------------------------------------------------------------------------------- */
-
-    /// @inheritdoc ILpStaker
-    function lpPrice() external view returns (uint256) {
-        return _lpPrice;
-    }
-
-    /// @inheritdoc ILpStaker
-    function sharesOf(address account) external view returns (uint256) {
-        return balanceOf(account);
-    }
-
-    /// @inheritdoc ILpStaker
-    function assetsOf(address account) external view returns (uint256) {
-        return balanceOf(account).mulDiv(_lpPrice, 1 ether);
     }
 
     /* -------------------------------------------------------------------------------
@@ -76,7 +55,8 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, DefaultAccess
         _lpPrice = 1 ether;
         lpWrapper = lpWrapper_;
 
-        __DefaultAccessControl_init(admin_);
+        __AccessControlCalls_init(admin_);
+
         if (manager_ != address(0)) {
             _grantRole(ADMIN_ROLE, manager_);
         }
@@ -89,29 +69,16 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, DefaultAccess
             string(abi.encodePacked(IERC20Metadata(address(lpWrapper_)).name(), "Stake")),
             string(abi.encodePacked("S", IERC20Metadata(address(lpWrapper_)).symbol()))
         );
+
         __Context_init();
 
-        /// @dev give infinite approval to lpWrapper for token0 and token1
+        /// @dev give infinite approvals to lpWrapper for token0 and token1
         IERC20(address(lpWrapper.token0())).safeIncreaseAllowance(
             address(lpWrapper_), type(uint256).max
         );
         IERC20(address(lpWrapper.token1())).safeIncreaseAllowance(
             address(lpWrapper_), type(uint256).max
         );
-    }
-
-    /// @inheritdoc ILpStaker
-    function allowTargetCall(address target, bytes4 selector) external onlyRole(ADMIN_ROLE) {
-        bytes32 _hash = keccak256(abi.encode(target, selector));
-        allowedCalls[_hash] = true;
-        emit TargetCallAllowed(_hash, target, selector);
-    }
-
-    /// @inheritdoc ILpStaker
-    function disallowTargetCall(address target, bytes4 selector) external onlyRole(ADMIN_ROLE) {
-        bytes32 _hash = keccak256(abi.encode(target, selector));
-        allowedCalls[_hash] = false;
-        emit TargetCallDisallowed(_hash, target, selector);
     }
 
     /// @inheritdoc ILpStaker
@@ -157,6 +124,10 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, DefaultAccess
             return;
         }
 
+        if (swapParams[0].amountIn + swapParams[1].amountIn > rewardBalance) {
+            revert SlippageExceeded();
+        }
+
         swapRewards(swapParams);
 
         uint256 balance0 = IERC20(lpWrapper_.token0()).balanceOf(_this);
@@ -180,6 +151,10 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, DefaultAccess
         emit RewardsCompounded(rewardBalance - rewardBalanceAfter, deltaLpAmount, _lpPrice);
     }
 
+    /* -------------------------------------------------------------------------------
+     *                     External view functions
+     * ------------------------------------------------------------------------------- */
+
     /// @inheritdoc ILpStaker
     function quoteSwapAmounts() public view returns (QuoteParams[2] memory quoteParams) {
         address _this = address(this);
@@ -201,6 +176,21 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, DefaultAccess
             tokenOut: lpWrapper.token1(),
             amountIn: rewardAmount1
         });
+    }
+
+    /// @inheritdoc ILpStaker
+    function lpPrice() external view returns (uint256) {
+        return _lpPrice;
+    }
+
+    /// @inheritdoc ILpStaker
+    function sharesOf(address account) external view returns (uint256) {
+        return balanceOf(account);
+    }
+
+    /// @inheritdoc ILpStaker
+    function assetsOf(address account) external view returns (uint256) {
+        return balanceOf(account).mulDiv(_lpPrice, 1 ether);
     }
 
     /* -------------------------------------------------------------------------------

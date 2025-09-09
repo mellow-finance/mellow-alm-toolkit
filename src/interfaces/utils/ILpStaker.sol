@@ -16,6 +16,9 @@ interface ILpStaker {
     /// @dev Thrown when trying to swap rewards on a reward pool and the swap fails
     error RewardSwapFailed(address target, uint256 amountIn, address tokenOut);
 
+    /// @dev Thrown when the slippage is exceeded during swap amounts
+    error SlippageExceeded();
+
     /**
      * --- Emitted when rewards are compounded on the staker ---
      * @param rewardAmount The amount of reward tokens that were collected and reinvested.
@@ -59,22 +62,6 @@ interface ILpStaker {
     );
 
     /**
-     * --- Emitted when a target call is approved for swapping rewards ---
-     * @param targetHash The hash of the target address and selector that was approved.
-     * @param target The address of the target contract where the call will be made.
-     * @param selector The function selector of the target call that was approved.
-     */
-    event TargetCallAllowed(bytes32 indexed targetHash, address indexed target, bytes4 selector);
-
-    /**
-     * --- Emitted when a target call is forbidden for swapping rewards ---
-     * @param targetHash The hash of the target address and selector that was forbidden.
-     * @param target The address of the target contract where the call will be made.
-     * @param selector The function selector of the target call that was forbidden.
-     */
-    event TargetCallDisallowed(bytes32 indexed targetHash, address indexed target, bytes4 selector);
-
-    /**
      * --- Struct for parameters required to quote swap amounts ---
      * @param tokenIn The address of the token to be swapped.
      * @param tokenOut The address of the token to be received from the swap.
@@ -114,20 +101,6 @@ interface ILpStaker {
         external;
 
     /**
-     * @dev Approves a target call for swapping rewards.
-     * @param target The address of the target contract where the call will be made.
-     * @param selector The function selector of the target call that will be approved.
-     */
-    function allowTargetCall(address target, bytes4 selector) external;
-
-    /**
-     * @dev Forbids a target call for swapping rewards.
-     * @param target The address of the target contract where the call will be made.
-     * @param selector The function selector of the target call that will be forbidden.
-     */
-    function disallowTargetCall(address target, bytes4 selector) external;
-
-    /**
      * @dev Stakes the specified amount of LP tokens into the staker.
      * This function transfers the specified amount of LP tokens from the caller to the staker
      * and mints the corresponding amount of shares to the caller.
@@ -159,6 +132,8 @@ interface ILpStaker {
 
     /**
      * @dev Quotes the amounts to swap for the specified reward tokens.
+     * It returns precise amounts to swap without slippage at the call moment.
+     * In this case real amounts to swap should be decreased by some slippage tolerance.
      * @return quoteParams An array of QuoteParams structs containing the parameters for each swap.
      */
     function quoteSwapAmounts() external view returns (QuoteParams[2] memory quoteParams);
