@@ -82,32 +82,98 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
     }
 
     /// @inheritdoc ILpStaker
-    function stake(uint256 amount) external nonReentrant returns (uint256 shares) {
+    function stake(uint256 lpAmount) external nonReentrant returns (uint256 shares) {
         address _sender = msg.sender;
-        if (amount == 0) {
+
+        if (lpAmount == 0) {
             revert ZeroAmount();
         }
 
-        IERC20(address(lpWrapper)).safeTransferFrom(_sender, address(this), amount);
-        shares = amount.mulDiv(1 ether, _lpPrice);
-        _mint(_sender, shares);
+        IERC20(address(lpWrapper)).safeTransferFrom(_sender, address(this), lpAmount);
 
-        emit Staked(_sender, amount, shares, _lpPrice);
+        shares = mintShares(_sender, lpAmount);
     }
 
     /// @inheritdoc ILpStaker
-    function unstake(uint256 shares) external nonReentrant returns (uint256 amount) {
+    function unstake(uint256 shares) external nonReentrant returns (uint256 lpAmount) {
         address _sender = msg.sender;
 
         if (shares == 0) {
             revert ZeroAmount();
         }
 
-        _burn(_sender, shares);
-        amount = shares.mulDiv(_lpPrice, 1 ether);
-        IERC20(address(lpWrapper)).safeTransfer(_sender, amount);
+        lpAmount = burnShares(_sender, shares);
 
-        emit Unstaked(_sender, amount, shares, _lpPrice);
+        IERC20(address(lpWrapper)).safeTransfer(_sender, lpAmount);
+    }
+
+    /// @inheritdoc ILpStaker
+    function mintAndStake(uint256 amount0, uint256 amount1)
+        external
+        nonReentrant
+        returns (
+            uint256 actualAmount0,
+            uint256 actualAmount1,
+            uint256 actualLpAmount,
+            uint256 shares
+        )
+    {
+        address _this = address(this);
+        address _sender = msg.sender;
+
+        uint256 lpAmount = lpWrapper.previewDeposit(amount0, amount1);
+        if (lpAmount == 0) {
+            revert ZeroAmount();
+        }
+        (amount0, amount1) = lpWrapper.previewMint(lpAmount);
+
+        /// @dev pull tokens from the sender in precise amounts
+        IERC20(lpWrapper.token0()).safeTransferFrom(_sender, _this, amount0);
+        IERC20(lpWrapper.token1()).safeTransferFrom(_sender, _this, amount1);
+
+        (actualAmount0, actualAmount1, actualLpAmount) = lpWrapper.mint(
+            ILpWrapper.MintParams({
+                lpAmount: lpAmount,
+                amount0Max: amount0,
+                amount1Max: amount1,
+                recipient: _this,
+                deadline: type(uint256).max
+            })
+        );
+
+        shares = mintShares(_sender, actualLpAmount);
+    }
+
+    /// @inheritdoc ILpStaker
+    function unstakeAndWithdraw(
+        uint256 shares,
+        uint256 amount0Min,
+        uint256 amount1Min,
+        address recipient
+    )
+        external
+        nonReentrant
+        returns (uint256 actualAmount0, uint256 actualAmount1, uint256 actualLpAmount)
+    {
+        address _this = address(this);
+        address _sender = msg.sender;
+        ILpWrapper _lpWrapper = lpWrapper;
+        if (shares == 0) {
+            revert ZeroAmount();
+        }
+
+        actualLpAmount = burnShares(_sender, shares);
+
+        (actualAmount0, actualAmount1, actualLpAmount) =
+            _lpWrapper.withdraw(actualLpAmount, amount0Min, amount1Min, _this, type(uint256).max);
+
+        if (actualAmount0 > 0) {
+            IERC20(address(_lpWrapper.token0())).safeTransfer(recipient, actualAmount0);
+        }
+
+        if (actualAmount1 > 0) {
+            IERC20(address(_lpWrapper.token1())).safeTransfer(recipient, actualAmount1);
+        }
     }
 
     /// @inheritdoc ILpStaker
@@ -189,13 +255,36 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
     }
 
     /// @inheritdoc ILpStaker
-    function assetsOf(address account) external view returns (uint256) {
+    function lpAmountOf(address account) external view returns (uint256) {
         return balanceOf(account).mulDiv(_lpPrice, 1 ether);
+    }
+
+    /// @inheritdoc ILpStaker
+    function assetsOf(address account) external view returns (uint256, uint256) {
+        return lpWrapper.previewBurn(balanceOf(account).mulDiv(_lpPrice, 1 ether));
     }
 
     /* -------------------------------------------------------------------------------
      *                     Internal mutable functions
      * ------------------------------------------------------------------------------- */
+
+    function mintShares(address to, uint256 lpAmount) internal returns (uint256 shares) {
+        uint256 lpPrice_ = _lpPrice;
+
+        shares = lpAmount.mulDiv(1 ether, lpPrice_);
+        _mint(to, shares);
+
+        emit Staked(to, lpAmount, shares, lpPrice_);
+    }
+
+    function burnShares(address from, uint256 shares) internal returns (uint256 lpAmount) {
+        uint256 lpPrice_ = _lpPrice;
+
+        lpAmount = shares.mulDiv(lpPrice_, 1 ether);
+        _burn(from, shares);
+
+        emit Unstaked(from, lpAmount, shares, lpPrice_);
+    }
 
     /**
      * @dev Swaps the rewards on the specified target address provided in `swapParams`.

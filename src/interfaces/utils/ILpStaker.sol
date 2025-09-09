@@ -30,20 +30,20 @@ interface ILpStaker {
     /**
      * --- Emitted when a account stakes their LP tokens ---
      * @param account The address of the account who performed the stake.
-     * @param amount The amount of LP tokens staked by the account.
+     * @param lpAmount The amount of LP tokens staked by the account.
      * @param shares The amount of shares minted to the account during the stake.
      * @param lpPrice The price of 1 LP token in shares at the time of staking, multiplied by 1 ether.
      */
-    event Staked(address indexed account, uint256 amount, uint256 shares, uint256 lpPrice);
+    event Staked(address indexed account, uint256 lpAmount, uint256 shares, uint256 lpPrice);
 
     /**
      * --- Emitted when a account unstakes their shares ---
      * @param account The address of the account who performed the unstake.
-     * @param amount The amount of underlying assets withdrawn from the liquidity pool.
+     * @param lpAmount The amount of underlying assets withdrawn from the liquidity pool.
      * @param shares The amount of shares that were burned during the unstake.
      * @param lpPrice The price of 1 LP token in shares at the time of unstaking, multiplied by 1 ether.
      */
-    event Unstaked(address indexed account, uint256 amount, uint256 shares, uint256 lpPrice);
+    event Unstaked(address indexed account, uint256 lpAmount, uint256 shares, uint256 lpPrice);
 
     /**
      * --- Emitted when rewards are swapped on a reward pool ---
@@ -111,6 +111,27 @@ interface ILpStaker {
     function stake(uint256 amount) external returns (uint256 shares);
 
     /**
+     * @dev Mints LP tokens using the provided mint parameters and stakes them into the staker.
+     * This function calls the `mint` function of the LP wrapper with the provided parameters,
+     * stakes the minted LP tokens, and mints the corresponding amount of shares to the caller
+     * Emits a `Staked` event upon successful completion.
+     * @param amount0 The amount of token0 to be used for minting.
+     * @param amount1 The amount of token1 to be used for minting.
+     * @return actualAmount0 The actual amount of token0 used for minting.
+     * @return actualAmount1 The actual amount of token1 used for minting.
+     * @return actualLpAmount The actual amount of LP tokens minted.
+     * @return shares The amount of shares minted to the caller.
+     */
+    function mintAndStake(uint256 amount0, uint256 amount1)
+        external
+        returns (
+            uint256 actualAmount0,
+            uint256 actualAmount1,
+            uint256 actualLpAmount,
+            uint256 shares
+        );
+
+    /**
      * @dev Unstakes the specified amount of shares from the staker.
      * This function burns the specified amount of shares and withdraws the corresponding
      * amount of underlying assets from the liquidity pool.
@@ -119,6 +140,25 @@ interface ILpStaker {
      * @return amount The amount of underlying assets withdrawn from the liquidity pool.
      */
     function unstake(uint256 shares) external returns (uint256 amount);
+
+    /**
+     * @dev Burns the specified amount of shares and withdraws the corresponding
+     * amount of underlying assets from the liquidity pool, sending them to the specified recipient.
+     * Emits an `Unstaked` event upon successful completion.
+     * @param shares The amount of shares to burn.
+     * @param amount0Min The minimum acceptable amount of token0 to be withdrawn.
+     * @param amount1Min The minimum acceptable amount of token1 to be withdrawn.
+     * @param recipient The address to receive the withdrawn underlying assets.
+     * @return actualAmount0 The actual amount of token0 withdrawn.
+     * @return actualAmount1 The actual amount of token1 withdrawn.
+     * @return actualLpAmount The actual amount of LP tokens that were burned.
+     */
+    function unstakeAndWithdraw(
+        uint256 shares,
+        uint256 amount0Min,
+        uint256 amount1Min,
+        address recipient
+    ) external returns (uint256 actualAmount0, uint256 actualAmount1, uint256 actualLpAmount);
 
     /**
      * @dev Compounds the rewards for the staker.
@@ -149,7 +189,12 @@ interface ILpStaker {
     function sharesOf(address account) external view returns (uint256);
 
     /**
-     * @dev Returns the current assets of the specified account.
+     * @dev Returns the current amount of LP tokens staked by the specified account.
      */
-    function assetsOf(address account) external view returns (uint256);
+    function lpAmountOf(address account) external view returns (uint256);
+
+    /**
+     * @dev Returns the current underlying assets of the specified account.
+     */
+    function assetsOf(address account) external view returns (uint256, uint256);
 }

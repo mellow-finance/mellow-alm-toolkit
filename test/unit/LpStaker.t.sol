@@ -52,15 +52,64 @@ contract Unit is Fixture {
 
         assertEq(IERC20(address(lpWrapper)).balanceOf(user), 0);
         assertEq(IERC20(address(lpStaker)).balanceOf(user), shares);
-        assertEq(lpStaker.assetsOf(user), lpAmount);
+        assertEq(lpStaker.lpAmountOf(user), lpAmount);
 
-        uint256 amountExpected = lpStaker.assetsOf(user);
+        uint256 amountExpected = lpStaker.lpAmountOf(user);
         vm.prank(user);
         uint256 amount = lpStaker.unstake(shares);
 
         assertEq(amount, amountExpected, "unstake amount mismatch");
         assertEq(lpStaker.sharesOf(user), 0, "shares after unstake mismatch");
-        assertEq(lpStaker.assetsOf(user), 0, "assets after unstake mismatch");
+        assertEq(lpStaker.lpAmountOf(user), 0, "assets after unstake mismatch");
+    }
+
+    function testMintAndStake() external {
+        uint32 lpAmountX32 = type(uint32).max; //vm.assume(lpAmountX32 > 0);
+        ICLPool pool = ICLPool(factory.getPool(Constants.OPTIMISM_WETH, Constants.OPTIMISM_OP, 200));
+        (ILpStaker lpStaker, ILpWrapper lpWrapper) = _initLpStaker(pool);
+
+        uint256 lpAmount = uint256(lpAmountX32).mulDiv(1 ether, type(uint32).max);
+        (uint256 amount0, uint256 amount1) = lpWrapper.previewMint(lpAmount);
+        deal(Constants.OPTIMISM_WETH, user, amount0);
+        deal(Constants.OPTIMISM_OP, user, amount1);
+
+        vm.startPrank(user);
+        IERC20(Constants.OPTIMISM_WETH).safeIncreaseAllowance(address(lpStaker), amount0);
+        IERC20(Constants.OPTIMISM_OP).safeIncreaseAllowance(address(lpStaker), amount1);
+
+        uint256 lpAmountActual;
+        uint256 shares;
+
+        (amount0, amount1, lpAmountActual, shares) = lpStaker.mintAndStake(amount0, amount1);
+        vm.stopPrank();
+
+        assertEq(IERC20(address(lpWrapper)).balanceOf(user), 0);
+        assertEq(IERC20(address(lpWrapper)).balanceOf(address(lpStaker)), lpAmountActual);
+        assertEq(IERC20(address(lpStaker)).balanceOf(user), shares);
+        assertEq(lpStaker.lpAmountOf(user), lpAmountActual);
+
+        assertEq(
+            IERC20(Constants.OPTIMISM_WETH).balanceOf(address(lpStaker)),
+            0,
+            "token0 too much dust after mint"
+        );
+        assertEq(
+            IERC20(Constants.OPTIMISM_OP).balanceOf(address(lpStaker)),
+            0,
+            "token1 too much dust after mint"
+        );
+
+        uint256 amountExpected = lpStaker.lpAmountOf(user);
+        vm.prank(user);
+        (uint256 actualAmount0, uint256 actualAmount1, uint256 actualLpAmount) =
+            lpStaker.unstakeAndWithdraw(shares, 0, 0, user);
+
+        assertApproxEqAbs(actualLpAmount, amountExpected, 1, "unstake lpAmount mismatch");
+        assertApproxEqAbs(amount0, actualAmount0, 1, "unstake amount0 mismatch");
+        assertApproxEqAbs(amount1, actualAmount1, 1, "unstake amount1 mismatch");
+        assertEq(lpStaker.sharesOf(user), 0, "shares after unstake mismatch");
+        assertEq(lpStaker.lpAmountOf(user), 0, "assets after unstake mismatch");
+        assertEq(lpStaker.lpAmountOf(user), 0, "assets after unstake mismatch");
     }
 
     function testQuoteSwap() external {
@@ -103,13 +152,13 @@ contract Unit is Fixture {
         }
         assertEq(swapRewardAmount, earned, "total amount rewards mismatch");
 
-        uint256 amountExpected = lpStaker.assetsOf(user);
+        uint256 amountExpected = lpStaker.lpAmountOf(user);
         vm.prank(user);
         uint256 amount = lpStaker.unstake(shares);
 
         assertEq(amount, amountExpected, "unstake amount mismatch");
         assertEq(lpStaker.sharesOf(user), 0, "shares after unstake mismatch");
-        assertEq(lpStaker.assetsOf(user), 0, "assets after unstake mismatch");
+        assertEq(lpStaker.lpAmountOf(user), 0, "assets after unstake mismatch");
     }
 
     function testSwapRewards() external {
@@ -166,16 +215,16 @@ contract Unit is Fixture {
             1
         );
         assertApproxEqAbs(
-            lpStaker.assetsOf(user), IERC20(address(lpWrapper)).balanceOf(address(lpStaker)), 1
+            lpStaker.lpAmountOf(user), IERC20(address(lpWrapper)).balanceOf(address(lpStaker)), 1
         );
 
-        uint256 amountExpected = lpStaker.assetsOf(user);
+        uint256 amountExpected = lpStaker.lpAmountOf(user);
         vm.prank(user);
         uint256 amount = lpStaker.unstake(shares);
 
         assertEq(amount, amountExpected, "unstake amount mismatch");
         assertEq(lpStaker.sharesOf(user), 0, "shares after unstake mismatch");
-        assertEq(lpStaker.assetsOf(user), 0, "assets after unstake mismatch");
+        assertEq(lpStaker.lpAmountOf(user), 0, "assets after unstake mismatch");
     }
 
     function testSwapRewardsFuzz() external {
@@ -227,7 +276,9 @@ contract Unit is Fixture {
                 1
             );
             assertApproxEqAbs(
-                lpStaker.assetsOf(user), IERC20(address(lpWrapper)).balanceOf(address(lpStaker)), 1
+                lpStaker.lpAmountOf(user),
+                IERC20(address(lpWrapper)).balanceOf(address(lpStaker)),
+                1
             );
         }
     }
