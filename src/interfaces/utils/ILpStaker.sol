@@ -234,11 +234,12 @@ interface ILpStaker {
      * @param timestamp The timestamp to check the locked shares against.
      * @return lockedShares The amount of shares that are currently locked for the account.
      * @return activeCheckpoints The number of active lock checkpoints for the account.
+     * @return length The total number of lock checkpoints for the account.
      */
     function getLockedShares(address account, uint32 timestamp)
         external
         view
-        returns (uint256 lockedShares, uint32 activeCheckpoints);
+        returns (uint256 lockedShares, uint32 activeCheckpoints, uint32 length);
 
     /// @dev Duration of the timeLock for locked amounts
     function timeLock() external view returns (uint32);

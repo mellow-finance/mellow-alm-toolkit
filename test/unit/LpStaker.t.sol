@@ -366,14 +366,14 @@ contract Unit is Fixture {
 
         {
             skip(timeLock - 1);
-            (uint256 lockedShares, uint32 activeCheckpoints) =
+            (uint256 lockedShares, uint32 activeCheckpoints,) =
                 lpStaker.getLockedShares(user, uint32(block.timestamp));
             assertEq(lockedShares, shares, "locked shares mismatch");
             assertEq(activeCheckpoints, 1, "active checkpoints mismatch");
 
             skip(1);
 
-            (lockedShares, activeCheckpoints) =
+            (lockedShares, activeCheckpoints,) =
                 lpStaker.getLockedShares(user, uint32(block.timestamp));
             assertEq(lockedShares, 0, "locked shares mismatch");
             assertEq(activeCheckpoints, 0, "active checkpoints mismatch");
@@ -401,6 +401,41 @@ contract Unit is Fixture {
             lpStaker.unstake(shares / 2);
             assertEq(ERC20(address(lpStaker)).balanceOf(recipient), 0, "recipient shares mismatch");
         }
+    }
+
+    function testLockedAmountSequence() external {
+        ICLPool pool = ICLPool(factory.getPool(Constants.OPTIMISM_WETH, Constants.OPTIMISM_OP, 200));
+
+        uint32 timeLock = 24 hours;
+        (ILpStaker lpStaker, ILpWrapper lpWrapper) = _initLpStaker(pool, timeLock);
+
+        deal(Constants.OPTIMISM_WETH, user, type(uint128).max);
+        deal(Constants.OPTIMISM_OP, user, type(uint128).max);
+
+        vm.startPrank(user);
+        IERC20(Constants.OPTIMISM_WETH).safeIncreaseAllowance(address(lpStaker), type(uint256).max);
+        IERC20(Constants.OPTIMISM_OP).safeIncreaseAllowance(address(lpStaker), type(uint256).max);
+
+        uint32 timeStart = uint32(block.timestamp);
+
+        uint32[] memory timeShifts = new uint32[](24);
+        uint256[] memory mintedShares = new uint256[](24);
+
+        timeShifts[0] = (timeLock * 12355) / type(uint32).max;
+        timeShifts[1] = (timeLock * 12345) / type(uint32).max;
+        timeShifts[2] = (timeLock * 12355) / type(uint32).max;
+        timeShifts[3] = (timeLock * 12345) / type(uint32).max;
+
+        for (uint256 index = 0; index < 21; index++) {
+            skip(1);
+            //uint32 timeLeft = uint32(block.timestamp) - timeStart;
+            /* (,,, mintedShares[index]) =  */
+            lpStaker.mintAndStake(1 ether, 1 ether);
+            (uint256 lockedShares, uint32 activeCheckpoints, uint32 length) =
+                lpStaker.getLockedShares(user, uint32(block.timestamp));
+            console2.log(lockedShares, activeCheckpoints, length);
+        }
+        vm.stopPrank();
     }
 
     function _buildSwapData(ILpStaker lpStaker, SwapRouterMock target)

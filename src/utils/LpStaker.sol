@@ -292,19 +292,18 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
     function getLockedShares(address account, uint32 timestamp)
         public
         view
-        returns (uint256 lockedShares, uint32 activeCheckpoints)
+        returns (uint256 lockedShares, uint32 activeCheckpoints, uint32 length)
     {
-        uint32 len = uint32(lockedCheckpoints[account].length());
-        if (len == 0) {
-            return (0, 0);
-        }
-        for (int32 index = int32(len) - 1; index >= 0; --index) {
-            Checkpoints.Checkpoint224 memory checkpoint =
-                lockedCheckpoints[account].at(uint32(index));
-            if (checkpoint._key > timestamp) {
-                lockedShares += checkpoint._value;
-                activeCheckpoints++;
+        length = uint32(lockedCheckpoints[account].length());
+        uint32 count = length;
+        while (count > 0) {
+            count--;
+            Checkpoints.Checkpoint224 memory checkpoint = lockedCheckpoints[account].at(count);
+            if (checkpoint._key <= timestamp) {
+                break;
             }
+            lockedShares += checkpoint._value;
+            activeCheckpoints++;
         }
     }
 
@@ -336,26 +335,43 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
 
         if (from != address(0)) {
             /// @dev when not mint (burn or transfer): check the available shares (not locked)
-            (uint256 lockedShares,) = getLockedShares(from, uint32(block.timestamp));
+            (uint256 lockedShares,,) = getLockedShares(from, uint32(block.timestamp));
             uint256 remainBalance = balanceOf(from);
             if (remainBalance < lockedShares) {
                 revert InsufficientUnlockedShares(from, lockedShares, value);
             }
         } else {
-            /// @dev greatest possible timestamp for the locked checkpoint
-            uint32 timestamp_ = uint32(block.timestamp) + timeLock;
-
-            /// @dev if number of active locks less than threshold
-            (, uint32 activeCheckpoints) = getLockedShares(to, timestamp_);
-
-            /// @dev limit the number of active locks to prevent OOG
-            if (activeCheckpoints >= 50) {
-                revert TooManyActiveLocks(to, activeCheckpoints);
-            }
-
-            /// @dev when mint: just add a new locked checkpoint for the receiver
-            lockedCheckpoints[to].push(timestamp_, uint224(value));
+            _pushCheckpoint(to, uint224(value));
         }
+    }
+
+    /// @dev Pushes a new checkpoint for the locked shares of an account.
+    /// If the last checkpoint has the same timestamp, it merges the values.
+    /// @param account The address of the account to push the checkpoint for.
+    /// @param value The value of the checkpoint.
+    function _pushCheckpoint(address account, uint224 value) internal {
+        uint32 timestamp_ = uint32(block.timestamp);
+        /// @dev get current number of active locks at now
+        (, uint32 activeCheckpoints, uint32 length) = getLockedShares(account, timestamp_);
+
+        /// @dev limit the number of active locks to prevent OOG
+        if (activeCheckpoints >= 20) {
+            revert TooManyActiveLocks(account, activeCheckpoints);
+        }
+
+        uint32 timestampLock = timestamp_ + timeLock;
+        
+        /// @dev if there are existing checkpoints, check if the last one has the same timestamp
+        if (length > 0) {
+            Checkpoints.Checkpoint224 memory lastCheckpoint =
+                lockedCheckpoints[account].at(length - 1);
+            if (lastCheckpoint._key == timestampLock) {
+                /// @dev merge with the last checkpoint if the timestamp is the same
+                value += lastCheckpoint._value;
+            }
+        }
+
+        lockedCheckpoints[account].push(timestampLock, value);
     }
 
     /**
