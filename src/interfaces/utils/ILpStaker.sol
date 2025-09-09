@@ -20,7 +20,7 @@ interface ILpStaker {
     error SlippageExceeded();
 
     /// @dev Thrown when trying to unstake more shares than the account has unlocked
-    error InsufficientUnlockedShares(address account, uint256 unlockedShares, uint256 shares);
+    error InsufficientUnlockedShares(address account, uint256 lockedShares, uint256 shares);
 
     /// @dev Thrown when trying to create too many active locks for an account
     error TooManyActiveLocks(address account, uint32 activeLocks);
@@ -229,14 +229,23 @@ interface ILpStaker {
     function assetsOf(address account) external view returns (uint256, uint256);
 
     /**
-     * @dev Returns the current locked amount and active checkpoints for the specified account.
+     * @dev Returns the current locked shares and active checkpoints for the specified account.
      * @param account The address of the account to query.
-     * @param timestamp The timestamp to check the locked amount against.
-     * @return lockedAmount The amount of shares that are currently locked for the account.
+     * @param timestamp The timestamp to check the locked shares against.
+     * @return lockedShares The amount of shares that are currently locked for the account.
      * @return activeCheckpoints The number of active lock checkpoints for the account.
      */
-    function getLockedAmount(address account, uint32 timestamp)
+    function getLockedShares(address account, uint32 timestamp)
         external
         view
-        returns (uint256 lockedAmount, uint32 activeCheckpoints);
+        returns (uint256 lockedShares, uint32 activeCheckpoints);
+
+    /// @dev Duration of the timeLock for locked amounts
+    function timeLock() external view returns (uint32);
+
+    /// @dev Minimum duration of the timeLock for locked amounts
+    function MIN_TIMELOCK_DURATION() external view returns (uint32);
+
+    /// @dev Maximum duration of the timeLock for locked amounts
+    function MAX_TIMELOCK_DURATION() external view returns (uint32);
 }

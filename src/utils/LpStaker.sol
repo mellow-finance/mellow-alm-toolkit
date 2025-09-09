@@ -289,10 +289,10 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
     }
 
     /// @inheritdoc ILpStaker
-    function getLockedAmount(address account, uint32 timestamp)
+    function getLockedShares(address account, uint32 timestamp)
         public
         view
-        returns (uint256 lockedAmount, uint32 activeCheckpoints)
+        returns (uint256 lockedShares, uint32 activeCheckpoints)
     {
         uint32 len = uint32(lockedCheckpoints[account].length());
         if (len == 0) {
@@ -302,7 +302,7 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
             Checkpoints.Checkpoint224 memory checkpoint =
                 lockedCheckpoints[account].at(uint32(index));
             if (checkpoint._key > timestamp) {
-                lockedAmount += checkpoint._value;
+                lockedShares += checkpoint._value;
                 activeCheckpoints++;
             }
         }
@@ -336,17 +336,17 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
 
         if (from != address(0)) {
             /// @dev when not mint (burn or transfer): check the available shares (not locked)
-            (uint256 lockedAmount,) = getLockedAmount(from, uint32(block.timestamp));
+            (uint256 lockedShares,) = getLockedShares(from, uint32(block.timestamp));
             uint256 remainBalance = balanceOf(from);
-            if (remainBalance < lockedAmount) {
-                revert InsufficientUnlockedShares(from, remainBalance, value);
+            if (remainBalance < lockedShares) {
+                revert InsufficientUnlockedShares(from, lockedShares, value);
             }
         } else {
             /// @dev greatest possible timestamp for the locked checkpoint
             uint32 timestamp_ = uint32(block.timestamp) + timeLock;
 
             /// @dev if number of active locks less than threshold
-            (, uint32 activeCheckpoints) = getLockedAmount(to, timestamp_);
+            (, uint32 activeCheckpoints) = getLockedShares(to, timestamp_);
 
             /// @dev limit the number of active locks to prevent OOG
             if (activeCheckpoints >= 50) {
