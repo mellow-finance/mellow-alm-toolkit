@@ -135,7 +135,7 @@ interface ILpWrapper is IVeloFarm, IAccessControlEnumerable, IERC20 {
      * @dev Returns the address of the AMM module associated with this LP wrapper.
      * @return Address of the AMM module.
      */
-    function ammModule() external view returns (IVeloAmmModule);
+    function ammModule() external view returns (IAmmModule);
 
     /**
      * @dev Returns the oracle contract address.

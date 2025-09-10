@@ -14,7 +14,7 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
     /// @inheritdoc ILpWrapper
     ICore public immutable core;
     /// @inheritdoc ILpWrapper
-    IVeloAmmModule public immutable ammModule;
+    IAmmModule public immutable ammModule;
     /// @inheritdoc ILpWrapper
     IOracle public immutable oracle;
 
@@ -38,7 +38,7 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
         }
         core = ICore(core_);
         oracle = core.oracle();
-        ammModule = IVeloAmmModule(address(core.ammModule()));
+        ammModule = core.ammModule();
     }
 
     /// @inheritdoc ILpWrapper

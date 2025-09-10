@@ -20,7 +20,7 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
     /// @inheritdoc ILpStaker
     ICore public immutable core;
     /// @inheritdoc ILpStaker
-    IVeloAmmModule public immutable ammModule;
+    IAmmModule public immutable ammModule;
     /// @inheritdoc ILpStaker
     IOracle public immutable oracle;
 
@@ -46,7 +46,7 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
         }
         core = ICore(core_);
         oracle = core.oracle();
-        ammModule = IVeloAmmModule(address(core.ammModule()));
+        ammModule = core.ammModule();
     }
 
     /* -------------------------------------------------------------------------------

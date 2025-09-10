@@ -260,7 +260,7 @@ interface ILpStaker {
     function core() external view returns (ICore);
 
     /// @notice Returns the AMM module contract
-    function ammModule() external view returns (IVeloAmmModule);
+    function ammModule() external view returns (IAmmModule);
 
     /// @notice Returns the oracle contract
     function oracle() external view returns (IOracle);
