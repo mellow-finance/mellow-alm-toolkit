@@ -20,14 +20,17 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
 
     address public rewardToken;
 
-    /// @dev Duration of the timeLock for locked amounts
+    /// @inheritdoc ILpStaker
     uint32 public timeLock;
 
-    /// @dev Minimum duration of the timeLock for locked amounts
+    /// @inheritdoc ILpStaker
     uint32 public constant MIN_TIMELOCK_DURATION = 4 hours;
 
-    /// @dev Maximum duration of the timeLock for locked amounts
+    /// @inheritdoc ILpStaker
     uint32 public constant MAX_TIMELOCK_DURATION = 7 days;
+
+    /// @inheritdoc ILpStaker
+    uint32 public constant MAX_ACTIVE_LOCKS = 20;
 
     /// @dev Price of 1 LP token in shares, multiplied by 1 ether
     uint256 private _lpPrice;
@@ -97,7 +100,7 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
             address(lpWrapper_), type(uint256).max
         );
 
-        _updateTimeLock(timeLock_);
+        _setTimeLock(timeLock_);
     }
 
     /// @inheritdoc ILpStaker
@@ -237,8 +240,8 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
     }
 
     /// @inheritdoc ILpStaker
-    function updateTimeLock(uint32 newTimeLock) external onlyRole(ADMIN_ROLE) {
-        _updateTimeLock(newTimeLock);
+    function setTimeLock(uint32 newTimeLock) external onlyRole(ADMIN_ROLE) {
+        _setTimeLock(newTimeLock);
     }
 
     /* -------------------------------------------------------------------------------
@@ -355,12 +358,11 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
         (, uint32 activeCheckpoints, uint32 length) = getLockedShares(account, timestamp_);
 
         /// @dev limit the number of active locks to prevent OOG
-        if (activeCheckpoints >= 20) {
+        if (activeCheckpoints >= MAX_ACTIVE_LOCKS) {
             revert TooManyActiveLocks(account, activeCheckpoints);
         }
 
         uint32 timestampLock = timestamp_ + timeLock;
-        
         /// @dev if there are existing checkpoints, check if the last one has the same timestamp
         if (length > 0) {
             Checkpoints.Checkpoint224 memory lastCheckpoint =
@@ -406,7 +408,7 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
      * Emits a `TimeLockUpdated` event upon successful completion.
      * @param newTimeLock The new duration for the timeLock, in seconds.
      */
-    function _updateTimeLock(uint32 newTimeLock) internal {
+    function _setTimeLock(uint32 newTimeLock) internal {
         if (newTimeLock < MIN_TIMELOCK_DURATION || newTimeLock > MAX_TIMELOCK_DURATION) {
             revert InvalidTimeLock(newTimeLock);
         }

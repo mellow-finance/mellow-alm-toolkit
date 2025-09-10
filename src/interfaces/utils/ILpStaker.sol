@@ -193,12 +193,12 @@ interface ILpStaker {
     function compoundRewards(SwapParams[2] memory swapParams) external;
 
     /**
-     * @dev Updates the duration of the timeLock for unstaking.
+     * @dev Sets the duration of the timeLock for unstaking.
      * This function allows the admin to change the duration of the timeLock within the allowed range.
      * Emits a `TimeLockUpdated` event upon successful completion.
      * @param newTimeLock The new duration for the timeLock, in seconds.
      */
-    function updateTimeLock(uint32 newTimeLock) external;
+    function setTimeLock(uint32 newTimeLock) external;
 
     /**
      * @dev Quotes the amounts to swap for the specified reward tokens.
@@ -249,4 +249,7 @@ interface ILpStaker {
 
     /// @dev Maximum duration of the timeLock for locked amounts
     function MAX_TIMELOCK_DURATION() external view returns (uint32);
+
+    /// @dev Maximum number of active locks per account
+    function MAX_ACTIVE_LOCKS() external view returns (uint32);
 }

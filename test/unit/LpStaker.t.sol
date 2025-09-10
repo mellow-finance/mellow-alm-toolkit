@@ -293,7 +293,7 @@ contract Unit is Fixture {
         }
     }
 
-    function testUpdateTimeLock() external {
+    function testSetTimeLock() external {
         ICLPool pool = ICLPool(factory.getPool(Constants.OPTIMISM_WETH, Constants.OPTIMISM_OP, 200));
 
         uint32 timeLock = 2 days;
@@ -308,7 +308,7 @@ contract Unit is Fixture {
                 DefaultAccessControl(address(lpStaker)).ADMIN_ROLE()
             )
         );
-        lpStaker.updateTimeLock(7 hours);
+        lpStaker.setTimeLock(7 hours);
         assertEq(lpStaker.timeLock(), timeLock);
 
         uint32 minTimeLock = lpStaker.MIN_TIMELOCK_DURATION();
@@ -317,15 +317,15 @@ contract Unit is Fixture {
         vm.startPrank(admin);
 
         vm.expectRevert(abi.encodeWithSelector(ILpStaker.InvalidTimeLock.selector, minTimeLock - 1));
-        lpStaker.updateTimeLock(minTimeLock - 1);
+        lpStaker.setTimeLock(minTimeLock - 1);
 
         vm.expectRevert(abi.encodeWithSelector(ILpStaker.InvalidTimeLock.selector, maxTimeLock + 1));
-        lpStaker.updateTimeLock(maxTimeLock + 1);
+        lpStaker.setTimeLock(maxTimeLock + 1);
 
-        lpStaker.updateTimeLock(minTimeLock);
+        lpStaker.setTimeLock(minTimeLock);
         assertEq(lpStaker.timeLock(), minTimeLock);
 
-        lpStaker.updateTimeLock(maxTimeLock);
+        lpStaker.setTimeLock(maxTimeLock);
         assertEq(lpStaker.timeLock(), maxTimeLock);
 
         vm.stopPrank();
@@ -407,7 +407,7 @@ contract Unit is Fixture {
         ICLPool pool = ICLPool(factory.getPool(Constants.OPTIMISM_WETH, Constants.OPTIMISM_OP, 200));
 
         uint32 timeLock = 24 hours;
-        (ILpStaker lpStaker, ILpWrapper lpWrapper) = _initLpStaker(pool, timeLock);
+        (ILpStaker lpStaker,) = _initLpStaker(pool, timeLock);
 
         deal(Constants.OPTIMISM_WETH, user, type(uint128).max);
         deal(Constants.OPTIMISM_OP, user, type(uint128).max);
@@ -416,25 +416,120 @@ contract Unit is Fixture {
         IERC20(Constants.OPTIMISM_WETH).safeIncreaseAllowance(address(lpStaker), type(uint256).max);
         IERC20(Constants.OPTIMISM_OP).safeIncreaseAllowance(address(lpStaker), type(uint256).max);
 
-        uint32 timeStart = uint32(block.timestamp);
-
-        uint32[] memory timeShifts = new uint32[](24);
-        uint256[] memory mintedShares = new uint256[](24);
-
-        timeShifts[0] = (timeLock * 12355) / type(uint32).max;
-        timeShifts[1] = (timeLock * 12345) / type(uint32).max;
-        timeShifts[2] = (timeLock * 12355) / type(uint32).max;
-        timeShifts[3] = (timeLock * 12345) / type(uint32).max;
-
-        for (uint256 index = 0; index < 21; index++) {
-            skip(1);
-            //uint32 timeLeft = uint32(block.timestamp) - timeStart;
-            /* (,,, mintedShares[index]) =  */
-            lpStaker.mintAndStake(1 ether, 1 ether);
+        uint256 totalShares;
+        uint256 firstHourShares;
+        {
+            /// @dev if some time has passed before, a new checkpoint is created
+            skip(1 hours);
+            (,,, uint256 sharesDelta) = lpStaker.mintAndStake(1 ether, 1 ether);
             (uint256 lockedShares, uint32 activeCheckpoints, uint32 length) =
                 lpStaker.getLockedShares(user, uint32(block.timestamp));
-            console2.log(lockedShares, activeCheckpoints, length);
+            totalShares += sharesDelta;
+            firstHourShares += sharesDelta;
+
+            assertEq(totalShares, lpStaker.sharesOf(user), "total shares mismatch");
+            assertEq(lockedShares, lpStaker.sharesOf(user), "locked shares mismatch");
+            assertEq(activeCheckpoints, 1, "active checkpoints mismatch");
+            assertEq(length, 1, "length mismatch");
         }
+        {
+            /// @dev if some time has not passed before, a new checkpoint is not created
+            (,,, uint256 sharesDelta) = lpStaker.mintAndStake(1 ether, 1 ether);
+            (uint256 lockedShares, uint32 activeCheckpoints, uint32 length) =
+                lpStaker.getLockedShares(user, uint32(block.timestamp));
+            totalShares += sharesDelta;
+            firstHourShares += sharesDelta;
+
+            assertEq(totalShares, lpStaker.sharesOf(user), "total shares mismatch");
+            assertEq(lockedShares, lpStaker.sharesOf(user), "locked shares mismatch");
+            assertEq(activeCheckpoints, 1, "active checkpoints mismatch");
+            assertEq(length, 1, "length mismatch");
+        }
+        {
+            /// @dev if some time has passed before, a new checkpoint is created
+            skip(1 hours);
+            (,,, uint256 sharesDelta) = lpStaker.mintAndStake(1 ether, 1 ether);
+            (uint256 lockedShares, uint32 activeCheckpoints, uint32 length) =
+                lpStaker.getLockedShares(user, uint32(block.timestamp));
+            totalShares += sharesDelta;
+
+            assertEq(totalShares, lpStaker.sharesOf(user), "total shares mismatch");
+            assertEq(lockedShares, lpStaker.sharesOf(user), "locked shares mismatch");
+            assertEq(activeCheckpoints, 2, "active checkpoints mismatch");
+            assertEq(length, 2, "length mismatch");
+        }
+        {
+            /// @dev if some time has passed before, a new checkpoint is created
+            skip(timeLock - 2 hours + 1);
+            (,,, uint256 sharesDelta) = lpStaker.mintAndStake(1 ether, 1 ether);
+            (uint256 lockedShares, uint32 activeCheckpoints, uint32 length) =
+                lpStaker.getLockedShares(user, uint32(block.timestamp));
+            totalShares += sharesDelta;
+
+            assertEq(totalShares, lpStaker.sharesOf(user), "total shares mismatch");
+            assertEq(lockedShares, lpStaker.sharesOf(user), "locked shares mismatch");
+            assertEq(activeCheckpoints, 3, "active checkpoints mismatch");
+            assertEq(length, 3, "length mismatch");
+        }
+        {
+            /// @dev if some time has passed before, a new checkpoint is created
+            skip(1 hours);
+            (,,, uint256 sharesDelta) = lpStaker.mintAndStake(1 ether, 1 ether);
+            (uint256 lockedShares, uint32 activeCheckpoints, uint32 length) =
+                lpStaker.getLockedShares(user, uint32(block.timestamp));
+            totalShares += sharesDelta;
+
+            assertEq(totalShares, lpStaker.sharesOf(user), "total shares mismatch");
+            assertEq(
+                lockedShares, lpStaker.sharesOf(user) - firstHourShares, "locked shares mismatch"
+            );
+            assertEq(activeCheckpoints, 3, "active checkpoints mismatch");
+            assertEq(length, 4, "length mismatch");
+        }
+        vm.stopPrank();
+    }
+
+    function testRevertTooManyActiveLocks() external {
+        ICLPool pool = ICLPool(factory.getPool(Constants.OPTIMISM_WETH, Constants.OPTIMISM_OP, 200));
+
+        uint32 timeLock = 24 hours;
+        (ILpStaker lpStaker,) = _initLpStaker(pool, timeLock);
+
+        deal(Constants.OPTIMISM_WETH, user, type(uint128).max);
+        deal(Constants.OPTIMISM_OP, user, type(uint128).max);
+
+        vm.startPrank(user);
+        IERC20(Constants.OPTIMISM_WETH).safeIncreaseAllowance(address(lpStaker), type(uint256).max);
+        IERC20(Constants.OPTIMISM_OP).safeIncreaseAllowance(address(lpStaker), type(uint256).max);
+
+        uint256 shares;
+        for (uint256 index = 0; index < lpStaker.MAX_ACTIVE_LOCKS(); index++) {
+            skip(1);
+            (,,, uint256 sharesDelta) = lpStaker.mintAndStake(1 ether, 1 ether);
+            shares += sharesDelta;
+        }
+        (uint256 lockedShares, uint32 activeCheckpoints, uint32 length) =
+            lpStaker.getLockedShares(user, uint32(block.timestamp));
+
+        assertEq(lockedShares, shares, "locked shares mismatch");
+        assertEq(activeCheckpoints, lpStaker.MAX_ACTIVE_LOCKS(), "active checkpoints mismatch");
+        assertEq(length, lpStaker.MAX_ACTIVE_LOCKS(), "length mismatch");
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ILpStaker.TooManyActiveLocks.selector, user, lpStaker.MAX_ACTIVE_LOCKS()
+            )
+        );
+        lpStaker.mintAndStake(1 ether, 1 ether);
+
+        uint256 gas = gasleft();
+        (lockedShares, activeCheckpoints, length) =
+            lpStaker.getLockedShares(user, uint32(block.timestamp));
+        console2.log("gas for getLockedShares", gas - gasleft());
+
+        assertEq(lockedShares, shares, "locked shares mismatch");
+        assertEq(activeCheckpoints, lpStaker.MAX_ACTIVE_LOCKS(), "active checkpoints mismatch");
+        assertEq(length, lpStaker.MAX_ACTIVE_LOCKS(), "length mismatch");
         vm.stopPrank();
     }
 
