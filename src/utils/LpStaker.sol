@@ -111,7 +111,7 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
         returns (uint256 shares)
     {
         if (recipient == address(0)) {
-            revert ZeroAddress();
+            revert AddressZero();
         }
         if (lpAmount == 0) {
             revert ZeroAmount();
@@ -130,7 +130,7 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
         returns (uint256 lpAmount)
     {
         if (recipient == address(0)) {
-            revert ZeroAddress();
+            revert AddressZero();
         }
         if (shares == 0) {
             revert ZeroAmount();
@@ -155,7 +155,7 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
         address _this = address(this);
         address _sender = msg.sender;
         if (recipient == address(0)) {
-            revert ZeroAddress();
+            revert AddressZero();
         }
 
         uint256 lpAmount = lpWrapper.previewDeposit(amount0, amount1);

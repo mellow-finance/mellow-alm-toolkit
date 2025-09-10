@@ -10,9 +10,6 @@ interface ILpStaker {
     /// @dev Thrown when an amount provided is zero
     error ZeroAmount();
 
-    /// @dev Thrown when an address provided is zero
-    error ZeroAddress();
-
     /// @dev Thrown when the provided LP wrapper is not compatible with the staker
     error InvalidLpWrapper();
 

@@ -554,7 +554,7 @@ contract Unit is Fixture {
 
         IERC20(address(lpWrapper)).safeIncreaseAllowance(address(lpStaker), lpAmount);
 
-        vm.expectRevert(ILpStaker.ZeroAddress.selector);
+        vm.expectRevert(DefaultAccessControl.AddressZero.selector);
         lpStaker.stake(lpAmount, address(0));
 
         uint256 shares = lpStaker.stake(lpAmount, recipient);
@@ -612,7 +612,7 @@ contract Unit is Fixture {
         IERC20(Constants.OPTIMISM_WETH).safeIncreaseAllowance(address(lpStaker), amount0);
         IERC20(Constants.OPTIMISM_OP).safeIncreaseAllowance(address(lpStaker), amount1);
 
-        vm.expectRevert(ILpStaker.ZeroAddress.selector);
+        vm.expectRevert(DefaultAccessControl.AddressZero.selector);
         lpStaker.mintAndStake(amount0, amount1, address(0));
 
         (uint256 actualAmount0, uint256 actualAmount1, uint256 actualLpAmount, uint256 shares) =
