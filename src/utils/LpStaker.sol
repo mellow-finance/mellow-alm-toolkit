@@ -32,8 +32,8 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
     /// @inheritdoc ILpStaker
     uint32 public constant MAX_ACTIVE_LOCKS = 20;
 
-    /// @dev Price of 1 LP token in shares, multiplied by 1 ether
-    uint256 private _lpPrice;
+    /// @inheritdoc ILpStaker
+    uint256 public lpPrice;
 
     /// @dev A record of locked amounts for each account
     mapping(address => Checkpoints.Trace224) private lockedCheckpoints;
@@ -72,7 +72,7 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
 
         rewardToken = ammModule.getRewardToken(lpWrapper_.pool());
 
-        _lpPrice = 1 ether;
+        lpPrice = 1 ether;
         lpWrapper = lpWrapper_;
 
         __AccessControlCalls_init(admin_);
@@ -233,10 +233,10 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
             })
         );
 
-        _lpPrice = _lpPrice.mulDiv(lpAmount + deltaLpAmount, lpAmount);
+        lpPrice = lpPrice.mulDiv(lpAmount + deltaLpAmount, lpAmount);
         uint256 rewardBalanceAfter = IERC20(rewardToken).balanceOf(_this);
 
-        emit RewardsCompounded(rewardBalance - rewardBalanceAfter, deltaLpAmount, _lpPrice);
+        emit RewardsCompounded(rewardBalance - rewardBalanceAfter, deltaLpAmount, lpPrice);
     }
 
     /// @inheritdoc ILpStaker
@@ -272,23 +272,18 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
     }
 
     /// @inheritdoc ILpStaker
-    function lpPrice() external view returns (uint256) {
-        return _lpPrice;
-    }
-
-    /// @inheritdoc ILpStaker
     function sharesOf(address account) external view returns (uint256) {
         return balanceOf(account);
     }
 
     /// @inheritdoc ILpStaker
     function lpAmountOf(address account) external view returns (uint256) {
-        return balanceOf(account).mulDiv(_lpPrice, 1 ether);
+        return balanceOf(account).mulDiv(lpPrice, 1 ether);
     }
 
     /// @inheritdoc ILpStaker
     function assetsOf(address account) external view returns (uint256, uint256) {
-        return lpWrapper.previewBurn(balanceOf(account).mulDiv(_lpPrice, 1 ether));
+        return lpWrapper.previewBurn(balanceOf(account).mulDiv(lpPrice, 1 ether));
     }
 
     /// @inheritdoc ILpStaker
@@ -315,7 +310,7 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
      * ------------------------------------------------------------------------------- */
 
     function _mintShares(address to, uint256 lpAmount) internal returns (uint256 shares) {
-        uint256 lpPrice_ = _lpPrice;
+        uint256 lpPrice_ = lpPrice;
 
         shares = lpAmount.mulDiv(1 ether, lpPrice_);
         _mint(to, shares);
@@ -324,7 +319,7 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
     }
 
     function _burnShares(address from, uint256 shares) internal returns (uint256 lpAmount) {
-        uint256 lpPrice_ = _lpPrice;
+        uint256 lpPrice_ = lpPrice;
 
         lpAmount = shares.mulDiv(lpPrice_, 1 ether);
         _burn(from, shares);
