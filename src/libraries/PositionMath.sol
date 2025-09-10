@@ -23,7 +23,7 @@ library PositionMath {
      * @param amount0 Amount of token0.
      * @param amount1 Amount of token1.
      * @param sqrtPriceX96 Square root of the current price in the pool.
-     * @return Capital amount.
+     * @return Capital amount in token1.
      */
     function calculateCapital(uint256 amount0, uint256 amount1, uint256 sqrtPriceX96)
         internal
@@ -35,6 +35,39 @@ library PositionMath {
         } else {
             uint256 priceX128 = Math.mulDiv(sqrtPriceX96, sqrtPriceX96, Q64);
             return Math.mulDiv(amount0, priceX128, Q128) + amount1;
+        }
+    }
+
+    /**
+     * @dev Converts token amounts between different tokens using the current pool price.
+     * @param amount Amount of the token to convert.
+     * @param zeroForOne Direction of the converting; true if converting token0 to token1, false - token1 to token0.
+     * @param sqrtPriceX96 The current price of the pool as a sqrt(token1/token0)
+     * @return convertedAmount Converted amount of the other token.
+     */
+    function convertAmount(uint256 amount, bool zeroForOne, uint256 sqrtPriceX96)
+        internal
+        pure
+        returns (uint256 convertedAmount)
+    {
+        if (zeroForOne) {
+            // converting token0 to token1: amount1 = amount0 * price
+            if (sqrtPriceX96 < Q128) {
+                return Math.mulDiv(amount, sqrtPriceX96 * sqrtPriceX96, Q192);
+            } else {
+                uint256 priceX128 = Math.mulDiv(sqrtPriceX96, sqrtPriceX96, Q64);
+                return Math.mulDiv(amount, priceX128, Q128);
+            }
+        } else {
+            // converting token1 to token0: amount0 = amount1 / price
+            if (sqrtPriceX96 < Q128) {
+                uint256 priceX128 = Math.mulDiv(sqrtPriceX96, sqrtPriceX96, Q64);
+                return Math.mulDiv(amount, Q128, priceX128);
+            } else {
+                //uint256 convertedAmountX96 = Math.mulDiv(amount, Q192, sqrtPriceX96);
+                //return Math.mulDiv(convertedAmountX96,  Q96, sqrtPriceX96);
+                return Math.mulDiv(amount, Q192, sqrtPriceX96) / sqrtPriceX96;
+            }
         }
     }
 

@@ -126,12 +126,6 @@ interface ILpWrapper is IVeloFarm, IAccessControlEnumerable, IERC20 {
         returns (IVeloAmmModule.ProtocolParams memory params, uint256 d9);
 
     /**
-     * @dev Returns the address of the position manager.
-     * @return Address of the position manager.
-     */
-    function positionManager() external view returns (address);
-
-    /**
      * @dev Returns the core contract address.
      * @return Address of the core contract.
      */
