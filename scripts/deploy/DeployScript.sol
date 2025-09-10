@@ -15,6 +15,7 @@ abstract contract DeployScript {
         // VeloDeployFactory
         address lpWrapperAdmin;
         address lpWrapperManager;
+        address lpWrapperOperator;
         uint256 minInitialTotalSupply;
         address factoryOperator;
         address factoryProposer;
@@ -31,6 +32,7 @@ abstract contract DeployScript {
         IPulseStrategyModule strategyModule;
         IVeloDeployFactory deployFactory;
         ILpWrapper lpWrapperImplementation;
+        ILpStaker lpStakerImplementation;
     }
 
     bytes32 public constant ADMIN_ROLE = keccak256("admin");
@@ -58,17 +60,21 @@ abstract contract DeployScript {
             params.weth
         );
         contracts.lpWrapperImplementation = new LpWrapper(address(contracts.core));
+        contracts.lpStakerImplementation = new LpStaker(address(contracts.core));
         contracts.deployFactory = new VeloDeployFactory(
             params.deployer,
             contracts.core,
             contracts.strategyModule,
-            address(contracts.lpWrapperImplementation)
+            address(contracts.lpWrapperImplementation),
+            address(contracts.lpStakerImplementation)
         );
 
         contracts.core.setProtocolParams(abi.encode(params.protocolParams));
 
         contracts.deployFactory.setLpWrapperAdmin(params.lpWrapperAdmin);
         contracts.deployFactory.setLpWrapperManager(params.lpWrapperManager);
+        contracts.deployFactory.setLpWrapperOperator(params.lpWrapperOperator);
+
         contracts.deployFactory.setMinInitialTotalSupply(params.minInitialTotalSupply);
 
         contracts.core.grantRole(ADMIN_ROLE, params.mellowAdmin);

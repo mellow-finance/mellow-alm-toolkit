@@ -16,6 +16,9 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
     /// @dev Set of all deployed LP wrappers
     EnumerableSet.AddressSet private _lpWrappers;
 
+    /// @dev Mapping of LpWrapper addresses to their corresponding LpStaker
+    mapping(address => address) private _lpWrapperStaker;
+
     /// @dev Mapping of proposal DeployParams IDs
     mapping(bytes32 => DeployParams) private _deployParams;
 
@@ -26,12 +29,15 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
 
     address public lpWrapperAdmin;
     address public lpWrapperManager;
+    address public lpWrapperOperator;
+
     uint256 public minInitialTotalSupply;
 
     ICore public immutable core;
     IAmmModule public immutable ammModule;
     IPulseStrategyModule public immutable strategyModule;
     address public immutable lpWrapperImplementation;
+    address public immutable lpStakerImplementation;
 
     /// ---------------------- INITIALIZER FUNCTIONS ----------------------
 
@@ -39,7 +45,8 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
         address admin_,
         ICore core_,
         IPulseStrategyModule strategyModule_,
-        address lpWrapperImplementation_
+        address lpWrapperImplementation_,
+        address lpStakerImplementation_
     ) initializer {
         __DefaultAccessControl_init(admin_);
         core = core_;
@@ -47,6 +54,7 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
         ammModule = core.ammModule();
 
         lpWrapperImplementation = lpWrapperImplementation_;
+        lpStakerImplementation = lpStakerImplementation_;
     }
 
     /// ---------------------- EXTERNAL MUTATING FUNCTIONS ----------------------
@@ -190,6 +198,29 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
     }
 
     /// @inheritdoc IVeloDeployFactory
+    function deployStaker(address lpWrapper, uint32 timeLock)
+        external
+        returns (ILpStaker lpStaker)
+    {
+        _requireAtLeastOperator();
+        if (!_lpWrappers.contains(lpWrapper)) {
+            revert LpWrapperNotExists(lpWrapper);
+        }
+        if (_lpWrapperStaker[lpWrapper] != address(0)) {
+            revert LpWrapperAlreadyHasStaker(lpWrapper, _lpWrapperStaker[lpWrapper]);
+        }
+
+        lpStaker = ILpStaker(Clones.clone(lpStakerImplementation));
+        lpStaker.initialize(
+            ILpWrapper(lpWrapper), lpWrapperAdmin, lpWrapperManager, lpWrapperOperator, timeLock
+        );
+
+        _lpWrapperStaker[lpWrapper] = address(lpStaker);
+
+        emit LpStakerDeployed(address(lpStaker), lpWrapper, msg.sender);
+    }
+
+    /// @inheritdoc IVeloDeployFactory
     function setLpWrapperAdmin(address lpWrapperAdmin_) external {
         _requireAdmin();
         if (lpWrapperAdmin_ == address(0)) {
@@ -204,6 +235,13 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
         _requireAdmin();
         lpWrapperManager = lpWrapperManager_;
         emit LpWrapperManagerSet(lpWrapperManager_, msg.sender);
+    }
+
+    /// @inheritdoc IVeloDeployFactory
+    function setLpWrapperOperator(address lpWrapperOperator_) external {
+        _requireAdmin();
+        lpWrapperOperator = lpWrapperOperator_;
+        emit LpWrapperOperatorSet(lpWrapperOperator_, msg.sender);
     }
 
     /// @inheritdoc IVeloDeployFactory
@@ -322,6 +360,11 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
     }
 
     /// @inheritdoc IVeloDeployFactory
+    function lpWrapperToStaker(address lpWrapper) external view returns (address) {
+        return _lpWrapperStaker[lpWrapper];
+    }
+
+    /// @inheritdoc IVeloDeployFactory
     function configureNameAndSymbol(address pool)
         public
         view
@@ -384,6 +427,8 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
                 core.ammModule().getAmmPosition(position.ammPositionIds[i]);
         }
 
-        emit StrategyCreated(strategyCreatedParams);
+        emit StrategyCreated(
+            ILpWrapper(lpWrapper).pool(), lpWrapper, msg.sender, strategyCreatedParams
+        );
     }
 }

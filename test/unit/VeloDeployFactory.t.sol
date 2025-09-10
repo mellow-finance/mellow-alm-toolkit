@@ -16,7 +16,7 @@ contract Unit is Fixture {
     function testConstructor() external {
         vm.expectRevert();
         new VeloDeployFactory(
-            address(0), ICore(address(0)), IPulseStrategyModule(address(0)), address(0)
+            address(0), ICore(address(0)), IPulseStrategyModule(address(0)), address(0), address(0)
         );
 
         DeployScript.CoreDeployment memory contracts = deployContracts();
@@ -27,7 +27,8 @@ contract Unit is Fixture {
             address(0),
             contracts.core,
             contracts.strategyModule,
-            address(contracts.lpWrapperImplementation)
+            address(contracts.lpWrapperImplementation),
+            address(contracts.lpStakerImplementation)
         );
 
         vm.expectRevert();
@@ -35,14 +36,16 @@ contract Unit is Fixture {
             Constants.OPTIMISM_DEPLOYER,
             ICore(address(0)),
             contracts.strategyModule,
-            address(contracts.lpWrapperImplementation)
+            address(contracts.lpWrapperImplementation),
+            address(contracts.lpStakerImplementation)
         );
 
         factory = new VeloDeployFactory(
             Constants.OPTIMISM_DEPLOYER,
             contracts.core,
             contracts.strategyModule,
-            address(contracts.lpWrapperImplementation)
+            address(contracts.lpWrapperImplementation),
+            address(contracts.lpStakerImplementation)
         );
     }
 
@@ -432,5 +435,33 @@ contract Unit is Fixture {
             /// @dev a bit change params to have new entity
             deployParams.slippageD9 += 1;
         }
+    }
+
+    function testDeployLpStaker() public {
+        DeployScript.CoreDeployment memory contracts = deployContracts();
+        IVeloDeployFactory factory = contracts.deployFactory;
+
+        vm.expectRevert(abi.encodeWithSignature("Forbidden()"));
+        factory.deployStaker(address(1234), 1 days);
+
+        (ILpWrapper lpWrapper,) =
+            deployLpWrapper(pool, IPulseStrategyModule.StrategyType.LazySyncing, contracts);
+
+        vm.prank(params.factoryOperator);
+        ILpStaker lpStaker = factory.deployStaker(address(lpWrapper), 1 days);
+        assertTrue(address(lpStaker) != address(0));
+        assertTrue(lpStaker.lpWrapper() == lpWrapper);
+        assertTrue(lpStaker.timeLock() == 1 days);
+
+        vm.startPrank(params.factoryOperator);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IVeloDeployFactory.LpWrapperAlreadyHasStaker.selector,
+                address(lpWrapper),
+                factory.lpWrapperToStaker(address(lpWrapper))
+            )
+        );
+        factory.deployStaker(address(lpWrapper), 1 days);
+        vm.stopPrank();
     }
 }

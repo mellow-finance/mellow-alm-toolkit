@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.25;
 
+import "./ILpStaker.sol";
 import "./ILpWrapper.sol";
 
 import "@openzeppelin/contracts/access/extensions/IAccessControlEnumerable.sol";
@@ -76,6 +77,18 @@ interface IVeloDeployFactory is IAccessControlEnumerable {
     error LpWrapperAlreadyExists(address);
 
     /**
+     * @notice Thrown when an LP wrapper not exists for a pool.
+     */
+    error LpWrapperNotExists(address);
+
+    /**
+     * @notice Thrown when an LP staker already exists for a pool.
+     * @param lpWrapper The address of the LP wrapper.
+     * @param lpStaker The address of the LP staker.
+     */
+    error LpWrapperAlreadyHasStaker(address lpWrapper, address lpStaker);
+
+    /**
      * @notice Thrown when the provided index is invalid.
      */
     error InvalidIndex();
@@ -125,9 +138,27 @@ interface IVeloDeployFactory is IAccessControlEnumerable {
 
     /**
      * @notice Emitted when a strategy is successfully created.
+     * @param pool The address of the liquidity pool associated with the strategy.
+     * @param lpWrapper The address of the LP wrapper associated with the strategy.
+     * @param sender The address of the account that initiated the strategy creation.
      * @param params The parameters associated with the newly created strategy.
      */
-    event StrategyCreated(StrategyCreatedParams params);
+    event StrategyCreated(
+        address indexed pool,
+        address indexed lpWrapper,
+        address indexed sender,
+        StrategyCreatedParams params
+    );
+
+    /**
+     * @notice Emitted when a new LP staker is deployed.
+     * @param lpWrapper The address of the deployed LP wrapper.
+     * @param lpStaker The address of the deployed LP staker.
+     * @param sender The address of the sender.
+     */
+    event LpStakerDeployed(
+        address indexed lpStaker, address indexed lpWrapper, address indexed sender
+    );
 
     /**
      * @notice Emitted when a wrapper is removed from a pool.
@@ -150,6 +181,13 @@ interface IVeloDeployFactory is IAccessControlEnumerable {
      * @param sender The address of the sender.
      */
     event LpWrapperManagerSet(address indexed lpWrapperManager, address indexed sender);
+
+    /**
+     * @notice Emitted when the LP wrapper operator address is updated.
+     * @param lpWrapperOperator The new LP wrapper operator address.
+     * @param sender The address of the sender.
+     */
+    event LpWrapperOperatorSet(address indexed lpWrapperOperator, address indexed sender);
 
     /**
      * @notice Emitted when the minimum initial total supply is updated.
@@ -216,6 +254,16 @@ interface IVeloDeployFactory is IAccessControlEnumerable {
     function deployStrategy(bytes32 proposalId) external returns (ILpWrapper);
 
     /**
+     * @notice Deploys a new LP staker for the specified LP wrapper with a given time lock.
+     * @param lpWrapper The address of the LP wrapper for which to deploy the staker.
+     * @param timeLock The time lock duration for the LP staker.
+     * @return lpStaker The address of the deployed LP staker.
+     */
+    function deployStaker(address lpWrapper, uint32 timeLock)
+        external
+        returns (ILpStaker lpStaker);
+
+    /**
      * @notice Retrieves the LP wrapper associated with the given deployment parameters.
      * @param deployParams The deployment parameters for which to retrieve the LP wrapper.
      * @return The address of the LP wrapper associated with the given deployment parameters.
@@ -236,6 +284,12 @@ interface IVeloDeployFactory is IAccessControlEnumerable {
      * @param lpWrapperManager_ The address to set as the LP wrapper manager.
      */
     function setLpWrapperManager(address lpWrapperManager_) external;
+
+    /**
+     * @notice Sets a new LP wrapper operator address.
+     * @param lpWrapperOperator_ The address to set as the LP wrapper operator.
+     */
+    function setLpWrapperOperator(address lpWrapperOperator_) external;
 
     /**
      * @notice Sets the minimum initial total supply required for an LP wrapper.
@@ -358,6 +412,13 @@ interface IVeloDeployFactory is IAccessControlEnumerable {
      * @return Array of addresses of the LP wrappers associated with the specified pool.
      */
     function poolToWrappers(address pool) external view returns (address[] memory);
+
+    /**
+     * @notice Maps an LP wrapper address to its associated LP staker address.
+     * @param lpWrapper The address of the LP wrapper.
+     * @return The address of the LP staker associated with the specified LP wrapper.
+     */
+    function lpWrapperToStaker(address lpWrapper) external view returns (address);
 
     /**
      * @notice Gets the LP wrapper admin address.

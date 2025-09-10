@@ -88,8 +88,8 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
         }
 
         __ERC20_init(
-            string(abi.encodePacked(IERC20Metadata(address(lpWrapper_)).name(), "Stake")),
-            string(abi.encodePacked("S", IERC20Metadata(address(lpWrapper_)).symbol()))
+            string(abi.encodePacked("Staked", IERC20Metadata(address(lpWrapper_)).name())),
+            string(abi.encodePacked("st", IERC20Metadata(address(lpWrapper_)).symbol()))
         );
 
         __Context_init();

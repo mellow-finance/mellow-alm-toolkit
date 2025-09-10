@@ -24,6 +24,8 @@ library Constants {
         address(uint160(uint256(keccak256("OPTIMISM_LP_WRAPPER_ADMIN"))));
     address internal constant OPTIMISM_LP_WRAPPER_MANAGER =
         address(uint160(uint256(keccak256("OPTIMISM_LP_WRAPPER_MANAGER"))));
+    address internal constant OPTIMISM_LP_WRAPPER_OPERATOR =
+        address(uint160(uint256(keccak256("OPTIMISM_LP_WRAPPER_OPERATOR"))));
 
     address internal constant OPTIMISM_FACTORY_OPERATOR =
         address(uint160(uint256(keccak256("OPTIMISM_FACTORY_OPERATOR"))));
@@ -49,6 +51,7 @@ library Constants {
                 weth: OPTIMISM_WETH,
                 lpWrapperAdmin: OPTIMISM_LP_WRAPPER_ADMIN,
                 lpWrapperManager: OPTIMISM_LP_WRAPPER_MANAGER,
+                lpWrapperOperator: OPTIMISM_LP_WRAPPER_OPERATOR,
                 minInitialTotalSupply: OPTIMISM_MIN_INITIAL_TOTAL_SUPPLY,
                 factoryOperator: OPTIMISM_FACTORY_OPERATOR,
                 factoryProposer: OPTIMISM_FACTORY_PROPOSER,
