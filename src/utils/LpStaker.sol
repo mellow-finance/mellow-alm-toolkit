@@ -10,30 +10,32 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
     using SafeERC20 for IERC20;
     using Math for uint256;
 
-    ICore public immutable core;
-
-    IVeloAmmModule public immutable ammModule;
-
-    IOracle public immutable oracle;
-
-    ILpWrapper public lpWrapper;
-
-    address public rewardToken;
-
-    /// @inheritdoc ILpStaker
-    uint32 public timeLock;
-
     /// @inheritdoc ILpStaker
     uint32 public constant MIN_TIMELOCK_DURATION = 4 hours;
-
     /// @inheritdoc ILpStaker
     uint32 public constant MAX_TIMELOCK_DURATION = 7 days;
-
     /// @inheritdoc ILpStaker
     uint32 public constant MAX_ACTIVE_LOCKS = 20;
 
     /// @inheritdoc ILpStaker
+    ICore public immutable core;
+    /// @inheritdoc ILpStaker
+    IVeloAmmModule public immutable ammModule;
+    /// @inheritdoc ILpStaker
+    IOracle public immutable oracle;
+
+    /// @inheritdoc ILpStaker
+    ILpWrapper public lpWrapper;
+    /// @inheritdoc ILpStaker
+    address public rewardToken;
+    /// @inheritdoc ILpStaker
+    uint32 public timeLock;
+    /// @inheritdoc ILpStaker
     uint256 public lpPrice;
+    /// @inheritdoc ILpStaker
+    address public token0;
+    /// @inheritdoc ILpStaker
+    address public token1;
 
     /// @dev A record of locked amounts for each account
     mapping(address => Checkpoints.Trace224) private lockedCheckpoints;
@@ -92,13 +94,12 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
 
         __Context_init();
 
+        token0 = address(lpWrapper_.token0());
+        token1 = address(lpWrapper_.token1());
+
         /// @dev give infinite approvals to lpWrapper for token0 and token1
-        IERC20(address(lpWrapper.token0())).safeIncreaseAllowance(
-            address(lpWrapper_), type(uint256).max
-        );
-        IERC20(address(lpWrapper.token1())).safeIncreaseAllowance(
-            address(lpWrapper_), type(uint256).max
-        );
+        IERC20(token0).safeIncreaseAllowance(address(lpWrapper_), type(uint256).max);
+        IERC20(token1).safeIncreaseAllowance(address(lpWrapper_), type(uint256).max);
 
         _setTimeLock(timeLock_);
     }
@@ -111,6 +112,7 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
             revert ZeroAmount();
         }
 
+        /// @dev rewards are collected on behalf of the sender before transfer, because of LpWrapper logic
         IERC20(address(lpWrapper)).safeTransferFrom(_sender, address(this), lpAmount);
 
         shares = _mintShares(_sender, lpAmount);
@@ -150,8 +152,8 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
         (amount0, amount1) = lpWrapper.previewMint(lpAmount);
 
         /// @dev pull tokens from the sender in precise amounts
-        IERC20(lpWrapper.token0()).safeTransferFrom(_sender, _this, amount0);
-        IERC20(lpWrapper.token1()).safeTransferFrom(_sender, _this, amount1);
+        IERC20(token0).safeTransferFrom(_sender, _this, amount0);
+        IERC20(token1).safeTransferFrom(_sender, _this, amount1);
 
         (actualAmount0, actualAmount1, actualLpAmount) = lpWrapper.mint(
             ILpWrapper.MintParams({
@@ -258,17 +260,11 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
 
         (uint256 rewardAmount0, uint256 rewardAmount1) = _splitRewards(rewardBalance);
 
-        quoteParams[0] = QuoteParams({
-            tokenIn: _rewardToken,
-            tokenOut: lpWrapper.token0(),
-            amountIn: rewardAmount0
-        });
+        quoteParams[0] =
+            QuoteParams({tokenIn: _rewardToken, tokenOut: token0, amountIn: rewardAmount0});
 
-        quoteParams[1] = QuoteParams({
-            tokenIn: _rewardToken,
-            tokenOut: lpWrapper.token1(),
-            amountIn: rewardAmount1
-        });
+        quoteParams[1] =
+            QuoteParams({tokenIn: _rewardToken, tokenOut: token1, amountIn: rewardAmount1});
     }
 
     /// @inheritdoc ILpStaker
@@ -329,10 +325,11 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
 
     /// @dev Override the _update function to enforce locked shares during transfers and burns
     function _update(address from, address to, uint256 value) internal override {
+        /// @dev make optimistic transfer first, then check the locked shares
         super._update(from, to, value);
 
         if (from != address(0)) {
-            /// @dev when not mint (burn or transfer): check the available shares (not locked)
+            /// @dev when not mint (burn or transfer): check available shares (not locked)
             (uint256 lockedShares,,) = getLockedShares(from, uint32(block.timestamp));
             uint256 remainBalance = balanceOf(from);
             if (remainBalance < lockedShares) {
@@ -357,17 +354,20 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
             revert TooManyActiveLocks(account, activeCheckpoints);
         }
 
+        /// @dev calculate the timestamp of new checkpoint in the future
         uint32 timestampLock = timestamp_ + timeLock;
-        /// @dev if there are existing checkpoints, check if the last one has the same timestamp
+
+        /// @dev check if there is existing a checkpoint with the same timestamp
         if (length > 0) {
             Checkpoints.Checkpoint224 memory lastCheckpoint =
                 lockedCheckpoints[account].at(length - 1);
             if (lastCheckpoint._key == timestampLock) {
                 /// @dev merge with the last checkpoint if the timestamp is the same
+                /// https://github.com/OpenZeppelin/openzeppelin-contracts/blob/69c8def5f222ff96f2b5beff05dfba996368aa79/contracts/utils/structs/Checkpoints.sol#L152
                 value += lastCheckpoint._value;
             }
         }
-
+        /// @dev push with the same key just will rewrite the checkpoint value
         lockedCheckpoints[account].push(timestampLock, value);
     }
 

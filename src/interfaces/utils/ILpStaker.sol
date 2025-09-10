@@ -241,15 +241,36 @@ interface ILpStaker {
         view
         returns (uint256 lockedShares, uint32 activeCheckpoints, uint32 length);
 
-    /// @dev Duration of the timeLock for locked amounts
+    /// @notice Returns the duration of the timeLock for locked amounts
     function timeLock() external view returns (uint32);
 
-    /// @dev Minimum duration of the timeLock for locked amounts
+    /// @notice Returns the minimum duration of the timeLock for locked amounts
     function MIN_TIMELOCK_DURATION() external view returns (uint32);
 
-    /// @dev Maximum duration of the timeLock for locked amounts
+    /// @notice Returns the maximum duration of the timeLock for locked amounts
     function MAX_TIMELOCK_DURATION() external view returns (uint32);
 
-    /// @dev Maximum number of active locks per account
+    /// @notice Returns the maximum number of active locks per account
     function MAX_ACTIVE_LOCKS() external view returns (uint32);
+
+    /// @notice Returns the core contract
+    function core() external view returns (ICore);
+
+    /// @notice Returns the AMM module contract
+    function ammModule() external view returns (IVeloAmmModule);
+
+    /// @notice Returns the oracle contract
+    function oracle() external view returns (IOracle);
+
+    /// @notice Returns the LP wrapper contract
+    function lpWrapper() external view returns (ILpWrapper);
+
+    /// @notice Returns the reward token address
+    function rewardToken() external view returns (address);
+
+    /// @notice Returns the ERC20 token contract for token0 in the pool.
+    function token0() external view returns (address);
+
+    /// @notice Returns the ERC20 token contract for token1 in the pool.
+    function token1() external view returns (address);
 }
