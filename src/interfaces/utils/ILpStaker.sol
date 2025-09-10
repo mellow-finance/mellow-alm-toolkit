@@ -10,6 +10,9 @@ interface ILpStaker {
     /// @dev Thrown when an amount provided is zero
     error ZeroAmount();
 
+    /// @dev Thrown when an address provided is zero
+    error ZeroAddress();
+
     /// @dev Thrown when the provided LP wrapper is not compatible with the staker
     error InvalidLpWrapper();
 
@@ -127,10 +130,11 @@ interface ILpStaker {
      * This function transfers the specified amount of LP tokens from the caller to the staker
      * and mints the corresponding amount of shares to the caller.
      * Emits a `Staked` event upon successful completion.
-     * @param amount The amount of LP tokens to stake.
+     * @param lpAmount The amount of LP tokens to stake.
+     * @param recipient The address to receive the minted shares.
      * @return shares The amount of shares minted to the caller.
      */
-    function stake(uint256 amount) external returns (uint256 shares);
+    function stake(uint256 lpAmount, address recipient) external returns (uint256 shares);
 
     /**
      * @dev Mints LP tokens using the provided mint parameters and stakes them into the staker.
@@ -139,12 +143,13 @@ interface ILpStaker {
      * Emits a `Staked` event upon successful completion.
      * @param amount0 The amount of token0 to be used for minting.
      * @param amount1 The amount of token1 to be used for minting.
+     * @param recipient The address to receive the minted shares.
      * @return actualAmount0 The actual amount of token0 used for minting.
      * @return actualAmount1 The actual amount of token1 used for minting.
      * @return actualLpAmount The actual amount of LP tokens minted.
      * @return shares The amount of shares minted to the caller.
      */
-    function mintAndStake(uint256 amount0, uint256 amount1)
+    function mintAndStake(uint256 amount0, uint256 amount1, address recipient)
         external
         returns (
             uint256 actualAmount0,
@@ -159,9 +164,10 @@ interface ILpStaker {
      * amount of underlying assets from the liquidity pool.
      * Emits an `Unstaked` event upon successful completion.
      * @param shares The amount of shares to unstake.
-     * @return amount The amount of underlying assets withdrawn from the liquidity pool.
+     * @param recipient The address to receive the withdrawn lpAmount.
+     * @return lpAmount The amount of underlying assets withdrawn from the liquidity pool.
      */
-    function unstake(uint256 shares) external returns (uint256 amount);
+    function unstake(uint256 shares, address recipient) external returns (uint256 lpAmount);
 
     /**
      * @dev Burns the specified amount of shares and withdraws the corresponding

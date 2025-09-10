@@ -105,34 +105,44 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
     }
 
     /// @inheritdoc ILpStaker
-    function stake(uint256 lpAmount) external nonReentrant returns (uint256 shares) {
-        address _sender = msg.sender;
-
+    function stake(uint256 lpAmount, address recipient)
+        external
+        nonReentrant
+        returns (uint256 shares)
+    {
+        if (recipient == address(0)) {
+            revert ZeroAddress();
+        }
         if (lpAmount == 0) {
             revert ZeroAmount();
         }
 
         /// @dev rewards are collected on behalf of the sender before transfer, because of LpWrapper logic
-        IERC20(address(lpWrapper)).safeTransferFrom(_sender, address(this), lpAmount);
+        IERC20(address(lpWrapper)).safeTransferFrom(msg.sender, address(this), lpAmount);
 
-        shares = _mintShares(_sender, lpAmount);
+        shares = _mintShares(recipient, lpAmount);
     }
 
     /// @inheritdoc ILpStaker
-    function unstake(uint256 shares) external nonReentrant returns (uint256 lpAmount) {
-        address _sender = msg.sender;
-
+    function unstake(uint256 shares, address recipient)
+        external
+        nonReentrant
+        returns (uint256 lpAmount)
+    {
+        if (recipient == address(0)) {
+            revert ZeroAddress();
+        }
         if (shares == 0) {
             revert ZeroAmount();
         }
 
-        lpAmount = _burnShares(_sender, shares);
+        lpAmount = _burnShares(msg.sender, shares);
 
-        IERC20(address(lpWrapper)).safeTransfer(_sender, lpAmount);
+        IERC20(address(lpWrapper)).safeTransfer(recipient, lpAmount);
     }
 
     /// @inheritdoc ILpStaker
-    function mintAndStake(uint256 amount0, uint256 amount1)
+    function mintAndStake(uint256 amount0, uint256 amount1, address recipient)
         external
         nonReentrant
         returns (
@@ -144,6 +154,9 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
     {
         address _this = address(this);
         address _sender = msg.sender;
+        if (recipient == address(0)) {
+            revert ZeroAddress();
+        }
 
         uint256 lpAmount = lpWrapper.previewDeposit(amount0, amount1);
         if (lpAmount == 0) {
@@ -165,7 +178,7 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
             })
         );
 
-        shares = _mintShares(_sender, actualLpAmount);
+        shares = _mintShares(recipient, actualLpAmount);
     }
 
     /// @inheritdoc ILpStaker
@@ -192,11 +205,11 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
             _lpWrapper.withdraw(actualLpAmount, amount0Min, amount1Min, _this, type(uint256).max);
 
         if (actualAmount0 > 0) {
-            IERC20(address(_lpWrapper.token0())).safeTransfer(recipient, actualAmount0);
+            IERC20(token0).safeTransfer(recipient, actualAmount0);
         }
 
         if (actualAmount1 > 0) {
-            IERC20(address(_lpWrapper.token1())).safeTransfer(recipient, actualAmount1);
+            IERC20(token1).safeTransfer(recipient, actualAmount1);
         }
     }
 
@@ -220,8 +233,8 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
 
         _swapRewards(swapParams);
 
-        uint256 balance0 = IERC20(lpWrapper_.token0()).balanceOf(_this);
-        uint256 balance1 = IERC20(lpWrapper_.token1()).balanceOf(_this);
+        uint256 balance0 = IERC20(token0).balanceOf(_this);
+        uint256 balance1 = IERC20(token1).balanceOf(_this);
 
         uint256 lpAmount = IERC20(address(lpWrapper_)).balanceOf(_this);
 

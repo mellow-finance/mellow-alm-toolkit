@@ -49,7 +49,7 @@ contract Unit is Fixture {
 
         vm.startPrank(user);
         IERC20(address(lpWrapper)).safeIncreaseAllowance(address(lpStaker), lpAmount);
-        uint256 shares = lpStaker.stake(lpAmount);
+        uint256 shares = lpStaker.stake(lpAmount, user);
         vm.stopPrank();
 
         assertEq(IERC20(address(lpWrapper)).balanceOf(user), 0);
@@ -60,7 +60,7 @@ contract Unit is Fixture {
 
         uint256 amountExpected = lpStaker.lpAmountOf(user);
         vm.prank(user);
-        uint256 amount = lpStaker.unstake(shares);
+        uint256 amount = lpStaker.unstake(shares, user);
 
         assertEq(amount, amountExpected, "unstake amount mismatch");
         assertEq(lpStaker.sharesOf(user), 0, "shares after unstake mismatch");
@@ -84,7 +84,7 @@ contract Unit is Fixture {
         uint256 lpAmountActual;
         uint256 shares;
 
-        (amount0, amount1, lpAmountActual, shares) = lpStaker.mintAndStake(amount0, amount1);
+        (amount0, amount1, lpAmountActual, shares) = lpStaker.mintAndStake(amount0, amount1, user);
         vm.stopPrank();
 
         assertEq(IERC20(address(lpWrapper)).balanceOf(user), 0);
@@ -135,7 +135,7 @@ contract Unit is Fixture {
 
         vm.startPrank(user);
         IERC20(address(lpWrapper)).safeIncreaseAllowance(address(lpStaker), lpAmount);
-        uint256 shares = lpStaker.stake(lpAmount);
+        uint256 shares = lpStaker.stake(lpAmount, user);
         vm.stopPrank();
 
         skip(30 days);
@@ -162,7 +162,7 @@ contract Unit is Fixture {
 
         uint256 amountExpected = lpStaker.lpAmountOf(user);
         vm.prank(user);
-        uint256 amount = lpStaker.unstake(shares);
+        uint256 amount = lpStaker.unstake(shares, user);
 
         assertEq(amount, amountExpected, "unstake amount mismatch");
         assertEq(lpStaker.sharesOf(user), 0, "shares after unstake mismatch");
@@ -192,7 +192,7 @@ contract Unit is Fixture {
 
         vm.startPrank(user);
         IERC20(address(lpWrapper)).safeIncreaseAllowance(address(lpStaker), lpAmount);
-        uint256 shares = lpStaker.stake(lpAmount);
+        uint256 shares = lpStaker.stake(lpAmount, user);
         vm.stopPrank();
 
         skip(30 days);
@@ -230,7 +230,7 @@ contract Unit is Fixture {
 
         uint256 amountExpected = lpStaker.lpAmountOf(user);
         vm.prank(user);
-        uint256 amount = lpStaker.unstake(shares);
+        uint256 amount = lpStaker.unstake(shares, user);
 
         assertEq(amount, amountExpected, "unstake amount mismatch");
         assertEq(lpStaker.sharesOf(user), 0, "shares after unstake mismatch");
@@ -265,7 +265,7 @@ contract Unit is Fixture {
 
         vm.startPrank(user);
         IERC20(address(lpWrapper)).safeIncreaseAllowance(address(lpStaker), lpAmount);
-        lpStaker.stake(lpAmount);
+        lpStaker.stake(lpAmount, user);
         vm.stopPrank();
 
         for (uint256 index = 0; index < 42; index++) {
@@ -351,7 +351,7 @@ contract Unit is Fixture {
         uint256 lpAmountActual;
         uint256 shares;
 
-        (amount0, amount1, lpAmountActual, shares) = lpStaker.mintAndStake(amount0, amount1);
+        (amount0, amount1, lpAmountActual, shares) = lpStaker.mintAndStake(amount0, amount1, user);
 
         for (uint256 index = 0; index < 10; index++) {
             uint256 sharesToTransfer = (index + 1) * shares / (10 + 1);
@@ -394,11 +394,11 @@ contract Unit is Fixture {
             );
 
             vm.prank(user);
-            lpStaker.unstake(shares - shares / 2);
+            lpStaker.unstake(shares - shares / 2, user);
             assertEq(ERC20(address(lpStaker)).balanceOf(user), 0, "user shares mismatch");
 
             vm.prank(recipient);
-            lpStaker.unstake(shares / 2);
+            lpStaker.unstake(shares / 2, recipient);
             assertEq(ERC20(address(lpStaker)).balanceOf(recipient), 0, "recipient shares mismatch");
         }
     }
@@ -421,7 +421,7 @@ contract Unit is Fixture {
         {
             /// @dev if some time has passed before, a new checkpoint is created
             skip(1 hours);
-            (,,, uint256 sharesDelta) = lpStaker.mintAndStake(1 ether, 1 ether);
+            (,,, uint256 sharesDelta) = lpStaker.mintAndStake(1 ether, 1 ether, user);
             (uint256 lockedShares, uint32 activeCheckpoints, uint32 length) =
                 lpStaker.getLockedShares(user, uint32(block.timestamp));
             totalShares += sharesDelta;
@@ -434,7 +434,7 @@ contract Unit is Fixture {
         }
         {
             /// @dev if some time has not passed before, a new checkpoint is not created
-            (,,, uint256 sharesDelta) = lpStaker.mintAndStake(1 ether, 1 ether);
+            (,,, uint256 sharesDelta) = lpStaker.mintAndStake(1 ether, 1 ether, user);
             (uint256 lockedShares, uint32 activeCheckpoints, uint32 length) =
                 lpStaker.getLockedShares(user, uint32(block.timestamp));
             totalShares += sharesDelta;
@@ -448,7 +448,7 @@ contract Unit is Fixture {
         {
             /// @dev if some time has passed before, a new checkpoint is created
             skip(1 hours);
-            (,,, uint256 sharesDelta) = lpStaker.mintAndStake(1 ether, 1 ether);
+            (,,, uint256 sharesDelta) = lpStaker.mintAndStake(1 ether, 1 ether, user);
             (uint256 lockedShares, uint32 activeCheckpoints, uint32 length) =
                 lpStaker.getLockedShares(user, uint32(block.timestamp));
             totalShares += sharesDelta;
@@ -461,7 +461,7 @@ contract Unit is Fixture {
         {
             /// @dev if some time has passed before, a new checkpoint is created
             skip(timeLock - 2 hours + 1);
-            (,,, uint256 sharesDelta) = lpStaker.mintAndStake(1 ether, 1 ether);
+            (,,, uint256 sharesDelta) = lpStaker.mintAndStake(1 ether, 1 ether, user);
             (uint256 lockedShares, uint32 activeCheckpoints, uint32 length) =
                 lpStaker.getLockedShares(user, uint32(block.timestamp));
             totalShares += sharesDelta;
@@ -474,7 +474,7 @@ contract Unit is Fixture {
         {
             /// @dev if some time has passed before, a new checkpoint is created
             skip(1 hours);
-            (,,, uint256 sharesDelta) = lpStaker.mintAndStake(1 ether, 1 ether);
+            (,,, uint256 sharesDelta) = lpStaker.mintAndStake(1 ether, 1 ether, user);
             (uint256 lockedShares, uint32 activeCheckpoints, uint32 length) =
                 lpStaker.getLockedShares(user, uint32(block.timestamp));
             totalShares += sharesDelta;
@@ -505,7 +505,7 @@ contract Unit is Fixture {
         uint256 shares;
         for (uint256 index = 0; index < lpStaker.MAX_ACTIVE_LOCKS(); index++) {
             skip(1);
-            (,,, uint256 sharesDelta) = lpStaker.mintAndStake(1 ether, 1 ether);
+            (,,, uint256 sharesDelta) = lpStaker.mintAndStake(1 ether, 1 ether, user);
             shares += sharesDelta;
         }
         (uint256 lockedShares, uint32 activeCheckpoints, uint32 length) =
@@ -520,7 +520,7 @@ contract Unit is Fixture {
                 ILpStaker.TooManyActiveLocks.selector, user, lpStaker.MAX_ACTIVE_LOCKS()
             )
         );
-        lpStaker.mintAndStake(1 ether, 1 ether);
+        lpStaker.mintAndStake(1 ether, 1 ether, user);
 
         uint256 gas = gasleft();
         (lockedShares, activeCheckpoints, length) =
@@ -531,6 +531,132 @@ contract Unit is Fixture {
         assertEq(activeCheckpoints, lpStaker.MAX_ACTIVE_LOCKS(), "active checkpoints mismatch");
         assertEq(length, lpStaker.MAX_ACTIVE_LOCKS(), "length mismatch");
         vm.stopPrank();
+    }
+
+    function testStakeUnstakeRecipient() external {
+        ICLPool pool = ICLPool(factory.getPool(Constants.OPTIMISM_WETH, Constants.OPTIMISM_OP, 200));
+        (ILpStaker lpStaker, ILpWrapper lpWrapper) = _initLpStaker(pool, defaultTimeLock);
+
+        uint256 lpAmount = 1 ether;
+        (uint256 amount0, uint256 amount1) = lpWrapper.previewMint(lpAmount);
+
+        address recipient = vm.addr(uint256(keccak256("recipient")));
+        address target = vm.addr(uint256(keccak256("target")));
+
+        vm.startPrank(user);
+        deal(Constants.OPTIMISM_WETH, user, amount0);
+        deal(Constants.OPTIMISM_OP, user, amount1);
+        IERC20(Constants.OPTIMISM_WETH).safeIncreaseAllowance(address(lpWrapper), amount0);
+        IERC20(Constants.OPTIMISM_OP).safeIncreaseAllowance(address(lpWrapper), amount1);
+        (,, lpAmount) = lpWrapper.mint(
+            ILpWrapper.MintParams(lpAmount, amount0, amount1, user, type(uint256).max)
+        );
+
+        IERC20(address(lpWrapper)).safeIncreaseAllowance(address(lpStaker), lpAmount);
+
+        vm.expectRevert(ILpStaker.ZeroAddress.selector);
+        lpStaker.stake(lpAmount, address(0));
+
+        uint256 shares = lpStaker.stake(lpAmount, recipient);
+        vm.stopPrank();
+
+        assertEq(IERC20(address(lpWrapper)).balanceOf(recipient), 0);
+        assertEq(IERC20(address(lpStaker)).balanceOf(recipient), shares);
+        assertEq(lpStaker.lpAmountOf(recipient), lpAmount);
+
+        assertEq(IERC20(address(lpWrapper)).balanceOf(user), 0);
+        assertEq(IERC20(address(lpStaker)).balanceOf(user), 0);
+        assertEq(lpStaker.lpAmountOf(user), 0);
+
+        vm.prank(user);
+        vm.expectRevert(
+            abi.encodeWithSelector(IERC20Errors.ERC20InsufficientBalance.selector, user, 0, shares)
+        );
+        lpStaker.unstake(shares, target);
+
+        vm.prank(recipient);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ILpStaker.InsufficientUnlockedShares.selector, recipient, shares, shares
+            )
+        );
+        lpAmount = lpStaker.unstake(shares, target);
+
+        skip(defaultTimeLock);
+
+        vm.prank(recipient);
+        lpAmount = lpStaker.unstake(shares, target);
+
+        assertEq(IERC20(address(lpWrapper)).balanceOf(recipient), 0);
+        assertEq(IERC20(address(lpStaker)).balanceOf(recipient), 0);
+        assertEq(lpStaker.lpAmountOf(recipient), 0);
+
+        assertEq(IERC20(address(lpWrapper)).balanceOf(target), lpAmount);
+        assertEq(IERC20(address(lpStaker)).balanceOf(target), 0);
+        assertEq(lpStaker.lpAmountOf(target), 0);
+    }
+
+    function testMintWithdrawRecipient() external {
+        ICLPool pool = ICLPool(factory.getPool(Constants.OPTIMISM_WETH, Constants.OPTIMISM_OP, 200));
+        (ILpStaker lpStaker, ILpWrapper lpWrapper) = _initLpStaker(pool, defaultTimeLock);
+
+        uint256 lpAmount = 1 ether;
+        (uint256 amount0, uint256 amount1) = lpWrapper.previewMint(lpAmount);
+
+        address recipient = vm.addr(uint256(keccak256("recipient")));
+        address target = vm.addr(uint256(keccak256("target")));
+
+        vm.startPrank(user);
+        deal(Constants.OPTIMISM_WETH, user, amount0);
+        deal(Constants.OPTIMISM_OP, user, amount1);
+        IERC20(Constants.OPTIMISM_WETH).safeIncreaseAllowance(address(lpStaker), amount0);
+        IERC20(Constants.OPTIMISM_OP).safeIncreaseAllowance(address(lpStaker), amount1);
+
+        vm.expectRevert(ILpStaker.ZeroAddress.selector);
+        lpStaker.mintAndStake(amount0, amount1, address(0));
+
+        (uint256 actualAmount0, uint256 actualAmount1, uint256 actualLpAmount, uint256 shares) =
+            lpStaker.mintAndStake(amount0, amount1, recipient);
+        vm.stopPrank();
+
+        assertEq(IERC20(address(lpWrapper)).balanceOf(recipient), 0);
+        assertEq(IERC20(address(lpStaker)).balanceOf(recipient), shares);
+        assertEq(lpStaker.lpAmountOf(recipient), actualLpAmount);
+
+        assertEq(IERC20(address(lpWrapper)).balanceOf(user), 0);
+        assertEq(IERC20(address(lpStaker)).balanceOf(user), 0);
+        assertEq(lpStaker.lpAmountOf(user), 0);
+
+        vm.prank(user);
+        vm.expectRevert(
+            abi.encodeWithSelector(IERC20Errors.ERC20InsufficientBalance.selector, user, 0, shares)
+        );
+        lpStaker.unstakeAndWithdraw(shares, actualAmount0, actualAmount1, target);
+
+        vm.prank(recipient);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ILpStaker.InsufficientUnlockedShares.selector, recipient, shares, shares
+            )
+        );
+        lpStaker.unstakeAndWithdraw(shares, actualAmount0, actualAmount1, target);
+
+        skip(defaultTimeLock);
+
+        vm.prank(recipient);
+        (actualAmount0, actualAmount1, lpAmount) = lpStaker.unstakeAndWithdraw(shares, 0, 0, target);
+
+        assertEq(IERC20(lpStaker.token0()).balanceOf(recipient), 0);
+        assertEq(IERC20(lpStaker.token1()).balanceOf(recipient), 0);
+        assertEq(IERC20(address(lpWrapper)).balanceOf(recipient), 0);
+        assertEq(IERC20(address(lpStaker)).balanceOf(recipient), 0);
+        assertEq(lpStaker.lpAmountOf(recipient), 0);
+
+        assertEq(IERC20(lpStaker.token0()).balanceOf(target), actualAmount0);
+        assertEq(IERC20(lpStaker.token1()).balanceOf(target), actualAmount1);
+        assertEq(IERC20(address(lpWrapper)).balanceOf(target), 0);
+        assertEq(IERC20(address(lpStaker)).balanceOf(target), 0);
+        assertEq(lpStaker.lpAmountOf(target), 0);
     }
 
     function _buildSwapData(ILpStaker lpStaker, SwapRouterMock target)
