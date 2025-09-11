@@ -2,6 +2,15 @@
 pragma solidity 0.8.25;
 
 import "../../interfaces/modules/velo/IVeloAmmModule.sol";
+import "../../interfaces/utils/IVeloFarm.sol";
+
+import "../../interfaces/external/velo/ICLFactory.sol";
+import "../../interfaces/external/velo/ICLGauge.sol";
+import "../../interfaces/external/velo/INonfungiblePositionManager.sol";
+import "../../interfaces/external/velo/callback/ICLSwapCallback.sol";
+
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "src/libraries/PositionMath.sol";
 
 contract VeloAmmModule is IVeloAmmModule {
     using SafeERC20 for IERC20;
@@ -26,7 +35,7 @@ contract VeloAmmModule is IVeloAmmModule {
     address public immutable positionManager;
 
     /// @inheritdoc IVeloAmmModule
-    ICLFactory public immutable factory;
+    address public immutable factory;
 
     /// @inheritdoc IVeloAmmModule
     bytes4 public immutable selectorIsPool;
@@ -35,7 +44,7 @@ contract VeloAmmModule is IVeloAmmModule {
 
     constructor(INonfungiblePositionManager positionManager_, bytes4 selectorIsPool_) {
         positionManager = address(positionManager_);
-        factory = ICLFactory(positionManager_.factory());
+        factory = positionManager_.factory();
         selectorIsPool = selectorIsPool_;
         /// @dev expect the next call to succeed without reverting. This logic is added
         // to support velodrome and aerodrome protocols using the same codebase
@@ -177,7 +186,7 @@ contract VeloAmmModule is IVeloAmmModule {
         override
         returns (address)
     {
-        return factory.getPool(token0, token1, int24(tickSpacing));
+        return ICLFactory(factory).getPool(token0, token1, int24(tickSpacing));
     }
 
     /// @inheritdoc IAmmModule
@@ -396,7 +405,8 @@ contract VeloAmmModule is IVeloAmmModule {
     {
         Position memory position = getPosition(tokenId);
 
-        address pool = factory.getPool(position.token0, position.token1, position.tickSpacing);
+        address pool =
+            ICLFactory(factory).getPool(position.token0, position.token1, position.tickSpacing);
         if (sqrtPriceX96 == 0) {
             (sqrtPriceX96,,,,,) = ICLPool(pool).slot0();
         }

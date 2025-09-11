@@ -1,16 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.25;
 
-import "../../external/velo/ICLFactory.sol";
-import "../../external/velo/ICLGauge.sol";
-
-import "../../external/velo/INonfungiblePositionManager.sol";
-import "../../external/velo/callback/ICLSwapCallback.sol";
-import "../../utils/IVeloFarm.sol";
-
 import "../IAmmModule.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "src/libraries/PositionMath.sol";
 
 /**
  * @title IVeloAmmModule Interface
@@ -150,10 +141,10 @@ interface IVeloAmmModule is IAmmModule {
     function MAX_PROTOCOL_FEE() external view returns (uint32);
 
     /**
-     * @dev Returns the address of the ICLFactory contract used by the Velo protocol.
-     * @return ICLFactory contract address.
+     * @dev Returns the address of the pool Factory contract used by the Velo protocol.
+     * @return pool Factory contract address.
      */
-    function factory() external view returns (ICLFactory);
+    function factory() external view returns (address);
 
     /**
      * @dev Returns the selector of isPool/isPair function of the factory.
