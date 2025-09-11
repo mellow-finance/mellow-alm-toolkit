@@ -25,16 +25,12 @@ import "./IVeloDeployFactory.sol";
  * - Tokens must conform to the ERC20 standard.
  */
 interface IDepositBalancer {
-    /// @dev Thrown when a zero address is provided.
-    error ZeroAddress();
     /// @dev Thrown when a zero amount is provided.
     error ZeroAmount();
     /// @dev Thrown when a zero LP amount is provided.
     error ZeroLpAmount();
     /// @dev Thrown when a zero swap data is provided.
     error ZeroSwapData();
-    /// @dev Thrown when an action is forbidden.
-    error Forbidden();
     /// @dev Thrown when a user has insufficient LP tokens.
     error InsufficientLpAmount();
     /// @dev Thrown when a user has insufficient tokens.
@@ -55,6 +51,15 @@ interface IDepositBalancer {
     }
 
     /**
+     * @dev Initializes the DepositBalancer contract.
+     * @param admin_ The address to be granted the admin role.
+     *
+     * Requirements:
+     * - `admin_` cannot be the zero address.
+     */
+    function initialize(address admin_) external;
+
+    /**
      * @dev Performs a single-token deposit into a concentrated liquidity pool managed by Mellow ALM.
      * Accepts one of the pool's tokens, computes the optimal liquidity provisioning split,
      * performs any necessary internal swaps, and mints LP tokens on the @param recipient's behalf.
@@ -65,7 +70,7 @@ interface IDepositBalancer {
      * @param lpWrapper The address of the target LpWrapper.
      * @param recipient The address receiving the resulting LP tokens.
      * @param deadline The latest timestamp by which the transaction must complete.
-     * @param data Optional data with SwapData encoded structure.
+     * @param swapData SwapData struct containing swap parameters and target call data.
      *
      * @return actualAmount0 The actual amount of token0 used in minting.
      * @return actualAmount1 The actual amount of token1 used in minting.
@@ -83,7 +88,7 @@ interface IDepositBalancer {
         uint256 amount,
         address recipient,
         uint256 deadline,
-        bytes memory data
+        SwapData memory swapData
     ) external returns (uint256 actualAmount0, uint256 actualAmount1, uint256 actualLpAmount);
 
     /**
@@ -96,7 +101,7 @@ interface IDepositBalancer {
      * @param lpAmount The amount of LP tokens to burn.
      * @param recipient The address receiving the underlying assets.
      * @param deadline The latest timestamp by which the transaction must complete.
-     * @param data Optional data with SwapData encoded structure.
+     * @param swapData SwapData struct containing swap parameters and target call data.
      *
      * @return amount0 The amount of token0 received from the withdrawal.
      * @return amount1 The amount of token1 received from the withdrawal.
@@ -113,7 +118,7 @@ interface IDepositBalancer {
         uint256 lpAmount,
         address recipient,
         uint256 deadline,
-        bytes memory data
+        SwapData memory swapData
     ) external returns (uint256 amount0, uint256 amount1, uint256 actualLpAmount);
 
     /**
