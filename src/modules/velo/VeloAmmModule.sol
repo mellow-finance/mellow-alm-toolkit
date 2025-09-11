@@ -146,7 +146,7 @@ contract VeloAmmModule is IVeloAmmModule {
 
     /// @inheritdoc IAmmModule
     function validateCallbackParams(address pool_, bytes memory params) external view {
-        if (params.length != 0x40) {
+        if (params.length != 0xa0) {
             revert InvalidLength();
         }
         IVeloAmmModule.CallbackParams memory params_ =
@@ -240,7 +240,7 @@ contract VeloAmmModule is IVeloAmmModule {
 
     /// @inheritdoc IAmmModule
     function validateProtocolParams(bytes memory params) external pure {
-        if (params.length != 0x40) {
+        if (params.length != 0xa0) {
             revert InvalidLength();
         }
         IVeloAmmModule.ProtocolParams memory params_ =

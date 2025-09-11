@@ -39,10 +39,12 @@ interface IVeloOracle is IOracle {
      * @param maxAge The maximum age of observations to consider for analysis. This parameter ensures that the oracle only
      * uses recent observations. Older data points are excluded from the analysis to maintain
      * the integrity of the MEV detection mechanism.
+     * @param extraData Additional protocol-specific data that may be required for extended functionalities or configurations.
      */
     struct SecurityParams {
         uint16 lookback; // Maximum number of historical data points to consider for analysis
         uint32 maxAge; // Maximum age of observations to be used in the analysis
         int24 maxAllowedDelta; // Maximum allowed change between data points to be considered valid
+        bytes extraData; // Specific protocol data for oracle
     }
 }

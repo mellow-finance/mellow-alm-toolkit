@@ -58,7 +58,8 @@ library Constants {
                 coreOperator: OPTIMISM_CORE_OPERATOR,
                 protocolParams: IVeloAmmModule.ProtocolParams({
                     treasury: OPTIMISM_MELLOW_TREASURY,
-                    feeD9: OPTIMISM_FEE_D9
+                    feeD9: OPTIMISM_FEE_D9,
+                    extraData: ""
                 })
             });
         }

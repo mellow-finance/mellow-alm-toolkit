@@ -47,7 +47,8 @@ contract Fixture is DeployScript, Test {
         deployParams.securityParams = IVeloOracle.SecurityParams({
             lookback: 10,
             maxAge: 1 hours,
-            maxAllowedDelta: maxAllowedDelta
+            maxAllowedDelta: maxAllowedDelta,
+            extraData: ""
         });
 
         deployParams.pool = address(pool);
@@ -87,7 +88,8 @@ contract Fixture is DeployScript, Test {
         deployParams.securityParams = IVeloOracle.SecurityParams({
             lookback: 10,
             maxAge: 1 hours,
-            maxAllowedDelta: maxAllowedDelta
+            maxAllowedDelta: maxAllowedDelta,
+            extraData: ""
         });
 
         deployParams.pool = address(pool);

@@ -116,7 +116,8 @@ contract Unit is Fixture {
             abi.encode(
                 IVeloAmmModule.ProtocolParams({
                     treasury: Constants.OPTIMISM_MELLOW_TREASURY,
-                    feeD9: Constants.OPTIMISM_FEE_D9
+                    feeD9: Constants.OPTIMISM_FEE_D9,
+                    extraData: ""
                 })
             )
         );
@@ -135,12 +136,18 @@ contract Unit is Fixture {
                         "VFM",
                         address(coreBroken)
                     )
-                )
+                ),
+                extraData: ""
             })
         );
 
         depositParams.securityParams = abi.encode(
-            IVeloOracle.SecurityParams({lookback: 100, maxAllowedDelta: 100, maxAge: 7 days})
+            IVeloOracle.SecurityParams({
+                lookback: 100,
+                maxAllowedDelta: 100,
+                maxAge: 7 days,
+                extraData: ""
+            })
         );
         depositParams.strategyParams = abi.encode(
             IPulseStrategyModule.StrategyParams({
@@ -252,8 +259,12 @@ contract Unit is Fixture {
             maxLiquidityRatioDeviationX96: 0 // The maximum allowed deviation of the liquidity ratio for lower position.
         });
 
-        deployParams_.securityParams =
-            IVeloOracle.SecurityParams({lookback: 1, maxAge: 1 seconds, maxAllowedDelta: 10000});
+        deployParams_.securityParams = IVeloOracle.SecurityParams({
+            lookback: 1,
+            maxAge: 1 seconds,
+            maxAllowedDelta: 10000,
+            extraData: ""
+        });
 
         deployParams_.pool = address(pool);
         deployParams_.maxAmount0 = 100 ether;
@@ -358,7 +369,8 @@ contract Unit is Fixture {
             abi.encode(
                 IVeloAmmModule.ProtocolParams({
                     treasury: Constants.OPTIMISM_MELLOW_TREASURY,
-                    feeD9: Constants.OPTIMISM_FEE_D9
+                    feeD9: Constants.OPTIMISM_FEE_D9,
+                    extraData: ""
                 })
             )
         );
@@ -373,7 +385,11 @@ contract Unit is Fixture {
         core.deposit(depositParams);
 
         depositParams.callbackParams = abi.encode(
-            IVeloAmmModule.CallbackParams({gauge: address(pool.gauge()), farm: address(1)})
+            IVeloAmmModule.CallbackParams({
+                gauge: address(pool.gauge()),
+                farm: address(1),
+                extraData: ""
+            })
         );
 
         vm.expectRevert(ICore.InvalidLength.selector);
@@ -399,7 +415,12 @@ contract Unit is Fixture {
         core.deposit(depositParams);
 
         depositParams.securityParams = abi.encode(
-            IVeloOracle.SecurityParams({lookback: 100, maxAllowedDelta: 100, maxAge: 7 days})
+            IVeloOracle.SecurityParams({
+                lookback: 100,
+                maxAllowedDelta: 100,
+                maxAge: 7 days,
+                extraData: ""
+            })
         );
 
         assertEq(positionManager.ownerOf(tokenId), Constants.OPTIMISM_DEPLOYER);
@@ -449,7 +470,11 @@ contract Unit is Fixture {
         depositParams.ammPositionIds[0] = tokenId;
         depositParams.owner = owner;
         depositParams.callbackParams = abi.encode(
-            IVeloAmmModule.CallbackParams({gauge: address(pool.gauge()), farm: address(lpWrapper)})
+            IVeloAmmModule.CallbackParams({
+                gauge: address(pool.gauge()),
+                farm: address(lpWrapper),
+                extraData: ""
+            })
         );
         depositParams.strategyParams = abi.encode(
             IPulseStrategyModule.StrategyParams({
@@ -462,7 +487,12 @@ contract Unit is Fixture {
         );
         depositParams.slippageD9 = 1 * 1e5;
         depositParams.securityParams = abi.encode(
-            IVeloOracle.SecurityParams({lookback: 1, maxAllowedDelta: 100000, maxAge: 7 days})
+            IVeloOracle.SecurityParams({
+                lookback: 1,
+                maxAllowedDelta: 100000,
+                maxAge: 7 days,
+                extraData: ""
+            })
         );
 
         id = core.deposit(depositParams);
@@ -551,10 +581,19 @@ contract Unit is Fixture {
         );
 
         bytes memory defaultCallbackParams = abi.encode(
-            IVeloAmmModule.CallbackParams({farm: address(lpWrapper), gauge: address(pool.gauge())})
+            IVeloAmmModule.CallbackParams({
+                farm: address(lpWrapper),
+                gauge: address(pool.gauge()),
+                extraData: ""
+            })
         );
         bytes memory defaultSecurityParams = abi.encode(
-            IVeloOracle.SecurityParams({lookback: 100, maxAllowedDelta: 100, maxAge: 7 days})
+            IVeloOracle.SecurityParams({
+                lookback: 100,
+                maxAllowedDelta: 100,
+                maxAge: 7 days,
+                extraData: ""
+            })
         );
 
         vm.expectRevert(ICore.InvalidSlippageParams.selector);
@@ -590,20 +629,24 @@ contract Unit is Fixture {
             abi.encode(
                 IVeloAmmModule.ProtocolParams({
                     treasury: address(0),
-                    feeD9: Constants.OPTIMISM_FEE_D9
+                    feeD9: Constants.OPTIMISM_FEE_D9,
+                    extraData: ""
                 })
             )
         );
 
         vm.expectRevert(abi.encodeWithSignature("InvalidFee()"));
         core.setProtocolParams(
-            abi.encode(IVeloAmmModule.ProtocolParams({treasury: address(1), feeD9: 3e8 + 1}))
+            abi.encode(
+                IVeloAmmModule.ProtocolParams({treasury: address(1), feeD9: 3e8 + 1, extraData: ""})
+            )
         );
 
         bytes memory protocolParams = abi.encode(
             IVeloAmmModule.ProtocolParams({
                 treasury: Constants.OPTIMISM_MELLOW_TREASURY,
-                feeD9: Constants.OPTIMISM_FEE_D9
+                feeD9: Constants.OPTIMISM_FEE_D9,
+                extraData: ""
             })
         );
 
@@ -661,7 +704,11 @@ contract Unit is Fixture {
             owner: Constants.OPTIMISM_DEPLOYER,
             slippageD9: 1 * 1e5,
             callbackParams: abi.encode(
-                IVeloAmmModule.CallbackParams({gauge: address(pool.gauge()), farm: address(lpWrapper)})
+                IVeloAmmModule.CallbackParams({
+                    gauge: address(pool.gauge()),
+                    farm: address(lpWrapper),
+                    extraData: ""
+                })
             ),
             strategyParams: abi.encode(
                 IPulseStrategyModule.StrategyParams({
@@ -673,7 +720,12 @@ contract Unit is Fixture {
                 })
             ),
             securityParams: abi.encode(
-                IVeloOracle.SecurityParams({lookback: 100, maxAllowedDelta: 100, maxAge: 7 days})
+                IVeloOracle.SecurityParams({
+                    lookback: 100,
+                    maxAllowedDelta: 100,
+                    maxAge: 7 days,
+                    extraData: ""
+                })
             )
         });
 
@@ -682,7 +734,8 @@ contract Unit is Fixture {
             abi.encode(
                 IVeloAmmModule.ProtocolParams({
                     treasury: Constants.OPTIMISM_MELLOW_TREASURY,
-                    feeD9: Constants.OPTIMISM_FEE_D9
+                    feeD9: Constants.OPTIMISM_FEE_D9,
+                    extraData: ""
                 })
             )
         );
