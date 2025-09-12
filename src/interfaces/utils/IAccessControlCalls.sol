@@ -3,6 +3,37 @@ pragma solidity 0.8.25;
 
 interface IAccessControlCalls {
     /**
+     * @dev Emitted when a target call is not allowed
+     */
+    error TargetCallNotAllowed(address target, bytes4 selector);
+
+    /**
+     * @dev Emitted when a target call is not allowed
+     */
+    error TargetCallAlreadyAllowed(bytes32 targetHash, address target, bytes4 selector);
+
+    /**
+     * @dev Emitted when a forbidden call is attempted
+     */
+    error ForbiddenCall();
+
+    /**
+     * @notice Emitted when a target call is approved
+     * @param targetHash The hash of the target address and selector that was approved.
+     * @param target The address of the target contract where the call will be made.
+     * @param selector The function selector of the target call that was approved.
+     */
+    event TargetCallAllowed(bytes32 indexed targetHash, address indexed target, bytes4 selector);
+
+    /**
+     * @notice Emitted when a target call is forbidden
+     * @param targetHash The hash of the target address and selector that was forbidden.
+     * @param target The address of the target contract where the call will be made.
+     * @param selector The function selector of the target call that was forbidden.
+     */
+    event TargetCallDisallowed(bytes32 indexed targetHash, address indexed target, bytes4 selector);
+
+    /**
      * @dev Approves a target call.
      * @param target The address of the target contract where the call will be made.
      * @param selector The function selector of the target call that will be approved.
@@ -22,5 +53,5 @@ interface IAccessControlCalls {
      * @param selector The function selector of the target call to check.
      * @return True if the call is allowed, false otherwise.
      */
-    function isCallAllowed(address target, bytes4 selector) external view returns (bool);
+    function isAllowedCall(address target, bytes4 selector) external view returns (bool);
 }

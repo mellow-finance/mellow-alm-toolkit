@@ -392,6 +392,7 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
         address _this = address(this);
 
         for (uint256 index = 0; index < swapParams.length; index++) {
+            _requireAllowedCall(swapParams[index].target, swapParams[index].data);
             address tokenOut = swapParams[index].tokenOut;
             uint256 amountIn = swapParams[index].amountIn;
 

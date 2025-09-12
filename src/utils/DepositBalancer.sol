@@ -2,26 +2,29 @@
 pragma solidity 0.8.25;
 
 import "../interfaces/utils/IDepositBalancer.sol";
+import "./AccessControlCalls.sol";
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "src/libraries/PositionMath.sol";
 
-contract DepositBalancer is IDepositBalancer, Context, ReentrancyGuard {
+contract DepositBalancer is IDepositBalancer, ReentrancyGuard, AccessControlCalls {
     using Math for uint256;
     using SafeERC20 for IERC20;
 
     ICore public immutable core;
-    IOracle public immutable oracle;
     IAmmModule public immutable ammModule;
     IVeloDeployFactory public immutable factory;
 
     constructor(address factory_, address core_) {
         core = ICore(core_);
-        oracle = core.oracle();
         ammModule = core.ammModule();
         factory = IVeloDeployFactory(factory_);
+    }
+
+    ///  @inheritdoc IDepositBalancer
+    function initialize(address admin_) external initializer {
+        __AccessControlCalls_init(admin_);
     }
 
     /// @dev Fallback to redirect incoming swap callbacks into the AMM module.
@@ -48,10 +51,8 @@ contract DepositBalancer is IDepositBalancer, Context, ReentrancyGuard {
         uint256 amount,
         address recipient,
         uint256 deadline,
-        bytes memory data
+        SwapData memory swapData
     ) external nonReentrant returns (uint256 amount0, uint256 amount1, uint256 actualLpAmount) {
-        _ensureNoMEV(lpWrapper);
-
         if (amount == 0) {
             revert ZeroAmount();
         }
@@ -59,11 +60,14 @@ contract DepositBalancer is IDepositBalancer, Context, ReentrancyGuard {
         address pool = ILpWrapper(lpWrapper).pool();
         (address token0, address token1) = ammModule.getPoolTokens(pool);
 
+        IERC20(tokenIn).safeTransferFrom(_msgSender(), address(this), amount);
+
         if (token0 != tokenIn && token1 != tokenIn) {
             revert Forbidden();
         }
 
         bool zeroForOne = tokenIn == token0 ? true : false;
+        address tokenOut = zeroForOne ? token1 : token0;
 
         /// @dev first optimistic estimation of amounts distribution among tokens
         (actualLpAmount, amount0, amount1) =
@@ -73,27 +77,23 @@ contract DepositBalancer is IDepositBalancer, Context, ReentrancyGuard {
             revert ZeroLpAmount();
         }
 
-        IERC20(tokenIn).safeTransferFrom(_msgSender(), address(this), amount);
-
-        address tokenOut = zeroForOne ? token1 : token0;
-        if (data.length > 0x60) {
-            _swapOnTarget(tokenIn, tokenOut, amount, data);
-        } else {
-            if ((zeroForOne && amount1 > 0) || (!zeroForOne && amount0 > 0)) {
-                uint256 balance = IERC20(tokenIn).balanceOf(address(this));
-                uint256 amountDesired = zeroForOne ? amount0 : amount1;
-                if (balance < amountDesired) {
-                    revert InsufficientAmount();
-                }
-                _swapOnPool(pool, zeroForOne, balance - amountDesired);
-            }
+        if ((zeroForOne && amount1 != 0) || (!zeroForOne && amount0 != 0)) {
+            _swapOnTarget(tokenIn, tokenOut, amount, swapData);
         }
 
         /// @dev directly returns actual deposited amounts
         (amount0, amount1, actualLpAmount) = _mint(lpWrapper, token0, token1, recipient, deadline);
 
         /// @dev swaps any remaining tokens back to the deposit token and sweeps remaining funds in favor of the sender
-        _swapOnPool(pool, !zeroForOne, IERC20(tokenOut).balanceOf(address(this)));
+        Address.functionDelegateCall(
+            address(ammModule),
+            abi.encodeWithSelector(
+                IAmmModule.swapOnPool.selector,
+                pool,
+                !zeroForOne,
+                IERC20(tokenOut).balanceOf(address(this))
+            )
+        );
 
         /// @dev sweep any remaining tokens in favor of the recipient
         _emptyBalances(token0, token1, recipient);
@@ -106,7 +106,7 @@ contract DepositBalancer is IDepositBalancer, Context, ReentrancyGuard {
         uint256 lpAmount,
         address recipient,
         uint256 deadline,
-        bytes memory data
+        SwapData memory swapData
     ) external nonReentrant returns (uint256 amount0, uint256 amount1, uint256 actualLpAmount) {
         address pool = ILpWrapper(lpWrapper).pool();
 
@@ -114,8 +114,6 @@ contract DepositBalancer is IDepositBalancer, Context, ReentrancyGuard {
             /// @dev directly sends assets to recipient in case of token = address(0), nothing remains in the contract
             return _burn(lpWrapper, lpAmount, recipient, deadline);
         } else {
-            _ensureNoMEV(lpWrapper);
-
             (address token0, address token1) = ammModule.getPoolTokens(pool);
 
             if (token != token0 && token != token1) {
@@ -126,14 +124,8 @@ contract DepositBalancer is IDepositBalancer, Context, ReentrancyGuard {
             address tokenIn = token == token0 ? token1 : token0;
             uint256 amountIn = IERC20(tokenIn).balanceOf(address(this));
 
-            if (IERC20(tokenIn).balanceOf(address(this)) > 0) {
-                if (data.length > 0x60) {
-                    //uint256 amountIn = token == token0 ? amount1 : amount0;
-                    _swapOnTarget(tokenIn, token, amountIn, data);
-                } else {
-                    /// @dev swaps any amount of counterpart token
-                    _swapOnPool(pool, tokenIn == token0, amountIn);
-                }
+            if (amountIn > 0) {
+                _swapOnTarget(tokenIn, token, amountIn, swapData);
             }
             /// @dev sweep any remaining tokens in favor of the recipient: all assets on the contract are actually received while withdrawn
             (amount0, amount1) = _emptyBalances(token0, token1, recipient);
@@ -151,8 +143,7 @@ contract DepositBalancer is IDepositBalancer, Context, ReentrancyGuard {
         returns (uint256 lpAmount, uint256 targetAmount0, uint256 targetAmount1)
     {
         (targetAmount0, targetAmount1) = ILpWrapper(lpWrapper).previewMint(1 ether);
-        (uint160 sqrtPriceX96,) =
-            ILpWrapper(lpWrapper).oracle().getOraclePrice(ILpWrapper(lpWrapper).pool());
+        uint160 sqrtPriceX96 = ammModule.getSqrtPriceX96(ILpWrapper(lpWrapper).pool());
 
         uint256 capital = PositionMath.calculateCapital(amount0, amount1, sqrtPriceX96);
         uint256 capitalTarget =
@@ -168,20 +159,9 @@ contract DepositBalancer is IDepositBalancer, Context, ReentrancyGuard {
     function previewWithdrawAmounts(address lpWrapper, uint256 lpAmount)
         public
         view
-        returns (uint256, uint256)
+        returns (uint256 amount0, uint256 amount1)
     {
         return ILpWrapper(lpWrapper).previewBurn(lpAmount);
-    }
-
-    /* ----------------------------------------------------------------------------------
-    *                                   Internal view functions
-    ---------------------------------------------------------------------------------- */
-
-    function _ensureNoMEV(address lpWrapper) internal view {
-        address pool = ILpWrapper(lpWrapper).pool();
-        ICore.ManagedPositionInfo memory position =
-            core.managedPositionAt(ILpWrapper(lpWrapper).positionId());
-        oracle.ensureNoMEV(pool, position.securityParams);
     }
 
     /* ----------------------------------------------------------------------------------
@@ -237,20 +217,16 @@ contract DepositBalancer is IDepositBalancer, Context, ReentrancyGuard {
         return ILpWrapper(lpWrapper).withdraw(lpAmount, 0, 0, recipient, deadline);
     }
 
-    function _swapOnPool(address pool, bool zeroForOne, uint256 amountIn) internal {
-        Address.functionDelegateCall(
-            address(ammModule),
-            abi.encodeWithSelector(IAmmModule.swapOnPool.selector, pool, zeroForOne, amountIn)
-        );
-    }
-
-    function _swapOnTarget(address tokenIn, address tokenOut, uint256 amountIn, bytes memory data)
-        internal
-    {
-        SwapData memory swapData = abi.decode(data, (SwapData));
+    function _swapOnTarget(
+        address tokenIn,
+        address tokenOut,
+        uint256 amountIn,
+        SwapData memory swapData
+    ) internal {
+        _requireAllowedCall(swapData.target, swapData.data);
 
         if (swapData.target == address(0)) {
-            revert ZeroAddress();
+            revert AddressZero();
         }
 
         if (swapData.data.length < 4) {

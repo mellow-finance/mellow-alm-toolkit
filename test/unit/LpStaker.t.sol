@@ -48,7 +48,6 @@ contract Unit is Fixture {
         );
 
         vm.startPrank(user);
-        IERC20(address(lpWrapper)).safeIncreaseAllowance(address(lpStaker), lpAmount);
         uint256 shares = lpStaker.stake(lpAmount, user);
         vm.stopPrank();
 
@@ -134,7 +133,6 @@ contract Unit is Fixture {
         );
 
         vm.startPrank(user);
-        IERC20(address(lpWrapper)).safeIncreaseAllowance(address(lpStaker), lpAmount);
         uint256 shares = lpStaker.stake(lpAmount, user);
         vm.stopPrank();
 
@@ -191,7 +189,6 @@ contract Unit is Fixture {
         target.setPriceX96(token1, VELO, 15 * Q96);
 
         vm.startPrank(user);
-        IERC20(address(lpWrapper)).safeIncreaseAllowance(address(lpStaker), lpAmount);
         uint256 shares = lpStaker.stake(lpAmount, user);
         vm.stopPrank();
 
@@ -264,7 +261,6 @@ contract Unit is Fixture {
         );
 
         vm.startPrank(user);
-        IERC20(address(lpWrapper)).safeIncreaseAllowance(address(lpStaker), lpAmount);
         lpStaker.stake(lpAmount, user);
         vm.stopPrank();
 
@@ -552,8 +548,6 @@ contract Unit is Fixture {
             ILpWrapper.MintParams(lpAmount, amount0, amount1, user, type(uint256).max)
         );
 
-        IERC20(address(lpWrapper)).safeIncreaseAllowance(address(lpStaker), lpAmount);
-
         vm.expectRevert(DefaultAccessControl.AddressZero.selector);
         lpStaker.stake(lpAmount, address(0));
 
@@ -659,6 +653,58 @@ contract Unit is Fixture {
         assertEq(lpStaker.lpAmountOf(target), 0);
     }
 
+    function testInfiniteAllowance() external {
+        ICLPool pool = ICLPool(factory.getPool(Constants.OPTIMISM_WETH, Constants.OPTIMISM_OP, 200));
+        (ILpWrapper lpWrapper,) =
+            deployLpWrapper(pool, IPulseStrategyModule.StrategyType.LazySyncing, contracts);
+
+        ILpStaker lpStaker = ILpStaker(Clones.clone(lpStakerImplementation));
+        lpStaker.initialize(lpWrapper, admin, manager, operator, 1 days);
+
+        (uint256 amount0, uint256 amount1) = lpWrapper.previewMint(1 ether);
+
+        vm.startPrank(user);
+        deal(Constants.OPTIMISM_WETH, user, amount0);
+        deal(Constants.OPTIMISM_OP, user, amount1);
+
+        IERC20(Constants.OPTIMISM_WETH).safeIncreaseAllowance(address(lpWrapper), amount0);
+        IERC20(Constants.OPTIMISM_OP).safeIncreaseAllowance(address(lpWrapper), amount1);
+
+        (,, uint256 lpAmount) = lpWrapper.mint(
+            ILpWrapper.MintParams({
+                lpAmount: 1 ether,
+                amount0Max: amount0,
+                amount1Max: amount1,
+                recipient: user,
+                deadline: type(uint256).max
+            })
+        );
+        vm.stopPrank();
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IERC20Errors.ERC20InsufficientAllowance.selector, address(lpStaker), 0, lpAmount
+            )
+        );
+        vm.prank(user);
+        lpStaker.stake(lpAmount, user);
+
+        assertEq(IERC20(address(lpWrapper)).balanceOf(user), lpAmount);
+        assertEq(IERC20(address(lpStaker)).balanceOf(user), 0);
+        assertEq(lpStaker.lpAmountOf(user), 0);
+
+        vm.prank(Constants.OPTIMISM_LP_WRAPPER_ADMIN);
+        lpWrapper.setLpStaker(address(lpStaker));
+
+        /// @dev lpStaker does not require allowance in lpWrapper now
+        vm.prank(user);
+        lpStaker.stake(lpAmount, user);
+
+        assertEq(IERC20(address(lpWrapper)).balanceOf(user), 0);
+        assertEq(IERC20(address(lpStaker)).balanceOf(user), lpAmount);
+        assertEq(lpStaker.lpAmountOf(user), lpAmount);
+    }
+
     function _buildSwapData(ILpStaker lpStaker, SwapRouterMock target)
         internal
         view
@@ -696,5 +742,8 @@ contract Unit is Fixture {
 
         lpStaker = ILpStaker(Clones.clone(lpStakerImplementation));
         lpStaker.initialize(lpWrapper, admin, manager, operator, timeLock);
+
+        vm.prank(Constants.OPTIMISM_LP_WRAPPER_ADMIN);
+        lpWrapper.setLpStaker(address(lpStaker));
     }
 }

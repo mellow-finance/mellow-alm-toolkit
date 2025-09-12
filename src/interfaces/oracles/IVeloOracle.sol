@@ -11,7 +11,7 @@ import "./IOracle.sol";
 interface IVeloOracle is IOracle {
     // Custom errors to handle various validation and operational failures
     error InvalidLength(); // Thrown when input data length is incorrect
-    error InvalidSecurityParams(); // Thrown when security parameters do not meet expected criteria
+    error InvalidParams(); // Thrown when security parameters do not meet expected criteria
     error PriceManipulationDetected(); // Thrown when potential price manipulation is detected
     error NotEnoughObservations(); // Thrown when there are not enough data points for reliable calculation
 

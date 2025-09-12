@@ -118,6 +118,18 @@ interface ILpWrapper is IVeloFarm, IAccessControlEnumerable, IERC20 {
     );
 
     /**
+     * @notice Emitted when the LP staker is set.
+     * @param lpStaker The address of the new LP staker.
+     */
+    event LpStakerSet(address lpStaker);
+
+    /**
+     * @notice Emitted when the LP staker is already set.
+     * @param lpStaker The address of the LP staker.
+     */
+    event LpStakerAlreadySet(address lpStaker);
+
+    /**
      * @dev Returns protocol params of the corresponding Core.sol
      */
     function protocolParams()
@@ -331,6 +343,15 @@ interface ILpWrapper is IVeloFarm, IAccessControlEnumerable, IERC20 {
     function setTotalSupplyLimit(uint256 totalSupplyLimitNew) external;
 
     /**
+     * @dev Sets the address of the LP staker.
+     * @param lpStaker The address of the LP staker.
+     * Requirements:
+     * - Caller must have the ADMIN_ROLE.
+     * - Can only be set once; subsequent calls will revert.
+     */
+    function setLpStaker(address lpStaker) external;
+
+    /**
      * @dev This function is used to perform an empty rebalance for a specific position.
      * @notice This function calls the `beforeRebalance` and `afterRebalance` functions of the `IAmmModule` contract for each tokenId of the position.
      * @notice If any of the delegate calls fail, the function will revert.
@@ -354,4 +375,10 @@ interface ILpWrapper is IVeloFarm, IAccessControlEnumerable, IERC20 {
      * @return The IERC20 contract of token1.
      */
     function token1() external view returns (address);
+
+    /**
+     * @notice Returns the address of the LP staker.
+     * @return The address of the LP staker.
+     */
+    function lpStaker() external view returns (address);
 }

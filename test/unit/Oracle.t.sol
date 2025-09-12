@@ -13,18 +13,20 @@ contract Unit is Fixture {
 
     function testValidateSecurityParams() external {
         oracle = new VeloOracle();
+
         IVeloOracle.SecurityParams memory params = IVeloOracle.SecurityParams({
             lookback: 0,
             maxAllowedDelta: 0,
             maxAge: 7 days,
             extraData: ""
         });
-        vm.expectRevert(IVeloOracle.InvalidSecurityParams.selector);
+        
+        vm.expectRevert(IVeloOracle.InvalidParams.selector);
         oracle.validateSecurityParams(abi.encode(params));
         params.lookback = 1;
         oracle.validateSecurityParams(abi.encode(params));
         params.maxAllowedDelta = -1;
-        vm.expectRevert(IVeloOracle.InvalidSecurityParams.selector);
+        vm.expectRevert(IVeloOracle.InvalidParams.selector);
         oracle.validateSecurityParams(abi.encode(params));
         oracle.validateSecurityParams(new bytes(0));
         vm.expectRevert();

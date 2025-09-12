@@ -8,9 +8,13 @@ import "src/interfaces/utils/IVeloDeployFactory.sol";
 import "src/utils/DepositBalancer.sol";
 
 contract DepositBalancerTest is Fixture {
+    using Math for uint256;
+
     DeployScript.CoreDeployment contracts;
 
     ICLPool pool = ICLPool(factory.getPool(Constants.OPTIMISM_WETH, Constants.OPTIMISM_OP, 200));
+
+    address admin = vm.addr(uint256(keccak256("admin")));
 
     address depositor = vm.addr(uint256(keccak256("depositor")));
     address recipient = vm.addr(uint256(keccak256("recipient")));
@@ -47,6 +51,12 @@ contract DepositBalancerTest is Fixture {
         );
 
         depositBalancer = new DepositBalancer(lpWrapperFactory, address(core));
+        depositBalancer.initialize(admin);
+
+        vm.prank(admin);
+        AccessControlCalls(address(depositBalancer)).allowTargetCall(
+            address(pool), ICLPoolActions.swap.selector
+        );
     }
 
     function testDepositLazy(bool isToken0, uint96 amount) public {
@@ -256,12 +266,7 @@ contract DepositBalancerTest is Fixture {
             uint256 lpAmountBefore = IERC20(address(lpWrapper)).balanceOf(recipient);
 
             (,, uint256 actualLpAmount) = depositBalancer.deposit(
-                address(lpWrapper),
-                token,
-                amount,
-                recipient,
-                type(uint256).max,
-                abi.encode(swapData)
+                address(lpWrapper), token, amount, recipient, type(uint256).max, swapData
             );
             vm.stopPrank();
 
@@ -297,12 +302,7 @@ contract DepositBalancerTest is Fixture {
 
             uint256 lpAmountBefore = IERC20(address(lpWrapper)).balanceOf(recipient);
             (,, uint256 actualLpAmount) = depositBalancer.deposit(
-                address(lpWrapper),
-                token,
-                amount,
-                recipient,
-                type(uint256).max,
-                abi.encode(swapData)
+                address(lpWrapper), token, amount, recipient, type(uint256).max, swapData
             );
 
             uint256 balanceAfter = IERC20(token).balanceOf(depositor);
@@ -405,9 +405,7 @@ contract DepositBalancerTest is Fixture {
                 lpAmountWithdraw,
                 depositor,
                 type(uint256).max,
-                abi.encode(
-                    IDepositBalancer.SwapData({minReturn: 0, target: address(pool), data: callData})
-                )
+                IDepositBalancer.SwapData({minReturn: 0, target: address(pool), data: callData})
             );
 
             require(
@@ -446,9 +444,7 @@ contract DepositBalancerTest is Fixture {
                 lpAmountWithdraw,
                 depositor,
                 type(uint256).max,
-                abi.encode(
-                    IDepositBalancer.SwapData({minReturn: 0, target: address(pool), data: callData})
-                )
+                IDepositBalancer.SwapData({minReturn: 0, target: address(pool), data: callData})
             );
 
             require(
@@ -474,8 +470,16 @@ contract DepositBalancerTest is Fixture {
 
         console2.log("try deposit", ERC20(token).symbol(), amount);
         uint256 lpAmountBefore = IERC20(lpWrapper).balanceOf(recipient_);
-        (actualAmount0, actualAmount1, actualLpAmount) =
-            depositBalancer.deposit(lpWrapper, token, amount, recipient_, type(uint256).max, "");
+
+        IDepositBalancer.SwapData memory swapData = _buildSwapDataDeposit(
+            depositBalancer,
+            lpWrapper,
+            token == pool.token0() ? amount : 0,
+            token == pool.token1() ? amount : 0
+        );
+        (actualAmount0, actualAmount1, actualLpAmount) = depositBalancer.deposit(
+            lpWrapper, token, amount, recipient_, type(uint256).max, swapData
+        );
         uint256 balanceAfter = IERC20(token).balanceOf(depositor);
 
         assertEq(
@@ -511,11 +515,23 @@ contract DepositBalancerTest is Fixture {
         vm.startPrank(depositor);
         IERC20(lpWrapper).approve(address(depositBalancer), lpAmount);
 
+        (amount0, amount1) = depositBalancer.previewWithdrawAmounts(lpWrapper, lpAmount);
+
+        IDepositBalancer.SwapData memory swapData =
+            _buildSwapDataWithdraw(depositBalancer, amount0, amount1, tokenTarget);
+
         vm.recordLogs();
         (amount0, amount1, actualLpAmount) = depositBalancer.withdraw(
-            lpWrapper, tokenTarget, lpAmount, recipient_, type(uint256).max, ""
+            lpWrapper, tokenTarget, lpAmount, recipient_, type(uint256).max, swapData
         );
         Vm.Log[] memory entries = vm.getRecordedLogs();
+
+        console2.log("withdrawn", tokenTarget == pool.token0(), amount0, amount1);
+        assertTrue(
+            tokenTarget == address(0)
+                || (tokenTarget == pool.token0() ? amount1 == 0 : amount0 == 0),
+            "Too many tokens"
+        );
 
         bool swapEmitted = false;
         bytes32 swapTopic = 0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67;
@@ -536,5 +552,54 @@ contract DepositBalancerTest is Fixture {
     function _checkZeroRemaining(address account, ICLPool pool_) internal view {
         require(IERC20(pool_.token0()).balanceOf(account) == 0, "non zero balance of token0");
         require(IERC20(pool_.token1()).balanceOf(account) == 0, "non zero balance of token1");
+    }
+
+    function _buildSwapDataDeposit(
+        IDepositBalancer balancer,
+        address lpWrapper,
+        uint256 amount0,
+        uint256 amount1
+    ) internal view returns (IDepositBalancer.SwapData memory swapData) {
+        (, uint256 targetAmount0, uint256 targetAmount1) =
+            depositBalancer.previewDepositAmounts(lpWrapper, amount0, amount1);
+        bool zeroForOne = targetAmount0 < amount0;
+        uint256 amountIn = zeroForOne ? amount0 - targetAmount0 : amount1 - targetAmount1;
+
+        bytes memory data = abi.encodeWithSelector(
+            ICLPoolActions.swap.selector,
+            address(balancer),
+            zeroForOne,
+            int256(amountIn),
+            zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1,
+            ""
+        );
+        swapData = IDepositBalancer.SwapData({target: address(pool), minReturn: 0, data: data});
+    }
+
+    function _buildSwapDataWithdraw(
+        IDepositBalancer balancer,
+        uint256 amount0,
+        uint256 amount1,
+        address tokenTarget
+    ) internal view returns (IDepositBalancer.SwapData memory swapData) {
+        bool zeroForOne;
+        uint256 amountIn;
+        if (tokenTarget == pool.token0()) {
+            zeroForOne = false;
+            amountIn = amount1;
+        } else if (tokenTarget == pool.token1()) {
+            zeroForOne = true;
+            amountIn = amount0;
+        }
+
+        bytes memory data = abi.encodeWithSelector(
+            ICLPoolActions.swap.selector,
+            address(balancer),
+            zeroForOne,
+            int256(amountIn),
+            zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1,
+            ""
+        );
+        swapData = IDepositBalancer.SwapData({target: address(pool), minReturn: 0, data: data});
     }
 }
