@@ -14,7 +14,7 @@ interface IPulseStrategyModule is IStrategyModule {
     /**
      * @notice Thrown when input parameters are invalid.
      */
-    error InvalidStrategyParams();
+    error InvalidParams();
 
     /**
      * @notice Thrown when an array length is incorrect.
