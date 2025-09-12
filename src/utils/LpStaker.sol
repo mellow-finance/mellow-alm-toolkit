@@ -402,6 +402,10 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
             Address.functionCall(swapParams[index].target, swapParams[index].data);
             uint256 balanceAfter = IERC20(tokenOut).balanceOf(_this);
 
+            if (IERC20(rewardToken).allowance(_this, swapParams[index].target) > 0) {
+                IERC20(rewardToken).forceApprove(swapParams[index].target, 0);
+            }
+
             if (
                 balanceAfter < balanceBefore
                     || balanceAfter - balanceBefore < swapParams[index].minAmountOut
