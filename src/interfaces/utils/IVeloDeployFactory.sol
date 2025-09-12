@@ -211,6 +211,7 @@ interface IVeloDeployFactory is IAccessControlEnumerable {
         uint32 slippageD9;
         IPulseStrategyModule.StrategyParams strategyParams;
         IVeloOracle.SecurityParams securityParams;
+        bytes callbackExtraData;
         address pool;
         uint256 maxAmount0;
         uint256 maxAmount1;

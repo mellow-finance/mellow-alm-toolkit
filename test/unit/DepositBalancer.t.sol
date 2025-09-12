@@ -105,7 +105,8 @@ contract DepositBalancerTest is Fixture {
                     IVeloOracle.SecurityParams({
                         lookback: 1,
                         maxAge: 1 seconds,
-                        maxAllowedDelta: 10000
+                        maxAllowedDelta: 10000,
+                        extraData: ""
                     })
                 )
             );
@@ -179,7 +180,8 @@ contract DepositBalancerTest is Fixture {
                     IVeloOracle.SecurityParams({
                         lookback: 1,
                         maxAge: 1 seconds,
-                        maxAllowedDelta: 10000
+                        maxAllowedDelta: 10000,
+                        extraData: ""
                     })
                 )
             );

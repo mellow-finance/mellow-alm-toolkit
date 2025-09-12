@@ -258,8 +258,12 @@ contract Unit is Fixture {
             maxLiquidityRatioDeviationX96: 0 // The maximum allowed deviation of the liquidity ratio for lower position.
         });
 
-        deployParams.securityParams =
-            IVeloOracle.SecurityParams({lookback: 100, maxAge: 5 days, maxAllowedDelta: 10});
+        deployParams.securityParams = IVeloOracle.SecurityParams({
+            lookback: 100,
+            maxAge: 5 days,
+            maxAllowedDelta: 10,
+            extraData: ""
+        });
 
         deployParams.pool = address(poolBad);
         deployParams.maxAmount0 = 1000 wei;
@@ -367,8 +371,12 @@ contract Unit is Fixture {
             maxLiquidityRatioDeviationX96: Q96 / 2 // The maximum allowed deviation of the liquidity ratio for lower position.
         });
 
-        deployParams.securityParams =
-            IVeloOracle.SecurityParams({lookback: 100, maxAge: 5 days, maxAllowedDelta: 10});
+        deployParams.securityParams = IVeloOracle.SecurityParams({
+            lookback: 100,
+            maxAge: 5 days,
+            maxAllowedDelta: 10,
+            extraData: ""
+        });
 
         deployParams.pool = address(pool);
         deployParams.maxAmount0 = 100 ether;

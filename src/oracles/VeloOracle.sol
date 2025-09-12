@@ -59,7 +59,7 @@ contract VeloOracle is IVeloOracle {
         if (params.length == 0) {
             return;
         }
-        if (params.length != 0x60) {
+        if (params.length != 0xc0) {
             revert InvalidLength();
         }
         SecurityParams memory securityParams = abi.decode(params, (SecurityParams));

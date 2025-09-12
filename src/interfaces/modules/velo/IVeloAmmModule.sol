@@ -49,6 +49,7 @@ interface IVeloAmmModule is IAmmModule {
     struct CallbackParams {
         address farm; // VeloFarm contract address for yield farming operations
         address gauge; // Velo gauge contract address
+        bytes extraData; // Specific protocol data for callback
     }
 
     /**
@@ -66,6 +67,7 @@ interface IVeloAmmModule is IAmmModule {
     struct ProtocolParams {
         address treasury; // Mellow protocol treasury address for fee collection
         uint32 feeD9; // Fee percentage, represented as a fixed-point number with 9 decimal places
+        bytes extraData; // Specific protocol data
     }
 
     /**

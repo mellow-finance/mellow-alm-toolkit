@@ -32,8 +32,12 @@ contract SolvencyTest is SolvencyRunner {
                 maxLiquidityRatioDeviationX96: uint256(2) ** 96 / 100 // The maximum allowed deviation of the liquidity ratio for lower position.
             });
         }
-        params.securityParams =
-            IVeloOracle.SecurityParams({lookback: 100, maxAge: 5 days, maxAllowedDelta: 10});
+        params.securityParams = IVeloOracle.SecurityParams({
+            lookback: 100,
+            maxAge: 5 days,
+            maxAllowedDelta: 10,
+            extraData: ""
+        });
 
         INonfungiblePositionManager positionManager =
             INonfungiblePositionManager(coreParams.positionManager);

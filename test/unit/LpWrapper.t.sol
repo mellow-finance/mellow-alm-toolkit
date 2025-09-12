@@ -167,8 +167,9 @@ contract Unit is Fixture {
         depositParams.ammPositionIds = new uint256[](1);
         depositParams.ammPositionIds[0] = tokenId;
         depositParams.owner = owner;
-        depositParams.callbackParams =
-            abi.encode(IVeloAmmModule.CallbackParams({gauge: address(pool_.gauge()), farm: farm}));
+        depositParams.callbackParams = abi.encode(
+            IVeloAmmModule.CallbackParams({gauge: address(pool_.gauge()), farm: farm, extraData: ""})
+        );
         depositParams.strategyParams = abi.encode(
             IPulseStrategyModule.StrategyParams({
                 strategyType: IPulseStrategyModule.StrategyType.Original,
@@ -183,7 +184,8 @@ contract Unit is Fixture {
             IVeloOracle.SecurityParams({
                 lookback: 1,
                 maxAllowedDelta: MAX_ALLOWED_DELTA,
-                maxAge: MAX_AGE
+                maxAge: MAX_AGE,
+                extraData: ""
             })
         );
 

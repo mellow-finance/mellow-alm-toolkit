@@ -156,7 +156,8 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
         depositParams.callbackParams = abi.encode(
             IVeloAmmModule.CallbackParams({
                 farm: address(lpWrapper),
-                gauge: address(ammModule.getGauge(params.pool))
+                gauge: address(ammModule.getGauge(params.pool)),
+                extraData: params.callbackExtraData
             })
         );
         depositParams.strategyParams = abi.encode(params.strategyParams);
