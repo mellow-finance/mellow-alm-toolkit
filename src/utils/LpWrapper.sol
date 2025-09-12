@@ -436,11 +436,16 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
         }
     }
 
-    /// @dev override ERC20::_spendAllowance to have infinite allowance for lpStaker
-    function _spendAllowance(address owner, address spender, uint256 value) internal override {
+    /// @dev override ERC20::allowance to have infinite allowance for lpStaker
+    function allowance(address owner, address spender)
+        public
+        view
+        override(ERC20Upgradeable, IERC20)
+        returns (uint256)
+    {
         if (spender == lpStaker) {
-            return;
+            return type(uint256).max;
         }
-        super._spendAllowance(owner, spender, value);
+        return super.allowance(owner, spender);
     }
 }
