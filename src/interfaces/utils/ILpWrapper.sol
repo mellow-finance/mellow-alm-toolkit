@@ -57,6 +57,21 @@ interface ILpWrapper is IVeloFarm, IAccessControlEnumerable, IERC20 {
     error LiquidityOverflow();
 
     /**
+     * @dev Custom error for indicating that the zero address has been specified.
+     * This error is used in contexts where an operation requires a valid address,
+     * and the zero address is deemed invalid or inappropriate for the operation.
+     */
+    error AddressZero();
+
+    /**
+     * @dev Custom error for signaling that an operation is not allowed.
+     * This error is used in contexts where a user attempts to perform an action
+     * that is not permitted, typically due to insufficient permissions or
+     * other constraints defined within the contract.
+     */
+    error Forbidden();
+
+    /**
      * @notice Emitted when a deposit is made into the `LpWrapper`.
      * @param sender The address initiating the deposit.
      * @param recipient The address receiving the deposited LP tokens.
@@ -128,6 +143,12 @@ interface ILpWrapper is IVeloFarm, IAccessControlEnumerable, IERC20 {
      * @param lpStaker The address of the LP staker.
      */
     event LpStakerAlreadySet(address lpStaker);
+
+    /**
+     * @dev Returns the admin role identifier.
+     * @return bytes32 - admin role identifier.
+     */
+    function ADMIN_ROLE() external view returns (bytes32);
 
     /**
      * @dev Returns protocol params of the corresponding Core.sol

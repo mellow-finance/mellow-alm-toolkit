@@ -98,6 +98,13 @@ interface IVeloDeployFactory is IAccessControlEnumerable {
      */
     error ForbiddenPool();
 
+    /**
+     * @dev Custom error for indicating that the zero address has been specified.
+     * This error is used in contexts where an operation requires a valid address,
+     * and the zero address is deemed invalid or inappropriate for the operation.
+     */
+    error AddressZero();
+
     enum DeployParamsStatus {
         None,
         Proposed,
@@ -231,6 +238,38 @@ interface IVeloDeployFactory is IAccessControlEnumerable {
         int24 tickLower;
         int24 tickUpper;
     }
+
+    /**
+     * @dev Returns the admin role identifier.
+     * @return bytes32 - admin role identifier.
+     */
+    function ADMIN_ROLE() external view returns (bytes32);
+
+    /**
+     * @dev Returns the operator role identifier.
+     * @return bytes32 - operator role identifier.
+     */
+    function OPERATOR_ROLE() external view returns (bytes32);
+
+    /**
+     * @notice Initializes the contract with the specified roles.
+     * @param admin The address to grant the admin role.
+     * @param operator The address to grant the operator role.
+     * @param proposer The address to grant the proposer role.
+     * @param lpWrapperAdmin The address to set as the LP wrapper admin.
+     * @param lpWrapperManager The address to set as the LP wrapper manager.
+     * @param lpWrapperOperator The address to set as the LP wrapper operator.
+     * @param minInitialTotalSupply The minimum initial total supply for new LP wrappers.
+     */
+    function initialize(
+        address admin,
+        address operator,
+        address proposer,
+        address lpWrapperAdmin,
+        address lpWrapperManager,
+        address lpWrapperOperator,
+        uint256 minInitialTotalSupply
+    ) external;
 
     /**
      * @notice Proposes a new set of deployment parameters. Make all possible parameter checks.

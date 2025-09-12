@@ -275,6 +275,47 @@ interface ICore is IERC721Receiver, IAccessControlEnumerable {
     error InsufficientAmount();
 
     /**
+     * @dev Custom error for indicating that the zero address has been specified.
+     * This error is used in contexts where an operation requires a valid address,
+     * and the zero address is deemed invalid or inappropriate for the operation.
+     */
+    error AddressZero();
+
+    /**
+     * @dev Custom error for signaling that an operation is not allowed.
+     * This error is used in contexts where a user attempts to perform an action
+     * that is not permitted, typically due to insufficient permissions or
+     * other constraints defined within the contract.
+     */
+    error Forbidden();
+
+    /**
+     * @dev Initializes the contract, setting up roles and essential parameters.
+     * @param admin The address to be granted the admin role.
+     * @param operator The address to be granted the operator role.
+     * @param protocolParams Encoded protocol parameters to configure the contract.
+     *
+     * Requirements:
+     * - This function can only be called once, during the contract's initialization phase.
+     * - `admin` cannot be the zero address.
+     * - `operator` cannot be the zero address.
+     * - `protocolParams` cannot be empty and must be valid.
+     */
+    function initialize(address admin, address operator, bytes memory protocolParams) external;
+
+    /**
+     * @dev Returns the admin role identifier.
+     * @return bytes32 - admin role identifier.
+     */
+    function ADMIN_ROLE() external view returns (bytes32);
+
+    /**
+     * @dev Returns the operator role identifier.
+     * @return bytes32 - operator role identifier.
+     */
+    function OPERATOR_ROLE() external view returns (bytes32);
+
+    /**
      * @dev Returns the maximum slippage allowed for deposits, in D9 format.
      * @return uint256 - maximum slippage in D9 format.
      */

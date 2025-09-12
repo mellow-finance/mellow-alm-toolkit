@@ -2,11 +2,14 @@
 pragma solidity 0.8.25;
 
 import "../interfaces/utils/IAccessControlCalls.sol";
-import "./DefaultAccessControl.sol";
+import
+    "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
 
 import "forge-std/Test.sol";
 
-abstract contract AccessControlCalls is IAccessControlCalls, DefaultAccessControl {
+abstract contract AccessControlCalls is IAccessControlCalls, AccessControlEnumerableUpgradeable {
+    bytes32 public constant ADMIN_ROLE = keccak256("utils.AccessControlCalls.ADMIN_ROLE");
+
     /// @dev keccak256(abi.encode(target, selector)) => allowed
     mapping(bytes32 => bool) internal allowedCalls;
 
@@ -14,7 +17,9 @@ abstract contract AccessControlCalls is IAccessControlCalls, DefaultAccessContro
         if (admin_ == address(0)) {
             revert AddressZero();
         }
-        __DefaultAccessControl_init(admin_);
+        __AccessControlEnumerable_init();
+
+        _grantRole(ADMIN_ROLE, admin_);
     }
 
     /// @inheritdoc IAccessControlCalls

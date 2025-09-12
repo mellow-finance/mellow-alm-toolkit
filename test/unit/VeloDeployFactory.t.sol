@@ -14,39 +14,122 @@ contract Unit is Fixture {
     int24 tickSpacing = pool.tickSpacing();
 
     function testConstructor() external {
-        vm.expectRevert();
+        vm.expectRevert(IVeloDeployFactory.AddressZero.selector);
         new VeloDeployFactory(
-            address(0), ICore(address(0)), IPulseStrategyModule(address(0)), address(0), address(0)
+            ICore(address(0)), IPulseStrategyModule(address(0)), address(0), address(0)
         );
 
         DeployScript.CoreDeployment memory contracts = deployContracts();
         VeloDeployFactory factory;
 
-        vm.expectRevert(abi.encodeWithSignature("AddressZero()"));
+        vm.expectRevert(IVeloDeployFactory.AddressZero.selector);
         factory = new VeloDeployFactory(
-            address(0),
-            contracts.core,
-            contracts.strategyModule,
-            address(contracts.lpWrapperImplementation),
-            address(contracts.lpStakerImplementation)
-        );
-
-        vm.expectRevert();
-        factory = new VeloDeployFactory(
-            Constants.OPTIMISM_DEPLOYER,
             ICore(address(0)),
             contracts.strategyModule,
             address(contracts.lpWrapperImplementation),
             address(contracts.lpStakerImplementation)
         );
 
+        vm.expectRevert(IVeloDeployFactory.AddressZero.selector);
         factory = new VeloDeployFactory(
-            Constants.OPTIMISM_DEPLOYER,
             contracts.core,
-            contracts.strategyModule,
+            IPulseStrategyModule(address(0)),
             address(contracts.lpWrapperImplementation),
             address(contracts.lpStakerImplementation)
         );
+
+        vm.expectRevert(IVeloDeployFactory.AddressZero.selector);
+        factory = new VeloDeployFactory(
+            contracts.core,
+            contracts.strategyModule,
+            address(0),
+            address(contracts.lpStakerImplementation)
+        );
+
+        vm.expectRevert(IVeloDeployFactory.AddressZero.selector);
+        factory = new VeloDeployFactory(
+            contracts.core,
+            contracts.strategyModule,
+            address(contracts.lpWrapperImplementation),
+            address(0)
+        );
+        /* 
+        vm.expectRevert(IVeloDeployFactory.AddressZero.selector);
+        factory.initialize(
+            address(0),
+            params.factoryOperator,
+            params.factoryProposer,
+            params.lpWrapperAdmin,
+            params.lpWrapperManager,
+            params.lpWrapperOperator,
+            params.minInitialTotalSupply
+        );
+        
+        vm.expectRevert(IVeloDeployFactory.AddressZero.selector);
+        factory.initialize(
+            params.mellowAdmin,
+            address(0),
+            params.factoryProposer,
+            params.lpWrapperAdmin,
+            params.lpWrapperManager,
+            params.lpWrapperOperator,
+            params.minInitialTotalSupply
+        );
+
+        vm.expectRevert(IVeloDeployFactory.AddressZero.selector);
+        factory.initialize(
+            params.mellowAdmin,
+            params.factoryOperator,
+            address(0),
+            params.lpWrapperAdmin,
+            params.lpWrapperManager,
+            params.lpWrapperOperator,
+            params.minInitialTotalSupply
+        );
+
+        vm.expectRevert(IVeloDeployFactory.AddressZero.selector);
+        factory.initialize(
+            params.mellowAdmin,
+            params.factoryOperator,
+            params.factoryProposer,
+            address(0),
+            params.lpWrapperManager,
+            params.lpWrapperOperator,
+            params.minInitialTotalSupply
+        );
+
+        vm.expectRevert(IVeloDeployFactory.AddressZero.selector);
+        factory.initialize(
+            params.mellowAdmin,
+            params.factoryOperator,
+            params.factoryProposer,
+            params.lpWrapperAdmin,
+            address(0),
+            params.lpWrapperOperator,
+            params.minInitialTotalSupply
+        );
+
+        vm.expectRevert(IVeloDeployFactory.AddressZero.selector);
+        factory.initialize(
+            params.mellowAdmin,
+            params.factoryOperator,
+            params.factoryProposer,
+            params.lpWrapperAdmin,
+            params.lpWrapperManager,
+            address(0),
+            params.minInitialTotalSupply
+        );
+
+        vm.expectRevert(IVeloDeployFactory.InvalidTotalSupplyValue.selector);
+        factory.initialize(
+            params.mellowAdmin,
+            params.factoryOperator,
+            params.factoryProposer,
+            params.lpWrapperAdmin,
+            params.lpWrapperManager,
+            params.lpWrapperOperator,
+            0
+        ); */
     }
 
     function testProposeStrategy() public {
@@ -213,7 +296,13 @@ contract Unit is Fixture {
     function testSetLpWrapperAdmin() public {
         DeployScript.CoreDeployment memory contracts = deployContracts();
 
-        vm.expectRevert(abi.encodeWithSignature("Forbidden()"));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
+                address(this),
+                contracts.deployFactory.ADMIN_ROLE()
+            )
+        );
         contracts.deployFactory.setLpWrapperAdmin(address(1234));
 
         vm.startPrank(params.mellowAdmin);
@@ -227,7 +316,13 @@ contract Unit is Fixture {
     function testSetMinInitialTotalSupply() public {
         DeployScript.CoreDeployment memory contracts = deployContracts();
 
-        vm.expectRevert(abi.encodeWithSignature("Forbidden()"));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
+                address(this),
+                contracts.deployFactory.ADMIN_ROLE()
+            )
+        );
         contracts.deployFactory.setMinInitialTotalSupply(123);
 
         vm.startPrank(params.mellowAdmin);
@@ -441,7 +536,13 @@ contract Unit is Fixture {
         DeployScript.CoreDeployment memory contracts = deployContracts();
         IVeloDeployFactory factory = contracts.deployFactory;
 
-        vm.expectRevert(abi.encodeWithSignature("Forbidden()"));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
+                address(this),
+                contracts.deployFactory.OPERATOR_ROLE()
+            )
+        );
         factory.deployStaker(address(1234), 1 days);
 
         (ILpWrapper lpWrapper,) =

@@ -10,6 +10,8 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
     using SafeERC20 for IERC20;
     using Math for uint256;
 
+    bytes32 public constant OPERATOR_ROLE = keccak256("utils.LpStaker.OPERATOR_ROLE");
+
     /// @inheritdoc ILpStaker
     uint32 public constant MIN_TIMELOCK_DURATION = 4 hours;
     /// @inheritdoc ILpStaker
@@ -54,13 +56,10 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
      * ------------------------------------------------------------------------------- */
 
     /// @inheritdoc ILpStaker
-    function initialize(
-        ILpWrapper lpWrapper_,
-        address admin_,
-        address manager_,
-        address operator_,
-        uint32 timeLock_
-    ) external initializer {
+    function initialize(ILpWrapper lpWrapper_, address admin_, address operator_, uint32 timeLock_)
+        external
+        initializer
+    {
         if (address(lpWrapper_) == address(0)) {
             revert AddressZero();
         }
@@ -79,13 +78,10 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
 
         __AccessControlCalls_init(admin_);
 
-        if (manager_ != address(0)) {
-            _grantRole(ADMIN_ROLE, manager_);
+        if (operator_ == address(0)) {
+            revert AddressZero();
         }
-
-        if (operator_ != address(0)) {
-            _grantRole(OPERATOR_ROLE, operator_);
-        }
+        _grantRole(OPERATOR_ROLE, operator_);
 
         __ERC20_init(
             string(abi.encodePacked("Staked", IERC20Metadata(address(lpWrapper_)).name())),
@@ -214,9 +210,11 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
     }
 
     /// @inheritdoc ILpStaker
-    function compoundRewards(SwapParams[2] memory swapParams) external nonReentrant {
-        _requireAtLeastOperator();
-
+    function compoundRewards(SwapParams[2] memory swapParams)
+        external
+        nonReentrant
+        onlyRole(OPERATOR_ROLE)
+    {
         address _this = address(this);
         ILpWrapper lpWrapper_ = lpWrapper;
 

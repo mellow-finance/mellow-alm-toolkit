@@ -2,12 +2,15 @@
 pragma solidity 0.8.25;
 
 import "../interfaces/utils/ILpWrapper.sol";
-import "./DefaultAccessControl.sol";
 import "./VeloFarm.sol";
+import
+    "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
 
-contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
+contract LpWrapper is ILpWrapper, VeloFarm, AccessControlEnumerableUpgradeable {
     using SafeERC20 for IERC20;
     using Math for uint256;
+
+    bytes32 public constant ADMIN_ROLE = keccak256("utils.LpWrapper.ADMIN_ROLE");
 
     uint256 public constant D9 = 1e9;
 
@@ -53,7 +56,11 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
         string memory name_,
         string memory symbol_
     ) external initializer {
-        __DefaultAccessControl_init(admin_);
+        __AccessControlEnumerable_init();
+        if (admin_ == address(0)) {
+            revert AddressZero();
+        }
+        _grantRole(ADMIN_ROLE, admin_);
         if (manager_ != address(0)) {
             _grantRole(ADMIN_ROLE, manager_);
         }
@@ -196,8 +203,7 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
         bytes memory callbackParams,
         bytes memory strategyParams,
         bytes memory securityParams
-    ) public {
-        _requireAdmin();
+    ) public onlyRole(ADMIN_ROLE) {
         core.setPositionParams(
             positionId, slippageD9, callbackParams, strategyParams, securityParams
         );
@@ -239,7 +245,6 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
 
     /// @inheritdoc ILpWrapper
     function setTotalSupplyLimit(uint256 newTotalSupplyLimit) external {
-        _requireAdmin();
         emit TotalSupplyLimitUpdated(newTotalSupplyLimit, totalSupplyLimit, totalSupply());
         totalSupplyLimit = newTotalSupplyLimit;
     }
@@ -250,8 +255,7 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
     }
 
     /// @inheritdoc ILpWrapper
-    function setLpStaker(address lpStaker_) external {
-        _requireAdmin();
+    function setLpStaker(address lpStaker_) external onlyRole(ADMIN_ROLE) {
         if (lpStaker_ == address(0)) {
             revert AddressZero();
         } else if (lpStaker != lpStaker_) {

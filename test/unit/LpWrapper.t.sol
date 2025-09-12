@@ -324,10 +324,22 @@ contract Unit is Fixture {
         IVeloOracle.SecurityParams memory securityParams =
             abi.decode(info.securityParams, (IVeloOracle.SecurityParams));
 
-        vm.expectRevert(abi.encodeWithSignature("Forbidden()"));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
+                address(this),
+                lpWrapper.ADMIN_ROLE()
+            )
+        );
         lpWrapper.setPositionParams(1e5, callbackParams, strategyParams, securityParams);
 
-        vm.expectRevert(abi.encodeWithSignature("Forbidden()"));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
+                address(this),
+                lpWrapper.ADMIN_ROLE()
+            )
+        );
         lpWrapper.setPositionParams(
             1e5, abi.encode(callbackParams), abi.encode(strategyParams), abi.encode(securityParams)
         );
