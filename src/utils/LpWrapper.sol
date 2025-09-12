@@ -26,6 +26,8 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
     address public token0;
     /// @inheritdoc ILpWrapper
     address public token1;
+    /// @inheritdoc ILpWrapper
+    address public lpStaker;
 
     /// @inheritdoc ILpWrapper
     uint256 public totalSupplyLimit;
@@ -247,6 +249,18 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
         core.emptyRebalance(positionId);
     }
 
+    /// @inheritdoc ILpWrapper
+    function setLpStaker(address lpStaker_) external {
+        _requireAdmin();
+        if (lpStaker_ == address(0)) {
+            revert AddressZero();
+        } else if (lpStaker != lpStaker_) {
+            emit LpStakerAlreadySet(lpStaker);
+        }
+
+        lpStaker = lpStaker_;
+    }
+
     /// ---------------------- EXTERNAL VIEW FUNCTIONS ----------------------
 
     /// @inheritdoc ILpWrapper
@@ -420,5 +434,13 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
             amount0 += actualAmount0;
             amount1 += actualAmount1;
         }
+    }
+
+    /// @dev override ERC20::_spendAllowance to have infinite allowance for lpStaker
+    function _spendAllowance(address owner, address spender, uint256 value) internal override {
+        if (spender == lpStaker) {
+            return;
+        }
+        super._spendAllowance(owner, spender, value);
     }
 }
