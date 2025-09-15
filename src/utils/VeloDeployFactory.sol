@@ -213,7 +213,12 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
 
         lpStaker = ILpStaker(Clones.clone(lpStakerImplementation));
         lpStaker.initialize(
-            ILpWrapper(lpWrapper), lpWrapperAdmin, lpWrapperManager, lpWrapperOperator, timeLock
+            ILpWrapper(lpWrapper),
+            lpWrapperAdmin,
+            lpWrapperManager,
+            lpWrapperOperator,
+            timeLock,
+            1 wei
         );
 
         _lpWrapperStaker[lpWrapper] = address(lpStaker);

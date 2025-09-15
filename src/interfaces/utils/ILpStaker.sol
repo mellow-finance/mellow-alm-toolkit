@@ -28,6 +28,9 @@ interface ILpStaker {
     /// @dev Thrown when trying to set a timelock duration that out of allowed range
     error InvalidTimeLock(uint32 newDuration);
 
+    /// @dev Thrown when trying to set a minimum stake amount that is zero
+    error TooLowStakeAmount();
+
     /**
      * @notice Emitted when rewards are compounded on the staker
      * @param rewardAmount The amount of reward tokens that were collected and reinvested.
@@ -78,6 +81,13 @@ interface ILpStaker {
     event TimeLockUpdated(uint32 oldDuration, uint32 newDuration);
 
     /**
+     * @notice Emitted when the minimum stake amount is updated
+     * @param oldMinStakeAmount The previous minimum stake amount.
+     * @param newMinStakeAmount The new minimum stake amount.
+     */
+    event MinStakeAmountUpdated(uint256 oldMinStakeAmount, uint256 newMinStakeAmount);
+
+    /**
      * @notice Struct for parameters required to quote swap amounts
      * @param tokenIn The address of the token to be swapped.
      * @param tokenOut The address of the token to be received from the swap.
@@ -113,13 +123,15 @@ interface ILpStaker {
      * @param manager_ The address of the manager for access control.
      * @param operator_ The address of the operator for access control.
      * @param timelockDuration_ The initial duration for the timelock on unstaking.
+     * @param minStakeAmount_ The minimum amount of LP tokens required to stake.
      */
     function initialize(
         ILpWrapper lpWrapper_,
         address admin_,
         address manager_,
         address operator_,
-        uint32 timelockDuration_
+        uint32 timelockDuration_,
+        uint256 minStakeAmount_
     ) external;
 
     /**
@@ -204,6 +216,13 @@ interface ILpStaker {
     function setTimeLock(uint32 newTimeLock) external;
 
     /**
+     * @dev Sets the minimum stake amount required for staking.
+     * Emits a `MinStakeAmountUpdated` event upon successful completion.
+     * @param minStakeAmount The new minimum stake amount. Must be greater than zero
+     */
+    function setMinStakeAmount(uint256 minStakeAmount) external;
+
+    /**
      * @dev Quotes the amounts to swap for the specified reward tokens.
      * It returns precise amounts to swap without slippage at the call moment.
      * In this case real amounts to swap should be decreased by some slippage tolerance.
@@ -246,6 +265,9 @@ interface ILpStaker {
 
     /// @notice Returns the duration of the timeLock for locked amounts
     function timeLock() external view returns (uint32);
+
+    /// @notice Returns the minimum amount of LP tokens required to stake
+    function minStakeAmount() external view returns (uint256);
 
     /// @notice Returns the minimum duration of the timeLock for locked amounts
     function MIN_TIMELOCK_DURATION() external view returns (uint32);

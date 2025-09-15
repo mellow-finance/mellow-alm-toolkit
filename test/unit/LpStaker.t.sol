@@ -659,7 +659,7 @@ contract Unit is Fixture {
             deployLpWrapper(pool, IPulseStrategyModule.StrategyType.LazySyncing, contracts);
 
         ILpStaker lpStaker = ILpStaker(Clones.clone(lpStakerImplementation));
-        lpStaker.initialize(lpWrapper, admin, manager, operator, 1 days);
+        lpStaker.initialize(lpWrapper, admin, manager, operator, 1 days, 1 wei);
 
         (uint256 amount0, uint256 amount1) = lpWrapper.previewMint(1 ether);
 
@@ -705,6 +705,61 @@ contract Unit is Fixture {
         assertEq(lpStaker.lpAmountOf(user), lpAmount);
     }
 
+    function testMinStakeAmount() external {
+        ICLPool pool = ICLPool(factory.getPool(Constants.OPTIMISM_WETH, Constants.OPTIMISM_OP, 200));
+        (ILpStaker lpStaker, ILpWrapper lpWrapper) = _initLpStaker(pool, defaultTimeLock);
+
+        uint256 lpAmount = 1 ether;
+        (uint256 amount0, uint256 amount1) = lpWrapper.previewMint(lpAmount);
+
+        vm.startPrank(user);
+        deal(Constants.OPTIMISM_WETH, user, amount0);
+        deal(Constants.OPTIMISM_OP, user, amount1);
+
+        IERC20(Constants.OPTIMISM_WETH).safeIncreaseAllowance(address(lpWrapper), amount0);
+        IERC20(Constants.OPTIMISM_OP).safeIncreaseAllowance(address(lpWrapper), amount1);
+
+        (,, lpAmount) = lpWrapper.mint(
+            ILpWrapper.MintParams({
+                lpAmount: lpAmount,
+                amount0Max: amount0,
+                amount1Max: amount1,
+                recipient: user,
+                deadline: type(uint256).max
+            })
+        );
+        vm.stopPrank();
+        assertEq(lpStaker.minStakeAmount(), 1 wei);
+
+        vm.prank(admin);
+        lpStaker.setMinStakeAmount(lpAmount);
+        assertEq(lpStaker.minStakeAmount(), lpAmount);
+
+        /// @dev first stake checkpoint always is successful
+        vm.prank(user);
+        lpStaker.stake(lpAmount / 2, user);
+
+        skip(1 seconds);
+
+        /// @dev if some time has passed, new checkpoint is created and min stake amount is checked
+        vm.prank(user);
+        vm.expectRevert(ILpStaker.TooLowStakeAmount.selector);
+        lpStaker.stake(lpAmount / 2, user);
+
+        vm.prank(admin);
+        lpStaker.setMinStakeAmount(lpAmount / 2);
+        assertEq(lpStaker.minStakeAmount(), lpAmount / 2);
+
+        vm.prank(user);
+        vm.expectRevert(ILpStaker.TooLowStakeAmount.selector);
+        lpStaker.stake(lpAmount / 2 - 1, user);
+
+        vm.prank(user);
+        lpStaker.stake(lpAmount / 2, user);
+
+        assertEq(lpStaker.lpAmountOf(user), lpAmount);
+    }
+
     function _buildSwapData(ILpStaker lpStaker, SwapRouterMock target)
         internal
         view
@@ -741,7 +796,7 @@ contract Unit is Fixture {
             deployLpWrapper(pool, IPulseStrategyModule.StrategyType.LazySyncing, contracts);
 
         lpStaker = ILpStaker(Clones.clone(lpStakerImplementation));
-        lpStaker.initialize(lpWrapper, admin, manager, operator, timeLock);
+        lpStaker.initialize(lpWrapper, admin, manager, operator, timeLock, 1 wei);
 
         vm.prank(Constants.OPTIMISM_LP_WRAPPER_ADMIN);
         lpWrapper.setLpStaker(address(lpStaker));

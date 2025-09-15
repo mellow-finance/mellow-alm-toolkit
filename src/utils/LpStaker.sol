@@ -36,6 +36,8 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
     address public token0;
     /// @inheritdoc ILpStaker
     address public token1;
+    /// @inheritdoc ILpStaker
+    uint256 public minStakeAmount;
 
     /// @dev A record of locked amounts for each account
     mapping(address => Checkpoints.Trace224) private lockedCheckpoints;
@@ -59,7 +61,8 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
         address admin_,
         address manager_,
         address operator_,
-        uint32 timeLock_
+        uint32 timeLock_,
+        uint256 minStakeAmount_
     ) external initializer {
         if (address(lpWrapper_) == address(0)) {
             revert AddressZero();
@@ -102,6 +105,7 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
         IERC20(token1).safeIncreaseAllowance(address(lpWrapper_), type(uint256).max);
 
         _setTimeLock(timeLock_);
+        _setMinStakeAmount(minStakeAmount_);
     }
 
     /// @inheritdoc ILpStaker
@@ -259,6 +263,11 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
         _setTimeLock(newTimeLock);
     }
 
+    /// @inheritdoc ILpStaker
+    function setMinStakeAmount(uint256 minStakeAmount_) external onlyRole(ADMIN_ROLE) {
+        _setMinStakeAmount(minStakeAmount_);
+    }
+
     /* -------------------------------------------------------------------------------
      *                     External view functions
      * ------------------------------------------------------------------------------- */
@@ -355,6 +364,7 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
 
     /// @dev Pushes a new checkpoint for the locked shares of an account.
     /// If the last checkpoint has the same timestamp, it merges the values.
+    /// Throws if the number of active locks exceeds MAX_ACTIVE_LOCKS or if the new lock amount is less than `minStakeAmount`.
     /// @param account The address of the account to push the checkpoint for.
     /// @param value The value of the checkpoint.
     function _pushCheckpoint(address account, uint224 value) internal {
@@ -378,6 +388,9 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
                 /// @dev merge with the last checkpoint if the timestamp is the same
                 /// https://github.com/OpenZeppelin/openzeppelin-contracts/blob/69c8def5f222ff96f2b5beff05dfba996368aa79/contracts/utils/structs/Checkpoints.sol#L152
                 value += lastCheckpoint._value;
+            } else if (value < uint224(minStakeAmount)) {
+                /// @dev Throw if the new lock amount is less than the minimum stake amount
+                revert TooLowStakeAmount();
             }
         }
         /// @dev push with the same key just will rewrite the checkpoint value
@@ -430,6 +443,21 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
         timeLock = newTimeLock;
 
         emit TimeLockUpdated(oldTimeLock, newTimeLock);
+    }
+
+    /**
+     * @dev Updates the minimum stake amount required for staking.
+     * Emits a `MinStakeAmountUpdated` event upon successful completion.
+     * @param minStakeAmount_ The new minimum stake amount. Must be greater than zero
+     */
+    function _setMinStakeAmount(uint256 newMinStakeAmount) internal {
+        if (newMinStakeAmount == 0) {
+            revert ZeroAmount();
+        }
+        uint256 oldMinStakeAmount = minStakeAmount;
+        minStakeAmount = newMinStakeAmount;
+
+        emit MinStakeAmountUpdated(oldMinStakeAmount, newMinStakeAmount);
     }
 
     /* -------------------------------------------------------------------------------
