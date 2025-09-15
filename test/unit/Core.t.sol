@@ -27,8 +27,7 @@ contract Unit is Fixture {
             contracts.depositWithdrawModule,
             contracts.strategyModule,
             contracts.oracle,
-            address(0),
-            Constants.OPTIMISM_WETH
+            address(0)
         );
 
         core = new Core(
@@ -36,8 +35,7 @@ contract Unit is Fixture {
             contracts.depositWithdrawModule,
             contracts.strategyModule,
             contracts.oracle,
-            Constants.OPTIMISM_DEPLOYER,
-            Constants.OPTIMISM_WETH
+            Constants.OPTIMISM_DEPLOYER
         );
 
         assertTrue(address(contracts.core) != address(0));
@@ -94,8 +92,7 @@ contract Unit is Fixture {
             IAmmDepositWithdrawModule(address(module)),
             contracts.strategyModule,
             contracts.oracle,
-            Constants.OPTIMISM_DEPLOYER,
-            Constants.OPTIMISM_WETH
+            Constants.OPTIMISM_DEPLOYER
         );
 
         uint256 tokenId = mint(
@@ -304,8 +301,7 @@ contract Unit is Fixture {
             contracts.depositWithdrawModule,
             contracts.strategyModule,
             contracts.oracle,
-            Constants.OPTIMISM_DEPLOYER,
-            Constants.OPTIMISM_WETH
+            Constants.OPTIMISM_DEPLOYER
         );
 
         uint256 tokenId = mint(

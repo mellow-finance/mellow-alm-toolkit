@@ -56,8 +56,7 @@ abstract contract DeployScript {
             contracts.depositWithdrawModule,
             contracts.strategyModule,
             contracts.oracle,
-            params.deployer,
-            params.weth
+            params.deployer
         );
         contracts.lpWrapperImplementation = new LpWrapper(address(contracts.core));
         contracts.lpStakerImplementation = new LpStaker(address(contracts.core));

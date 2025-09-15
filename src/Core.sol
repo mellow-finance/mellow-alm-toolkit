@@ -14,8 +14,6 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     /// @inheritdoc ICore
     uint256 public constant MAX_SLIPPAGE_D9 = D9 / 4;
 
-    address public immutable weth;
-
     /// @inheritdoc ICore
     IAmmModule public immutable ammModule;
 
@@ -45,14 +43,12 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         IAmmDepositWithdrawModule ammDepositWithdrawModule_,
         IStrategyModule strategyModule_,
         IOracle oracle_,
-        address admin_,
-        address weth_
+        address admin_
     ) initializer {
         __DefaultAccessControl_init(admin_);
         if (
             address(ammModule_) == address(0) || address(ammDepositWithdrawModule_) == address(0)
                 || address(strategyModule_) == address(0) || address(oracle_) == address(0)
-                || weth_ == address(0)
         ) {
             revert AddressZero();
         }
@@ -60,15 +56,13 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         ammDepositWithdrawModule = ammDepositWithdrawModule_;
         strategyModule = strategyModule_;
         oracle = oracle_;
-        weth = weth_;
     }
 
     /// ---------------------- EXTERNAL MUTATING FUNCTIONS ----------------------
+    receive() external payable {}
 
-    receive() external payable {
-        uint256 amount = msg.value;
-        IWETH9(weth).deposit{value: amount}();
-        IERC20(weth).safeTransfer(tx.origin, amount);
+    function collect() external onlyRole(ADMIN_ROLE) {
+        Address.sendValue(payable(msg.sender), address(this).balance);
     }
 
     /// @inheritdoc ICore

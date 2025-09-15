@@ -20,7 +20,7 @@ contract Unit is Fixture {
             maxAge: 7 days,
             extraData: ""
         });
-        
+
         vm.expectRevert(IVeloOracle.InvalidParams.selector);
         oracle.validateSecurityParams(abi.encode(params));
         params.lookback = 1;
