@@ -448,7 +448,7 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
     /**
      * @dev Updates the minimum stake amount required for staking.
      * Emits a `MinStakeAmountUpdated` event upon successful completion.
-     * @param minStakeAmount_ The new minimum stake amount. Must be greater than zero
+     * @param newMinStakeAmount The new minimum stake amount. Must be greater than zero
      */
     function _setMinStakeAmount(uint256 newMinStakeAmount) internal {
         if (newMinStakeAmount == 0) {
