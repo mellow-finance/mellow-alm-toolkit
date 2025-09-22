@@ -20,22 +20,36 @@ contract Unit is Fixture {
         deal(Constants.OPTIMISM_OP, address(this), 1e10 ether);
     }
 
-    function testContructor() external {
-        vm.expectRevert(abi.encodeWithSignature("AddressZero()"));
+    function testConstructor() external {
         Core core = new Core(
             contracts.ammModule,
             contracts.depositWithdrawModule,
             contracts.strategyModule,
-            contracts.oracle,
-            address(0)
+            contracts.oracle
+        );
+        vm.expectRevert(abi.encodeWithSignature("AddressZero()"));
+        core.initialize(
+            address(0),
+            Constants.OPTIMISM_CORE_OPERATOR,
+            abi.encode(
+                IVeloAmmModule.ProtocolParams({
+                    treasury: Constants.OPTIMISM_MELLOW_TREASURY,
+                    feeD9: Constants.OPTIMISM_FEE_D9,
+                    extraData: ""
+                })
+            )
         );
 
-        core = new Core(
-            contracts.ammModule,
-            contracts.depositWithdrawModule,
-            contracts.strategyModule,
-            contracts.oracle,
-            Constants.OPTIMISM_DEPLOYER
+        core.initialize(
+            Constants.OPTIMISM_MELLOW_ADMIN,
+            Constants.OPTIMISM_CORE_OPERATOR,
+            abi.encode(
+                IVeloAmmModule.ProtocolParams({
+                    treasury: Constants.OPTIMISM_MELLOW_TREASURY,
+                    feeD9: Constants.OPTIMISM_FEE_D9,
+                    extraData: ""
+                })
+            )
         );
 
         assertTrue(address(contracts.core) != address(0));
@@ -91,8 +105,19 @@ contract Unit is Fixture {
             contracts.ammModule,
             IAmmDepositWithdrawModule(address(module)),
             contracts.strategyModule,
-            contracts.oracle,
-            Constants.OPTIMISM_DEPLOYER
+            contracts.oracle
+        );
+
+        coreBroken.initialize(
+            Constants.OPTIMISM_MELLOW_ADMIN,
+            Constants.OPTIMISM_CORE_OPERATOR,
+            abi.encode(
+                IVeloAmmModule.ProtocolParams({
+                    treasury: Constants.OPTIMISM_MELLOW_TREASURY,
+                    feeD9: Constants.OPTIMISM_FEE_D9,
+                    extraData: ""
+                })
+            )
         );
 
         uint256 tokenId = mint(
@@ -105,10 +130,10 @@ contract Unit is Fixture {
             Constants.OPTIMISM_DEPLOYER
         );
 
-        vm.startPrank(Constants.OPTIMISM_DEPLOYER);
-
+        vm.prank(Constants.OPTIMISM_DEPLOYER);
         positionManager.approve(address(coreBroken), tokenId);
 
+        vm.prank(Constants.OPTIMISM_MELLOW_ADMIN);
         coreBroken.setProtocolParams(
             abi.encode(
                 IVeloAmmModule.ProtocolParams({
@@ -119,6 +144,7 @@ contract Unit is Fixture {
             )
         );
 
+        vm.startPrank(Constants.OPTIMISM_DEPLOYER);
         ICore.DepositParams memory depositParams;
         depositParams.slippageD9 = 1 * 1e5;
         depositParams.ammPositionIds = new uint256[](1);
@@ -225,10 +251,16 @@ contract Unit is Fixture {
         rebalanceParams.callback = address(new RebalancingBotMock(positionManager));
         rebalanceParams.data = new bytes(0); // count of position, if empty - ignore
 
-        vm.expectRevert(abi.encodeWithSignature("Forbidden()"));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
+                address(this),
+                core.OPERATOR_ROLE()
+            )
+        );
         core.rebalance(rebalanceParams);
 
-        vm.startPrank(params.mellowAdmin);
+        vm.startPrank(params.coreOperator);
         vm.expectRevert(abi.encodeWithSignature("NoRebalanceNeeded()"));
         core.rebalance(rebalanceParams);
         vm.stopPrank();
@@ -239,7 +271,7 @@ contract Unit is Fixture {
         (sqrtPriceX96, tick,,,,) = pool.slot0();
         movePrice(pool, TickMath.getSqrtRatioAtTick(tick + 1000));
 
-        vm.startPrank(params.mellowAdmin);
+        vm.startPrank(params.coreOperator);
         vm.expectRevert(abi.encodeWithSignature("PriceManipulationDetected()"));
         core.rebalance(rebalanceParams);
         vm.stopPrank();
@@ -269,8 +301,8 @@ contract Unit is Fixture {
         deployParams_.initialTotalSupply = 1000 wei;
         deployParams_.totalSupplyLimit = 1000 ether;
 
-        deal(pool.token0(), params.factoryOperator, 100 ether);
-        deal(pool.token1(), params.factoryOperator, 1 ether);
+        deal(pool.token0(), address(this), 100 ether);
+        deal(pool.token1(), address(this), 1 ether);
         deal(pool.token0(), address(contracts.deployFactory), 1 ether);
         deal(pool.token1(), address(contracts.deployFactory), 1 ether);
 
@@ -280,7 +312,7 @@ contract Unit is Fixture {
         movePrice(pool, TickMath.getSqrtRatioAtTick(tick + 1000));
 
         rebalanceParams.id = 1;
-        vm.startPrank(params.mellowAdmin);
+        vm.startPrank(params.coreOperator);
 
         rebalanceParams.data = abi.encode(10);
         vm.expectRevert(ICore.InvalidLength.selector);
@@ -300,8 +332,18 @@ contract Unit is Fixture {
             contracts.ammModule,
             contracts.depositWithdrawModule,
             contracts.strategyModule,
-            contracts.oracle,
-            Constants.OPTIMISM_DEPLOYER
+            contracts.oracle
+        );
+        core.initialize(
+            Constants.OPTIMISM_MELLOW_ADMIN,
+            Constants.OPTIMISM_CORE_OPERATOR,
+            abi.encode(
+                IVeloAmmModule.ProtocolParams({
+                    treasury: Constants.OPTIMISM_MELLOW_TREASURY,
+                    feeD9: Constants.OPTIMISM_FEE_D9,
+                    extraData: ""
+                })
+            )
         );
 
         uint256 tokenId = mint(
@@ -360,7 +402,9 @@ contract Unit is Fixture {
         positionManager.approve(address(core), tokenId1);
         positionManager.approve(address(core), tokenId2);
         positionManager.approve(address(core), tokenIdEmpty);
+        vm.stopPrank();
 
+        vm.prank(Constants.OPTIMISM_MELLOW_ADMIN);
         core.setProtocolParams(
             abi.encode(
                 IVeloAmmModule.ProtocolParams({
@@ -371,6 +415,7 @@ contract Unit is Fixture {
             )
         );
 
+        vm.startPrank(Constants.OPTIMISM_DEPLOYER);
         ICore.DepositParams memory depositParams;
         depositParams.ammPositionIds = new uint256[](1);
         depositParams.owner = Constants.OPTIMISM_DEPLOYER;
@@ -613,7 +658,13 @@ contract Unit is Fixture {
     function testSetProtocolParams() external {
         ICore core = contracts.core;
 
-        vm.expectRevert(abi.encodeWithSignature("Forbidden()"));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
+                address(this),
+                core.MANAGER_ROLE()
+            )
+        );
         core.setProtocolParams(new bytes(123));
 
         vm.startPrank(params.mellowAdmin);

@@ -37,6 +37,13 @@ interface IDepositBalancer {
     error InsufficientAmount();
     /// @dev Thrown when a swap operation fails.
     error SwapFailed(address target, bytes swapData, bytes revertData);
+    /**
+     * @dev Custom error for signaling that an operation is not allowed.
+     * This error is used in contexts where a user attempts to perform an action
+     * that is not permitted, typically due to insufficient permissions or
+     * other constraints defined within the contract.
+     */
+    error Forbidden();
 
     /**
      * @dev Data structure for swap operations.

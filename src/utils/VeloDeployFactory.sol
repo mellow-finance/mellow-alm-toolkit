@@ -3,12 +3,16 @@ pragma solidity 0.8.25;
 
 import "../interfaces/utils/IVeloDeployFactory.sol";
 
-import "./DefaultAccessControl.sol";
+import
+    "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
 import "src/libraries/PulseStrategyModuleHelper.sol";
 
-contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
+contract VeloDeployFactory is AccessControlEnumerableUpgradeable, IVeloDeployFactory {
     using EnumerableSet for EnumerableSet.AddressSet;
     using SafeERC20 for IERC20;
+
+    bytes32 public constant MANAGER_ROLE = keccak256("utils.VeloDeployFactory.MANAGER_ROLE");
+    bytes32 public constant PROPOSER_ROLE = keccak256("utils.VeloDeployFactory.PROPOSER_ROLE");
 
     /// @dev Mapping of pool addresses to their corresponding LpWrapper sets
     mapping(address => EnumerableSet.AddressSet) private _poolWrappers;
@@ -25,7 +29,8 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
     /// @dev Mapping of proposal DeployParams IDs to their corresponding status or LpWrapper address, see @param DeployParamsStatus
     mapping(bytes32 => uint160) private _deployParamsStatus;
 
-    /// @dev Position parameters for minting
+    /// @dev Mapping of LpWrapper to their LpStaker deploy parameters
+    mapping(address => LpStakerParams) private _lpStakerParams;
 
     address public lpWrapperAdmin;
     address public lpWrapperManager;
@@ -42,13 +47,17 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
     /// ---------------------- INITIALIZER FUNCTIONS ----------------------
 
     constructor(
-        address admin_,
         ICore core_,
         IPulseStrategyModule strategyModule_,
         address lpWrapperImplementation_,
         address lpStakerImplementation_
-    ) initializer {
-        __DefaultAccessControl_init(admin_);
+    ) {
+        if (
+            address(core_) == address(0) || address(strategyModule_) == address(0)
+                || lpWrapperImplementation_ == address(0) || lpStakerImplementation_ == address(0)
+        ) {
+            revert AddressZero();
+        }
         core = core_;
         strategyModule = strategyModule_;
         ammModule = core.ammModule();
@@ -57,13 +66,39 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
         lpStakerImplementation = lpStakerImplementation_;
     }
 
+    function initialize(
+        address admin_,
+        address manager_,
+        address proposer_,
+        address lpWrapperAdmin_,
+        address lpWrapperManager_,
+        address lpWrapperOperator_,
+        uint256 minInitialTotalSupply_
+    ) external initializer {
+        if (
+            admin_ == address(0) || manager_ == address(0) || proposer_ == address(0)
+                || lpWrapperAdmin_ == address(0) || lpWrapperManager_ == address(0)
+                || lpWrapperOperator_ == address(0)
+        ) {
+            revert AddressZero();
+        }
+        __AccessControlEnumerable_init();
+        _grantRole(DEFAULT_ADMIN_ROLE, admin_);
+        _grantRole(MANAGER_ROLE, manager_);
+        _grantRole(PROPOSER_ROLE, proposer_);
+        lpWrapperAdmin = lpWrapperAdmin_;
+        lpWrapperManager = lpWrapperManager_;
+        lpWrapperOperator = lpWrapperOperator_;
+
+        _setMinInitialTotalSupply(minInitialTotalSupply_);
+    }
+
     /// ---------------------- EXTERNAL MUTATING FUNCTIONS ----------------------
 
     receive() external payable {}
 
     /// @inheritdoc IVeloDeployFactory
-    function claim(address token) external {
-        _requireAtLeastOperator();
+    function claim(address token) external onlyRole(MANAGER_ROLE) {
         address sender = msg.sender;
         if (token == address(0)) {
             Address.sendValue(payable(sender), address(this).balance);
@@ -75,9 +110,9 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
     /// @inheritdoc IVeloDeployFactory
     function proposeDeployParams(DeployParams memory params)
         external
+        onlyRole(PROPOSER_ROLE)
         returns (bytes32 proposalId)
     {
-        _requireAtLeastProposer();
         if (!core.ammModule().isPool(params.pool)) {
             revert ForbiddenPool();
         }
@@ -106,9 +141,7 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
     }
 
     /// @inheritdoc IVeloDeployFactory
-    function acceptDeployParams(bytes32 proposalId) external {
-        _requireAtLeastOperator();
-
+    function acceptDeployParams(bytes32 proposalId) external onlyRole(MANAGER_ROLE) {
         uint160 status = _deployParamsStatus[proposalId];
         if (status == uint160(DeployParamsStatus.None)) {
             revert DeployParamsNotProposed(proposalId);
@@ -124,8 +157,6 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
 
     /// @inheritdoc IVeloDeployFactory
     function deployStrategy(bytes32 proposalId) external returns (ILpWrapper lpWrapper) {
-        _requireAtLeastOperator();
-
         uint160 status = _deployParamsStatus[proposalId];
         if (status == uint160(DeployParamsStatus.None)) {
             revert DeployParamsNotProposed(proposalId);
@@ -199,26 +230,52 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
     }
 
     /// @inheritdoc IVeloDeployFactory
-    function deployStaker(address lpWrapper, uint32 timeLock)
+    function approveLpStaker(address lpWrapper, LpStakerParams memory params)
         external
-        returns (ILpStaker lpStaker)
+        onlyRole(MANAGER_ROLE)
     {
-        _requireAtLeastOperator();
         if (!_lpWrappers.contains(lpWrapper)) {
             revert LpWrapperNotExists(lpWrapper);
         }
         if (_lpWrapperStaker[lpWrapper] != address(0)) {
             revert LpWrapperAlreadyHasStaker(lpWrapper, _lpWrapperStaker[lpWrapper]);
         }
+        if (
+            params.timeLock < ILpStaker(lpStakerImplementation).MIN_TIMELOCK_DURATION()
+                || params.timeLock > ILpStaker(lpStakerImplementation).MAX_TIMELOCK_DURATION()
+        ) {
+            revert InvalidDeployParams();
+        }
+        LpStakerParams memory deployedParams = _lpStakerParams[lpWrapper];
+        if (deployedParams.timeLock != 0 || deployedParams.minStakeAmount != 0) {
+            revert LpStakerAlreadyApproved();
+        }
+        _lpStakerParams[lpWrapper] = params;
+        emit LpStakerApproved(
+            ILpWrapper(lpWrapper).pool(), lpWrapper, params.timeLock, params.minStakeAmount
+        );
+    }
+
+    /// @inheritdoc IVeloDeployFactory
+    function deployStaker(address lpWrapper) external returns (ILpStaker lpStaker) {
+        if (!_lpWrappers.contains(lpWrapper)) {
+            revert LpWrapperNotExists(lpWrapper);
+        }
+        if (_lpWrapperStaker[lpWrapper] != address(0)) {
+            revert LpWrapperAlreadyHasStaker(lpWrapper, _lpWrapperStaker[lpWrapper]);
+        }
+        LpStakerParams memory params = _lpStakerParams[lpWrapper];
+        if (params.timeLock == 0 || params.minStakeAmount == 0) {
+            revert LpStakerNotApproved();
+        }
 
         lpStaker = ILpStaker(Clones.clone(lpStakerImplementation));
         lpStaker.initialize(
             ILpWrapper(lpWrapper),
             lpWrapperAdmin,
-            lpWrapperManager,
             lpWrapperOperator,
-            timeLock,
-            1 wei
+            params.timeLock,
+            params.minStakeAmount
         );
 
         _lpWrapperStaker[lpWrapper] = address(lpStaker);
@@ -227,8 +284,7 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
     }
 
     /// @inheritdoc IVeloDeployFactory
-    function setLpWrapperAdmin(address lpWrapperAdmin_) external {
-        _requireAdmin();
+    function setLpWrapperAdmin(address lpWrapperAdmin_) external onlyRole(MANAGER_ROLE) {
         if (lpWrapperAdmin_ == address(0)) {
             revert AddressZero();
         }
@@ -237,22 +293,27 @@ contract VeloDeployFactory is DefaultAccessControl, IVeloDeployFactory {
     }
 
     /// @inheritdoc IVeloDeployFactory
-    function setLpWrapperManager(address lpWrapperManager_) external {
-        _requireAdmin();
+    function setLpWrapperManager(address lpWrapperManager_) external onlyRole(MANAGER_ROLE) {
         lpWrapperManager = lpWrapperManager_;
         emit LpWrapperManagerSet(lpWrapperManager_, msg.sender);
     }
 
     /// @inheritdoc IVeloDeployFactory
-    function setLpWrapperOperator(address lpWrapperOperator_) external {
-        _requireAdmin();
+    function setLpWrapperOperator(address lpWrapperOperator_) external onlyRole(MANAGER_ROLE) {
         lpWrapperOperator = lpWrapperOperator_;
         emit LpWrapperOperatorSet(lpWrapperOperator_, msg.sender);
     }
 
     /// @inheritdoc IVeloDeployFactory
-    function setMinInitialTotalSupply(uint256 minInitialTotalSupply_) external {
-        _requireAdmin();
+
+    function setMinInitialTotalSupply(uint256 minInitialTotalSupply_)
+        external
+        onlyRole(MANAGER_ROLE)
+    {
+        _setMinInitialTotalSupply(minInitialTotalSupply_);
+    }
+
+    function _setMinInitialTotalSupply(uint256 minInitialTotalSupply_) internal {
         if (minInitialTotalSupply_ == 0 || minInitialTotalSupply_ > 1 ether) {
             revert InvalidTotalSupplyValue();
         }

@@ -53,7 +53,7 @@ library Constants {
                 lpWrapperManager: OPTIMISM_LP_WRAPPER_MANAGER,
                 lpWrapperOperator: OPTIMISM_LP_WRAPPER_OPERATOR,
                 minInitialTotalSupply: OPTIMISM_MIN_INITIAL_TOTAL_SUPPLY,
-                factoryOperator: OPTIMISM_FACTORY_OPERATOR,
+                factoryManager: OPTIMISM_FACTORY_OPERATOR,
                 factoryProposer: OPTIMISM_FACTORY_PROPOSER,
                 coreOperator: OPTIMISM_CORE_OPERATOR,
                 protocolParams: IVeloAmmModule.ProtocolParams({

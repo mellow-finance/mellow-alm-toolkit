@@ -27,7 +27,7 @@ contract Unit is Fixture {
             abi.encodeWithSelector(
                 IAccessControl.AccessControlUnauthorizedAccount.selector,
                 address(this),
-                DefaultAccessControl(address(mock)).ADMIN_ROLE()
+                IAccessControlCalls(address(mock)).ALLOW_CALL_ROLE()
             )
         );
         mock.allowTargetCall(target, selector);
@@ -61,7 +61,7 @@ contract Unit is Fixture {
             abi.encodeWithSelector(
                 IAccessControl.AccessControlUnauthorizedAccount.selector,
                 address(this),
-                DefaultAccessControl(address(mock)).ADMIN_ROLE()
+                IAccessControlCalls(address(mock)).ALLOW_CALL_ROLE()
             )
         );
         mock.disallowTargetCall(target, selector);
