@@ -171,7 +171,7 @@ contract TerminalAmmModule is IVeloAmmModule {
 
     /// @inheritdoc IAmmModule
     function getRewardToken(address pool) external view returns (address) {
-        return IGauge(ITerminalPool(pool).gauge()).term();
+        return ITerminalPool(pool).term();
     }
 
     /// @inheritdoc IAmmModule
