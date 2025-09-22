@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.25;
 
-import "../../src/Core.sol";
-import "../../src/modules/velo/VeloAmmModule.sol";
+import "src/Core.sol";
+import "src/modules/velo/VeloAmmModule.sol";
 
 contract RebalancingBot is IRebalanceCallback {
     using SafeERC20 for IERC20;

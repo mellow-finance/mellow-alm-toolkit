@@ -1,15 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import "../Imports.sol";
-import "scripts/deploy/velo/Constants.sol";
+import "scripts/deploy/terminal/Constants.sol";
+import "scripts/deploy/terminal/DeployScript.sol";
 
-contract Fixture is DeployScriptVelo, Test {
+contract Fixture is Test, DeployScriptTerm {
     using SafeERC20 for IERC20;
-
-    address WETH = 0x4200000000000000000000000000000000000006;
-
-    ILpWrapper private wstethWeth1Wrapper;
 
     int24 public constant TICK_SPACING = 200;
     uint256 public constant Q96 = 2 ** 96;
@@ -17,7 +13,7 @@ contract Fixture is DeployScriptVelo, Test {
     DeployScript.CoreDeploymentParams public params = Constants.getDeploymentParams();
     INonfungiblePositionManager public positionManager =
         INonfungiblePositionManager(params.positionManager);
-    ICLFactory public factory = ICLFactory(positionManager.factory());
+    ITerminalPoolFactory public factory = ITerminalPoolFactory(positionManager.factory());
 
     function deployContracts() public returns (DeployScript.CoreDeployment memory contracts) {
         vm.startPrank(params.deployer);
@@ -25,11 +21,10 @@ contract Fixture is DeployScriptVelo, Test {
         vm.stopPrank();
     }
 
-    function getValidDeployParams(ICLPool pool, IPulseStrategyModule.StrategyType strategyType)
-        internal
-        view
-        returns (IVeloDeployFactory.DeployParams memory deployParams)
-    {
+    function getValidDeployParams(
+        ITerminalPool pool,
+        IPulseStrategyModule.StrategyType strategyType
+    ) internal view returns (IVeloDeployFactory.DeployParams memory deployParams) {
         deployParams.slippageD9 = 1e6;
         deployParams.strategyParams = IPulseStrategyModule.StrategyParams({
             strategyType: strategyType,
@@ -67,7 +62,7 @@ contract Fixture is DeployScriptVelo, Test {
     }
 
     function deployLpWrapper(
-        ICLPool pool,
+        ITerminalPool pool,
         IPulseStrategyModule.StrategyType strategyType,
         DeployScript.CoreDeployment memory contracts
     ) public returns (ILpWrapper lpWrapper, IVeloDeployFactory.DeployParams memory deployParams) {
@@ -145,7 +140,7 @@ contract Fixture is DeployScriptVelo, Test {
         vm.prank(params.factoryProposer);
         bytes32 proposalId = contracts.deployFactory.proposeDeployParams(deployParams);
 
-        ICLPool pool = ICLPool(deployParams.pool);
+        ITerminalPool pool = ITerminalPool(deployParams.pool);
 
         vm.prank(params.factoryManager);
         contracts.deployFactory.acceptDeployParams(proposalId);
@@ -156,22 +151,6 @@ contract Fixture is DeployScriptVelo, Test {
         //vm.stopPrank();
     }
 
-    function dealTokenAmount(address token, address recipient, uint256 amount) public {
-        if (token == WETH) {
-            deal(recipient, amount);
-            vm.startPrank(recipient);
-            IWETH9(WETH).deposit{value: amount}();
-            vm.stopPrank();
-        } else {
-            console2.log(token);
-            if (token == 0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85) {
-                deal(0xbd17DEee53a58B48548117a11a2E7bbF2D0d6Fa7, recipient, amount);
-            } else {
-                deal(token, recipient, amount);
-            }
-        }
-    }
-
     function mint(
         address token0,
         address token1,
@@ -179,7 +158,7 @@ contract Fixture is DeployScriptVelo, Test {
         int24 tickLower,
         int24 tickUpper,
         uint128 liquidity,
-        ICLPool pool,
+        ITerminalPool pool,
         address recipient
     ) public returns (uint256) {
         vm.startPrank(recipient);
@@ -187,7 +166,7 @@ contract Fixture is DeployScriptVelo, Test {
         if (token0 > token1) {
             (token0, token1) = (token1, token0);
         }
-        (uint160 sqrtRatioX96,,,,,) = pool.slot0();
+        (uint160 sqrtRatioX96,,,,,,,) = pool.slot0();
 
         INonfungiblePositionManager.MintParams memory mintParams;
         mintParams.tickLower = tickLower;
@@ -224,7 +203,7 @@ contract Fixture is DeployScriptVelo, Test {
         int24 tickSpacing,
         int24 width,
         uint128 liquidity,
-        ICLPool pool,
+        ITerminalPool pool,
         address recipient
     ) public returns (uint256) {
         vm.startPrank(recipient);
@@ -232,7 +211,7 @@ contract Fixture is DeployScriptVelo, Test {
         if (token0 > token1) {
             (token0, token1) = (token1, token0);
         }
-        (uint160 sqrtRatioX96, int24 spotTick,,,,) = pool.slot0();
+        (uint160 sqrtRatioX96, int24 spotTick,,,,,,) = pool.slot0();
         {
             int24 remainder = spotTick % tickSpacing;
             if (remainder < 0) {
@@ -269,15 +248,22 @@ contract Fixture is DeployScriptVelo, Test {
         return tokenId;
     }
 
-    function movePrice(ICLPool pool, uint160 sqrtPriceX96Target) public {
+    function increaseObservationCardinality(ITerminalPool pool, int24 newObservations) public {
+        (, int24 tick,,,,,,) = pool.slot0();
+        ITerminalPool(pool).increaseObservationCardinalityNext(uint16(uint24(newObservations)));
+
+        for (int24 i = 0; i < newObservations; i++) {
+            uint160 sqrtPriceX96Target = TickMath.getSqrtRatioAtTick(tick + (i ^ 1));
+            movePrice(pool, sqrtPriceX96Target);
+        }
+    }
+
+    function movePrice(ITerminalPool pool, uint160 sqrtPriceX96Target) public {
         address token0 = pool.token0();
         address token1 = pool.token1();
-        (uint160 sqrtPriceX96,,,,,) = pool.slot0();
+        (uint160 sqrtPriceX96,,,,,,,) = pool.slot0();
 
         vm.startPrank(address(this));
-
-        IERC20(token0).approve(address(this), type(uint256).max);
-        IERC20(token1).approve(address(this), type(uint256).max);
 
         pool.swap(
             address(this),
@@ -289,26 +275,30 @@ contract Fixture is DeployScriptVelo, Test {
         vm.stopPrank();
     }
 
-    function uniswapV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata data)
+    function terminalSwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata data)
         external
     {
-        ICLPool pool = ICLPool(msg.sender);
+        ITerminalPool pool = ITerminalPool(msg.sender);
+        address token0 = pool.token0();
+        address token1 = pool.token1();
 
         address recipient = abi.decode(data, (address));
         if (amount0Delta > 0) {
-            deal(pool.token0(), recipient, uint256(amount0Delta));
-            IERC20(pool.token0()).safeTransferFrom(recipient, address(pool), uint256(amount0Delta));
+            deal(
+                token0, address(pool), IERC20(token0).balanceOf(msg.sender) + uint256(amount0Delta)
+            );
         }
         if (amount1Delta > 0) {
-            deal(pool.token1(), recipient, uint256(amount1Delta));
-            IERC20(pool.token1()).safeTransferFrom(recipient, address(pool), uint256(amount1Delta));
+            deal(
+                token1, address(pool), IERC20(token1).balanceOf(msg.sender) + uint256(amount1Delta)
+            );
         }
     }
 
-    function addLiquidity(int24 tickLower, int24 tickUpper, uint128 liquidity, ICLPool pool)
+    function addLiquidity(int24 tickLower, int24 tickUpper, uint128 liquidity, ITerminalPool pool)
         public
     {
-        (uint160 sqrtRatioX96,,,,,) = pool.slot0();
+        (uint160 sqrtRatioX96,,,,,,,) = pool.slot0();
         (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(
             sqrtRatioX96,
             TickMath.getSqrtRatioAtTick(tickLower),
@@ -317,24 +307,24 @@ contract Fixture is DeployScriptVelo, Test {
         );
         amount0 *= 2;
         amount1 *= 2;
-        deal(Constants.OPTIMISM_WETH, params.deployer, amount0);
-        deal(Constants.OPTIMISM_OP, params.deployer, amount1);
-        IERC20(Constants.OPTIMISM_WETH).safeIncreaseAllowance(address(positionManager), amount0);
-        IERC20(Constants.OPTIMISM_OP).safeIncreaseAllowance(address(positionManager), amount1);
+        deal(pool.token0(), params.deployer, amount0);
+        deal(pool.token1(), params.deployer, amount1);
+        IERC20(pool.token0()).safeIncreaseAllowance(address(positionManager), amount0);
+        IERC20(pool.token1()).safeIncreaseAllowance(address(positionManager), amount1);
         positionManager.mint(
             INonfungiblePositionManager.MintParams({
-                token0: Constants.OPTIMISM_WETH,
-                token1: Constants.OPTIMISM_OP,
-                tickSpacing: TICK_SPACING,
+                token0: pool.token0(),
+                token1: pool.token1(),
+                tickSpacing: pool.tickSpacing(),
                 tickLower: tickLower,
                 tickUpper: tickUpper,
+                isStaked: true,
                 amount0Desired: amount0,
                 amount1Desired: amount1,
                 amount0Min: 0,
                 amount1Min: 0,
                 recipient: address(this),
-                deadline: type(uint256).max,
-                sqrtPriceX96: 0
+                deadline: type(uint256).max
             })
         );
     }

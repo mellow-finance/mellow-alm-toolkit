@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BSL-1.1
 pragma solidity 0.8.25;
 
-import "../../scripts/deploy/Constants.sol";
+import "../../scripts/deploy/velo/Constants.sol";
 import "../../src/interfaces/external/velo/ISwapRouter.sol";
 
-contract SolvencyRunner is Test, DeployScript {
+contract SolvencyRunner is Test, DeployScriptVelo {
     using SafeERC20 for IERC20;
     using RandomLib for RandomLib.Storage;
 
