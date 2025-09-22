@@ -135,7 +135,7 @@ contract IntegrationTest is Test, DeployScript {
         );
         vm.stopPrank();
 
-        vm.startPrank(coreParams.lpWrapperAdmin);
+        vm.startPrank(coreParams.lpWrapperManager);
 
         wstethWeth1Wrapper.setStrategyParams(
             IPulseStrategyModule.StrategyParams({
@@ -166,7 +166,7 @@ contract IntegrationTest is Test, DeployScript {
         logPositions();
         vm.stopPrank();
 
-        vm.startPrank(coreParams.lpWrapperAdmin);
+        vm.startPrank(coreParams.lpWrapperManager);
         wstethWeth1Wrapper.setStrategyParams(
             IPulseStrategyModule.StrategyParams({
                 strategyType: IPulseStrategyModule.StrategyType.LazySyncing,

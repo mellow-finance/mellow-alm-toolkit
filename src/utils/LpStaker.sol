@@ -11,6 +11,7 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
     using Math for uint256;
 
     bytes32 public constant OPERATOR_ROLE = keccak256("utils.LpStaker.OPERATOR_ROLE");
+    bytes32 public constant MANAGER_ROLE = keccak256("utils.LpStaker.MANAGER_ROLE");
 
     /// @inheritdoc ILpStaker
     uint32 public constant MIN_TIMELOCK_DURATION = 4 hours;
@@ -82,6 +83,7 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
             revert AddressZero();
         }
         _grantRole(OPERATOR_ROLE, operator_);
+        _grantRole(MANAGER_ROLE, admin_);
 
         __ERC20_init(
             string(abi.encodePacked("Staked", IERC20Metadata(address(lpWrapper_)).name())),
@@ -253,7 +255,7 @@ contract LpStaker is ILpStaker, ERC20Upgradeable, ReentrancyGuard, AccessControl
     }
 
     /// @inheritdoc ILpStaker
-    function setTimeLock(uint32 newTimeLock) external onlyRole(ADMIN_ROLE) {
+    function setTimeLock(uint32 newTimeLock) external onlyRole(MANAGER_ROLE) {
         _setTimeLock(newTimeLock);
     }
 

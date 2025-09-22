@@ -145,10 +145,10 @@ interface ILpWrapper is IVeloFarm, IAccessControlEnumerable, IERC20 {
     event LpStakerAlreadySet(address lpStaker);
 
     /**
-     * @dev Returns the admin role identifier.
-     * @return bytes32 - admin role identifier.
+     * @dev Returns the manager role identifier.
+     * @return bytes32 - manager role identifier.
      */
-    function ADMIN_ROLE() external view returns (bytes32);
+    function MANAGER_ROLE() external view returns (bytes32);
 
     /**
      * @dev Returns protocol params of the corresponding Core.sol

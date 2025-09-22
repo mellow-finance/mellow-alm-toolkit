@@ -312,7 +312,7 @@ contract Unit is Fixture {
             abi.encodeWithSelector(
                 IAccessControl.AccessControlUnauthorizedAccount.selector,
                 address(this),
-                IAccessControlCalls(address(lpStaker)).ADMIN_ROLE()
+                lpStaker.MANAGER_ROLE()
             )
         );
         lpStaker.setTimeLock(7 hours);
@@ -704,7 +704,7 @@ contract Unit is Fixture {
         assertEq(IERC20(address(lpStaker)).balanceOf(user), 0);
         assertEq(lpStaker.lpAmountOf(user), 0);
 
-        vm.prank(Constants.OPTIMISM_LP_WRAPPER_ADMIN);
+        vm.prank(Constants.OPTIMISM_LP_WRAPPER_MANAGER);
         lpWrapper.setLpStaker(address(lpStaker));
 
         /// @dev lpStaker does not require allowance in lpWrapper now
@@ -754,7 +754,7 @@ contract Unit is Fixture {
         lpStaker = ILpStaker(Clones.clone(lpStakerImplementation));
         lpStaker.initialize(lpWrapper, admin, operator, timeLock);
 
-        vm.prank(Constants.OPTIMISM_LP_WRAPPER_ADMIN);
+        vm.prank(Constants.OPTIMISM_LP_WRAPPER_MANAGER);
         lpWrapper.setLpStaker(address(lpStaker));
     }
 }

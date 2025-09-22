@@ -342,8 +342,8 @@ contract SolvencyRunner is Test, DeployScript {
             params.tickNeighborhood = int24(int256(rnd.randInt(uint256(uint24(params.width / 2)))));
         }
 
-        address wrapperAdmin = _wrapper.getRoleMember(_wrapper.ADMIN_ROLE(), 0);
-        vm.prank(wrapperAdmin);
+        address wrapperManager = _wrapper.getRoleMember(_wrapper.MANAGER_ROLE(), 0);
+        vm.prank(wrapperManager);
         _wrapper.setStrategyParams(params);
     }
 
@@ -354,8 +354,8 @@ contract SolvencyRunner is Test, DeployScript {
     function transitionRandomSetTotalSupplyLimit() internal {
         uint256 totalSupply = _wrapper.totalSupply();
 
-        address wrapperAdmin = _wrapper.getRoleMember(_wrapper.ADMIN_ROLE(), 0);
-        vm.startPrank(wrapperAdmin);
+        address wrapperManager = _wrapper.getRoleMember(_wrapper.MANAGER_ROLE(), 0);
+        vm.startPrank(wrapperManager);
         if (rnd.randBool() && rnd.randBool()) {
             _wrapper.setTotalSupplyLimit(rnd.randInt(totalSupply));
         } else {

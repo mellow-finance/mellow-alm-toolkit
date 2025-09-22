@@ -39,10 +39,10 @@ interface IAccessControlCalls {
     event TargetCallDisallowed(bytes32 indexed targetHash, address indexed target, bytes4 selector);
 
     /**
-     * @dev Returns the admin role identifier.
-     * @return bytes32 - admin role identifier.
+     * @dev Returns the allow call role identifier.
+     * @return bytes32 - allow call role identifier.
      */
-    function ADMIN_ROLE() external view returns (bytes32);
+    function ALLOW_CALL_ROLE() external view returns (bytes32);
 
     /**
      * @dev Approves a target call.

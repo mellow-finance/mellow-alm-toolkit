@@ -5,10 +5,8 @@ import "../interfaces/utils/IAccessControlCalls.sol";
 import
     "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
 
-import "forge-std/Test.sol";
-
 abstract contract AccessControlCalls is IAccessControlCalls, AccessControlEnumerableUpgradeable {
-    bytes32 public constant ADMIN_ROLE = keccak256("utils.AccessControlCalls.ADMIN_ROLE");
+    bytes32 public constant ALLOW_CALL_ROLE = keccak256("utils.AccessControlCalls.ALLOW_CALL_ROLE");
 
     /// @dev keccak256(abi.encode(target, selector)) => allowed
     mapping(bytes32 => bool) internal allowedCalls;
@@ -19,11 +17,12 @@ abstract contract AccessControlCalls is IAccessControlCalls, AccessControlEnumer
         }
         __AccessControlEnumerable_init();
 
-        _grantRole(ADMIN_ROLE, admin_);
+        _grantRole(DEFAULT_ADMIN_ROLE, admin_);
+        _grantRole(ALLOW_CALL_ROLE, admin_);
     }
 
     /// @inheritdoc IAccessControlCalls
-    function allowTargetCall(address target, bytes4 selector) external onlyRole(ADMIN_ROLE) {
+    function allowTargetCall(address target, bytes4 selector) external onlyRole(ALLOW_CALL_ROLE) {
         if (target == address(0)) {
             revert AddressZero();
         }
@@ -36,7 +35,10 @@ abstract contract AccessControlCalls is IAccessControlCalls, AccessControlEnumer
     }
 
     /// @inheritdoc IAccessControlCalls
-    function disallowTargetCall(address target, bytes4 selector) external onlyRole(ADMIN_ROLE) {
+    function disallowTargetCall(address target, bytes4 selector)
+        external
+        onlyRole(ALLOW_CALL_ROLE)
+    {
         bytes32 _hash = hashCall(target, selector);
         if (!allowedCalls[_hash]) {
             revert TargetCallNotAllowed(target, selector);

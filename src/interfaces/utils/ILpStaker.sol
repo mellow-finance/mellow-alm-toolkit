@@ -120,6 +120,12 @@ interface ILpStaker {
     function OPERATOR_ROLE() external view returns (bytes32);
 
     /**
+     * @dev Returns the manager role identifier.
+     * @return bytes32 - manager role identifier.
+     */
+    function MANAGER_ROLE() external view returns (bytes32);
+
+    /**
      * @dev Initializes the staker with the given parameters.
      * This function sets up the staker with the specified LP wrapper, admin, and manager. It can only be called once.
      * @param lpWrapper_ The LP wrapper contract to be used by the staker.
