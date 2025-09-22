@@ -541,6 +541,22 @@ contract Unit is Fixture {
     function testDeployLpStaker() public {
         DeployScript.CoreDeployment memory contracts = deployContracts();
         IVeloDeployFactory factory = contracts.deployFactory;
+        IVeloDeployFactory.LpStakerParams memory lpStakerParams =
+            IVeloDeployFactory.LpStakerParams({timeLock: 1 days, minStakeAmount: 1 wei});
+
+        address wrongLpWrapper = address(1234);
+        vm.prank(params.factoryManager);
+        vm.expectRevert(
+            abi.encodeWithSelector(IVeloDeployFactory.LpWrapperNotExists.selector, wrongLpWrapper)
+        );
+        factory.approveLpStaker(wrongLpWrapper, lpStakerParams);
+        vm.expectRevert(
+            abi.encodeWithSelector(IVeloDeployFactory.LpWrapperNotExists.selector, wrongLpWrapper)
+        );
+        factory.deployStaker(wrongLpWrapper);
+
+        (ILpWrapper lpWrapper,) =
+            deployLpWrapper(pool, IPulseStrategyModule.StrategyType.LazySyncing, contracts);
 
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -549,26 +565,38 @@ contract Unit is Fixture {
                 contracts.deployFactory.MANAGER_ROLE()
             )
         );
-        factory.deployStaker(address(1234), 1 days);
-
-        (ILpWrapper lpWrapper,) =
-            deployLpWrapper(pool, IPulseStrategyModule.StrategyType.LazySyncing, contracts);
+        factory.approveLpStaker(address(lpWrapper), lpStakerParams);
 
         vm.prank(params.factoryManager);
-        ILpStaker lpStaker = factory.deployStaker(address(lpWrapper), 1 days);
+        factory.approveLpStaker(address(lpWrapper), lpStakerParams);
+
+        vm.expectRevert(IVeloDeployFactory.LpStakerAlreadyApproved.selector);
+        vm.prank(params.factoryManager);
+        factory.approveLpStaker(address(lpWrapper), lpStakerParams);
+
+        ILpStaker lpStaker = factory.deployStaker(address(lpWrapper));
         assertTrue(address(lpStaker) != address(0));
         assertTrue(lpStaker.lpWrapper() == lpWrapper);
         assertTrue(lpStaker.timeLock() == 1 days);
 
-        vm.startPrank(params.factoryManager);
+        vm.prank(params.factoryManager);
         vm.expectRevert(
             abi.encodeWithSelector(
                 IVeloDeployFactory.LpWrapperAlreadyHasStaker.selector,
                 address(lpWrapper),
-                factory.lpWrapperToStaker(address(lpWrapper))
+                address(lpStaker)
             )
         );
-        factory.deployStaker(address(lpWrapper), 1 days);
+        factory.approveLpStaker(address(lpWrapper), lpStakerParams);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IVeloDeployFactory.LpWrapperAlreadyHasStaker.selector,
+                address(lpWrapper),
+                address(lpStaker)
+            )
+        );
+        factory.deployStaker(address(lpWrapper));
         vm.stopPrank();
     }
 }

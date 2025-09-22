@@ -29,7 +29,8 @@ contract VeloDeployFactory is AccessControlEnumerableUpgradeable, IVeloDeployFac
     /// @dev Mapping of proposal DeployParams IDs to their corresponding status or LpWrapper address, see @param DeployParamsStatus
     mapping(bytes32 => uint160) private _deployParamsStatus;
 
-    /// @dev Position parameters for minting
+    /// @dev Mapping of LpWrapper to their LpStaker deploy parameters
+    mapping(address => LpStakerParams) private _lpStakerParams;
 
     address public lpWrapperAdmin;
     address public lpWrapperManager;
@@ -229,10 +230,9 @@ contract VeloDeployFactory is AccessControlEnumerableUpgradeable, IVeloDeployFac
     }
 
     /// @inheritdoc IVeloDeployFactory
-    function deployStaker(address lpWrapper, uint32 timeLock)
+    function approveLpStaker(address lpWrapper, LpStakerParams memory params)
         external
         onlyRole(MANAGER_ROLE)
-        returns (ILpStaker lpStaker)
     {
         if (!_lpWrappers.contains(lpWrapper)) {
             revert LpWrapperNotExists(lpWrapper);
@@ -240,10 +240,42 @@ contract VeloDeployFactory is AccessControlEnumerableUpgradeable, IVeloDeployFac
         if (_lpWrapperStaker[lpWrapper] != address(0)) {
             revert LpWrapperAlreadyHasStaker(lpWrapper, _lpWrapperStaker[lpWrapper]);
         }
+        if (
+            params.timeLock < ILpStaker(lpStakerImplementation).MIN_TIMELOCK_DURATION()
+                || params.timeLock > ILpStaker(lpStakerImplementation).MAX_TIMELOCK_DURATION()
+        ) {
+            revert InvalidDeployParams();
+        }
+        LpStakerParams memory deployedParams = _lpStakerParams[lpWrapper];
+        if (deployedParams.timeLock != 0 || deployedParams.minStakeAmount != 0) {
+            revert LpStakerAlreadyApproved();
+        }
+        _lpStakerParams[lpWrapper] = params;
+        emit LpStakerApproved(
+            ILpWrapper(lpWrapper).pool(), lpWrapper, params.timeLock, params.minStakeAmount
+        );
+    }
+
+    /// @inheritdoc IVeloDeployFactory
+    function deployStaker(address lpWrapper) external returns (ILpStaker lpStaker) {
+        if (!_lpWrappers.contains(lpWrapper)) {
+            revert LpWrapperNotExists(lpWrapper);
+        }
+        if (_lpWrapperStaker[lpWrapper] != address(0)) {
+            revert LpWrapperAlreadyHasStaker(lpWrapper, _lpWrapperStaker[lpWrapper]);
+        }
+        LpStakerParams memory params = _lpStakerParams[lpWrapper];
+        if (params.timeLock == 0 || params.minStakeAmount == 0) {
+            revert LpStakerNotApproved();
+        }
 
         lpStaker = ILpStaker(Clones.clone(lpStakerImplementation));
         lpStaker.initialize(
-            ILpWrapper(lpWrapper), lpWrapperAdmin, lpWrapperOperator, timeLock, 1 wei
+            ILpWrapper(lpWrapper),
+            lpWrapperAdmin,
+            lpWrapperOperator,
+            params.timeLock,
+            params.minStakeAmount
         );
 
         _lpWrapperStaker[lpWrapper] = address(lpStaker);

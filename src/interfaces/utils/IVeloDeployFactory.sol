@@ -105,6 +105,16 @@ interface IVeloDeployFactory is IAccessControlEnumerable {
      */
     error AddressZero();
 
+    /**
+     * @dev Custom error for indicating that the specified LP staker has already been approved.
+     */
+    error LpStakerAlreadyApproved();
+
+    /**
+     * @dev Custom error for indicating that the specified LP staker has not been approved.
+     */
+    error LpStakerNotApproved();
+
     enum DeployParamsStatus {
         None,
         Proposed,
@@ -204,6 +214,17 @@ interface IVeloDeployFactory is IAccessControlEnumerable {
     event MinInitialTotalSupplySet(uint256 indexed minInitialTotalSupply, address indexed sender);
 
     /**
+     * @notice Emitted when an LP staker is approved.
+     * @param pool The address of the pool.
+     * @param lpWrapper The address of the LP wrapper.
+     * @param timeLock The time lock duration for the LP staker.
+     * @param minStakeAmount The minimum stake amount required for the LP staker.
+     */
+    event LpStakerApproved(
+        address indexed pool, address indexed lpWrapper, uint32 timeLock, uint224 minStakeAmount
+    );
+
+    /**
      * @notice Parameters for deploying a new strategy.
      * @param slippageD9 Slippage tolerance with 9 decimals, affecting strategy operations.
      * @param strategyParams The strategy parameters defining behavior and thresholds.
@@ -238,6 +259,16 @@ interface IVeloDeployFactory is IAccessControlEnumerable {
         uint256 amount1;
         int24 tickLower;
         int24 tickUpper;
+    }
+
+    /**
+     * @notice Parameters for deploying a new LP staker.
+     * @param timeLock The time lock duration for the LP staker.
+     * @param minStakeAmount The minimum stake amount required for the LP staker.
+     */
+    struct LpStakerParams {
+        uint32 timeLock;
+        uint224 minStakeAmount;
     }
 
     /**
@@ -287,6 +318,13 @@ interface IVeloDeployFactory is IAccessControlEnumerable {
     function acceptDeployParams(bytes32 proposalId) external;
 
     /**
+     * @notice Approves an LP staker for a specific LP wrapper with given parameters.
+     * @param lpWrapper The address of the LP wrapper for which to approve the staker.
+     * @param params The parameters for the LP staker.
+     */
+    function approveLpStaker(address lpWrapper, LpStakerParams memory params) external;
+
+    /**
      * @notice Creates a strategy based on provided deployment parameters.
      * @param proposalId The ID of the accepted proposal containing the deployment parameters.
      * @return The address of the LP wrapper, which is an ERC20 representation of the LP token.
@@ -296,12 +334,9 @@ interface IVeloDeployFactory is IAccessControlEnumerable {
     /**
      * @notice Deploys a new LP staker for the specified LP wrapper with a given time lock.
      * @param lpWrapper The address of the LP wrapper for which to deploy the staker.
-     * @param timeLock The time lock duration for the LP staker.
      * @return lpStaker The address of the deployed LP staker.
      */
-    function deployStaker(address lpWrapper, uint32 timeLock)
-        external
-        returns (ILpStaker lpStaker);
+    function deployStaker(address lpWrapper) external returns (ILpStaker lpStaker);
 
     /**
      * @notice Retrieves the LP wrapper associated with the given deployment parameters.
