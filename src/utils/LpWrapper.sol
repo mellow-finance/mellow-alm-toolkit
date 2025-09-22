@@ -2,12 +2,15 @@
 pragma solidity 0.8.25;
 
 import "../interfaces/utils/ILpWrapper.sol";
-import "./DefaultAccessControl.sol";
 import "./VeloFarm.sol";
+import
+    "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
 
-contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
+contract LpWrapper is ILpWrapper, VeloFarm, AccessControlEnumerableUpgradeable {
     using SafeERC20 for IERC20;
     using Math for uint256;
+
+    bytes32 public constant MANAGER_ROLE = keccak256("utils.LpWrapper.MANAGER_ROLE");
 
     uint256 public constant D9 = 1e9;
 
@@ -53,10 +56,13 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
         string memory name_,
         string memory symbol_
     ) external initializer {
-        __DefaultAccessControl_init(admin_);
-        if (manager_ != address(0)) {
-            _grantRole(ADMIN_ROLE, manager_);
+        __AccessControlEnumerable_init();
+        if (admin_ == address(0) || manager_ == address(0)) {
+            revert AddressZero();
         }
+
+        _grantRole(DEFAULT_ADMIN_ROLE, admin_);
+        _grantRole(MANAGER_ROLE, manager_);
 
         address this_ = address(this);
         ICore.ManagedPositionInfo memory info = core.managedPositionAt(positionId_);
@@ -196,8 +202,7 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
         bytes memory callbackParams,
         bytes memory strategyParams,
         bytes memory securityParams
-    ) public {
-        _requireAdmin();
+    ) public onlyRole(MANAGER_ROLE) {
         core.setPositionParams(
             positionId, slippageD9, callbackParams, strategyParams, securityParams
         );
@@ -238,8 +243,7 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
     }
 
     /// @inheritdoc ILpWrapper
-    function setTotalSupplyLimit(uint256 newTotalSupplyLimit) external {
-        _requireAdmin();
+    function setTotalSupplyLimit(uint256 newTotalSupplyLimit) external onlyRole(MANAGER_ROLE) {
         emit TotalSupplyLimitUpdated(newTotalSupplyLimit, totalSupplyLimit, totalSupply());
         totalSupplyLimit = newTotalSupplyLimit;
     }
@@ -250,8 +254,7 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
     }
 
     /// @inheritdoc ILpWrapper
-    function setLpStaker(address lpStaker_) external {
-        _requireAdmin();
+    function setLpStaker(address lpStaker_) external onlyRole(MANAGER_ROLE) {
         if (lpStaker_ == address(0)) {
             revert AddressZero();
         } else if (lpStaker != lpStaker_) {

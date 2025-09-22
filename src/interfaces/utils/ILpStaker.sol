@@ -32,6 +32,14 @@ interface ILpStaker {
     error TooLowStakeAmount();
 
     /**
+     * @dev Custom error for signaling that an operation is not allowed.
+     * This error is used in contexts where a user attempts to perform an action
+     * that is not permitted, typically due to insufficient permissions or
+     * other constraints defined within the contract.
+     */
+    error Forbidden();
+
+    /**
      * @notice Emitted when rewards are compounded on the staker
      * @param rewardAmount The amount of reward tokens that were collected and reinvested.
      * @param lpAmount The amount of LP tokens that were minted from the reinvested rewards.
@@ -116,11 +124,22 @@ interface ILpStaker {
     }
 
     /**
+     * @dev Returns the operator role identifier.
+     * @return bytes32 - operator role identifier.
+     */
+    function OPERATOR_ROLE() external view returns (bytes32);
+
+    /**
+     * @dev Returns the manager role identifier.
+     * @return bytes32 - manager role identifier.
+     */
+    function MANAGER_ROLE() external view returns (bytes32);
+
+    /**
      * @dev Initializes the staker with the given parameters.
      * This function sets up the staker with the specified LP wrapper, admin, and manager. It can only be called once.
      * @param lpWrapper_ The LP wrapper contract to be used by the staker.
      * @param admin_ The address of the admin for access control.
-     * @param manager_ The address of the manager for access control.
      * @param operator_ The address of the operator for access control.
      * @param timelockDuration_ The initial duration for the timelock on unstaking.
      * @param minStakeAmount_ The minimum amount of LP tokens required to stake.
@@ -128,7 +147,6 @@ interface ILpStaker {
     function initialize(
         ILpWrapper lpWrapper_,
         address admin_,
-        address manager_,
         address operator_,
         uint32 timelockDuration_,
         uint256 minStakeAmount_

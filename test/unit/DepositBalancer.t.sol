@@ -64,7 +64,7 @@ contract DepositBalancerTest is Fixture {
         (ILpWrapper lpWrapper,) =
             deployLpWrapper(pool, IPulseStrategyModule.StrategyType.LazySyncing, contracts);
 
-        vm.startPrank(params.lpWrapperAdmin);
+        vm.startPrank(params.lpWrapperManager);
         lpWrapper.setTotalSupplyLimit(type(uint256).max);
         vm.stopPrank();
 
@@ -77,7 +77,7 @@ contract DepositBalancerTest is Fixture {
         (ILpWrapper lpWrapper,) =
             deployLpWrapper(pool, IPulseStrategyModule.StrategyType.Tamper, contracts);
 
-        vm.startPrank(params.lpWrapperAdmin);
+        vm.startPrank(params.lpWrapperManager);
         lpWrapper.setTotalSupplyLimit(type(uint256).max);
         vm.stopPrank();
 
@@ -89,14 +89,14 @@ contract DepositBalancerTest is Fixture {
         (ILpWrapper lpWrapper,) =
             deployLpWrapper(pool, IPulseStrategyModule.StrategyType.LazySyncing, contracts);
 
-        vm.prank(params.lpWrapperAdmin);
+        vm.prank(params.lpWrapperManager);
         lpWrapper.setTotalSupplyLimit(type(uint256).max);
 
         {
             uint256 positionId = lpWrapper.positionId();
             ICore.ManagedPositionInfo memory position = core.managedPositionAt(positionId);
 
-            vm.prank(params.lpWrapperAdmin);
+            vm.prank(params.lpWrapperManager);
             lpWrapper.setPositionParams(
                 position.slippageD9,
                 position.callbackParams,
@@ -164,14 +164,14 @@ contract DepositBalancerTest is Fixture {
         (ILpWrapper lpWrapper,) =
             deployLpWrapper(pool, IPulseStrategyModule.StrategyType.Tamper, contracts);
 
-        vm.prank(params.lpWrapperAdmin);
+        vm.prank(params.lpWrapperManager);
         lpWrapper.setTotalSupplyLimit(type(uint256).max);
 
         {
             uint256 positionId = lpWrapper.positionId();
             ICore.ManagedPositionInfo memory position = core.managedPositionAt(positionId);
 
-            vm.prank(params.lpWrapperAdmin);
+            vm.prank(params.lpWrapperManager);
             lpWrapper.setPositionParams(
                 position.slippageD9,
                 position.callbackParams,

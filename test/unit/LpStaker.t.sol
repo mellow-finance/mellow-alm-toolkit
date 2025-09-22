@@ -14,7 +14,6 @@ contract Unit is Fixture {
     address public constant VELO = 0x9560e827aF36c94D2Ac33a39bCE1Fe78631088Db;
 
     address immutable admin = vm.addr(uint256(keccak256("admin")));
-    address immutable manager = vm.addr(uint256(keccak256("manager")));
     address immutable operator = vm.addr(uint256(keccak256("operator")));
     address immutable user = vm.addr(uint256(keccak256("user")));
 
@@ -199,15 +198,27 @@ contract Unit is Fixture {
 
         ILpStaker.SwapParams[2] memory swapParams = _buildSwapData(lpStaker, target);
 
-        vm.expectRevert(DefaultAccessControl.Forbidden.selector);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
+                address(this),
+                lpStaker.OPERATOR_ROLE()
+            )
+        );
         lpStaker.compoundRewards(swapParams);
 
-        vm.prank(manager);
+        vm.prank(admin);
         IAccessControlCalls(address(lpStaker)).allowTargetCall(
             address(target), SwapRouterMock.swap.selector
         );
 
-        vm.expectRevert(DefaultAccessControl.Forbidden.selector);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
+                address(this),
+                lpStaker.OPERATOR_ROLE()
+            )
+        );
         lpStaker.compoundRewards(swapParams);
 
         vm.prank(operator);
@@ -255,7 +266,7 @@ contract Unit is Fixture {
         /// 1 OP = 15 VELO
         target.setPriceX96(token1, VELO, 15 * Q96);
 
-        vm.prank(manager);
+        vm.prank(admin);
         IAccessControlCalls(address(lpStaker)).allowTargetCall(
             address(target), SwapRouterMock.swap.selector
         );
@@ -301,7 +312,7 @@ contract Unit is Fixture {
             abi.encodeWithSelector(
                 IAccessControl.AccessControlUnauthorizedAccount.selector,
                 address(this),
-                DefaultAccessControl(address(lpStaker)).ADMIN_ROLE()
+                lpStaker.MANAGER_ROLE()
             )
         );
         lpStaker.setTimeLock(7 hours);
@@ -548,7 +559,7 @@ contract Unit is Fixture {
             ILpWrapper.MintParams(lpAmount, amount0, amount1, user, type(uint256).max)
         );
 
-        vm.expectRevert(DefaultAccessControl.AddressZero.selector);
+        vm.expectRevert(IAccessControlCalls.AddressZero.selector);
         lpStaker.stake(lpAmount, address(0));
 
         uint256 shares = lpStaker.stake(lpAmount, recipient);
@@ -606,7 +617,7 @@ contract Unit is Fixture {
         IERC20(Constants.OPTIMISM_WETH).safeIncreaseAllowance(address(lpStaker), amount0);
         IERC20(Constants.OPTIMISM_OP).safeIncreaseAllowance(address(lpStaker), amount1);
 
-        vm.expectRevert(DefaultAccessControl.AddressZero.selector);
+        vm.expectRevert(IAccessControlCalls.AddressZero.selector);
         lpStaker.mintAndStake(amount0, amount1, address(0));
 
         (uint256 actualAmount0, uint256 actualAmount1, uint256 actualLpAmount, uint256 shares) =
@@ -659,7 +670,7 @@ contract Unit is Fixture {
             deployLpWrapper(pool, IPulseStrategyModule.StrategyType.LazySyncing, contracts);
 
         ILpStaker lpStaker = ILpStaker(Clones.clone(lpStakerImplementation));
-        lpStaker.initialize(lpWrapper, admin, manager, operator, 1 days, 1 wei);
+        lpStaker.initialize(lpWrapper, admin, operator, 1 days, 1 wei);
 
         (uint256 amount0, uint256 amount1) = lpWrapper.previewMint(1 ether);
 
@@ -693,7 +704,7 @@ contract Unit is Fixture {
         assertEq(IERC20(address(lpStaker)).balanceOf(user), 0);
         assertEq(lpStaker.lpAmountOf(user), 0);
 
-        vm.prank(Constants.OPTIMISM_LP_WRAPPER_ADMIN);
+        vm.prank(Constants.OPTIMISM_LP_WRAPPER_MANAGER);
         lpWrapper.setLpStaker(address(lpStaker));
 
         /// @dev lpStaker does not require allowance in lpWrapper now
@@ -796,9 +807,9 @@ contract Unit is Fixture {
             deployLpWrapper(pool, IPulseStrategyModule.StrategyType.LazySyncing, contracts);
 
         lpStaker = ILpStaker(Clones.clone(lpStakerImplementation));
-        lpStaker.initialize(lpWrapper, admin, manager, operator, timeLock, 1 wei);
+        lpStaker.initialize(lpWrapper, admin, operator, timeLock, 1 wei);
 
-        vm.prank(Constants.OPTIMISM_LP_WRAPPER_ADMIN);
+        vm.prank(Constants.OPTIMISM_LP_WRAPPER_MANAGER);
         lpWrapper.setLpStaker(address(lpStaker));
     }
 }

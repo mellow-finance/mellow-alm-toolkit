@@ -52,12 +52,13 @@ contract SolvencyTest is SolvencyRunner {
         vm.prank(coreParams.factoryProposer);
         bytes32 proposalId = contracts.deployFactory.proposeDeployParams(params);
 
-        vm.startPrank(coreParams.factoryOperator);
+        vm.startPrank(coreParams.factoryManager);
         deal(Constants.OPTIMISM_WETH, address(contracts.deployFactory), 1000 gwei);
         deal(Constants.OPTIMISM_WSTETH, address(contracts.deployFactory), 1000 gwei);
         contracts.deployFactory.acceptDeployParams(proposalId);
-        ILpWrapper wrapper = contracts.deployFactory.deployStrategy(proposalId);
         vm.stopPrank();
+
+        ILpWrapper wrapper = contracts.deployFactory.deployStrategy(proposalId);
 
         __SolvencyRunner_init(contracts.core, wrapper);
     }

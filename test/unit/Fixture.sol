@@ -117,19 +117,21 @@ contract Fixture is DeployScript, Test {
         if (status == uint160(IVeloDeployFactory.DeployParamsStatus.None)) {
             vm.prank(params.factoryProposer);
             proposalId = contracts.deployFactory.proposeDeployParams(deployParams);
-            vm.startPrank(params.factoryOperator);
+
+            vm.prank(params.factoryManager);
             contracts.deployFactory.acceptDeployParams(proposalId);
+
             lpWrapper = deployStrategy(contracts, proposalId);
             vm.stopPrank();
         } else if (status == uint160(IVeloDeployFactory.DeployParamsStatus.Proposed)) {
-            vm.startPrank(params.factoryOperator);
             proposalId = contracts.deployFactory.deployParamsHash(deployParams);
+
+            vm.prank(params.factoryManager);
             contracts.deployFactory.acceptDeployParams(proposalId);
             lpWrapper = deployStrategy(contracts, proposalId);
             vm.stopPrank();
         } else if (status == uint160(IVeloDeployFactory.DeployParamsStatus.Accepted)) {
             proposalId = contracts.deployFactory.deployParamsHash(deployParams);
-            vm.prank(params.factoryOperator);
             lpWrapper = deployStrategy(contracts, proposalId);
         } else {
             lpWrapper = ILpWrapper(address(status));
@@ -145,12 +147,13 @@ contract Fixture is DeployScript, Test {
 
         ICLPool pool = ICLPool(deployParams.pool);
 
-        vm.startPrank(params.factoryOperator);
+        vm.prank(params.factoryManager);
+        contracts.deployFactory.acceptDeployParams(proposalId);
+
         IERC20(pool.token0()).approve(address(contracts.deployFactory), deployParams.maxAmount0);
         IERC20(pool.token1()).approve(address(contracts.deployFactory), deployParams.maxAmount1);
-        contracts.deployFactory.acceptDeployParams(proposalId);
         lpWrapper = deployStrategy(contracts, proposalId);
-        vm.stopPrank();
+        //vm.stopPrank();
     }
 
     function dealTokenAmount(address token, address recipient, uint256 amount) public {

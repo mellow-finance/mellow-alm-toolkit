@@ -326,10 +326,22 @@ contract Unit is Fixture {
         IVeloOracle.SecurityParams memory securityParams =
             abi.decode(info.securityParams, (IVeloOracle.SecurityParams));
 
-        vm.expectRevert(abi.encodeWithSignature("Forbidden()"));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
+                address(this),
+                lpWrapper.MANAGER_ROLE()
+            )
+        );
         lpWrapper.setPositionParams(1e5, callbackParams, strategyParams, securityParams);
 
-        vm.expectRevert(abi.encodeWithSignature("Forbidden()"));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
+                address(this),
+                lpWrapper.MANAGER_ROLE()
+            )
+        );
         lpWrapper.setPositionParams(
             1e5, abi.encode(callbackParams), abi.encode(strategyParams), abi.encode(securityParams)
         );
@@ -339,7 +351,7 @@ contract Unit is Fixture {
             strategyParams.strategyType = IPulseStrategyModule.StrategyType.LazyDescending;
             securityParams.maxAge = 123 hours;
 
-            vm.startPrank(params.lpWrapperAdmin);
+            vm.startPrank(params.lpWrapperManager);
             lpWrapper.setSlippageD9(3e5);
 
             lpWrapper.setCallbackParams(callbackParams);
@@ -530,7 +542,7 @@ contract Unit is Fixture {
     }
 
     function testMint() external {
-        vm.prank(Constants.OPTIMISM_LP_WRAPPER_ADMIN);
+        vm.prank(Constants.OPTIMISM_LP_WRAPPER_MANAGER);
         lpWrapper.setTotalSupplyLimit(type(uint256).max);
 
         uint256 inf = 1e15 ether;
@@ -801,7 +813,7 @@ contract Unit is Fixture {
         deal(pool.token0(), depositor, 1000000 ether);
         deal(pool.token1(), depositor, 1000000 ether);
 
-        vm.prank(params.lpWrapperAdmin);
+        vm.prank(params.lpWrapperManager);
         lpWrapper.setTotalSupplyLimit(type(uint256).max);
 
         vm.startPrank(depositor);
@@ -832,7 +844,7 @@ contract Unit is Fixture {
         deal(pool.token0(), depositor, 1000000 ether);
         deal(pool.token1(), depositor, 1000000 ether);
 
-        vm.prank(params.lpWrapperAdmin);
+        vm.prank(params.lpWrapperManager);
         lpWrapper.setTotalSupplyLimit(type(uint256).max);
 
         vm.startPrank(depositor);
@@ -868,7 +880,7 @@ contract Unit is Fixture {
         deal(pool.token0(), depositor, 1000000 ether);
         deal(pool.token1(), depositor, 1000000 ether);
 
-        vm.prank(params.lpWrapperAdmin);
+        vm.prank(params.lpWrapperManager);
         lpWrapper.setTotalSupplyLimit(type(uint256).max);
 
         vm.startPrank(depositor);
@@ -904,7 +916,7 @@ contract Unit is Fixture {
         deal(pool.token0(), depositor, 1000000 ether);
         deal(pool.token1(), depositor, 1000000 ether);
 
-        vm.prank(params.lpWrapperAdmin);
+        vm.prank(params.lpWrapperManager);
         lpWrapper.setTotalSupplyLimit(type(uint256).max);
 
         vm.startPrank(depositor);
@@ -944,7 +956,7 @@ contract Unit is Fixture {
         deal(pool.token0(), depositor, 1000000 ether);
         deal(pool.token1(), depositor, 1000000 ether);
 
-        vm.prank(params.lpWrapperAdmin);
+        vm.prank(params.lpWrapperManager);
         lpWrapper.setTotalSupplyLimit(type(uint256).max);
 
         vm.startPrank(depositor);

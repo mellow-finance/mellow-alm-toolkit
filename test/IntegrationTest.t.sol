@@ -47,12 +47,13 @@ contract IntegrationTest is Test, DeployScript {
         vm.prank(coreParams.factoryProposer);
         bytes32 proposalId = contracts.deployFactory.proposeDeployParams(params);
 
-        vm.startPrank(coreParams.factoryOperator);
+        vm.startPrank(coreParams.factoryManager);
         deal(Constants.OPTIMISM_WETH, address(contracts.deployFactory), 1 ether);
         deal(Constants.OPTIMISM_WSTETH, address(contracts.deployFactory), 1 ether);
         contracts.deployFactory.acceptDeployParams(proposalId);
-        wstethWeth1Wrapper = contracts.deployFactory.deployStrategy(proposalId);
         vm.stopPrank();
+
+        wstethWeth1Wrapper = contracts.deployFactory.deployStrategy(proposalId);
     }
 
     function testDeploy() external {

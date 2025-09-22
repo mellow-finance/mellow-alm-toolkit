@@ -17,7 +17,7 @@ abstract contract DeployScript {
         address lpWrapperManager;
         address lpWrapperOperator;
         uint256 minInitialTotalSupply;
-        address factoryOperator;
+        address factoryManager;
         address factoryProposer;
         // Core
         address coreOperator;
@@ -55,44 +55,29 @@ abstract contract DeployScript {
             contracts.ammModule,
             contracts.depositWithdrawModule,
             contracts.strategyModule,
-            contracts.oracle,
-            params.deployer
+            contracts.oracle
         );
+        contracts.core.initialize(
+            params.mellowAdmin, params.coreOperator, abi.encode(params.protocolParams)
+        );
+
         contracts.lpWrapperImplementation = new LpWrapper(address(contracts.core));
         contracts.lpStakerImplementation = new LpStaker(address(contracts.core));
         contracts.deployFactory = new VeloDeployFactory(
-            params.deployer,
             contracts.core,
             contracts.strategyModule,
             address(contracts.lpWrapperImplementation),
             address(contracts.lpStakerImplementation)
         );
-
-        contracts.core.setProtocolParams(abi.encode(params.protocolParams));
-
-        contracts.deployFactory.setLpWrapperAdmin(params.lpWrapperAdmin);
-        contracts.deployFactory.setLpWrapperManager(params.lpWrapperManager);
-        contracts.deployFactory.setLpWrapperOperator(params.lpWrapperOperator);
-
-        contracts.deployFactory.setMinInitialTotalSupply(params.minInitialTotalSupply);
-
-        contracts.core.grantRole(ADMIN_ROLE, params.mellowAdmin);
-        if (params.coreOperator != address(0)) {
-            contracts.core.grantRole(ADMIN_DELEGATE_ROLE, params.deployer);
-            contracts.core.grantRole(OPERATOR_ROLE, params.coreOperator);
-            contracts.core.renounceRole(ADMIN_DELEGATE_ROLE, params.deployer);
-        }
-        contracts.core.renounceRole(ADMIN_ROLE, params.deployer);
-        contracts.core.renounceRole(OPERATOR_ROLE, params.deployer);
-
-        contracts.deployFactory.grantRole(ADMIN_ROLE, params.mellowAdmin);
-        contracts.deployFactory.grantRole(ADMIN_DELEGATE_ROLE, params.deployer);
-        contracts.deployFactory.grantRole(OPERATOR_ROLE, params.factoryOperator);
-        contracts.deployFactory.grantRole(PROPOSER_ROLE, params.factoryProposer);
-
-        contracts.deployFactory.renounceRole(OPERATOR_ROLE, params.deployer);
-        contracts.deployFactory.renounceRole(ADMIN_DELEGATE_ROLE, params.deployer);
-        contracts.deployFactory.renounceRole(ADMIN_ROLE, params.deployer);
+        contracts.deployFactory.initialize(
+            params.mellowAdmin,
+            params.factoryManager,
+            params.factoryProposer,
+            params.lpWrapperAdmin,
+            params.lpWrapperManager,
+            params.lpWrapperOperator,
+            params.minInitialTotalSupply
+        );
     }
 
     function deployStrategy(CoreDeployment memory contracts, bytes32 proposalId)

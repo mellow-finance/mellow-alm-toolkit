@@ -2,12 +2,15 @@
 pragma solidity 0.8.25;
 
 import "./interfaces/ICore.sol";
+import
+    "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
 
-import "./utils/DefaultAccessControl.sol";
-
-contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
+contract Core is ICore, AccessControlEnumerableUpgradeable, ReentrancyGuard {
     using EnumerableSet for EnumerableSet.UintSet;
     using SafeERC20 for IERC20;
+
+    bytes32 public constant MANAGER_ROLE = keccak256("Core.MANAGER_ROLE");
+    bytes32 public constant OPERATOR_ROLE = keccak256("Core.OPERATOR_ROLE");
 
     uint256 private constant D9 = 1000000000;
 
@@ -36,16 +39,13 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
      * @param ammModule_ The address of the AMM module contract.
      * @param strategyModule_ The address of the strategy module contract.
      * @param oracle_ The address of the oracle contract.
-     * @param admin_ The address of the admin for the Core contract.
      */
     constructor(
         IAmmModule ammModule_,
         IAmmDepositWithdrawModule ammDepositWithdrawModule_,
         IStrategyModule strategyModule_,
-        IOracle oracle_,
-        address admin_
-    ) initializer {
-        __DefaultAccessControl_init(admin_);
+        IOracle oracle_
+    ) {
         if (
             address(ammModule_) == address(0) || address(ammDepositWithdrawModule_) == address(0)
                 || address(strategyModule_) == address(0) || address(oracle_) == address(0)
@@ -58,10 +58,25 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
         oracle = oracle_;
     }
 
+    function initialize(address admin_, address operator_, bytes memory protocolParams_)
+        external
+        initializer
+    {
+        __AccessControlEnumerable_init();
+        if (admin_ == address(0) || operator_ == address(0)) {
+            revert AddressZero();
+        }
+        _grantRole(DEFAULT_ADMIN_ROLE, admin_);
+        _grantRole(MANAGER_ROLE, admin_);
+        _grantRole(OPERATOR_ROLE, operator_);
+
+        _setProtocolParams(protocolParams_);
+    }
+
     /// ---------------------- EXTERNAL MUTATING FUNCTIONS ----------------------
     receive() external payable {}
 
-    function collect() external onlyRole(ADMIN_ROLE) {
+    function collect() external onlyRole(MANAGER_ROLE) {
         Address.sendValue(payable(msg.sender), address(this).balance);
     }
 
@@ -215,9 +230,12 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     }
 
     /// @inheritdoc ICore
-    function rebalance(RebalanceParams memory params) external override nonReentrant {
-        _requireAtLeastOperator();
-
+    function rebalance(RebalanceParams memory params)
+        external
+        override
+        nonReentrant
+        onlyRole(OPERATOR_ROLE)
+    {
         ManagedPositionInfo memory info = _positions[params.id];
         oracle.ensureNoMEV(info.pool, info.securityParams);
         (bool isRebalanceNeeded, TargetPositionInfo memory target) =
@@ -273,8 +291,16 @@ contract Core is ICore, DefaultAccessControl, ReentrancyGuard {
     }
 
     /// @inheritdoc ICore
-    function setProtocolParams(bytes memory params) external override nonReentrant {
-        _requireAdmin();
+    function setProtocolParams(bytes memory params)
+        external
+        override
+        nonReentrant
+        onlyRole(MANAGER_ROLE)
+    {
+        _setProtocolParams(params);
+    }
+
+    function _setProtocolParams(bytes memory params) internal {
         ammModule.validateProtocolParams(params);
         _protocolParams = params;
         emit ProtocolParamsSet(params, msg.sender);
