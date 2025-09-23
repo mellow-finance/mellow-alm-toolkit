@@ -64,30 +64,27 @@ contract IntegrationTest is DeployScriptTerm, Fixture {
 
         vm.startPrank(user);
 
-        uint256 wethAmount = 1 ether;
-        uint256 wstethAmount = 1.5 ether;
+        uint256 amountA = 1 ether;
+        uint256 amountB = 1.5 ether;
 
-        deal(tokenA, user, wethAmount);
-        deal(tokenB, user, wstethAmount);
+        deal(tokenA, user, amountA);
+        deal(tokenB, user, amountB);
 
-        IERC20(tokenA).safeIncreaseAllowance(address(lpWrapper), wethAmount);
-        IERC20(tokenB).safeIncreaseAllowance(address(lpWrapper), wstethAmount);
+        IERC20(tokenA).safeIncreaseAllowance(address(lpWrapper), amountA);
+        IERC20(tokenB).safeIncreaseAllowance(address(lpWrapper), amountB);
 
         uint256 n = 20;
         for (uint256 i = 0; i < n; i++) {
             lpWrapper.mint(
                 ILpWrapper.MintParams({
-                    lpAmount: Math.min(wstethAmount, wethAmount) / n * 99 / 100,
-                    amount0Max: wstethAmount / n,
-                    amount1Max: wethAmount / n,
+                    lpAmount: Math.min(amountB, amountA) / n * 99 / 100,
+                    amount0Max: amountB / n,
+                    amount1Max: amountA / n,
                     recipient: user,
                     deadline: block.timestamp
                 })
             );
             skip(1 hours);
-        }
-        if (true) {
-            return;
         }
 
         IERC20(address(lpWrapper)).safeTransfer(user, 0);
@@ -106,8 +103,18 @@ contract IntegrationTest is DeployScriptTerm, Fixture {
         console2.log("lp wrapper delta:", wrapperBalanceBefore - wrapperBalanceAfter);
         console2.log(lpWrapper.earned(user));
 
-        lpWrapper.withdraw(lpWrapper.balanceOf(user), 0, 0, user, block.timestamp);
-
         vm.stopPrank();
+    }
+
+    function testPositionsModified() external view {
+        uint256 tokenId = contracts.core.managedPositionAt(lpWrapper.positionId()).ammPositionIds[0];
+
+        uint256 g_ = gasleft();
+        IVeloAmmModule.Position memory position = contracts.ammModule.getPosition(tokenId);
+
+        console2.log("Modified call usage:", g_ - gasleft());
+
+        console2.log(position.tokenId);
+        console2.log(position.liquidity);
     }
 }
