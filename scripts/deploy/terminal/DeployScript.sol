@@ -14,7 +14,7 @@ abstract contract DeployScriptTerm is DeployScript {
             new TerminalAmmModule(INonfungiblePositionManager(params.positionManager));
         contracts.depositWithdrawModule =
             new TerminalDepositWithdrawModule(INonfungiblePositionManager(params.positionManager));
-        contracts.oracle = new VeloOracle();
+        contracts.oracle = new TerminalOracle();
         contracts.strategyModule = new PulseStrategyModule();
         contracts.core = new Core(
             contracts.ammModule,

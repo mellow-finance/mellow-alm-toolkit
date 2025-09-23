@@ -6,7 +6,6 @@ import "./periphery/ITerminalPeriphery.sol";
 import "./IERC20Minimal.sol";
 import "./IGaugeMinimal.sol";
 import "./IRedeemableERC20Minimal.sol";
-import "./ITerminalContracts.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "./IGauge.sol";

@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.25;
 
-import "../interfaces/external/velo/ICLPool.sol";
 import "../interfaces/oracles/IVeloOracle.sol";
+import "src/interfaces/external/terminal/ITerminalPool.sol";
 
-contract VeloOracle is IVeloOracle {
+contract TerminalOracle is IVeloOracle {
     /// @inheritdoc IOracle
     function ensureNoMEV(address poolAddress, bytes memory params) external view override {
         if (params.length == 0) {
             return;
         }
-        (, int24 spotTick, uint16 observationIndex, uint16 observationCardinality,,) =
-            ICLPool(poolAddress).slot0();
+        (, int24 spotTick, uint16 observationIndex, uint16 observationCardinality,,,,) =
+            ITerminalPool(poolAddress).slot0();
         SecurityParams memory securityParams = abi.decode(params, (SecurityParams));
         uint16 lookback = securityParams.lookback;
         if (observationCardinality < lookback + 1) {
@@ -20,13 +20,14 @@ contract VeloOracle is IVeloOracle {
 
         uint32 minimalTimestamp = uint32(block.timestamp) - securityParams.maxAge;
         (uint32 nextTimestamp, int56 nextCumulativeTick,,) =
-            ICLPool(poolAddress).observations(observationIndex);
+            ITerminalPool(poolAddress).observations(observationIndex);
         int24 nextTick = spotTick;
         int24 maxAllowedDelta = securityParams.maxAllowedDelta;
         for (uint32 i = 1; i <= lookback; i++) {
             uint256 index = (uint32(observationCardinality) + uint32(observationIndex) - i)
                 % observationCardinality;
-            (uint32 timestamp, int56 tickCumulative,,) = ICLPool(poolAddress).observations(index);
+            (uint32 timestamp, int56 tickCumulative,,) =
+                ITerminalPool(poolAddress).observations(index);
             if (timestamp == 0) {
                 revert NotEnoughObservations();
             }
@@ -52,7 +53,7 @@ contract VeloOracle is IVeloOracle {
         override
         returns (uint160 sqrtPriceX96, int24 tick)
     {
-        (sqrtPriceX96, tick,,,,) = ICLPool(pool).slot0();
+        (sqrtPriceX96, tick,,,,,,) = ITerminalPool(pool).slot0();
     }
 
     /// @inheritdoc IOracle
