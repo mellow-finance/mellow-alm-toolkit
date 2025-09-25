@@ -2,7 +2,7 @@
 pragma solidity 0.8.25;
 
 import "../DeployScript.sol";
-import "test/ImportsTerminal.sol";
+import "test/terminal/Imports.sol";
 
 abstract contract DeployScriptTerm is DeployScript {
     function deployCore(CoreDeploymentParams memory params)

@@ -2,7 +2,7 @@
 pragma solidity 0.8.25;
 
 import "../DeployScript.sol";
-import "test/Imports.sol";
+import "test/velo/Imports.sol";
 
 abstract contract DeployScriptVelo is DeployScript {
     function deployCore(CoreDeploymentParams memory params)

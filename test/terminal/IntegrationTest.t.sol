@@ -8,60 +8,34 @@ contract IntegrationTest is DeployScriptTerm, Fixture {
 
     CoreDeploymentParams private coreParams;
     CoreDeployment private contracts;
-    ILpWrapper private lpWrapper;
 
-    address pool = 0xdA01f6A7CcfA9D23F5B7347C026BE895F28E379c;
-    address tokenA = 0xD85c100f5A456781f7f5Bb3f468CeC0B768620A1;
-    address tokenB = 0xEd24a13936A5C307F90e1543189c9514160c1509;
+    address public TERMINAL;
 
     function setUp() external {
         coreParams = Constants.getDeploymentParams();
-        vm.startPrank(coreParams.deployer);
+        vm.prank(coreParams.deployer);
         contracts = deployCore(coreParams);
 
-        IVeloDeployFactory.DeployParams memory params;
-        params.slippageD9 = 1e6;
-        params.strategyParams = IPulseStrategyModule.StrategyParams({
-            strategyType: IPulseStrategyModule.StrategyType.LazySyncing,
-            tickNeighborhood: 0, // Neighborhood of ticks to consider for rebalancing
-            tickSpacing: 200, // tickSpacing of the corresponding amm pool
-            width: 400, // Width of the interval
-            maxLiquidityRatioDeviationX96: 0 // The maximum allowed deviation of the liquidity ratio for lower position.
-        });
+        increaseObservationCardinality(poolAB, 2);
 
-        params.securityParams = IVeloOracle.SecurityParams({
-            lookback: 1,
-            maxAge: 1 seconds,
-            maxAllowedDelta: 10,
-            extraData: ""
-        });
-
-        INonfungiblePositionManager positionManager =
-            INonfungiblePositionManager(coreParams.positionManager);
-        params.pool = ITerminalPoolFactory(positionManager.factory()).getPool(tokenA, tokenB, 200);
-
-        increaseObservationCardinality(ITerminalPool(params.pool), 2);
-        params.maxAmount0 = 1000 wei;
-        params.maxAmount1 = 1000 wei;
-        params.initialTotalSupply = 1000 wei;
-        params.totalSupplyLimit = 1000 ether;
-        vm.stopPrank();
-
-        vm.prank(coreParams.factoryProposer);
-        bytes32 proposalId = contracts.deployFactory.proposeDeployParams(params);
-
-        vm.startPrank(coreParams.factoryManager);
-        deal(tokenA, address(contracts.deployFactory), 1 ether);
-        deal(tokenB, address(contracts.deployFactory), 1 ether);
-        contracts.deployFactory.acceptDeployParams(proposalId);
-        vm.stopPrank();
-
-        lpWrapper = contracts.deployFactory.deployStrategy(proposalId);
+        (, int24 tick) = contracts.ammModule.getSqrtPriceX96AndTick(address(poolAB));
+        int24 tickSpacing = poolAB.tickSpacing();
+        int24 tickAligned = (tick / tickSpacing) * tickSpacing;
+        mint(
+            tickAligned - tickSpacing * 20,
+            tickAligned + tickSpacing * 20,
+            1e30,
+            poolAB,
+            address(this),
+            true
+        );
+        TERMINAL = contracts.ammModule.getRewardToken(address(poolAB));
     }
 
     function testDeploy() external {
         address user = vm.createWallet("random-user").addr;
-
+        (ILpWrapper lpWrapper,) =
+            deployLpWrapper(poolAB, IPulseStrategyModule.StrategyType.LazySyncing, contracts);
         vm.startPrank(user);
 
         uint256 amountA = 1 ether;
@@ -106,7 +80,10 @@ contract IntegrationTest is DeployScriptTerm, Fixture {
         vm.stopPrank();
     }
 
-    function testPositionsModified() external view {
+    function testPositionsModified() external {
+        (ILpWrapper lpWrapper,) =
+            deployLpWrapper(poolAB, IPulseStrategyModule.StrategyType.LazySyncing, contracts);
+
         uint256 tokenId = contracts.core.managedPositionAt(lpWrapper.positionId()).ammPositionIds[0];
 
         uint256 g_ = gasleft();
@@ -116,5 +93,93 @@ contract IntegrationTest is DeployScriptTerm, Fixture {
 
         console2.log(position.tokenId);
         console2.log(position.liquidity);
+    }
+
+    function testLpWrappers() external {
+        address user = vm.createWallet("user").addr;
+
+        ILpWrapper[] memory lpWrapper = new ILpWrapper[](5);
+        (lpWrapper[0],) =
+            deployLpWrapper(poolAB, IPulseStrategyModule.StrategyType.LazySyncing, contracts);
+        (lpWrapper[1],) =
+            deployLpWrapper(poolAB, IPulseStrategyModule.StrategyType.LazyAscending, contracts);
+        (lpWrapper[2],) =
+            deployLpWrapper(poolAB, IPulseStrategyModule.StrategyType.LazyDescending, contracts);
+        (lpWrapper[3],) =
+            deployLpWrapper(poolAB, IPulseStrategyModule.StrategyType.Original, contracts);
+        (lpWrapper[4],) =
+            deployLpWrapper(poolAB, IPulseStrategyModule.StrategyType.Tamper, contracts);
+
+        uint256 lpAmount = 1 ether;
+        uint256 amount0Initial = 10 ether;
+        uint256 amount1Initial = 10 ether;
+        uint256 rewardBalance = IERC20(TERMINAL).balanceOf(user);
+        uint256 rewardBalanceTreasury =
+            IERC20(TERMINAL).balanceOf(Constants.TERMINAL_MELLOW_TREASURY);
+        deal(tokenA, user, amount0Initial);
+        deal(tokenB, user, amount1Initial);
+
+        vm.startPrank(user);
+        for (uint256 i = 0; i < lpWrapper.length; i++) {
+            IERC20(tokenA).safeIncreaseAllowance(address(lpWrapper[i]), type(uint256).max);
+            IERC20(tokenB).safeIncreaseAllowance(address(lpWrapper[i]), type(uint256).max);
+
+            (,, uint256 actualLpAmount) = lpWrapper[i].mint(
+                ILpWrapper.MintParams({
+                    lpAmount: lpAmount,
+                    amount0Max: type(uint256).max,
+                    amount1Max: type(uint256).max,
+                    recipient: user,
+                    deadline: block.timestamp
+                })
+            );
+            assertApproxEqAbs(actualLpAmount, lpAmount, 1);
+        }
+        vm.stopPrank();
+
+        addRewardToGauge(1 ether, IGauge(poolAB.gauge()));
+        skip(1 days);
+
+        vm.startPrank(user);
+        for (uint256 i = 0; i < lpWrapper.length; i++) {
+            lpWrapper[i].getRewards(user);
+            assertTrue(rewardBalance < IERC20(TERMINAL).balanceOf(user));
+            rewardBalance = IERC20(TERMINAL).balanceOf(user);
+            /// @dev check that user and treasury received some rewards
+            assertTrue(
+                rewardBalanceTreasury
+                    < IERC20(TERMINAL).balanceOf(Constants.TERMINAL_MELLOW_TREASURY)
+            );
+            rewardBalanceTreasury = IERC20(TERMINAL).balanceOf(Constants.TERMINAL_MELLOW_TREASURY);
+        }
+        vm.stopPrank();
+
+        vm.startPrank(user);
+        for (uint256 i = 0; i < lpWrapper.length; i++) {
+            uint256 actualLpAmount = lpWrapper[i].balanceOf(user);
+            assertApproxEqAbs(actualLpAmount, lpAmount, 1);
+
+            lpWrapper[i].withdraw(lpAmount, 0, 0, user, block.timestamp);
+
+            /// @dev check that user and treasury didn't receive rewards
+            assertTrue(rewardBalance == IERC20(TERMINAL).balanceOf(user));
+            assertTrue(
+                rewardBalanceTreasury
+                    == IERC20(TERMINAL).balanceOf(Constants.TERMINAL_MELLOW_TREASURY)
+            );
+        }
+        vm.stopPrank();
+
+        assertApproxEqAbs(IERC20(tokenA).balanceOf(user), amount0Initial, lpWrapper.length * 2);
+        assertApproxEqAbs(IERC20(tokenB).balanceOf(user), amount1Initial, lpWrapper.length * 2);
+    }
+
+    function addRewardToGauge(uint256 amount, IGauge gauge) public {
+        address voter = address(gauge.voter());
+        deal(TERMINAL, voter, amount);
+        vm.startPrank(voter);
+        IERC20(TERMINAL).safeIncreaseAllowance(address(gauge), amount);
+        IGauge(gauge).notifyRewardAmount(amount);
+        vm.stopPrank();
     }
 }

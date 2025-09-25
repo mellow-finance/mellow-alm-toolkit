@@ -48,6 +48,9 @@ contract TerminalAmmModule is IVeloAmmModule {
         address token0;
         address token1;
         int24 tickSpacing;
+        if (pool == address(0)) {
+            return false;
+        }
         try ITerminalPool(pool).token0() returns (address token0Address) {
             token0 = token0Address;
         } catch {
@@ -67,7 +70,7 @@ contract TerminalAmmModule is IVeloAmmModule {
     }
 
     /// @inheritdoc IAmmModule
-    function validateProtocolParams(bytes memory params) external view {
+    function validateProtocolParams(bytes memory params) external pure {
         if (params.length != 0xa0) {
             revert InvalidLength();
         }
@@ -251,14 +254,13 @@ contract TerminalAmmModule is IVeloAmmModule {
         INonfungiblePositionManager(positionManager).transferFrom(from, to, tokenId);
         if (to == address(this)) {
             /// @dev transfers unclaimed fees back to the user or to the callback address
-            /// @dev rewards are no collected here, they are collected in collectRewards
             INonfungiblePositionManager(positionManager).collect(
                 INonfungiblePositionManager.CollectParams({
                     tokenId: tokenId,
                     recipient: from,
                     amount0Max: type(uint128).max,
                     amount1Max: type(uint128).max,
-                    rewardMax: 0
+                    rewardMax: type(uint128).max
                 })
             );
         }
@@ -312,9 +314,43 @@ contract TerminalAmmModule is IVeloAmmModule {
     function swapOnPool(address pool, bool zeroForOne, uint256 amountIn)
         external
         returns (int256 amount0, int256 amount1)
-    {}
+    {
+        if (amountIn == 0) {
+            return (0, 0);
+        }
+        return ITerminalPool(pool).swap(
+            address(this),
+            zeroForOne,
+            int256(amountIn),
+            zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1,
+            ""
+        );
+    }
 
-    function poolCallback(address pool, bytes4 selector, bytes memory data) external {}
+    function poolCallback(address pool, bytes4 selector, bytes memory callbackData) external {
+        if (selector != ITerminalSwapCallback.terminalSwapCallback.selector) {
+            revert ForbiddenCallback();
+        }
+
+        address token0 = ITerminalPool(pool).token0();
+        address token1 = ITerminalPool(pool).token1();
+        int24 tickSpacing = ITerminalPool(pool).tickSpacing();
+
+        if (ITerminalPoolFactory(factory).getPool(token0, token1, tickSpacing) != pool) {
+            revert ForbiddenPool();
+        }
+
+        (int256 amount0Delta, int256 amount1Delta,) =
+            abi.decode(callbackData, (int256, int256, bytes));
+
+        if (amount0Delta > 0) {
+            SafeERC20.safeTransfer(IERC20(token0), pool, uint256(amount0Delta));
+        }
+
+        if (amount1Delta > 0) {
+            SafeERC20.safeTransfer(IERC20(token1), pool, uint256(amount1Delta));
+        }
+    }
 
     function getInfo(uint256[] memory tokenIds) external view returns (Position[] memory data) {
         data = new Position[](tokenIds.length);

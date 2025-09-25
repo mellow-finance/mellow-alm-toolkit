@@ -6,8 +6,8 @@ import "./RebalancingBot.sol";
 import "forge-std/Test.sol";
 
 library Constants {
-    address internal constant TERMINAL_DEPLOYER = address(1);
-    address internal constant TERMINAL_MELLOW_ADMIN = address(2);
+    address internal constant TERMINAL_DEPLOYER = address(0xde000000);
+    address internal constant TERMINAL_MELLOW_ADMIN = address(0xad000000);
     bytes4 internal constant TERMINAL_IS_POOL_SELECTOR = bytes4(0);
 
     address internal constant SEPOLIA_POSITION_MANAGER = 0xF0e998b8E2Cc3b989F1351bDCC4f12d336EE83b1;

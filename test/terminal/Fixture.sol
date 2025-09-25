@@ -4,8 +4,12 @@ pragma solidity ^0.8.0;
 import "scripts/deploy/terminal/Constants.sol";
 import "scripts/deploy/terminal/DeployScript.sol";
 
-contract Fixture is Test, DeployScriptTerm {
+contract Fixture is DeployScriptTerm, Test {
     using SafeERC20 for IERC20;
+
+    ITerminalPool internal poolAB = ITerminalPool(0xdA01f6A7CcfA9D23F5B7347C026BE895F28E379c);
+    address internal tokenA = 0xD85c100f5A456781f7f5Bb3f468CeC0B768620A1;
+    address internal tokenB = 0xEd24a13936A5C307F90e1543189c9514160c1509;
 
     int24 public constant TICK_SPACING = 200;
     uint256 public constant Q96 = 2 ** 96;
@@ -81,8 +85,8 @@ contract Fixture is Test, DeployScriptTerm {
             ? int24(1)
             : deployParams.strategyParams.width / 10;
         deployParams.securityParams = IVeloOracle.SecurityParams({
-            lookback: 10,
-            maxAge: 1 hours,
+            lookback: 1,
+            maxAge: 1 seconds,
             maxAllowedDelta: maxAllowedDelta,
             extraData: ""
         });
@@ -117,14 +121,13 @@ contract Fixture is Test, DeployScriptTerm {
             contracts.deployFactory.acceptDeployParams(proposalId);
 
             lpWrapper = deployStrategy(contracts, proposalId);
-            vm.stopPrank();
         } else if (status == uint160(IVeloDeployFactory.DeployParamsStatus.Proposed)) {
             proposalId = contracts.deployFactory.deployParamsHash(deployParams);
 
             vm.prank(params.factoryManager);
             contracts.deployFactory.acceptDeployParams(proposalId);
+
             lpWrapper = deployStrategy(contracts, proposalId);
-            vm.stopPrank();
         } else if (status == uint160(IVeloDeployFactory.DeployParamsStatus.Accepted)) {
             proposalId = contracts.deployFactory.deployParamsHash(deployParams);
             lpWrapper = deployStrategy(contracts, proposalId);
@@ -148,24 +151,22 @@ contract Fixture is Test, DeployScriptTerm {
         IERC20(pool.token0()).approve(address(contracts.deployFactory), deployParams.maxAmount0);
         IERC20(pool.token1()).approve(address(contracts.deployFactory), deployParams.maxAmount1);
         lpWrapper = deployStrategy(contracts, proposalId);
-        //vm.stopPrank();
     }
 
     function mint(
-        address token0,
-        address token1,
-        int24 tickSpacing,
         int24 tickLower,
         int24 tickUpper,
         uint128 liquidity,
         ITerminalPool pool,
-        address recipient
+        address recipient,
+        bool isStaked
     ) public returns (uint256) {
         vm.startPrank(recipient);
 
-        if (token0 > token1) {
-            (token0, token1) = (token1, token0);
-        }
+        address token0 = pool.token0();
+        address token1 = pool.token1();
+        int24 tickSpacing = pool.tickSpacing();
+
         (uint160 sqrtRatioX96,,,,,,,) = pool.slot0();
 
         INonfungiblePositionManager.MintParams memory mintParams;
@@ -173,57 +174,7 @@ contract Fixture is Test, DeployScriptTerm {
         mintParams.tickUpper = tickUpper;
         mintParams.recipient = recipient;
         mintParams.deadline = type(uint256).max;
-        mintParams.token0 = token0;
-        mintParams.token1 = token1;
-        mintParams.tickSpacing = tickSpacing;
-        {
-            uint160 sqrtLowerRatioX96 = TickMath.getSqrtRatioAtTick(mintParams.tickLower);
-            uint160 sqrtUpperRatioX96 = TickMath.getSqrtRatioAtTick(mintParams.tickUpper);
-            (mintParams.amount0Desired, mintParams.amount1Desired) = LiquidityAmounts
-                .getAmountsForLiquidity(sqrtRatioX96, sqrtLowerRatioX96, sqrtUpperRatioX96, liquidity);
-            mintParams.amount0Desired += 1;
-            mintParams.amount1Desired += 1;
-        }
-        deal(token0, recipient, mintParams.amount0Desired);
-        deal(token1, recipient, mintParams.amount1Desired);
-        IERC20(token0).safeIncreaseAllowance(address(positionManager), mintParams.amount0Desired);
-        IERC20(token1).safeIncreaseAllowance(address(positionManager), mintParams.amount1Desired);
-
-        (uint256 tokenId, uint128 actualLiquidity,,) = positionManager.mint(mintParams);
-        require(
-            (liquidity * 99) / 100 <= actualLiquidity && tokenId > 0, "Invalid params of minted nft"
-        );
-        vm.stopPrank();
-        return tokenId;
-    }
-
-    function mint(
-        address token0,
-        address token1,
-        int24 tickSpacing,
-        int24 width,
-        uint128 liquidity,
-        ITerminalPool pool,
-        address recipient
-    ) public returns (uint256) {
-        vm.startPrank(recipient);
-
-        if (token0 > token1) {
-            (token0, token1) = (token1, token0);
-        }
-        (uint160 sqrtRatioX96, int24 spotTick,,,,,,) = pool.slot0();
-        {
-            int24 remainder = spotTick % tickSpacing;
-            if (remainder < 0) {
-                remainder += tickSpacing;
-            }
-            spotTick -= remainder;
-        }
-        INonfungiblePositionManager.MintParams memory mintParams;
-        mintParams.tickLower = spotTick - width / 2;
-        mintParams.tickUpper = mintParams.tickLower + width;
-        mintParams.recipient = recipient;
-        mintParams.deadline = type(uint256).max;
+        mintParams.isStaked = isStaked;
         mintParams.token0 = token0;
         mintParams.token1 = token1;
         mintParams.tickSpacing = tickSpacing;
@@ -259,8 +210,6 @@ contract Fixture is Test, DeployScriptTerm {
     }
 
     function movePrice(ITerminalPool pool, uint160 sqrtPriceX96Target) public {
-        address token0 = pool.token0();
-        address token1 = pool.token1();
         (uint160 sqrtPriceX96,,,,,,,) = pool.slot0();
 
         vm.startPrank(address(this));
@@ -270,19 +219,17 @@ contract Fixture is Test, DeployScriptTerm {
             sqrtPriceX96Target < sqrtPriceX96,
             type(int256).max,
             sqrtPriceX96Target,
-            abi.encode(address(this))
+            abi.encode(msg.sender)
         );
         vm.stopPrank();
     }
 
-    function terminalSwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata data)
+    function terminalSwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata)
         external
     {
-        ITerminalPool pool = ITerminalPool(msg.sender);
-        address token0 = pool.token0();
-        address token1 = pool.token1();
-
-        address recipient = abi.decode(data, (address));
+        address pool = msg.sender;
+        address token0 = ITerminalPool(pool).token0();
+        address token1 = ITerminalPool(pool).token1();
         if (amount0Delta > 0) {
             deal(
                 token0, address(pool), IERC20(token0).balanceOf(msg.sender) + uint256(amount0Delta)
