@@ -45,28 +45,14 @@ contract TerminalAmmModule is IVeloAmmModule {
 
     /// @inheritdoc IAmmModule
     function isPool(address pool) public view override returns (bool) {
-        address token0;
-        address token1;
-        int24 tickSpacing;
         if (pool == address(0)) {
             return false;
         }
-        try ITerminalPool(pool).token0() returns (address token0Address) {
-            token0 = token0Address;
-        } catch {
-            return false;
-        }
-        try ITerminalPool(pool).token1() returns (address token1Address) {
-            token1 = token1Address;
-        } catch {
-            return false;
-        }
-        try ITerminalPool(pool).tickSpacing() returns (int24 tickSpacingValue) {
-            tickSpacing = tickSpacingValue;
-        } catch {
-            return false;
-        }
-        return ITerminalPoolFactory(factory).getPool(token0, token1, tickSpacing) == pool;
+        return ITerminalPoolFactory(factory).getPool(
+            ITerminalPool(pool).token0(),
+            ITerminalPool(pool).token1(),
+            ITerminalPool(pool).tickSpacing()
+        ) == pool;
     }
 
     /// @inheritdoc IAmmModule
