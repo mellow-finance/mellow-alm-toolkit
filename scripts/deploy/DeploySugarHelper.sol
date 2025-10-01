@@ -15,10 +15,13 @@ contract DeploySugarHelper is Script {
         SugarHelper helper = deploySugarHelper(deployFactoryAddress);
         console2.log("SugarHelper deployed at:", address(helper));
         vm.stopBroadcast();
-       // revert("success");
+        // revert("success");
     }
 
-    function deploySugarHelper(address deployFactoryAddress) internal returns (SugarHelper helper) {
+    function deploySugarHelper(address deployFactoryAddress)
+        internal
+        returns (SugarHelper helper)
+    {
         helper = new SugarHelper(deployFactoryAddress);
     }
 }

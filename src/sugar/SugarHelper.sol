@@ -2,53 +2,11 @@
 pragma solidity 0.8.25;
 
 import "scripts/deploy/DeployScript.sol";
-import "src/interfaces/ICore.sol";
 import "src/interfaces/modules/velo/IVeloAmmModule.sol";
+import "src/interfaces/sugar/ISugarHelper.sol";
 import "src/interfaces/utils/ILpStaker.sol";
 import "src/interfaces/utils/ILpWrapper.sol";
 import "src/utils/VeloDeployFactory.sol";
-
-interface ISugarHelper {
-    struct CoreDeployment {
-        address core;
-        address ammModule;
-        address depositWithdrawModule;
-        address oracle;
-        address strategyModule;
-        address deployFactory;
-        address lpWrapperImplementation;
-        address lpStakerImplementation;
-    }
-
-    struct TokenData {
-        address addr;
-        uint256 amountALM;
-        uint256 amountPool;
-        uint256 amountStaker;
-        uint8 decimals;
-        string symbol;
-    }
-
-    struct AmmPosition {
-        int24 tickLower;
-        int24 tickUpper;
-        uint128 liquidity;
-    }
-
-    struct StrategyData {
-        address pool;
-        address lpStaker;
-        address lpWrapper;
-        uint256 supply;
-        uint256 supplyLimit;
-        string name;
-        string symbol;
-        int24 tickSpot;
-        AmmPosition[] ammPositions;
-        TokenData tokenData0;
-        TokenData tokenData1;
-    }
-}
 
 contract SugarHelper is ISugarHelper {
     VeloDeployFactory public immutable factory;
@@ -157,14 +115,15 @@ contract SugarHelper is ISugarHelper {
         data.lpStaker = ILpWrapper(lpWrapper).lpStaker();
         data.tokenData0 = getTokenData(ILpWrapper(lpWrapper).token0());
         data.tokenData1 = getTokenData(ILpWrapper(lpWrapper).token1());
-        (,data.tickSpot) = ammModule.getSqrtPriceX96AndTick(data.pool);
+        (, data.tickSpot) = ammModule.getSqrtPriceX96AndTick(data.pool);
         data.ammPositions = new AmmPosition[](position.ammPositionIds.length);
 
         for (uint256 id = 0; id < position.ammPositionIds.length; id++) {
             (uint256 amount0, uint256 amount1) = ammModule.tvl(position.ammPositionIds[id]);
             data.tokenData0.amountALM += amount0;
             data.tokenData1.amountALM += amount1;
-            IAmmModule.AmmPosition memory ammPosition = ammModule.getAmmPosition(position.ammPositionIds[id]);
+            IAmmModule.AmmPosition memory ammPosition =
+                ammModule.getAmmPosition(position.ammPositionIds[id]);
             data.ammPositions[id] = AmmPosition({
                 tickLower: ammPosition.tickLower,
                 tickUpper: ammPosition.tickUpper,
