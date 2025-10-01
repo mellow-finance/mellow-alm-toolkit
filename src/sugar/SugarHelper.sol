@@ -29,6 +29,12 @@ interface ISugarHelper {
         string symbol;
     }
 
+    struct AmmPosition {
+        int24 tickLower;
+        int24 tickUpper;
+        uint128 liquidity;
+    }
+
     struct StrategyData {
         address pool;
         address lpStaker;
@@ -37,6 +43,8 @@ interface ISugarHelper {
         uint256 supplyLimit;
         string name;
         string symbol;
+        int24 tickSpot;
+        AmmPosition[] ammPositions;
         TokenData tokenData0;
         TokenData tokenData1;
     }
@@ -64,7 +72,7 @@ contract SugarHelper is ISugarHelper {
         lpStakerImplementation = factory.lpStakerImplementation();
     }
 
-    function getCoreDeployment() internal view returns (CoreDeployment memory contracts) {
+    function getCoreDeployment() external view returns (CoreDeployment memory contracts) {
         contracts.deployFactory = address(factory);
         contracts.core = core;
         contracts.ammModule = ammModule;
@@ -93,6 +101,39 @@ contract SugarHelper is ISugarHelper {
         }
     }
 
+    function needRebalancePositions() external view returns (address[] memory lpWrappers) {
+        ICore core = factory.core();
+        IStrategyModule strategyModule = core.strategyModule();
+        uint256 positionCount = core.positionCount();
+        lpWrappers = new address[](positionCount);
+        IAmmModule ammModule = core.ammModule();
+        IOracle oracle = core.oracle();
+        uint256 length;
+        for (uint256 i = 0; i < positionCount; i++) {
+            ICore.ManagedPositionInfo memory managedPositionInfo = core.managedPositionAt(i);
+            (bool isRebalanceRequired,) =
+                strategyModule.getTargets(managedPositionInfo, ammModule, oracle);
+            if (isRebalanceRequired && factory.isEntity(managedPositionInfo.owner)) {
+                lpWrappers[length] = managedPositionInfo.owner;
+                length++;
+            }
+        }
+        assembly {
+            mstore(lpWrappers, length)
+        }
+    }
+
+    function needRebalancePosition(address lpWrapper)
+        external
+        view
+        returns (bool isRebalanceRequired)
+    {
+        (, ICore.ManagedPositionInfo memory managedPositionInfo) = managedPositionInfo(lpWrapper);
+        (isRebalanceRequired,) = ICore(core).strategyModule().getTargets(
+            managedPositionInfo, IAmmModule(ammModule), IOracle(oracle)
+        );
+    }
+
     function positionData(address lpWrapper)
         public
         view
@@ -116,11 +157,19 @@ contract SugarHelper is ISugarHelper {
         data.lpStaker = ILpWrapper(lpWrapper).lpStaker();
         data.tokenData0 = getTokenData(ILpWrapper(lpWrapper).token0());
         data.tokenData1 = getTokenData(ILpWrapper(lpWrapper).token1());
+        (,data.tickSpot) = ammModule.getSqrtPriceX96AndTick(data.pool);
+        data.ammPositions = new AmmPosition[](position.ammPositionIds.length);
 
         for (uint256 id = 0; id < position.ammPositionIds.length; id++) {
             (uint256 amount0, uint256 amount1) = ammModule.tvl(position.ammPositionIds[id]);
             data.tokenData0.amountALM += amount0;
             data.tokenData1.amountALM += amount1;
+            IAmmModule.AmmPosition memory ammPosition = ammModule.getAmmPosition(position.ammPositionIds[id]);
+            data.ammPositions[id] = AmmPosition({
+                tickLower: ammPosition.tickLower,
+                tickUpper: ammPosition.tickUpper,
+                liquidity: ammPosition.liquidity
+            });
         }
         data.tokenData0.amountPool = IERC20(data.tokenData0.addr).balanceOf(data.pool);
         data.tokenData1.amountPool = IERC20(data.tokenData1.addr).balanceOf(data.pool);
@@ -131,7 +180,7 @@ contract SugarHelper is ISugarHelper {
         }
     }
 
-    function getTokenData(address addr) internal view returns (TokenData memory token) {
+    function getTokenData(address addr) public view returns (TokenData memory token) {
         token.addr = addr;
         token.symbol = ERC20(addr).symbol();
         token.decimals = ERC20(addr).decimals();
@@ -145,39 +194,6 @@ contract SugarHelper is ISugarHelper {
         positionId = ILpWrapper(lpWrapper).positionId();
         ICore core = ICore(ILpWrapper(lpWrapper).core());
         managedPositionInfo = core.managedPositionAt(positionId);
-    }
-
-    function needRebalancePositions() public view returns (address[] memory lpWrappers) {
-        ICore core = factory.core();
-        IStrategyModule strategyModule = core.strategyModule();
-        uint256 positionCount = core.positionCount();
-        lpWrappers = new address[](positionCount);
-        IAmmModule ammModule = core.ammModule();
-        IOracle oracle = core.oracle();
-        uint256 length;
-        for (uint256 i = 0; i < positionCount; i++) {
-            ICore.ManagedPositionInfo memory managedPositionInfo = core.managedPositionAt(i);
-            (bool isRebalanceRequired,) =
-                strategyModule.getTargets(managedPositionInfo, ammModule, oracle);
-            if (isRebalanceRequired && factory.isEntity(managedPositionInfo.owner)) {
-                lpWrappers[length] = managedPositionInfo.owner;
-                length++;
-            }
-        }
-        assembly {
-            mstore(lpWrappers, length)
-        }
-    }
-
-    function needRebalancePosition(address lpWrapper)
-        public
-        view
-        returns (bool isRebalanceRequired)
-    {
-        (, ICore.ManagedPositionInfo memory managedPositionInfo) = managedPositionInfo(lpWrapper);
-        (isRebalanceRequired,) = ICore(core).strategyModule().getTargets(
-            managedPositionInfo, IAmmModule(ammModule), IOracle(oracle)
-        );
     }
 
     function getStrategyParams(address lpWrapper)
