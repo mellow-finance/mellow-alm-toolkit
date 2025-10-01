@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import "./Mock.sol";
-import "src/interfaces/external/velo/INonfungiblePositionManager.sol";
 
 contract NonfungiblePositionManagerMock is Mock {
     uint96 nonce;
@@ -18,10 +17,10 @@ contract NonfungiblePositionManagerMock is Mock {
     uint128 tokensOwed0;
     uint128 tokensOwed1;
 
-    INonfungiblePositionManager positionManager;
+    address positionManager;
 
     constructor(address _positionManager) {
-        positionManager = INonfungiblePositionManager(_positionManager);
+        positionManager = _positionManager;
     }
 
     function setNonce(uint96 _nonce) external {
@@ -73,7 +72,10 @@ contract NonfungiblePositionManagerMock is Mock {
     }
 
     function factory() external view returns (address) {
-        return INonfungiblePositionManager(positionManager).factory();
+        (bool success, bytes memory result) =
+            positionManager.staticcall(abi.encodeWithSelector(0xc45a0155)); // factory()
+        require(success, "factory call failed");
+        return abi.decode(result, (address));
     }
 
     function positions(uint256 /* tokenId */ )

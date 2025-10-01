@@ -1,45 +1,54 @@
 // SPDX-License-Identifier: BSL-1.1
 pragma solidity 0.8.25;
 
-import "../../scripts/deploy/Constants.sol";
-import "../../src/interfaces/external/velo/ISwapRouter.sol";
+import "./Fixture.sol";
+import "scripts/deploy/terminal/Constants.sol";
+import "src/interfaces/external/terminal/periphery/ISwapRouter.sol";
 
-contract SolvencyRunner is Test, DeployScript {
+contract SolvencyRunner is Fixture {
     using SafeERC20 for IERC20;
     using RandomLib for RandomLib.Storage;
 
-    uint256 private constant Q96 = 2 ** 96;
-    uint256 private constant ROUNDING_ERROR = 1e4;
+    uint256 internal constant ROUNDING_ERROR = 1e4;
 
-    ICore private _core;
-    ILpWrapper private _wrapper;
-    RebalancingBot private _bot =
-        new RebalancingBot(INonfungiblePositionManager(Constants.OPTIMISM_POSITION_MANAGER));
+    ICore internal _core;
+    ILpWrapper internal _wrapper;
+    RebalancingBot internal _bot =
+        new RebalancingBot(INonfungiblePositionManager(Constants.SEPOLIA_POSITION_MANAGER));
     RandomLib.Storage internal rnd;
     uint256 internal _iteration;
 
-    address[] private depositors;
-    uint256[] private depositedAmounts0;
-    uint256[] private depositedAmounts1;
-    uint256[] private depositedShares;
-    uint256[] private withdrawnAmounts0;
-    uint256[] private withdrawnAmounts1;
-    uint256[] private withdrawnShares;
-    bool private hasWithdrawals;
+    address[] internal depositors;
+    uint256[] internal depositedAmounts0;
+    uint256[] internal depositedAmounts1;
+    uint256[] internal depositedShares;
+    uint256[] internal withdrawnAmounts0;
+    uint256[] internal withdrawnAmounts1;
+    uint256[] internal withdrawnShares;
+    bool internal hasWithdrawals;
 
-    IERC20 private token0;
-    IERC20 private token1;
-    ICLPool private pool;
-    ICLGauge private gauge;
+    IERC20 internal token0;
+    IERC20 internal token1;
 
-    int256 private rebalanceChange0;
-    int256 private rebalanceChange1;
-    int256 private swapChange0;
-    int256 private swapChange1;
+    IGauge internal gauge;
+    IAmmModule internal ammModule;
 
-    uint256 private initialBalance0;
-    uint256 private initialBalance1;
-    uint256 private initialShares;
+    int256 internal rebalanceChange0;
+    int256 internal rebalanceChange1;
+    int256 internal swapChange0;
+    int256 internal swapChange1;
+
+    uint256 internal initialBalance0;
+    uint256 internal initialBalance1;
+    uint256 internal initialShares;
+
+    Swapper internal swapper;
+
+    function __initPoolTokens() internal {
+        token0 = IERC20(poolAB.token0());
+        token1 = IERC20(poolAB.token1());
+        increaseObservationCardinality(poolAB, 100);
+    }
 
     function __SolvencyRunner_init(ICore core_, ILpWrapper wrapper_) internal {
         delete depositors;
@@ -61,11 +70,21 @@ contract SolvencyRunner is Test, DeployScript {
         _core = core_;
         _wrapper = wrapper_;
 
-        token0 = IERC20(_wrapper.token0());
-        token1 = IERC20(_wrapper.token1());
+        gauge = IGauge(poolAB.gauge());
+        ammModule = _core.ammModule();
+        swapper = new Swapper(address(poolAB), address(ammModule));
 
-        pool = ICLPool(_core.managedPositionAt(_wrapper.positionId()).pool);
-        gauge = ICLGauge(pool.gauge());
+        (, int24 tick) = ammModule.getSqrtPriceX96AndTick(address(poolAB));
+        int24 tickSpacing = poolAB.tickSpacing();
+        int24 tickAligned = (tick / tickSpacing) * tickSpacing;
+        mint(
+            tickAligned - tickSpacing * 200,
+            tickAligned + tickSpacing * 200,
+            1e10 ether,
+            poolAB,
+            vm.createWallet("position-holder").addr,
+            true
+        );
 
         // just a magic, nvm
         deal(address(token0), address(gauge), 1000 wei);
@@ -87,7 +106,6 @@ contract SolvencyRunner is Test, DeployScript {
         uint256[] memory tokenIds = info.ammPositionIds;
         uint256 length = tokenIds.length;
         totalSupply = _wrapper.totalSupply();
-        IAmmModule ammModule = _core.ammModule();
         for (uint256 i = 0; i < length; i++) {
             (uint256 position0, uint256 position1) = ammModule.tvl(tokenIds[i]);
             amount0 += position0;
@@ -207,43 +225,15 @@ contract SolvencyRunner is Test, DeployScript {
     }
 
     function transitionRandomSwap() internal {
-        ISwapRouter swapRouter = ISwapRouter(Constants.OPTIMISM_SWAP_ROUTER);
-
-        address swapper = rnd.randAddress();
-        vm.startPrank(swapper);
-        bool zeroToOne = rnd.randBool();
-        ISwapRouter.ExactOutputSingleParams memory params = ISwapRouter.ExactOutputSingleParams({
-            tokenIn: address(zeroToOne ? token0 : token1),
-            tokenOut: address(zeroToOne ? token1 : token0),
-            tickSpacing: pool.tickSpacing(),
-            recipient: swapper,
-            deadline: type(uint256).max,
-            amountOut: rnd.randInt(
-                1,
-                ((zeroToOne ? token1.balanceOf(address(pool)) : token0.balanceOf(address(pool))) >> 1)
-                    + 1
-            ),
-            amountInMaximum: type(uint128).max,
-            sqrtPriceLimitX96: 0
-        });
-
-        deal(params.tokenIn, swapper, params.amountInMaximum);
-        IERC20(params.tokenIn).forceApprove(address(swapRouter), params.amountInMaximum);
-
         (uint256 balance0Before, uint256 balance1Before,) = calculateTvl();
 
-        swapRouter.exactOutputSingle(params);
+        swapper.randomSwap();
 
         {
             (uint256 balance0After, uint256 balance1After,) = calculateTvl();
             swapChange0 += int256(balance0After) - int256(balance0Before);
             swapChange1 += int256(balance1After) - int256(balance1Before);
         }
-
-        deal(params.tokenIn, swapper, 0);
-        IERC20(params.tokenIn).forceApprove(address(swapRouter), 0);
-
-        vm.stopPrank();
     }
 
     function randomTransitionIndex(uint256 bitMask) internal returns (uint256) {
@@ -285,12 +275,12 @@ contract SolvencyRunner is Test, DeployScript {
         if (rnd.randBool() && rnd.randBool()) {
             transitionRandomSwap();
         }
-        (bool isRebalanceRequired,) = strategyModule.getTargets(info, _core.ammModule(), oracle);
+        (bool isRebalanceRequired,) = strategyModule.getTargets(info, ammModule, oracle);
         bool isRevertExpected = !isRebalanceRequired;
         (uint256 balance0, uint256 balance1,) = calculateTvl();
         if (!isRevertExpected) {
-            try oracle.ensureNoMEV(address(pool), info.securityParams) {
-                // normal pool state
+            try oracle.ensureNoMEV(address(poolAB), info.securityParams) {
+                // normal poolAB state
             } catch {
                 isRevertExpected = true;
             }
@@ -330,7 +320,7 @@ contract SolvencyRunner is Test, DeployScript {
                 rnd.randInt(uint256(type(IPulseStrategyModule.StrategyType).max))
             );
         }
-        params.width = int24(int256(rnd.randInt(1, 25) * 2));
+        params.width = int24(int256(rnd.randInt(1, 25) * 2)) * poolAB.tickSpacing();
         if (params.strategyType != IPulseStrategyModule.StrategyType.Tamper) {
             params.maxLiquidityRatioDeviationX96 = 0;
         } else {
@@ -367,11 +357,11 @@ contract SolvencyRunner is Test, DeployScript {
     function transitionDistributeRewards() internal {
         uint256 amount = rnd.randAmountD18();
         address voter = address(gauge.voter());
-        address rewardToken = gauge.rewardToken();
+        address rewardToken = gauge.term();
         vm.startPrank(voter);
         deal(rewardToken, voter, amount);
         IERC20(rewardToken).safeIncreaseAllowance(address(gauge), amount);
-        ICLGauge(gauge).notifyRewardAmount(amount);
+        IGauge(gauge).notifyRewardAmount(amount);
         vm.stopPrank();
     }
 
@@ -426,7 +416,7 @@ contract SolvencyRunner is Test, DeployScript {
         // if (hasWithdrawals) {
         //     return;
         // }
-        // (uint160 sqrtPriceX96,,,,,) = pool.slot0();
+        // (uint160 sqrtPriceX96,,,,,) = poolAB.slot0();
         // uint256 priceX96 = Math.mulDiv(sqrtPriceX96, sqrtPriceX96, Q96);
         // (uint256 tvl0, uint256 tvl1,) = calculateTvl();
         // uint256 value = Math.mulDiv(tvl0, priceX96, Q96) + tvl1;

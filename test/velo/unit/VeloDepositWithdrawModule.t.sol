@@ -109,4 +109,107 @@ contract Unit is Fixture {
             assertApproxEqAbs(actualAmount1, before1 - after1, 1 wei);
         }
     }
+
+    function testMintPosition() external {
+        module = new VeloDepositWithdrawModule(positionManager);
+        IVeloAmmModule ammModule = new VeloAmmModule(positionManager, 0xe5e31b13);
+
+        address token0 = pool.token0();
+        address token1 = pool.token1();
+        deal(token0, address(this), 1 ether);
+        deal(token1, address(this), 1 ether);
+
+        int24 tickLower;
+        int24 tickUpper;
+        int24 ts = pool.tickSpacing();
+
+        (uint160 sqrtPriceX96, int24 tick) = ammModule.getSqrtPriceX96AndTick(address(pool));
+        int24 tickAligned = (tick / ts) * ts;
+        tickLower = tickAligned - ts * 2;
+        tickUpper = tickAligned + ts * 2;
+
+        bytes memory data = Address.functionDelegateCall(
+            address(module),
+            abi.encodeWithSelector(
+                IAmmDepositWithdrawModule.mint.selector,
+                address(pool),
+                tickLower,
+                tickUpper,
+                1 ether,
+                1 ether,
+                address(this)
+            )
+        );
+
+        (uint256 tokenId, uint128 liquidity, uint256 amount0Actual, uint256 amount1Actual) =
+            abi.decode(data, (uint256, uint128, uint256, uint256));
+        assertTrue(tokenId != 0);
+        assertTrue(positionManager.ownerOf(tokenId) == address(this));
+
+        IVeloAmmModule.Position memory position_ = ammModule.getPosition(tokenId);
+        assertEq(position_.liquidity, liquidity);
+        (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(
+            sqrtPriceX96,
+            TickMath.getSqrtRatioAtTick(position_.tickLower),
+            TickMath.getSqrtRatioAtTick(position_.tickUpper),
+            liquidity
+        );
+        assertApproxEqAbs(amount0, amount0Actual, 1 wei);
+        assertApproxEqAbs(amount1, amount1Actual, 1 wei);
+    }
+
+    function testBurnPosition() external {
+        module = new VeloDepositWithdrawModule(positionManager);
+        IVeloAmmModule ammModule = new VeloAmmModule(positionManager, 0xe5e31b13);
+
+        address token0 = pool.token0();
+        address token1 = pool.token1();
+        deal(token0, address(this), 1 ether);
+        deal(token1, address(this), 1 ether);
+
+        int24 tickLower;
+        int24 tickUpper;
+        int24 ts = pool.tickSpacing();
+
+        (, int24 tick) = ammModule.getSqrtPriceX96AndTick(address(pool));
+        int24 tickAligned = (tick / ts) * ts;
+        tickLower = tickAligned - ts * 2;
+        tickUpper = tickAligned + ts * 2;
+
+        bytes memory data = Address.functionDelegateCall(
+            address(module),
+            abi.encodeWithSelector(
+                IAmmDepositWithdrawModule.mint.selector,
+                address(pool),
+                tickLower,
+                tickUpper,
+                1 ether,
+                1 ether,
+                address(this)
+            )
+        );
+
+        (uint256 tokenId, uint128 liquidity,,) =
+            abi.decode(data, (uint256, uint128, uint256, uint256));
+        assertTrue(tokenId != 0);
+        assertTrue(positionManager.ownerOf(tokenId) == address(this));
+
+        data = Address.functionDelegateCall(
+            address(module),
+            abi.encodeWithSelector(
+                IAmmDepositWithdrawModule.withdraw.selector, tokenId, liquidity, address(this)
+            )
+        );
+
+        assertApproxEqAbs(IERC20(token0).balanceOf(address(this)), 1 ether, 2 wei);
+        assertApproxEqAbs(IERC20(token1).balanceOf(address(this)), 1 ether, 2 wei);
+
+        data = Address.functionDelegateCall(
+            address(module),
+            abi.encodeWithSelector(IAmmDepositWithdrawModule.burn.selector, tokenId)
+        );
+
+        vm.expectRevert("ERC721: owner query for nonexistent token");
+        positionManager.ownerOf(tokenId);
+    }
 }

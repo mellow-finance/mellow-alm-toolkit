@@ -2,9 +2,9 @@
 pragma solidity ^0.8.0;
 
 import "../Imports.sol";
-import "scripts/deploy/Constants.sol";
+import "scripts/deploy/velo/Constants.sol";
 
-contract Fixture is DeployScript, Test {
+contract Fixture is DeployScriptVelo, Test {
     using SafeERC20 for IERC20;
 
     address WETH = 0x4200000000000000000000000000000000000006;
@@ -338,6 +338,4 @@ contract Fixture is DeployScript, Test {
             })
         );
     }
-
-    function test() internal pure {}
 }

@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BSL-1.1
 pragma solidity 0.8.25;
 
-import "../scripts/deploy/Constants.sol";
-import "../scripts/deploy/DeployScript.sol";
+import "scripts/deploy/velo/Constants.sol";
+import "scripts/deploy/velo/DeployScript.sol";
 
-contract IntegrationTest is Test, DeployScript {
+contract IntegrationTest is Test, DeployScriptVelo {
     using SafeERC20 for IERC20;
 
     CoreDeploymentParams private coreParams;

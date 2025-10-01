@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.25;
 
-import "../../interfaces/modules/velo/IVeloDepositWithdrawModule.sol";
+import "../../interfaces/external/terminal/ITerminalContracts.sol";
+import "../../interfaces/modules/IAmmDepositWithdrawModule.sol";
 
-contract VeloDepositWithdrawModule is IVeloDepositWithdrawModule {
+contract TerminalDepositWithdrawModule is IAmmDepositWithdrawModule {
     using SafeERC20 for IERC20;
 
-    /// @inheritdoc IVeloDepositWithdrawModule
     INonfungiblePositionManager public immutable positionManager;
 
     /// ---------------------- INITIALIZER FUNCTIONS ----------------------
@@ -68,14 +68,16 @@ contract VeloDepositWithdrawModule is IVeloDepositWithdrawModule {
                 deadline: type(uint256).max
             })
         );
-        (actualAmount0, actualAmount1) = positionManager.collect(
+        CollectAmounts.Info memory collected = positionManager.collect(
             INonfungiblePositionManager.CollectParams({
                 tokenId: tokenId,
                 recipient: to,
                 amount0Max: type(uint128).max,
-                amount1Max: type(uint128).max
+                amount1Max: type(uint128).max,
+                rewardMax: type(uint128).max
             })
         );
+        (actualAmount0, actualAmount1) = (collected.amount0, collected.amount1);
     }
 
     /// @inheritdoc IAmmDepositWithdrawModule
@@ -91,8 +93,8 @@ contract VeloDepositWithdrawModule is IVeloDepositWithdrawModule {
         override
         returns (uint256 tokenId, uint128 liquidity, uint256 amount0Actual, uint256 amount1Actual)
     {
-        address token0 = ICLPool(pool).token0();
-        address token1 = ICLPool(pool).token1();
+        address token0 = ITerminalPool(pool).token0();
+        address token1 = ITerminalPool(pool).token1();
         if (amount0Desired != 0) {
             IERC20(token0).safeIncreaseAllowance(address(positionManager), amount0Desired);
         }
@@ -104,16 +106,16 @@ contract VeloDepositWithdrawModule is IVeloDepositWithdrawModule {
             INonfungiblePositionManager.MintParams({
                 token0: token0,
                 token1: token1,
-                tickSpacing: ICLPool(pool).tickSpacing(),
+                tickSpacing: ITerminalPool(pool).tickSpacing(),
                 tickLower: tickLower,
                 tickUpper: tickUpper,
+                isStaked: true,
                 amount0Desired: amount0Desired,
                 amount1Desired: amount1Desired,
                 amount0Min: 0,
                 amount1Min: 0,
                 recipient: to,
-                deadline: type(uint256).max,
-                sqrtPriceX96: 0
+                deadline: type(uint256).max
             })
         );
         if (IERC20(token0).allowance(address(this), address(positionManager)) > 0) {

@@ -1,16 +1,14 @@
 // SPDX-License-Identifier: BSL-1.1
 pragma solidity 0.8.25;
 
-import "../../scripts/deploy/Constants.sol";
+import "./Fixture.sol";
 
-contract IntegrationTest is Test, DeployScript {
+contract RebalanceTest is Fixture {
     using SafeERC20 for IERC20;
 
     CoreDeploymentParams private coreParams;
     CoreDeployment private contracts;
-    ILpWrapper private wstethWeth1Wrapper;
-
-    uint256 private constant Q96 = 2 ** 96;
+    ILpWrapper private lpWrapper;
 
     function setUp() external {
         coreParams = Constants.getDeploymentParams();
@@ -18,28 +16,28 @@ contract IntegrationTest is Test, DeployScript {
         vm.startPrank(coreParams.deployer);
         contracts = deployCore(coreParams);
 
+        int24 tickSpacing = poolAB.tickSpacing();
+
         IVeloDeployFactory.DeployParams memory params;
         params.slippageD9 = 1e9 / 100 / 100;
         params.strategyParams = IPulseStrategyModule.StrategyParams({
             strategyType: IPulseStrategyModule.StrategyType.LazySyncing,
             tickNeighborhood: 0, // Neighborhood of ticks to consider for rebalancing
-            tickSpacing: 1, // tickSpacing of the corresponding amm pool
-            width: 50, // Width of the interval
+            tickSpacing: tickSpacing, // tickSpacing of the corresponding amm poolAB
+            width: tickSpacing * 3, // Width of the interval
             maxLiquidityRatioDeviationX96: 0 // The maximum allowed deviation of the liquidity ratio for lower position.
         });
 
         params.securityParams = IVeloOracle.SecurityParams({
-            lookback: 100,
-            maxAge: 5 days,
-            maxAllowedDelta: 10,
+            lookback: 1,
+            maxAge: 1 days,
+            maxAllowedDelta: 100,
             extraData: ""
         });
 
-        INonfungiblePositionManager positionManager =
-            INonfungiblePositionManager(coreParams.positionManager);
-        params.pool = ICLFactory(positionManager.factory()).getPool(
-            Constants.OPTIMISM_WETH, Constants.OPTIMISM_WSTETH, 1
-        );
+        params.pool = address(poolAB);
+        increaseObservationCardinality(poolAB, 100);
+
         params.maxAmount0 = 1000 wei;
         params.maxAmount1 = 1000 wei;
         params.initialTotalSupply = 1000 wei;
@@ -51,19 +49,19 @@ contract IntegrationTest is Test, DeployScript {
         bytes32 proposalId = contracts.deployFactory.proposeDeployParams(params);
 
         vm.startPrank(coreParams.factoryManager);
-        deal(Constants.OPTIMISM_WETH, address(contracts.deployFactory), 1 ether);
-        deal(Constants.OPTIMISM_WSTETH, address(contracts.deployFactory), 1 ether);
+        deal(tokenA, address(contracts.deployFactory), 1 ether);
+        deal(tokenB, address(contracts.deployFactory), 1 ether);
         contracts.deployFactory.acceptDeployParams(proposalId);
         vm.stopPrank();
 
-        wstethWeth1Wrapper = contracts.deployFactory.deployStrategy(proposalId);
+        lpWrapper = contracts.deployFactory.deployStrategy(proposalId);
     }
 
     function logPositions() internal view {
         ICore.ManagedPositionInfo memory info =
-            contracts.core.managedPositionAt(wstethWeth1Wrapper.positionId());
+            contracts.core.managedPositionAt(lpWrapper.positionId());
 
-        (uint160 sqrtPriceX96,,,,,) = ICLPool(info.pool).slot0();
+        (uint160 sqrtPriceX96,,,,,,,) = ITerminalPool(info.pool).slot0();
         uint256 totalAmount0 = 0;
         uint256 totalAmount1 = 0;
         for (uint256 i = 0; i < info.ammPositionIds.length; i++) {
@@ -106,26 +104,22 @@ contract IntegrationTest is Test, DeployScript {
 
         vm.startPrank(user);
 
-        uint256 wethAmount = 1 ether;
-        uint256 wstethAmount = 1.5 ether;
+        uint256 amount0 = 1 ether;
+        uint256 amount1 = 1.5 ether;
 
-        deal(Constants.OPTIMISM_WETH, user, wethAmount);
-        deal(Constants.OPTIMISM_WSTETH, user, wstethAmount);
+        deal(tokenA, user, amount0);
+        deal(tokenB, user, amount1);
 
-        IERC20(Constants.OPTIMISM_WETH).safeIncreaseAllowance(
-            address(wstethWeth1Wrapper), wethAmount
-        );
-        IERC20(Constants.OPTIMISM_WSTETH).safeIncreaseAllowance(
-            address(wstethWeth1Wrapper), wstethAmount
-        );
+        IERC20(tokenA).safeIncreaseAllowance(address(lpWrapper), amount0);
+        IERC20(tokenB).safeIncreaseAllowance(address(lpWrapper), amount1);
 
         uint256 n = 20;
         for (uint256 i = 0; i < n; i++) {
-            wstethWeth1Wrapper.mint(
+            lpWrapper.mint(
                 ILpWrapper.MintParams({
-                    lpAmount: Math.min(wstethAmount, wethAmount) / n * 99 / 100,
-                    amount0Max: wstethAmount / n,
-                    amount1Max: wethAmount / n,
+                    lpAmount: Math.min(amount1, amount0) / n * 99 / 100,
+                    amount0Max: amount1 / n,
+                    amount1Max: amount0 / n,
                     recipient: user,
                     deadline: block.timestamp
                 })
@@ -133,21 +127,20 @@ contract IntegrationTest is Test, DeployScript {
             skip(1 hours);
         }
 
-        IERC20(address(wstethWeth1Wrapper)).safeTransfer(user, 0);
-        wstethWeth1Wrapper.getRewards(user);
-        wstethWeth1Wrapper.withdraw(
-            wstethWeth1Wrapper.balanceOf(user) / 2, 0, 0, user, block.timestamp
-        );
+        IERC20(address(lpWrapper)).safeTransfer(user, 0);
+        lpWrapper.getRewards(user);
+        lpWrapper.withdraw(lpWrapper.balanceOf(user) / 2, 0, 0, user, block.timestamp);
         vm.stopPrank();
 
+        int24 tickSpacing = poolAB.tickSpacing();
         vm.startPrank(coreParams.lpWrapperManager);
 
-        wstethWeth1Wrapper.setStrategyParams(
+        lpWrapper.setStrategyParams(
             IPulseStrategyModule.StrategyParams({
                 strategyType: IPulseStrategyModule.StrategyType.Tamper,
                 tickNeighborhood: 0, // Neighborhood of ticks to consider for rebalancing
-                tickSpacing: 1,
-                width: 50, // Width of the interval
+                tickSpacing: tickSpacing,
+                width: tickSpacing * 8,
                 maxLiquidityRatioDeviationX96: uint128(2 ** 96) / 100 // The maximum allowed deviation of the liquidity ratio for lower position.
             })
         );
@@ -156,14 +149,14 @@ contract IntegrationTest is Test, DeployScript {
         RebalancingBot bot =
             new RebalancingBot(INonfungiblePositionManager(coreParams.positionManager));
 
-        deal(Constants.OPTIMISM_WSTETH, address(bot), 1 ether);
-        deal(Constants.OPTIMISM_WETH, address(bot), 1 ether);
+        deal(tokenB, address(bot), 1 ether);
+        deal(tokenA, address(bot), 1 ether);
 
         vm.startPrank(coreParams.coreOperator);
         logPositions();
         contracts.core.rebalance(
             ICore.RebalanceParams({
-                id: wstethWeth1Wrapper.positionId(),
+                id: lpWrapper.positionId(),
                 callback: address(bot),
                 data: new bytes(0)
             })
@@ -172,12 +165,12 @@ contract IntegrationTest is Test, DeployScript {
         vm.stopPrank();
 
         vm.startPrank(coreParams.lpWrapperManager);
-        wstethWeth1Wrapper.setStrategyParams(
+        lpWrapper.setStrategyParams(
             IPulseStrategyModule.StrategyParams({
                 strategyType: IPulseStrategyModule.StrategyType.LazySyncing,
                 tickNeighborhood: 0,
-                tickSpacing: 1,
-                width: 20,
+                tickSpacing: tickSpacing,
+                width: tickSpacing * 11,
                 maxLiquidityRatioDeviationX96: 0
             })
         );
@@ -187,7 +180,7 @@ contract IntegrationTest is Test, DeployScript {
         logPositions();
         contracts.core.rebalance(
             ICore.RebalanceParams({
-                id: wstethWeth1Wrapper.positionId(),
+                id: lpWrapper.positionId(),
                 callback: address(bot),
                 data: new bytes(0)
             })

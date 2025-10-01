@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.25;
 
-import "../../test/Imports.sol";
+import "../../test/CommonImports.sol";
 
 abstract contract DeployScript {
     struct CoreDeploymentParams {
@@ -27,7 +27,7 @@ abstract contract DeployScript {
     struct CoreDeployment {
         ICore core;
         IVeloAmmModule ammModule;
-        IVeloDepositWithdrawModule depositWithdrawModule;
+        IAmmDepositWithdrawModule depositWithdrawModule;
         IVeloOracle oracle;
         IPulseStrategyModule strategyModule;
         IVeloDeployFactory deployFactory;
@@ -42,50 +42,13 @@ abstract contract DeployScript {
 
     function deployCore(CoreDeploymentParams memory params)
         internal
-        returns (CoreDeployment memory contracts)
-    {
-        contracts.ammModule = new VeloAmmModule(
-            INonfungiblePositionManager(params.positionManager), params.isPoolSelector
-        );
-        contracts.depositWithdrawModule =
-            new VeloDepositWithdrawModule(INonfungiblePositionManager(params.positionManager));
-        contracts.oracle = new VeloOracle();
-        contracts.strategyModule = new PulseStrategyModule();
-        contracts.core = new Core(
-            contracts.ammModule,
-            contracts.depositWithdrawModule,
-            contracts.strategyModule,
-            contracts.oracle
-        );
-        contracts.core.initialize(
-            params.mellowAdmin, params.coreOperator, abi.encode(params.protocolParams)
-        );
-
-        contracts.lpWrapperImplementation = new LpWrapper(address(contracts.core));
-        contracts.lpStakerImplementation = new LpStaker(address(contracts.core));
-        contracts.deployFactory = new VeloDeployFactory(
-            contracts.core,
-            contracts.strategyModule,
-            address(contracts.lpWrapperImplementation),
-            address(contracts.lpStakerImplementation)
-        );
-        contracts.deployFactory.initialize(
-            params.mellowAdmin,
-            params.factoryManager,
-            params.factoryProposer,
-            params.lpWrapperAdmin,
-            params.lpWrapperManager,
-            params.lpWrapperOperator,
-            params.minInitialTotalSupply
-        );
-    }
+        virtual
+        returns (CoreDeployment memory contracts);
 
     function deployStrategy(CoreDeployment memory contracts, bytes32 proposalId)
         internal
-        returns (ILpWrapper)
-    {
-        return contracts.deployFactory.deployStrategy(proposalId);
-    }
+        virtual
+        returns (ILpWrapper);
 
-    function testDeployScript() internal pure {}
+    function test() internal pure {}
 }
