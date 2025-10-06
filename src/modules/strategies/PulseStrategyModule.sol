@@ -289,15 +289,27 @@ contract PulseStrategyModule is IPulseStrategyModule {
         }
 
         if (isRebalanceRequired) {
-            target.lowerTicks = new int24[](2);
-            target.upperTicks = new int24[](2);
-            target.liquidityRatiosX96 = new uint256[](2);
-            target.lowerTicks[0] = targetLower;
-            target.lowerTicks[1] = targetLower + half;
-            target.upperTicks[0] = targetLower + width;
-            target.upperTicks[1] = targetLower + half + width;
-            target.liquidityRatiosX96[0] = targetLowerRatioX96;
-            target.liquidityRatiosX96[1] = Q96 - targetLowerRatioX96;
+            uint256 posCount = (targetLowerRatioX96 == 0 || targetLowerRatioX96 == Q96) ? 1 : 2;
+            target.lowerTicks = new int24[](posCount);
+            target.upperTicks = new int24[](posCount);
+            target.liquidityRatiosX96 = new uint256[](posCount);
+            if (posCount == 2) {
+                target.lowerTicks[0] = targetLower;
+                target.lowerTicks[1] = targetLower + half;
+                target.upperTicks[0] = targetLower + width;
+                target.upperTicks[1] = targetLower + half + width;
+                target.liquidityRatiosX96[0] = targetLowerRatioX96;
+                target.liquidityRatiosX96[1] = Q96 - targetLowerRatioX96;
+            } else {
+                target.liquidityRatiosX96[0] = Q96;
+                if (targetLowerRatioX96 == 0) {
+                    target.lowerTicks[0] = targetLower + half;
+                    target.upperTicks[0] = targetLower + half + width;
+                } else if (targetLowerRatioX96 == Q96) {
+                    target.lowerTicks[0] = targetLower;
+                    target.upperTicks[0] = targetLower + width;
+                }
+            }
         }
     }
 
