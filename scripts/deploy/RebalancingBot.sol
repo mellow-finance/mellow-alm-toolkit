@@ -50,12 +50,20 @@ contract RebalancingBot is IRebalanceCallback {
         (uint160 sqrtRatioX96,,,,,) = pool.slot0();
         IERC20 token0 = IERC20(pool.token0());
         IERC20 token1 = IERC20(pool.token1());
-        (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(
-            sqrtRatioX96,
-            TickMath.getSqrtRatioAtTick(tickLower),
-            TickMath.getSqrtRatioAtTick(tickUpper),
-            liquidity * 10001 / 10000 + 100 // just to create not less than required liquidity
-        );
+        uint256 amount0;
+        uint256 amount1;
+
+        if (liquidity == 0) {
+            (amount0, amount1) = (token0.balanceOf(address(this)), token1.balanceOf(address(this)));
+        } else {
+            (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
+                sqrtRatioX96,
+                TickMath.getSqrtRatioAtTick(tickLower),
+                TickMath.getSqrtRatioAtTick(tickUpper),
+                liquidity * 10001 / 10000 + 100 // just to create not less than required liquidity
+            );
+        }
+
         if (amount0 > 0) {
             token0.safeIncreaseAllowance(address(positionManager), amount0);
         }
@@ -101,6 +109,12 @@ contract RebalancingBot is IRebalanceCallback {
             }
         }
 
+        ICLPool pool = ICLPool(info.pool);
+        IERC20 token0 = IERC20(pool.token0());
+        IERC20 token1 = IERC20(pool.token1());
+        (uint256 amount0, uint256 amount1) =
+            (token0.balanceOf(address(this)), token1.balanceOf(address(this)));
+
         uint256 length = target.lowerTicks.length;
         tokenIds = new uint256[](length);
         for (uint256 i = 0; i < length; i++) {
@@ -108,7 +122,9 @@ contract RebalancingBot is IRebalanceCallback {
                 info.pool,
                 target.lowerTicks[i],
                 target.upperTicks[i],
-                uint128(target.minLiquidities[i])
+                (length == 2 || (amount0 > type(uint96).max && amount1 > type(uint96).max))
+                    ? uint128(target.minLiquidities[i])
+                    : 0
             );
             positionManager.approve(msg.sender, tokenIds[i]);
         }
