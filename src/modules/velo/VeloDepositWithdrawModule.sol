@@ -77,4 +77,55 @@ contract VeloDepositWithdrawModule is IVeloDepositWithdrawModule {
             })
         );
     }
+
+    /// @inheritdoc IAmmDepositWithdrawModule
+    function mint(
+        address pool,
+        int24 tickLower,
+        int24 tickUpper,
+        uint256 amount0Desired,
+        uint256 amount1Desired,
+        address to
+    )
+        external
+        override
+        returns (uint256 tokenId, uint128 liquidity, uint256 amount0Actual, uint256 amount1Actual)
+    {
+        address token0 = ICLPool(pool).token0();
+        address token1 = ICLPool(pool).token1();
+        if (amount0Desired != 0) {
+            IERC20(token0).safeIncreaseAllowance(address(positionManager), amount0Desired);
+        }
+        if (amount1Desired != 0) {
+            IERC20(token1).safeIncreaseAllowance(address(positionManager), amount1Desired);
+        }
+
+        (tokenId, liquidity, amount0Actual, amount1Actual) = positionManager.mint(
+            INonfungiblePositionManager.MintParams({
+                token0: token0,
+                token1: token1,
+                tickSpacing: ICLPool(pool).tickSpacing(),
+                tickLower: tickLower,
+                tickUpper: tickUpper,
+                amount0Desired: amount0Desired,
+                amount1Desired: amount1Desired,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: to,
+                deadline: type(uint256).max,
+                sqrtPriceX96: 0
+            })
+        );
+        if (IERC20(token0).allowance(address(this), address(positionManager)) > 0) {
+            IERC20(token0).forceApprove(address(positionManager), 0);
+        }
+        if (IERC20(token1).allowance(address(this), address(positionManager)) > 0) {
+            IERC20(token1).forceApprove(address(positionManager), 0);
+        }
+    }
+
+    /// @inheritdoc IAmmDepositWithdrawModule
+    function burn(uint256 tokenId) external override {
+        positionManager.burn(tokenId);
+    }
 }
