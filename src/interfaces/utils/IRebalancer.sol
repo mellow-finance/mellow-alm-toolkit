@@ -7,6 +7,11 @@ import "src/interfaces/utils/ILpStaker.sol";
 import "src/interfaces/utils/ILpWrapper.sol";
 
 interface IPoolSwap {
+    struct GaugeFees {
+        uint128 token0;
+        uint128 token1;
+    }
+
     function swap(
         address recipient,
         bool zeroForOne,
@@ -16,6 +21,7 @@ interface IPoolSwap {
     ) external returns (int256 amount0, int256 amount1);
     function fee() external view returns (uint24);
     function liquidity() external view returns (uint128);
+    function gaugeFees() external view returns (GaugeFees memory);
 }
 
 /**

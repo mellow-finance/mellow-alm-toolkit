@@ -189,7 +189,7 @@ contract Rebalancer is IRebalancer, IRebalanceCallback {
         }
         uint160 sqrtPriceX96 = ammModule.getSqrtPriceX96(input.pool);
         uint256 capitalBefore = capitalPosition(input, sqrtPriceX96);
-        (uint256 poolBalance0, uint256 poolBalance1) = poolBalance(input.pool);
+        (uint256 poolFee0, uint256 poolFee1) = poolGaugeFee(input.pool);
 
         int256 amount0Delta;
         int256 amount1Delta;
@@ -213,16 +213,7 @@ contract Rebalancer is IRebalancer, IRebalanceCallback {
                     amount0Delta -= int256(amount0);
                     amount1Delta -= int256(amount1);
                 }
-                /// @dev check pool balances to detect manipulation: must be the same as before the rebalance,
-                /// because in case of swap (fully or partial) the pool balances do not change (fees are stay in the pool)
-                checkPoolBalancesDelta(
-                    input.pool,
-                    poolBalance0,
-                    poolBalance1,
-                    amount0Delta,
-                    amount1Delta,
-                    input.slippageD9
-                );
+                checkPoolManipulation(input.pool, poolFee0, poolFee1, amount0Delta, amount1Delta);
 
                 /// @dev estimate moved capital as an average of token0 and token1 deltas in token1 terms
                 uint256 movedCapital = PositionMath.calculateCapital(
@@ -239,55 +230,37 @@ contract Rebalancer is IRebalancer, IRebalanceCallback {
         }
     }
 
-    function poolBalance(address pool)
-        internal
-        view
-        returns (uint256 amount0Balance, uint256 amount1Balance)
-    {
-        amount0Balance = IERC20(ammModule.getToken0(pool)).balanceOf(pool);
-        amount1Balance = IERC20(ammModule.getToken1(pool)).balanceOf(pool);
+    function poolGaugeFee(address pool) internal view returns (uint256 fee0, uint256 fee1) {
+        IPoolSwap.GaugeFees memory gaugeFees = IPoolSwap(pool).gaugeFees();
+        fee0 = gaugeFees.token0;
+        fee1 = gaugeFees.token1;
     }
 
     /**
-     * @dev Checks that the change in pool balances matches the expected position deltas within fee tolerance.
+     * @dev Checks that the accrued fees in the pool have not increased more that expected based on the position changes.
      * @param pool The address of the liquidity pool.
-     * @param balance0Before The balance of token0 in the pool before the operation.
-     * @param balance1Before The balance of token1 in the pool before the operation.
+     * @param initialFee0 The balance of token0 in the pool before the operation.
+     * @param initialFee1 The balance of token1 in the pool before the operation.
      * @param position0Delta The change in token0 of the position: > 0 if removed, < 0 if added.
      * @param position1Delta The change in token1 of the position: > 0 if removed, < 0 if added.
-     * @param slippageD9 The allowed slippage in D9 format (e.g., 1e7 for 1%).
      */
-    function checkPoolBalancesDelta(
+    function checkPoolManipulation(
         address pool,
-        uint256 balance0Before,
-        uint256 balance1Before,
+        uint256 initialFee0,
+        uint256 initialFee1,
         int256 position0Delta,
-        int256 position1Delta,
-        uint256 slippageD9
+        int256 position1Delta
     ) internal view {
-        (uint256 amount0Balance, uint256 amount1Balance) = poolBalance(pool);
+        /// @dev fees are not decreased while we are inside one transaction
+        (uint256 fee0, uint256 fee1) = poolGaugeFee(pool);
+        uint24 feeD6 = IPoolSwap(pool).fee();
+        uint256 maxFeePoolIncrease0 =
+            position0Delta > 0 ? uint256(position0Delta).mulDiv(feeD6, D6) + 1 : 0;
+        uint256 maxFeePoolIncrease1 =
+            position1Delta > 0 ? uint256(position1Delta).mulDiv(feeD6, D6) + 1 : 0;
 
-        (int256 balance0Delta, int256 balance1Delta) = (
-            int256(amount0Balance) - int256(balance0Before),
-            int256(amount1Balance) - int256(balance1Before)
-        );
-
-        if (balance0Delta > 0 && balance1Delta > 0) {
-            /// @dev both pool balances increased - impossible in a swap
+        if (fee0 > initialFee0 + maxFeePoolIncrease0 || fee1 > initialFee1 + maxFeePoolIncrease1) {
             revert PoolManipulated();
-        } else if (balance0Delta < 0 && balance1Delta < 0) {
-            /// @dev both pool balances decreased - impossible in a swap
-            revert PoolManipulated();
-        } else if (balance0Delta < 0 && position0Delta > 0) {
-            /// @dev pool balance decreased, position0Delta of the position was swapped
-            if (uint256(-balance0Delta) > uint256(position0Delta).mulDiv(slippageD9, D9)) {
-                revert PoolManipulated();
-            }
-        } else if (balance1Delta < 0 && position1Delta > 0) {
-            /// @dev pool balance decreased, position1Delta of the position was swapped
-            if (uint256(-balance1Delta) > uint256(position1Delta).mulDiv(slippageD9, D9)) {
-                revert PoolManipulated();
-            }
         }
     }
 
