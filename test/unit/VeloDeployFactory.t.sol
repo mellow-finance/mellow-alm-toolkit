@@ -348,6 +348,7 @@ contract Unit is Fixture {
             tickNeighborhood: 0, // Neighborhood of ticks to consider for rebalancing
             tickSpacing: poolBad.tickSpacing(), // tickSpacing of the corresponding amm pool
             width: poolBad.tickSpacing() * 10, // Width of the interval
+            priceOracle: address(0), // The address of the custom price oracle used for market data
             maxLiquidityRatioDeviationX96: 0 // The maximum allowed deviation of the liquidity ratio for lower position.
         });
 
@@ -459,6 +460,7 @@ contract Unit is Fixture {
             tickNeighborhood: 0, // Neighborhood of ticks to consider for rebalancing
             tickSpacing: pool.tickSpacing(), // tickSpacing of the corresponding amm pool
             width: pool.tickSpacing() * 10, // Width of the interval
+            priceOracle: address(0), // The address of the custom price oracle used for market data
             maxLiquidityRatioDeviationX96: Q96 / 2 // The maximum allowed deviation of the liquidity ratio for lower position.
         });
 

@@ -25,6 +25,7 @@ contract IntegrationTest is Test, DeployScript {
             tickNeighborhood: 0, // Neighborhood of ticks to consider for rebalancing
             tickSpacing: 1, // tickSpacing of the corresponding amm pool
             width: 50, // Width of the interval
+            priceOracle: address(0), // The address of the custom price oracle used for market data
             maxLiquidityRatioDeviationX96: 0 // The maximum allowed deviation of the liquidity ratio for lower position.
         });
 
@@ -148,6 +149,7 @@ contract IntegrationTest is Test, DeployScript {
                 tickNeighborhood: 0, // Neighborhood of ticks to consider for rebalancing
                 tickSpacing: 1,
                 width: 50, // Width of the interval
+                priceOracle: address(0), // The address of the custom price oracle used for market data
                 maxLiquidityRatioDeviationX96: uint128(2 ** 96) / 100 // The maximum allowed deviation of the liquidity ratio for lower position.
             })
         );
@@ -178,6 +180,100 @@ contract IntegrationTest is Test, DeployScript {
                 tickNeighborhood: 0,
                 tickSpacing: 1,
                 width: 20,
+                priceOracle: address(0), // The address of the custom price oracle used for market data
+                maxLiquidityRatioDeviationX96: 0
+            })
+        );
+        vm.stopPrank();
+
+        vm.startPrank(coreParams.coreOperator);
+        logPositions();
+        contracts.core.rebalance(
+            ICore.RebalanceParams({
+                id: wstethWeth1Wrapper.positionId(),
+                callback: address(bot),
+                data: new bytes(0)
+            })
+        );
+        logPositions();
+        vm.stopPrank();
+    }
+
+    function testRebalanceWithCustomOracle() external {
+        address user = vm.createWallet("random-user").addr;
+
+        vm.startPrank(user);
+
+        uint256 wethAmount = 1 ether;
+        uint256 wstethAmount = 1.5 ether;
+
+        deal(Constants.OPTIMISM_WETH, user, wethAmount);
+        deal(Constants.OPTIMISM_WSTETH, user, wstethAmount);
+
+        IERC20(Constants.OPTIMISM_WETH).safeIncreaseAllowance(
+            address(wstethWeth1Wrapper), wethAmount
+        );
+        IERC20(Constants.OPTIMISM_WSTETH).safeIncreaseAllowance(
+            address(wstethWeth1Wrapper), wstethAmount
+        );
+
+        wstethWeth1Wrapper.mint(
+            ILpWrapper.MintParams({
+                lpAmount: wstethWeth1Wrapper.previewDeposit(wstethAmount, wethAmount),
+                amount0Max: wstethAmount,
+                amount1Max: wethAmount,
+                recipient: user,
+                deadline: block.timestamp
+            })
+        );
+
+        IERC20(address(wstethWeth1Wrapper)).safeTransfer(user, 0);
+        wstethWeth1Wrapper.getRewards(user);
+        wstethWeth1Wrapper.withdraw(
+            wstethWeth1Wrapper.balanceOf(user) / 2, 0, 0, user, block.timestamp
+        );
+        vm.stopPrank();
+
+        vm.startPrank(coreParams.lpWrapperManager);
+
+        wstethWeth1Wrapper.setStrategyParams(
+            IPulseStrategyModule.StrategyParams({
+                strategyType: IPulseStrategyModule.StrategyType.Tamper,
+                tickNeighborhood: 0, // Neighborhood of ticks to consider for rebalancing
+                tickSpacing: 1,
+                width: 50, // Width of the interval
+                priceOracle: address(contracts.oracle), // set existing oracle as custom
+                maxLiquidityRatioDeviationX96: uint128(2 ** 96) / 100 // The maximum allowed deviation of the liquidity ratio for lower position.
+            })
+        );
+
+        vm.stopPrank();
+        RebalancingBot bot =
+            new RebalancingBot(INonfungiblePositionManager(coreParams.positionManager));
+
+        deal(Constants.OPTIMISM_WSTETH, address(bot), 1 ether);
+        deal(Constants.OPTIMISM_WETH, address(bot), 1 ether);
+
+        vm.startPrank(coreParams.coreOperator);
+        logPositions();
+        contracts.core.rebalance(
+            ICore.RebalanceParams({
+                id: wstethWeth1Wrapper.positionId(),
+                callback: address(bot),
+                data: new bytes(0)
+            })
+        );
+        logPositions();
+        vm.stopPrank();
+
+        vm.startPrank(coreParams.lpWrapperManager);
+        wstethWeth1Wrapper.setStrategyParams(
+            IPulseStrategyModule.StrategyParams({
+                strategyType: IPulseStrategyModule.StrategyType.LazySyncing,
+                tickNeighborhood: 0,
+                tickSpacing: 1,
+                width: 20,
+                priceOracle: address(contracts.oracle), // set existing oracle as custom
                 maxLiquidityRatioDeviationX96: 0
             })
         );

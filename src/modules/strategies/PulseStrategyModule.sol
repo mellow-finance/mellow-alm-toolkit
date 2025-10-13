@@ -314,8 +314,8 @@ contract PulseStrategyModule is IPulseStrategyModule {
     }
 
     /// @inheritdoc IStrategyModule
-    function validateStrategyParams(bytes memory params_) external pure override {
-        if (params_.length != 0xa0) {
+    function validateStrategyParams(bytes memory params_) external view override {
+        if (params_.length != 0xc0) {
             revert InvalidLength();
         }
         StrategyParams memory params = abi.decode(params_, (StrategyParams));
@@ -359,11 +359,16 @@ contract PulseStrategyModule is IPulseStrategyModule {
         returns (bool isRebalanceRequired, ICore.TargetPositionInfo memory target)
     {
         StrategyParams memory strategyParams = abi.decode(info.strategyParams, (StrategyParams));
-        (uint160 sqrtPriceX96, int24 tick) = oracle.getOraclePrice(info.pool);
+        uint160 sqrtPriceX96;
+        if (strategyParams.priceOracle == address(0)) {
+            (sqrtPriceX96,) = oracle.getOraclePrice(info.pool);
+        } else {
+            (sqrtPriceX96,) = IOracle(strategyParams.priceOracle).getOraclePrice(info.pool);
+        }
         // Reasoning for using sqrtPriceX96 to get actual tick:
         // uniswap V3: https://github.com/Uniswap/v3-core/blob/main/contracts/interfaces/pool/IUniswapV3PoolState.sol#L12
         // velodrome slipstream: https://github.com/velodrome-finance/slipstream/blob/main/contracts/core/interfaces/pool/ICLPoolState.sol#L12
-        tick = TickMath.getTickAtSqrtRatio(sqrtPriceX96);
+        int24 tick = TickMath.getTickAtSqrtRatio(sqrtPriceX96);
         uint256 length = info.ammPositionIds.length;
         IAmmModule.AmmPosition[] memory positions = new IAmmModule.AmmPosition[](length);
         for (uint256 i = 0; i < length; i++) {

@@ -36,6 +36,7 @@ contract Fixture is DeployScript, Test {
             tickNeighborhood: 0, // Neighborhood of ticks to consider for rebalancing
             tickSpacing: pool.tickSpacing(), // tickSpacing of the corresponding amm pool
             width: pool.tickSpacing() * 2, // Width of the interval
+            priceOracle: address(0), // The address of the custom price oracle used for market data
             maxLiquidityRatioDeviationX96: strategyType == IPulseStrategyModule.StrategyType.Tamper
                 ? Q96 / 20
                 : 0
@@ -77,6 +78,7 @@ contract Fixture is DeployScript, Test {
             tickNeighborhood: 0, // Neighborhood of ticks to consider for rebalancing
             tickSpacing: pool.tickSpacing(), // tickSpacing of the corresponding amm pool
             width: pool.tickSpacing() * 2, // Width of the interval
+            priceOracle: address(0), // The address of the custom price oracle used for market data
             maxLiquidityRatioDeviationX96: strategyType == IPulseStrategyModule.StrategyType.Tamper
                 ? Q96 / 20
                 : 0

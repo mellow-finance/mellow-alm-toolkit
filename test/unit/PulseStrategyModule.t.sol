@@ -169,6 +169,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
             tickSpacing: tickSpacing,
             tickNeighborhood: tickNeighborhood,
             width: width,
+            priceOracle: address(0), // The address of the custom price oracle used for market data
             maxLiquidityRatioDeviationX96: 0
         });
         IAmmModule.AmmPosition[] memory positions = new IAmmModule.AmmPosition[](1);
@@ -239,6 +240,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
                     tickSpacing: 100,
                     tickNeighborhood: 50,
                     width: 300,
+                    priceOracle: address(0), // The address of the custom price oracle used for market data
                     maxLiquidityRatioDeviationX96: 0
                 })
             )
@@ -250,6 +252,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
                     tickSpacing: 1,
                     tickNeighborhood: 0,
                     width: 1,
+                    priceOracle: address(0), // The address of the custom price oracle used for market data
                     maxLiquidityRatioDeviationX96: 0
                 })
             )
@@ -262,6 +265,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
                     tickSpacing: 1,
                     tickNeighborhood: 1,
                     width: 0,
+                    priceOracle: address(0), // The address of the custom price oracle used for market data
                     maxLiquidityRatioDeviationX96: 0
                 })
             )
@@ -274,6 +278,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
                     tickSpacing: 0,
                     tickNeighborhood: 1,
                     width: 1,
+                    priceOracle: address(0), // The address of the custom price oracle used for market data
                     maxLiquidityRatioDeviationX96: 0
                 })
             )
@@ -286,6 +291,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
                     tickSpacing: 1,
                     tickNeighborhood: 1,
                     width: 1,
+                    priceOracle: address(0), // The address of the custom price oracle used for market data
                     maxLiquidityRatioDeviationX96: 0
                 })
             )
@@ -298,6 +304,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
                     tickSpacing: 2,
                     tickNeighborhood: 1,
                     width: 3,
+                    priceOracle: address(0), // The address of the custom price oracle used for market data
                     maxLiquidityRatioDeviationX96: 0
                 })
             )
@@ -310,6 +317,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
                     tickSpacing: 1,
                     tickNeighborhood: 1,
                     width: 1,
+                    priceOracle: address(0), // The address of the custom price oracle used for market data
                     maxLiquidityRatioDeviationX96: 0
                 })
             )
@@ -322,6 +330,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
                     tickSpacing: 1,
                     tickNeighborhood: 1,
                     width: 2,
+                    priceOracle: address(0), // The address of the custom price oracle used for market data
                     maxLiquidityRatioDeviationX96: 0
                 })
             )
@@ -334,6 +343,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
                     tickSpacing: 50,
                     tickNeighborhood: 200,
                     width: 4200,
+                    priceOracle: address(0), // The address of the custom price oracle used for market data
                     maxLiquidityRatioDeviationX96: 0
                 })
             )
@@ -347,6 +357,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
                     tickSpacing: 50,
                     tickNeighborhood: 200,
                     width: 4200,
+                    priceOracle: address(0), // The address of the custom price oracle used for market data
                     maxLiquidityRatioDeviationX96: 1
                 })
             )
@@ -360,6 +371,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
                     tickSpacing: 1,
                     tickNeighborhood: 0,
                     width: 3,
+                    priceOracle: address(0), // The address of the custom price oracle used for market data
                     maxLiquidityRatioDeviationX96: Q96 / 2
                 })
             )
@@ -373,6 +385,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
                     tickSpacing: 10,
                     tickNeighborhood: 0,
                     width: 30,
+                    priceOracle: address(0), // The address of the custom price oracle used for market data
                     maxLiquidityRatioDeviationX96: Q96 / 2
                 })
             )
@@ -386,6 +399,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
                     tickSpacing: 200,
                     tickNeighborhood: 0,
                     width: 4000,
+                    priceOracle: address(0), // The address of the custom price oracle used for market data
                     maxLiquidityRatioDeviationX96: 0
                 })
             )
@@ -399,6 +413,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
                     tickSpacing: 200,
                     tickNeighborhood: 0,
                     width: 4000,
+                    priceOracle: address(0), // The address of the custom price oracle used for market data
                     maxLiquidityRatioDeviationX96: Q96
                 })
             )
@@ -425,6 +440,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
                     tickSpacing: pool.tickSpacing(),
                     tickNeighborhood: 50,
                     width: 300,
+                    priceOracle: address(0), // The address of the custom price oracle used for market data
                     maxLiquidityRatioDeviationX96: 0
                 })
             );
@@ -469,6 +485,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
                     tickSpacing: pool.tickSpacing(),
                     tickNeighborhood: 50,
                     width: 300,
+                    priceOracle: address(0), // The address of the custom price oracle used for market data
                     maxLiquidityRatioDeviationX96: 0
                 })
             );
@@ -483,6 +500,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
                     tickSpacing: pool.tickSpacing(),
                     tickNeighborhood: 50,
                     width: 300,
+                    priceOracle: address(0), // The address of the custom price oracle used for market data
                     maxLiquidityRatioDeviationX96: 0
                 })
             );
@@ -507,6 +525,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
                     tickSpacing: pool.tickSpacing(),
                     tickNeighborhood: 0,
                     width: 400,
+                    priceOracle: address(0), // The address of the custom price oracle used for market data
                     maxLiquidityRatioDeviationX96: Q96 - 1
                 })
             );
@@ -612,6 +631,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
             tickSpacing: tickSpacing,
             tickNeighborhood: 0,
             width: width,
+            priceOracle: address(0), // The address of the custom price oracle used for market data
             maxLiquidityRatioDeviationX96: Q96 / 5
         });
 
@@ -684,6 +704,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
             tickSpacing: tickSpacing,
             tickNeighborhood: 0,
             width: width,
+            priceOracle: address(0), // The address of the custom price oracle used for market data
             maxLiquidityRatioDeviationX96: Q96 / 5
         });
 
@@ -772,6 +793,7 @@ contract PulseStrategyModuleTestV2 is Fixture {
             tickSpacing: tc.tickSpacing,
             tickNeighborhood: tc.tickNeighborhood,
             width: width,
+            priceOracle: address(0), // The address of the custom price oracle used for market data
             maxLiquidityRatioDeviationX96: 0
         });
         IAmmModule.AmmPosition[] memory positions = new IAmmModule.AmmPosition[](1);
@@ -1298,6 +1320,7 @@ contract PulseStrategyModuleTamperTest is Fixture {
             tickSpacing: tc.tickSpacing,
             tickNeighborhood: tc.tickNeighborhood,
             width: width,
+            priceOracle: address(0), // The address of the custom price oracle used for market data
             maxLiquidityRatioDeviationX96: tc.maxLiquidityRatioDeviationX96
         });
 

@@ -178,6 +178,7 @@ contract Unit is Fixture {
                 width: 1000,
                 tickSpacing: 200,
                 tickNeighborhood: 100,
+                priceOracle: address(0), // The address of the custom price oracle used for market data
                 maxLiquidityRatioDeviationX96: 0
             })
         );
@@ -285,6 +286,7 @@ contract Unit is Fixture {
             tickNeighborhood: 0, // Neighborhood of ticks to consider for rebalancing
             tickSpacing: pool.tickSpacing(), // tickSpacing of the corresponding amm pool
             width: pool.tickSpacing(), // Width of the interval
+            priceOracle: address(0), // The address of the custom price oracle used for market data
             maxLiquidityRatioDeviationX96: 0 // The maximum allowed deviation of the liquidity ratio for lower position.
         });
 
@@ -442,6 +444,7 @@ contract Unit is Fixture {
                 width: 1000,
                 tickSpacing: 200,
                 tickNeighborhood: 100,
+                priceOracle: address(0), // The address of the custom price oracle used for market data
                 maxLiquidityRatioDeviationX96: 0
             })
         );
@@ -523,6 +526,7 @@ contract Unit is Fixture {
                 width: 1000,
                 tickSpacing: 200,
                 tickNeighborhood: 100,
+                priceOracle: address(0), // The address of the custom price oracle used for market data
                 maxLiquidityRatioDeviationX96: 0
             })
         );
@@ -601,6 +605,7 @@ contract Unit is Fixture {
                 tickSpacing: 100,
                 tickNeighborhood: 100,
                 strategyType: IPulseStrategyModule.StrategyType.Original,
+                priceOracle: address(0), // The address of the custom price oracle used for market data
                 maxLiquidityRatioDeviationX96: 0
             })
         );
@@ -763,6 +768,7 @@ contract Unit is Fixture {
                     width: 1000,
                     tickSpacing: 200,
                     tickNeighborhood: 100,
+                    priceOracle: address(0), // The address of the custom price oracle used for market data
                     maxLiquidityRatioDeviationX96: 0
                 })
             ),
