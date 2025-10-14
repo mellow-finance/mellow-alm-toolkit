@@ -610,8 +610,6 @@ contract PulseStrategyModuleTestV1 is Fixture {
     }
 
     function testTamperTwoIntoOnePosition() external {
-        address token0 = Constants.OPTIMISM_WETH;
-        address token1 = Constants.OPTIMISM_OP;
         int24 tickSpacing = 200;
         int24 width = 800;
 
@@ -687,8 +685,6 @@ contract PulseStrategyModuleTestV1 is Fixture {
     }
 
     function testTamperOneIntoTwoPositions() external {
-        address token0 = Constants.OPTIMISM_WETH;
-        address token1 = Constants.OPTIMISM_OP;
         int24 tickSpacing = 200;
         int24 width = 800;
 
