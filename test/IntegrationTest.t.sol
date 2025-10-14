@@ -23,6 +23,7 @@ contract IntegrationTest is Test, DeployScript {
             tickNeighborhood: 0, // Neighborhood of ticks to consider for rebalancing
             tickSpacing: 1, // tickSpacing of the corresponding amm pool
             width: 50, // Width of the interval
+            priceOracle: address(0), // The address of the custom price oracle used for market data
             maxLiquidityRatioDeviationX96: 0 // The maximum allowed deviation of the liquidity ratio for lower position.
         });
 

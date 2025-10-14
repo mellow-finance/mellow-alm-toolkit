@@ -289,21 +289,33 @@ contract PulseStrategyModule is IPulseStrategyModule {
         }
 
         if (isRebalanceRequired) {
-            target.lowerTicks = new int24[](2);
-            target.upperTicks = new int24[](2);
-            target.liquidityRatiosX96 = new uint256[](2);
-            target.lowerTicks[0] = targetLower;
-            target.lowerTicks[1] = targetLower + half;
-            target.upperTicks[0] = targetLower + width;
-            target.upperTicks[1] = targetLower + half + width;
-            target.liquidityRatiosX96[0] = targetLowerRatioX96;
-            target.liquidityRatiosX96[1] = Q96 - targetLowerRatioX96;
+            uint256 posCount = (targetLowerRatioX96 == 0 || targetLowerRatioX96 == Q96) ? 1 : 2;
+            target.lowerTicks = new int24[](posCount);
+            target.upperTicks = new int24[](posCount);
+            target.liquidityRatiosX96 = new uint256[](posCount);
+            if (posCount == 2) {
+                target.lowerTicks[0] = targetLower;
+                target.lowerTicks[1] = targetLower + half;
+                target.upperTicks[0] = targetLower + width;
+                target.upperTicks[1] = targetLower + half + width;
+                target.liquidityRatiosX96[0] = targetLowerRatioX96;
+                target.liquidityRatiosX96[1] = Q96 - targetLowerRatioX96;
+            } else {
+                target.liquidityRatiosX96[0] = Q96;
+                if (targetLowerRatioX96 == 0) {
+                    target.lowerTicks[0] = targetLower + half;
+                    target.upperTicks[0] = targetLower + half + width;
+                } else if (targetLowerRatioX96 == Q96) {
+                    target.lowerTicks[0] = targetLower;
+                    target.upperTicks[0] = targetLower + width;
+                }
+            }
         }
     }
 
     /// @inheritdoc IStrategyModule
     function validateStrategyParams(bytes memory params_) external pure override {
-        if (params_.length != 0xa0) {
+        if (params_.length != 0xc0) {
             revert InvalidLength();
         }
         StrategyParams memory params = abi.decode(params_, (StrategyParams));
@@ -347,11 +359,16 @@ contract PulseStrategyModule is IPulseStrategyModule {
         returns (bool isRebalanceRequired, ICore.TargetPositionInfo memory target)
     {
         StrategyParams memory strategyParams = abi.decode(info.strategyParams, (StrategyParams));
-        (uint160 sqrtPriceX96, int24 tick) = oracle.getOraclePrice(info.pool);
+        uint160 sqrtPriceX96;
+        if (strategyParams.priceOracle == address(0)) {
+            (sqrtPriceX96,) = oracle.getOraclePrice(info.pool);
+        } else {
+            (sqrtPriceX96,) = IOracle(strategyParams.priceOracle).getOraclePrice(info.pool);
+        }
         // Reasoning for using sqrtPriceX96 to get actual tick:
         // uniswap V3: https://github.com/Uniswap/v3-core/blob/main/contracts/interfaces/pool/IUniswapV3PoolState.sol#L12
         // velodrome slipstream: https://github.com/velodrome-finance/slipstream/blob/main/contracts/core/interfaces/pool/ICLPoolState.sol#L12
-        tick = TickMath.getTickAtSqrtRatio(sqrtPriceX96);
+        int24 tick = TickMath.getTickAtSqrtRatio(sqrtPriceX96);
         uint256 length = info.ammPositionIds.length;
         IAmmModule.AmmPosition[] memory positions = new IAmmModule.AmmPosition[](length);
         for (uint256 i = 0; i < length; i++) {

@@ -176,6 +176,7 @@ contract Unit is Fixture {
                 width: 1000,
                 tickSpacing: pool_.tickSpacing(),
                 tickNeighborhood: 100,
+                priceOracle: address(0), // The address of the custom price oracle used for market data
                 maxLiquidityRatioDeviationX96: 0
             })
         );

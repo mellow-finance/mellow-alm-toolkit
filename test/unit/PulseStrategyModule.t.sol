@@ -169,6 +169,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
             tickSpacing: tickSpacing,
             tickNeighborhood: tickNeighborhood,
             width: width,
+            priceOracle: address(0), // The address of the custom price oracle used for market data
             maxLiquidityRatioDeviationX96: 0
         });
         IAmmModule.AmmPosition[] memory positions = new IAmmModule.AmmPosition[](1);
@@ -239,6 +240,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
                     tickSpacing: 100,
                     tickNeighborhood: 50,
                     width: 300,
+                    priceOracle: address(0), // The address of the custom price oracle used for market data
                     maxLiquidityRatioDeviationX96: 0
                 })
             )
@@ -250,6 +252,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
                     tickSpacing: 1,
                     tickNeighborhood: 0,
                     width: 1,
+                    priceOracle: address(0), // The address of the custom price oracle used for market data
                     maxLiquidityRatioDeviationX96: 0
                 })
             )
@@ -262,6 +265,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
                     tickSpacing: 1,
                     tickNeighborhood: 1,
                     width: 0,
+                    priceOracle: address(0), // The address of the custom price oracle used for market data
                     maxLiquidityRatioDeviationX96: 0
                 })
             )
@@ -274,6 +278,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
                     tickSpacing: 0,
                     tickNeighborhood: 1,
                     width: 1,
+                    priceOracle: address(0), // The address of the custom price oracle used for market data
                     maxLiquidityRatioDeviationX96: 0
                 })
             )
@@ -286,6 +291,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
                     tickSpacing: 1,
                     tickNeighborhood: 1,
                     width: 1,
+                    priceOracle: address(0), // The address of the custom price oracle used for market data
                     maxLiquidityRatioDeviationX96: 0
                 })
             )
@@ -298,6 +304,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
                     tickSpacing: 2,
                     tickNeighborhood: 1,
                     width: 3,
+                    priceOracle: address(0), // The address of the custom price oracle used for market data
                     maxLiquidityRatioDeviationX96: 0
                 })
             )
@@ -310,6 +317,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
                     tickSpacing: 1,
                     tickNeighborhood: 1,
                     width: 1,
+                    priceOracle: address(0), // The address of the custom price oracle used for market data
                     maxLiquidityRatioDeviationX96: 0
                 })
             )
@@ -322,6 +330,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
                     tickSpacing: 1,
                     tickNeighborhood: 1,
                     width: 2,
+                    priceOracle: address(0), // The address of the custom price oracle used for market data
                     maxLiquidityRatioDeviationX96: 0
                 })
             )
@@ -334,6 +343,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
                     tickSpacing: 50,
                     tickNeighborhood: 200,
                     width: 4200,
+                    priceOracle: address(0), // The address of the custom price oracle used for market data
                     maxLiquidityRatioDeviationX96: 0
                 })
             )
@@ -347,6 +357,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
                     tickSpacing: 50,
                     tickNeighborhood: 200,
                     width: 4200,
+                    priceOracle: address(0), // The address of the custom price oracle used for market data
                     maxLiquidityRatioDeviationX96: 1
                 })
             )
@@ -360,6 +371,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
                     tickSpacing: 1,
                     tickNeighborhood: 0,
                     width: 3,
+                    priceOracle: address(0), // The address of the custom price oracle used for market data
                     maxLiquidityRatioDeviationX96: Q96 / 2
                 })
             )
@@ -373,6 +385,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
                     tickSpacing: 10,
                     tickNeighborhood: 0,
                     width: 30,
+                    priceOracle: address(0), // The address of the custom price oracle used for market data
                     maxLiquidityRatioDeviationX96: Q96 / 2
                 })
             )
@@ -386,6 +399,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
                     tickSpacing: 200,
                     tickNeighborhood: 0,
                     width: 4000,
+                    priceOracle: address(0), // The address of the custom price oracle used for market data
                     maxLiquidityRatioDeviationX96: 0
                 })
             )
@@ -399,6 +413,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
                     tickSpacing: 200,
                     tickNeighborhood: 0,
                     width: 4000,
+                    priceOracle: address(0), // The address of the custom price oracle used for market data
                     maxLiquidityRatioDeviationX96: Q96
                 })
             )
@@ -425,6 +440,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
                     tickSpacing: pool.tickSpacing(),
                     tickNeighborhood: 50,
                     width: 300,
+                    priceOracle: address(0), // The address of the custom price oracle used for market data
                     maxLiquidityRatioDeviationX96: 0
                 })
             );
@@ -469,6 +485,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
                     tickSpacing: pool.tickSpacing(),
                     tickNeighborhood: 50,
                     width: 300,
+                    priceOracle: address(0), // The address of the custom price oracle used for market data
                     maxLiquidityRatioDeviationX96: 0
                 })
             );
@@ -483,6 +500,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
                     tickSpacing: pool.tickSpacing(),
                     tickNeighborhood: 50,
                     width: 300,
+                    priceOracle: address(0), // The address of the custom price oracle used for market data
                     maxLiquidityRatioDeviationX96: 0
                 })
             );
@@ -507,6 +525,7 @@ contract PulseStrategyModuleTestV1 is Fixture {
                     tickSpacing: pool.tickSpacing(),
                     tickNeighborhood: 0,
                     width: 400,
+                    priceOracle: address(0), // The address of the custom price oracle used for market data
                     maxLiquidityRatioDeviationX96: Q96 - 1
                 })
             );
@@ -589,6 +608,157 @@ contract PulseStrategyModuleTestV1 is Fixture {
             pulseStrategyModule.getTargets(info, ammModule, oracle);
         }
     }
+
+    function testTamperTwoIntoOnePosition() external {
+        address token0 = Constants.OPTIMISM_WETH;
+        address token1 = Constants.OPTIMISM_OP;
+        int24 tickSpacing = 200;
+        int24 width = 800;
+
+        IAmmModule.AmmPosition[] memory positions = new IAmmModule.AmmPosition[](2);
+
+        positions[0].tickLower = 0;
+        positions[0].tickUpper = positions[0].tickLower + width;
+        positions[0].liquidity = 1 ether;
+        positions[0].property = uint24(tickSpacing);
+        positions[1].tickLower = width / 2;
+        positions[1].tickUpper = positions[1].tickLower + width;
+        positions[1].liquidity = 1 ether;
+        positions[1].property = uint24(tickSpacing);
+
+        IPulseStrategyModule.StrategyParams memory params = IPulseStrategyModule.StrategyParams({
+            strategyType: IPulseStrategyModule.StrategyType.Tamper,
+            tickSpacing: tickSpacing,
+            tickNeighborhood: 0,
+            width: width,
+            priceOracle: address(0), // The address of the custom price oracle used for market data
+            maxLiquidityRatioDeviationX96: Q96 / 5
+        });
+
+        {
+            int24 tick = positions[0].tickLower + width - width / 4;
+            uint160 sqrtPriceX96 = TickMath.getSqrtRatioAtTick(tick);
+            (bool isRebalanceRequired,) =
+                pulseStrategyModule.calculateTargetTamper(sqrtPriceX96, tick, positions, params);
+            assertFalse(isRebalanceRequired);
+        }
+
+        {
+            int24 tick = positions[0].tickLower + width - width / 4 + width / 5 + 1;
+            uint160 sqrtPriceX96 = TickMath.getSqrtRatioAtTick(tick);
+            (bool isRebalanceRequired, ICore.TargetPositionInfo memory target) =
+                pulseStrategyModule.calculateTargetTamper(sqrtPriceX96, tick, positions, params);
+            assertTrue(isRebalanceRequired);
+            assertEq(target.lowerTicks.length, 2);
+        }
+
+        {
+            int24 tick = positions[0].tickLower - 1;
+            uint160 sqrtPriceX96 = TickMath.getSqrtRatioAtTick(tick);
+            (bool isRebalanceRequired, ICore.TargetPositionInfo memory target) =
+                pulseStrategyModule.calculateTargetTamper(sqrtPriceX96, tick, positions, params);
+            assertTrue(isRebalanceRequired);
+            assertEq(target.lowerTicks.length, 1);
+            assertEq(target.liquidityRatiosX96[0], Q96);
+            assertEq(target.upperTicks[0] - target.lowerTicks[0], width);
+        }
+
+        {
+            int24 tick = positions[1].tickUpper + 1;
+            uint160 sqrtPriceX96 = TickMath.getSqrtRatioAtTick(tick);
+            (bool isRebalanceRequired, ICore.TargetPositionInfo memory target) =
+                pulseStrategyModule.calculateTargetTamper(sqrtPriceX96, tick, positions, params);
+            assertTrue(isRebalanceRequired);
+            assertEq(target.lowerTicks.length, 1);
+            assertEq(target.liquidityRatiosX96[0], Q96);
+            assertEq(target.upperTicks[0] - target.lowerTicks[0], width);
+        }
+
+        {
+            int24 tick = positions[1].tickUpper;
+            uint160 sqrtPriceX96 = TickMath.getSqrtRatioAtTick(tick) + 1;
+            (bool isRebalanceRequired, ICore.TargetPositionInfo memory target) =
+                pulseStrategyModule.calculateTargetTamper(sqrtPriceX96, tick, positions, params);
+            assertTrue(isRebalanceRequired);
+            assertEq(target.lowerTicks.length, 1);
+            assertEq(target.liquidityRatiosX96[0], Q96);
+            assertEq(target.upperTicks[0] - target.lowerTicks[0], width);
+        }
+    }
+
+    function testTamperOneIntoTwoPositions() external {
+        address token0 = Constants.OPTIMISM_WETH;
+        address token1 = Constants.OPTIMISM_OP;
+        int24 tickSpacing = 200;
+        int24 width = 800;
+
+        IAmmModule.AmmPosition[] memory positions = new IAmmModule.AmmPosition[](1);
+
+        positions[0].tickLower = 0;
+        positions[0].tickUpper = positions[0].tickLower + width;
+        positions[0].liquidity = 1 ether;
+        positions[0].property = uint24(tickSpacing);
+
+        IPulseStrategyModule.StrategyParams memory params = IPulseStrategyModule.StrategyParams({
+            strategyType: IPulseStrategyModule.StrategyType.Tamper,
+            tickSpacing: tickSpacing,
+            tickNeighborhood: 0,
+            width: width,
+            priceOracle: address(0), // The address of the custom price oracle used for market data
+            maxLiquidityRatioDeviationX96: Q96 / 5
+        });
+
+        {
+            int24 tick = positions[0].tickLower + width - width / 4;
+            uint160 sqrtPriceX96 = TickMath.getSqrtRatioAtTick(tick);
+            (bool isRebalanceRequired, ICore.TargetPositionInfo memory target) =
+                pulseStrategyModule.calculateTargetTamper(sqrtPriceX96, tick, positions, params);
+            assertTrue(isRebalanceRequired);
+            assertEq(target.lowerTicks.length, 2);
+        }
+
+        /*   {
+            int24 tick = positions[0].tickLower + width - width / 4 + width / 5 + 1;
+            uint160 sqrtPriceX96 = TickMath.getSqrtRatioAtTick(tick);
+            (bool isRebalanceRequired, ICore.TargetPositionInfo memory target) =
+                pulseStrategyModule.calculateTargetTamper(sqrtPriceX96, tick, positions, params);
+            assertTrue(isRebalanceRequired);
+            assertEq(target.lowerTicks.length, 2);
+        }
+
+        {
+            int24 tick = positions[0].tickLower - 1;
+            uint160 sqrtPriceX96 = TickMath.getSqrtRatioAtTick(tick);
+            (bool isRebalanceRequired, ICore.TargetPositionInfo memory target) =
+                pulseStrategyModule.calculateTargetTamper(sqrtPriceX96, tick, positions, params);
+            assertTrue(isRebalanceRequired);
+            assertEq(target.lowerTicks.length, 1);
+            assertEq(target.liquidityRatiosX96[0], Q96);
+            assertEq(target.upperTicks[0] - target.lowerTicks[0], width);
+        }
+
+        {
+            int24 tick = positions[1].tickUpper + 1;
+            uint160 sqrtPriceX96 = TickMath.getSqrtRatioAtTick(tick);
+            (bool isRebalanceRequired, ICore.TargetPositionInfo memory target) =
+                pulseStrategyModule.calculateTargetTamper(sqrtPriceX96, tick, positions, params);
+            assertTrue(isRebalanceRequired);
+            assertEq(target.lowerTicks.length, 1);
+            assertEq(target.liquidityRatiosX96[0], Q96);
+            assertEq(target.upperTicks[0] - target.lowerTicks[0], width);
+        }
+
+        {
+            int24 tick = positions[1].tickUpper;
+            uint160 sqrtPriceX96 = TickMath.getSqrtRatioAtTick(tick) + 1;
+            (bool isRebalanceRequired, ICore.TargetPositionInfo memory target) =
+                pulseStrategyModule.calculateTargetTamper(sqrtPriceX96, tick, positions, params);
+            assertTrue(isRebalanceRequired);
+            assertEq(target.lowerTicks.length, 1);
+            assertEq(target.liquidityRatiosX96[0], Q96);
+            assertEq(target.upperTicks[0] - target.lowerTicks[0], width);
+        } */
+    }
 }
 
 contract PulseStrategyModuleTestV2 is Fixture {
@@ -623,6 +793,7 @@ contract PulseStrategyModuleTestV2 is Fixture {
             tickSpacing: tc.tickSpacing,
             tickNeighborhood: tc.tickNeighborhood,
             width: width,
+            priceOracle: address(0), // The address of the custom price oracle used for market data
             maxLiquidityRatioDeviationX96: 0
         });
         IAmmModule.AmmPosition[] memory positions = new IAmmModule.AmmPosition[](1);
@@ -1149,6 +1320,7 @@ contract PulseStrategyModuleTamperTest is Fixture {
             tickSpacing: tc.tickSpacing,
             tickNeighborhood: tc.tickNeighborhood,
             width: width,
+            priceOracle: address(0), // The address of the custom price oracle used for market data
             maxLiquidityRatioDeviationX96: tc.maxLiquidityRatioDeviationX96
         });
 
