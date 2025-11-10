@@ -4,282 +4,10 @@ pragma solidity ^0.8.0;
 import "../Imports.sol";
 import "scripts/deploy/Constants.sol";
 
-contract VeloFarmMock {
-    function distribute(uint256 amount, address reward) external {}
-
-    function test() internal pure {}
-}
-
-contract VoterMock {
-    function isAlive(address) external pure returns (bool) {
-        return false;
-    }
-
-    function test() internal pure {}
-}
-
-contract GaugeMock {
-    address public immutable pool;
-    VoterMock public immutable voter;
-
-    constructor(address pool_) {
-        pool = pool_;
-        voter = new VoterMock();
-    }
-
-    function test() internal pure {}
-}
-
-contract CLPoolMock {
-    address public immutable token0;
-    address public immutable token1;
-    int24 public immutable tickSpacing;
-
-    constructor(address token0_, address token1_, int24 tickSpacing_) {
-        token0 = token0_;
-        token1 = token1_;
-        tickSpacing = tickSpacing_;
-    }
-
-    function test() internal pure {}
-}
-
-contract VeloDepositWithdrawModuleMock {
-    using SafeERC20 for IERC20;
-
-    INonfungiblePositionManager public immutable positionManager;
-    bool private state_;
-    uint256 public immutable specificValueRevert = 1234e5;
-
-    constructor(INonfungiblePositionManager positionManager_) {
-        positionManager = positionManager_;
-    }
-
-    function deposit(
-        uint256 tokenId,
-        uint256 amount0,
-        uint256 amount1,
-        address from,
-        address token0,
-        address token1
-    ) external returns (uint256 actualAmount0, uint256 actualAmount1) {
-        address this_ = address(this);
-        if (amount0 != 0) {
-            IERC20(token0).safeTransferFrom(from, this_, amount0);
-            IERC20(token0).safeIncreaseAllowance(address(positionManager), amount0);
-        }
-        if (amount1 != 0) {
-            IERC20(token1).safeTransferFrom(from, this_, amount1);
-            IERC20(token1).safeIncreaseAllowance(address(positionManager), amount1);
-        }
-        (, actualAmount0, actualAmount1) = positionManager.increaseLiquidity(
-            INonfungiblePositionManager.IncreaseLiquidityParams({
-                tokenId: tokenId,
-                amount0Desired: amount0,
-                amount1Desired: amount1,
-                amount0Min: 0,
-                amount1Min: 0,
-                deadline: type(uint256).max
-            })
-        );
-        if (actualAmount0 != amount0) {
-            IERC20(token0).safeTransfer(from, amount0 - actualAmount0);
-        }
-        if (actualAmount1 != amount1) {
-            IERC20(token1).safeTransfer(from, amount1 - actualAmount1);
-        }
-
-        if (amount0 == specificValueRevert) {
-            state_ = true;
-        } else {
-            state_ = false;
-        }
-
-        assembly {
-            let data := 42 // Set a value in memory, here we're using 42 as an example
-            let resultPtr := mload(0x40) // Load the free memory pointer
-            mstore(resultPtr, data) // Store the data at resultPtr
-
-            let flagValue := sload(0)
-            switch flagValue
-            case 0 {
-                // If flag is true, return 64 bytes
-                return(resultPtr, 0x40)
-            }
-            default {
-                // If flag is false, return 32 bytes
-                return(resultPtr, 0x20)
-            }
-        }
-    }
-
-    function withdraw(uint256 tokenId, uint256 liquidity, address to)
-        external
-        returns (uint256 actualAmount0, uint256 actualAmount1)
-    {
-        positionManager.decreaseLiquidity(
-            INonfungiblePositionManager.DecreaseLiquidityParams({
-                tokenId: tokenId,
-                liquidity: uint128(liquidity),
-                amount0Min: 0,
-                amount1Min: 0,
-                deadline: type(uint256).max
-            })
-        );
-        (actualAmount0, actualAmount1) = positionManager.collect(
-            INonfungiblePositionManager.CollectParams({
-                tokenId: tokenId,
-                recipient: to,
-                amount0Max: type(uint128).max,
-                amount1Max: type(uint128).max
-            })
-        );
-
-        if (liquidity == specificValueRevert) {
-            state_ = true;
-        } else {
-            state_ = false;
-        }
-
-        assembly {
-            let data := 42 // Set a value in memory, here we're using 42 as an example
-            let resultPtr := mload(0x40) // Load the free memory pointer
-            mstore(resultPtr, data) // Store the data at resultPtr
-
-            let flagValue := sload(0)
-            switch flagValue
-            case 0 {
-                // If flag is true, return 64 bytes
-                return(resultPtr, 0x40)
-            }
-            default {
-                // If flag is false, return 32 bytes
-                return(resultPtr, 0x20)
-            }
-        }
-    }
-}
-
-contract RebalancingBotMock is IRebalanceCallback {
-    using SafeERC20 for IERC20;
-
-    INonfungiblePositionManager public immutable positionManager;
-
-    constructor(INonfungiblePositionManager positionManager_) {
-        positionManager = positionManager_;
-    }
-
-    function _pullLiquidity(uint256 tokenId) internal {
-        if (tokenId == 0) {
-            return;
-        }
-        PositionLibrary.Position memory position =
-            PositionLibrary.getPosition(address(positionManager), tokenId);
-        if (position.liquidity == 0) {
-            return;
-        }
-        positionManager.decreaseLiquidity(
-            INonfungiblePositionManager.DecreaseLiquidityParams({
-                tokenId: tokenId,
-                liquidity: position.liquidity,
-                amount0Min: 0,
-                amount1Min: 0,
-                deadline: type(uint256).max
-            })
-        );
-        positionManager.collect(
-            INonfungiblePositionManager.CollectParams({
-                tokenId: tokenId,
-                recipient: address(this),
-                amount0Max: type(uint128).max,
-                amount1Max: type(uint128).max
-            })
-        );
-    }
-
-    function _mint(address pool_, int24 tickLower, int24 tickUpper, uint128 liquidity)
-        internal
-        returns (uint256 tokenId)
-    {
-        ICLPool pool = ICLPool(pool_);
-        (uint160 sqrtRatioX96,,,,,) = pool.slot0();
-        IERC20 token0 = IERC20(pool.token0());
-        IERC20 token1 = IERC20(pool.token1());
-        (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(
-            sqrtRatioX96,
-            TickMath.getSqrtRatioAtTick(tickLower),
-            TickMath.getSqrtRatioAtTick(tickUpper),
-            liquidity * 10001 / 10000 + 100 // just to create not less than required liquidity
-        );
-        if (amount0 > 0) {
-            token0.safeIncreaseAllowance(address(positionManager), amount0);
-        }
-        if (amount1 > 0) {
-            token1.safeIncreaseAllowance(address(positionManager), amount1);
-        }
-        (tokenId,,,) = positionManager.mint(
-            INonfungiblePositionManager.MintParams({
-                token0: address(token0),
-                token1: address(token1),
-                tickSpacing: pool.tickSpacing(),
-                tickLower: tickLower,
-                tickUpper: tickUpper,
-                amount0Desired: amount0,
-                amount1Desired: amount1,
-                amount0Min: 0,
-                amount1Min: 0,
-                recipient: address(this),
-                deadline: type(uint256).max,
-                sqrtPriceX96: 0
-            })
-        );
-    }
-
-    struct SwapData {
-        address target;
-        bytes data;
-    }
-
-    function call(
-        bytes memory data,
-        ICore.TargetPositionInfo memory target,
-        ICore.ManagedPositionInfo memory info
-    ) external returns (uint256[] memory tokenIds) {
-        for (uint256 i = 0; i < info.ammPositionIds.length; i++) {
-            _pullLiquidity(info.ammPositionIds[i]);
-        }
-
-        if (data.length == 0x20) {
-            uint256 tokenIdsLength = abi.decode(data, (uint256));
-            return new uint256[](tokenIdsLength);
-        } else if (data.length > 0x100) {
-            SwapData[] memory swaps = abi.decode(data, (SwapData[]));
-            for (uint256 i = 0; i < swaps.length; i++) {
-                Address.functionCall(swaps[i].target, swaps[i].data);
-            }
-        }
-
-        uint256 length = target.lowerTicks.length;
-        tokenIds = new uint256[](length);
-        for (uint256 i = 0; i < length; i++) {
-            if (data.length == 0x40) {
-                target.minLiquidities[i] /= 2;
-            }
-            tokenIds[i] = _mint(
-                info.pool,
-                target.lowerTicks[i],
-                target.upperTicks[i],
-                uint128(target.minLiquidities[i])
-            );
-            positionManager.approve(msg.sender, tokenIds[i]);
-        }
-    }
-
-    function test() internal pure {}
-}
-
 contract Fixture is DeployScript, Test {
     using SafeERC20 for IERC20;
+
+    address WETH = 0x4200000000000000000000000000000000000006;
 
     ILpWrapper private wstethWeth1Wrapper;
 
@@ -297,33 +25,153 @@ contract Fixture is DeployScript, Test {
         vm.stopPrank();
     }
 
-    function deployLpWrapper(ICLPool pool, DeployScript.CoreDeployment memory contracts)
-        public
-        returns (ILpWrapper lpWrapper, IVeloDeployFactory.DeployParams memory deployParams)
+    function getValidDeployParams(ICLPool pool, IPulseStrategyModule.StrategyType strategyType)
+        internal
+        view
+        returns (IVeloDeployFactory.DeployParams memory deployParams)
     {
         deployParams.slippageD9 = 1e6;
         deployParams.strategyParams = IPulseStrategyModule.StrategyParams({
-            strategyType: IPulseStrategyModule.StrategyType.LazySyncing,
+            strategyType: strategyType,
             tickNeighborhood: 0, // Neighborhood of ticks to consider for rebalancing
             tickSpacing: pool.tickSpacing(), // tickSpacing of the corresponding amm pool
-            width: pool.tickSpacing() * 10, // Width of the interval
-            maxLiquidityRatioDeviationX96: 0 // The maximum allowed deviation of the liquidity ratio for lower position.
+            width: pool.tickSpacing() * 2, // Width of the interval
+            priceOracle: address(0), // The address of the custom price oracle used for market data
+            maxLiquidityRatioDeviationX96: strategyType == IPulseStrategyModule.StrategyType.Tamper
+                ? Q96 / 20
+                : 0
         });
 
-        deployParams.securityParams =
-            IVeloOracle.SecurityParams({lookback: 100, maxAge: 5 days, maxAllowedDelta: 10});
+        int24 maxAllowedDelta = deployParams.strategyParams.tickSpacing == 1
+            ? int24(1)
+            : deployParams.strategyParams.width / 10;
+        deployParams.securityParams = IVeloOracle.SecurityParams({
+            lookback: 10,
+            maxAge: 1 hours,
+            maxAllowedDelta: maxAllowedDelta,
+            extraData: ""
+        });
 
-        deployParams.pool = pool;
-        deployParams.maxAmount0 = 1 ether;
-        deployParams.maxAmount1 = 1 ether;
-        deployParams.initialTotalSupply = 1 ether;
+        deployParams.pool = address(pool);
+        deployParams.maxAmount0 = 10 ** (ERC20(pool.token0()).decimals() / 2 + 1);
+        deployParams.maxAmount1 = 10 ** (ERC20(pool.token1()).decimals() / 2 + 1);
+        deployParams.initialTotalSupply =
+            10 ** ((ERC20(pool.token0()).decimals() + ERC20(pool.token1()).decimals()) / 4 + 1);
+        deployParams.totalSupplyLimit = 1000 ether;
+    }
+
+    function compareDeployParams(
+        IVeloDeployFactory.DeployParams memory l,
+        IVeloDeployFactory.DeployParams memory r
+    ) internal pure returns (bool) {
+        return keccak256(abi.encode(l)) == keccak256(abi.encode(r));
+    }
+
+    function deployLpWrapper(
+        ICLPool pool,
+        IPulseStrategyModule.StrategyType strategyType,
+        DeployScript.CoreDeployment memory contracts
+    ) public returns (ILpWrapper lpWrapper, IVeloDeployFactory.DeployParams memory deployParams) {
+        deployParams.slippageD9 = 1e6;
+        deployParams.strategyParams = IPulseStrategyModule.StrategyParams({
+            strategyType: strategyType,
+            tickNeighborhood: 0, // Neighborhood of ticks to consider for rebalancing
+            tickSpacing: pool.tickSpacing(), // tickSpacing of the corresponding amm pool
+            width: pool.tickSpacing() * 2, // Width of the interval
+            priceOracle: address(0), // The address of the custom price oracle used for market data
+            maxLiquidityRatioDeviationX96: strategyType == IPulseStrategyModule.StrategyType.Tamper
+                ? Q96 / 20
+                : 0
+        });
+
+        int24 maxAllowedDelta = deployParams.strategyParams.tickSpacing == 1
+            ? int24(1)
+            : deployParams.strategyParams.width / 10;
+        deployParams.securityParams = IVeloOracle.SecurityParams({
+            lookback: 10,
+            maxAge: 1 hours,
+            maxAllowedDelta: maxAllowedDelta,
+            extraData: ""
+        });
+
+        deployParams.pool = address(pool);
+        deployParams.maxAmount0 = 10 ** (ERC20(pool.token0()).decimals() / 2 + 1);
+        deployParams.maxAmount1 = 10 ** (ERC20(pool.token1()).decimals() / 2 + 1);
+        deployParams.initialTotalSupply =
+            10 ** ((ERC20(pool.token0()).decimals() + ERC20(pool.token1()).decimals()) / 4 + 1);
         deployParams.totalSupplyLimit = 1000 ether;
 
-        vm.startPrank(params.factoryOperator);
-        deal(pool.token0(), address(contracts.deployFactory), 1 ether);
-        deal(pool.token1(), address(contracts.deployFactory), 1 ether);
-        lpWrapper = deployStrategy(contracts, deployParams);
-        vm.stopPrank();
+        if (
+            IERC20(pool.token0()).balanceOf(address(contracts.deployFactory))
+                < deployParams.maxAmount0
+        ) {
+            deal(pool.token0(), address(contracts.deployFactory), deployParams.maxAmount0);
+        }
+        if (
+            IERC20(pool.token1()).balanceOf(address(contracts.deployFactory))
+                < deployParams.maxAmount1
+        ) {
+            deal(pool.token1(), address(contracts.deployFactory), deployParams.maxAmount1);
+        }
+
+        uint160 status = contracts.deployFactory.getDeployParamsStatus(deployParams);
+        bytes32 proposalId;
+        if (status == uint160(IVeloDeployFactory.DeployParamsStatus.None)) {
+            vm.prank(params.factoryProposer);
+            proposalId = contracts.deployFactory.proposeDeployParams(deployParams);
+
+            vm.prank(params.factoryManager);
+            contracts.deployFactory.acceptDeployParams(proposalId);
+
+            lpWrapper = deployStrategy(contracts, proposalId);
+            vm.stopPrank();
+        } else if (status == uint160(IVeloDeployFactory.DeployParamsStatus.Proposed)) {
+            proposalId = contracts.deployFactory.deployParamsHash(deployParams);
+
+            vm.prank(params.factoryManager);
+            contracts.deployFactory.acceptDeployParams(proposalId);
+            lpWrapper = deployStrategy(contracts, proposalId);
+            vm.stopPrank();
+        } else if (status == uint160(IVeloDeployFactory.DeployParamsStatus.Accepted)) {
+            proposalId = contracts.deployFactory.deployParamsHash(deployParams);
+            lpWrapper = deployStrategy(contracts, proposalId);
+        } else {
+            lpWrapper = ILpWrapper(address(status));
+        }
+    }
+
+    function deployLpWrapper(
+        DeployScript.CoreDeployment memory contracts,
+        IVeloDeployFactory.DeployParams memory deployParams
+    ) internal returns (ILpWrapper lpWrapper) {
+        vm.prank(params.factoryProposer);
+        bytes32 proposalId = contracts.deployFactory.proposeDeployParams(deployParams);
+
+        ICLPool pool = ICLPool(deployParams.pool);
+
+        vm.prank(params.factoryManager);
+        contracts.deployFactory.acceptDeployParams(proposalId);
+
+        IERC20(pool.token0()).approve(address(contracts.deployFactory), deployParams.maxAmount0);
+        IERC20(pool.token1()).approve(address(contracts.deployFactory), deployParams.maxAmount1);
+        lpWrapper = deployStrategy(contracts, proposalId);
+        //vm.stopPrank();
+    }
+
+    function dealTokenAmount(address token, address recipient, uint256 amount) public {
+        if (token == WETH) {
+            deal(recipient, amount);
+            vm.startPrank(recipient);
+            IWETH9(WETH).deposit{value: amount}();
+            vm.stopPrank();
+        } else {
+            console2.log(token);
+            if (token == 0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85) {
+                deal(0xbd17DEee53a58B48548117a11a2E7bbF2D0d6Fa7, recipient, amount);
+            } else {
+                deal(token, recipient, amount);
+            }
+        }
     }
 
     function mint(
@@ -428,9 +276,6 @@ contract Fixture is DeployScript, Test {
         address token1 = pool.token1();
         (uint160 sqrtPriceX96,,,,,) = pool.slot0();
 
-        deal(token0, address(this), 10000000000000000000 ether);
-        deal(token1, address(this), 10000000000000000000 ether);
-
         vm.startPrank(address(this));
 
         IERC20(token0).approve(address(this), type(uint256).max);
@@ -453,9 +298,11 @@ contract Fixture is DeployScript, Test {
 
         address recipient = abi.decode(data, (address));
         if (amount0Delta > 0) {
+            deal(pool.token0(), recipient, uint256(amount0Delta));
             IERC20(pool.token0()).safeTransferFrom(recipient, address(pool), uint256(amount0Delta));
         }
         if (amount1Delta > 0) {
+            deal(pool.token1(), recipient, uint256(amount1Delta));
             IERC20(pool.token1()).safeTransferFrom(recipient, address(pool), uint256(amount1Delta));
         }
     }

@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.25;
+pragma solidity ^0.8.0;
 
-import "../../src/Core.sol";
-import "../../src/modules/velo/VeloAmmModule.sol";
+import "./Mock.sol";
+import "src/interfaces/utils/IRebalanceCallback.sol";
+import "src/modules/velo/VeloAmmModule.sol";
 
-contract RebalancingBot is IRebalanceCallback {
+contract RebalancingBotMock is Mock, IRebalanceCallback {
     using SafeERC20 for IERC20;
 
     IVeloAmmModule public ammModule;
@@ -50,20 +51,12 @@ contract RebalancingBot is IRebalanceCallback {
         (uint160 sqrtRatioX96,,,,,) = pool.slot0();
         IERC20 token0 = IERC20(pool.token0());
         IERC20 token1 = IERC20(pool.token1());
-        uint256 amount0;
-        uint256 amount1;
-
-        if (liquidity == 0) {
-            (amount0, amount1) = (token0.balanceOf(address(this)), token1.balanceOf(address(this)));
-        } else {
-            (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
-                sqrtRatioX96,
-                TickMath.getSqrtRatioAtTick(tickLower),
-                TickMath.getSqrtRatioAtTick(tickUpper),
-                liquidity * 10001 / 10000 + 100 // just to create not less than required liquidity
-            );
-        }
-
+        (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(
+            sqrtRatioX96,
+            TickMath.getSqrtRatioAtTick(tickLower),
+            TickMath.getSqrtRatioAtTick(tickUpper),
+            liquidity * 10001 / 10000 + 100 // just to create not less than required liquidity
+        );
         if (amount0 > 0) {
             token0.safeIncreaseAllowance(address(positionManager), amount0);
         }
@@ -102,33 +95,29 @@ contract RebalancingBot is IRebalanceCallback {
             _pullLiquidity(info.ammPositionIds[i]);
         }
 
-        if (data.length != 0) {
+        if (data.length == 0x20) {
+            uint256 tokenIdsLength = abi.decode(data, (uint256));
+            return new uint256[](tokenIdsLength);
+        } else if (data.length > 0x100) {
             SwapData[] memory swaps = abi.decode(data, (SwapData[]));
             for (uint256 i = 0; i < swaps.length; i++) {
                 Address.functionCall(swaps[i].target, swaps[i].data);
             }
         }
 
-        ICLPool pool = ICLPool(info.pool);
-        IERC20 token0 = IERC20(pool.token0());
-        IERC20 token1 = IERC20(pool.token1());
-        (uint256 amount0, uint256 amount1) =
-            (token0.balanceOf(address(this)), token1.balanceOf(address(this)));
-
         uint256 length = target.lowerTicks.length;
         tokenIds = new uint256[](length);
         for (uint256 i = 0; i < length; i++) {
+            if (data.length == 0x40) {
+                target.minLiquidities[i] /= 2;
+            }
             tokenIds[i] = _mint(
                 info.pool,
                 target.lowerTicks[i],
                 target.upperTicks[i],
-                (length == 2 || (amount0 > type(uint96).max && amount1 > type(uint96).max))
-                    ? uint128(target.minLiquidities[i])
-                    : 0
+                uint128(target.minLiquidities[i])
             );
             positionManager.approve(msg.sender, tokenIds[i]);
         }
     }
-
-    function test() internal pure {}
 }

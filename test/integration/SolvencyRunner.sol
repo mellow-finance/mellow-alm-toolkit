@@ -61,8 +61,8 @@ contract SolvencyRunner is Test, DeployScript {
         _core = core_;
         _wrapper = wrapper_;
 
-        token0 = _wrapper.token0();
-        token1 = _wrapper.token1();
+        token0 = IERC20(_wrapper.token0());
+        token1 = IERC20(_wrapper.token1());
 
         pool = ICLPool(_core.managedPositionAt(_wrapper.positionId()).pool);
         gauge = ICLGauge(pool.gauge());
@@ -88,10 +88,8 @@ contract SolvencyRunner is Test, DeployScript {
         uint256 length = tokenIds.length;
         totalSupply = _wrapper.totalSupply();
         IAmmModule ammModule = _core.ammModule();
-        (uint160 sqrtPriceX96,,,,,) = pool.slot0();
         for (uint256 i = 0; i < length; i++) {
-            (uint256 position0, uint256 position1) =
-                ammModule.tvl(tokenIds[i], sqrtPriceX96, info.callbackParams, new bytes(0));
+            (uint256 position0, uint256 position1) = ammModule.tvl(tokenIds[i]);
             amount0 += position0;
             amount1 += position1;
         }
@@ -274,7 +272,7 @@ contract SolvencyRunner is Test, DeployScript {
     }
 
     function transitionRandomRebalance() internal {
-        address coreOperator = _core.getRoleMember(keccak256("operator"), 0);
+        address coreOperator = _core.getRoleMember(_core.OPERATOR_ROLE(), 0);
 
         IStrategyModule strategyModule = _core.strategyModule();
         ICore.ManagedPositionInfo memory info = _core.managedPositionAt(_wrapper.positionId());
@@ -344,8 +342,8 @@ contract SolvencyRunner is Test, DeployScript {
             params.tickNeighborhood = int24(int256(rnd.randInt(uint256(uint24(params.width / 2)))));
         }
 
-        address wrapperAdmin = _wrapper.getRoleMember(keccak256("admin"), 0);
-        vm.prank(wrapperAdmin);
+        address wrapperManager = _wrapper.getRoleMember(_wrapper.MANAGER_ROLE(), 0);
+        vm.prank(wrapperManager);
         _wrapper.setStrategyParams(params);
     }
 
@@ -356,8 +354,8 @@ contract SolvencyRunner is Test, DeployScript {
     function transitionRandomSetTotalSupplyLimit() internal {
         uint256 totalSupply = _wrapper.totalSupply();
 
-        address wrapperAdmin = _wrapper.getRoleMember(keccak256("admin"), 0);
-        vm.startPrank(wrapperAdmin);
+        address wrapperManager = _wrapper.getRoleMember(_wrapper.MANAGER_ROLE(), 0);
+        vm.startPrank(wrapperManager);
         if (rnd.randBool() && rnd.randBool()) {
             _wrapper.setTotalSupplyLimit(rnd.randInt(totalSupply));
         } else {

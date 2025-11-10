@@ -6,6 +6,7 @@ import "./external/IWETH9.sol";
 import "./modules/IAmmDepositWithdrawModule.sol";
 import "./modules/IAmmModule.sol";
 
+import "../libraries/PositionMath.sol";
 import "./modules/IStrategyModule.sol";
 import "./oracles/IOracle.sol";
 import "./utils/IRebalanceCallback.sol";
@@ -215,11 +216,35 @@ interface ICore is IERC721Receiver, IAccessControlEnumerable {
     }
 
     /**
-     * @dev Custom error for indicating invalid parameters have been supplied to a function.
+     * @dev Custom error for indicating invalid parameters have been supplied to a function while depositing.
      * This error is used when the arguments passed to a function do not meet the required criteria,
      * such as out-of-range values or parameters that do not adhere to expected formats or constraints.
      */
-    error InvalidParams();
+    error InvalidDepositParams();
+
+    /**
+     * @dev Custom error for indicating invalid parameters have been supplied to a function while withdrawing.
+     * This error is used when the arguments passed to a function do not meet the required criteria,
+     * such as out-of-range values or parameters that do not adhere to expected formats or constraints.
+     */
+    error InvalidWithdrawParams();
+
+    /**
+     * @dev Custom error for indicating invalid parameters have been supplied to a function while rebalancing.
+     * This error is used when the arguments passed to a function do not meet the required criteria,
+     * such as out-of-range values or parameters that do not adhere to expected formats or constraints.
+     */
+    error InvalidRebalanceParams();
+
+    /**
+     * @notice Thrown if the slippage parameters are invalid.
+     */
+    error InvalidSlippageParams();
+
+    /**
+     * @notice Thrown if the position parameters are invalid.
+     */
+    error InvalidPositionParams();
 
     /**
      * @dev Custom error for signaling that a rebalance operation is not needed.
@@ -248,6 +273,53 @@ interface ICore is IERC721Receiver, IAccessControlEnumerable {
      * indicating that the operation did not produce the necessary or anticipated results.
      */
     error InsufficientAmount();
+
+    /**
+     * @dev Custom error for indicating that the zero address has been specified.
+     * This error is used in contexts where an operation requires a valid address,
+     * and the zero address is deemed invalid or inappropriate for the operation.
+     */
+    error AddressZero();
+
+    /**
+     * @dev Custom error for signaling that an operation is not allowed.
+     * This error is used in contexts where a user attempts to perform an action
+     * that is not permitted, typically due to insufficient permissions or
+     * other constraints defined within the contract.
+     */
+    error Forbidden();
+
+    /**
+     * @dev Initializes the contract, setting up roles and essential parameters.
+     * @param admin The address to be granted the admin role.
+     * @param operator The address to be granted the operator role.
+     * @param protocolParams Encoded protocol parameters to configure the contract.
+     *
+     * Requirements:
+     * - This function can only be called once, during the contract's initialization phase.
+     * - `admin` cannot be the zero address.
+     * - `operator` cannot be the zero address.
+     * - `protocolParams` cannot be empty and must be valid.
+     */
+    function initialize(address admin, address operator, bytes memory protocolParams) external;
+
+    /**
+     * @dev Returns the manager role identifier.
+     * @return bytes32 - manager role identifier.
+     */
+    function MANAGER_ROLE() external view returns (bytes32);
+
+    /**
+     * @dev Returns the operator role identifier.
+     * @return bytes32 - operator role identifier.
+     */
+    function OPERATOR_ROLE() external view returns (bytes32);
+
+    /**
+     * @dev Returns the maximum slippage allowed for deposits, in D9 format.
+     * @return uint256 - maximum slippage in D9 format.
+     */
+    function MAX_SLIPPAGE_D9() external view returns (uint256);
 
     /**
      * @dev Returns the address of the AMM module.

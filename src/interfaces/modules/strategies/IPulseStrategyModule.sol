@@ -4,6 +4,7 @@ pragma solidity 0.8.25;
 import "../IStrategyModule.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
+import "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 
 /**
  * @title PulseStrategyModule
@@ -42,6 +43,7 @@ interface IPulseStrategyModule is IStrategyModule {
      * @notice Parameters used to define a strategy for AMM operations.
      * @dev This struct encapsulates the details required to execute different types of strategies.
      * @param strategyType The type of strategy being employed.
+     * @param priceOracle The address of the custom price oracle used for market data.
      * @param tickNeighborhood The neighborhood of ticks to consider for rebalancing.
      * @param tickSpacing The tick spacing of the corresponding AMM pool.
      * @param width The width of the interval for rebalancing.
@@ -49,6 +51,7 @@ interface IPulseStrategyModule is IStrategyModule {
      */
     struct StrategyParams {
         StrategyType strategyType;
+        address priceOracle;
         int24 tickNeighborhood;
         int24 tickSpacing;
         int24 width;

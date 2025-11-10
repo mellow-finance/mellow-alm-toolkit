@@ -2,21 +2,22 @@
 pragma solidity 0.8.25;
 
 import "../interfaces/utils/ILpWrapper.sol";
-import "./DefaultAccessControl.sol";
 import "./VeloFarm.sol";
+import
+    "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
 
-contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
+contract LpWrapper is ILpWrapper, VeloFarm, AccessControlEnumerableUpgradeable {
     using SafeERC20 for IERC20;
     using Math for uint256;
+
+    bytes32 public constant MANAGER_ROLE = keccak256("utils.LpWrapper.MANAGER_ROLE");
 
     uint256 public constant D9 = 1e9;
 
     /// @inheritdoc ILpWrapper
-    address public immutable positionManager;
-    /// @inheritdoc ILpWrapper
     ICore public immutable core;
     /// @inheritdoc ILpWrapper
-    IVeloAmmModule public immutable ammModule;
+    IAmmModule public immutable ammModule;
     /// @inheritdoc ILpWrapper
     IOracle public immutable oracle;
 
@@ -25,9 +26,11 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
     /// @inheritdoc ILpWrapper
     address public pool;
     /// @inheritdoc ILpWrapper
-    IERC20 public token0;
+    address public token0;
     /// @inheritdoc ILpWrapper
-    IERC20 public token1;
+    address public token1;
+    /// @inheritdoc ILpWrapper
+    address public lpStaker;
 
     /// @inheritdoc ILpWrapper
     uint256 public totalSupplyLimit;
@@ -40,8 +43,7 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
         }
         core = ICore(core_);
         oracle = core.oracle();
-        ammModule = IVeloAmmModule(address(core.ammModule()));
-        positionManager = ammModule.positionManager();
+        ammModule = core.ammModule();
     }
 
     /// @inheritdoc ILpWrapper
@@ -54,26 +56,27 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
         string memory name_,
         string memory symbol_
     ) external initializer {
-        __DefaultAccessControl_init(admin_);
-        if (manager_ != address(0)) {
-            _grantRole(ADMIN_ROLE, manager_);
+        __AccessControlEnumerable_init();
+        if (admin_ == address(0) || manager_ == address(0)) {
+            revert AddressZero();
         }
+
+        _grantRole(DEFAULT_ADMIN_ROLE, admin_);
+        _grantRole(MANAGER_ROLE, manager_);
 
         address this_ = address(this);
         ICore.ManagedPositionInfo memory info = core.managedPositionAt(positionId_);
         if (info.owner != this_) {
             revert Forbidden();
         }
-        ICLPool pool_ = ICLPool(info.pool);
 
-        __VeloFarm_init(ICLGauge(pool_.gauge()).rewardToken(), name_, symbol_);
+        __VeloFarm_init(ammModule.getRewardToken(info.pool), name_, symbol_);
 
+        pool = info.pool;
         positionId = positionId_;
         totalSupplyLimit = totalSupplyLimit_;
 
-        pool = address(pool_);
-        token0 = IERC20(pool_.token0());
-        token1 = IERC20(pool_.token1());
+        (token0, token1) = ammModule.getPoolTokens(info.pool);
 
         _mint(this_, initialTotalSupply);
         emit TotalSupplyLimitUpdated(totalSupplyLimit, 0, totalSupply());
@@ -102,7 +105,7 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
         IAmmModule.AmmPosition[] memory positions = new IAmmModule.AmmPosition[](n);
         for (uint256 i = 0; i < n; i++) {
             positions[i] = ammModule.getAmmPosition(info.ammPositionIds[i]);
-            (uint256 amount0, uint256 amount1) =
+            (uint256 amount0, uint256 amount1,) =
                 calculateAmountsForLp(mintParams.lpAmount, totalSupply_, positions[i], sqrtPriceX96);
             amounts0[i] = amount0;
             amounts1[i] = amount1;
@@ -199,18 +202,12 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
         bytes memory callbackParams,
         bytes memory strategyParams,
         bytes memory securityParams
-    ) public {
-        _requireAdmin();
+    ) public onlyRole(MANAGER_ROLE) {
         core.setPositionParams(
             positionId, slippageD9, callbackParams, strategyParams, securityParams
         );
 
-        emit PositionParamsSet(
-            slippageD9,
-            abi.decode(callbackParams, (IVeloAmmModule.CallbackParams)),
-            abi.decode(strategyParams, (IPulseStrategyModule.StrategyParams)),
-            abi.decode(securityParams, (IVeloOracle.SecurityParams))
-        );
+        emit PositionParamsSet(slippageD9, callbackParams, strategyParams, securityParams);
     }
 
     /// @inheritdoc ILpWrapper
@@ -246,8 +243,7 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
     }
 
     /// @inheritdoc ILpWrapper
-    function setTotalSupplyLimit(uint256 newTotalSupplyLimit) external {
-        _requireAdmin();
+    function setTotalSupplyLimit(uint256 newTotalSupplyLimit) external onlyRole(MANAGER_ROLE) {
         emit TotalSupplyLimitUpdated(newTotalSupplyLimit, totalSupplyLimit, totalSupply());
         totalSupplyLimit = newTotalSupplyLimit;
     }
@@ -255,6 +251,17 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
     /// @inheritdoc ILpWrapper
     function emptyRebalance() external nonReentrant {
         core.emptyRebalance(positionId);
+    }
+
+    /// @inheritdoc ILpWrapper
+    function setLpStaker(address lpStaker_) external onlyRole(MANAGER_ROLE) {
+        if (lpStaker_ == address(0)) {
+            revert AddressZero();
+        } else if (lpStaker != lpStaker_) {
+            emit LpStakerAlreadySet(lpStaker);
+        }
+
+        lpStaker = lpStaker_;
     }
 
     /// ---------------------- EXTERNAL VIEW FUNCTIONS ----------------------
@@ -269,31 +276,85 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
     }
 
     /// @inheritdoc ILpWrapper
-    function getInfo() external view returns (PositionLibrary.Position[] memory data) {
-        ICore.ManagedPositionInfo memory info = core.managedPositionAt(positionId);
-        data = new PositionLibrary.Position[](info.ammPositionIds.length);
-        for (uint256 i = 0; i < info.ammPositionIds.length; i++) {
-            data[i] = PositionLibrary.getPosition(positionManager, info.ammPositionIds[i]);
-        }
-    }
-
-    /// @inheritdoc ILpWrapper
     function previewMint(uint256 lpAmount)
         external
         view
         returns (uint256 amount0, uint256 amount1)
     {
-        ICore.ManagedPositionInfo memory info = core.managedPositionAt(positionId);
-        uint256 n = info.ammPositionIds.length;
+        (uint160 sqrtPriceX96, IAmmModule.AmmPosition[] memory positions) = getState();
         uint256 totalSupply_ = totalSupply();
-        (uint160 sqrtPriceX96,) = oracle.getOraclePrice(info.pool);
-        IAmmModule.AmmPosition[] memory positions = new IAmmModule.AmmPosition[](n);
-        for (uint256 i = 0; i < n; i++) {
-            positions[i] = ammModule.getAmmPosition(info.ammPositionIds[i]);
-            (uint256 amount0_, uint256 amount1_) =
+        for (uint256 i = 0; i < positions.length; i++) {
+            (uint256 amount0_, uint256 amount1_,) =
                 calculateAmountsForLp(lpAmount, totalSupply_, positions[i], sqrtPriceX96);
             amount0 += amount0_;
             amount1 += amount1_;
+        }
+    }
+
+    /// @inheritdoc ILpWrapper
+    function previewBurn(uint256 lpAmount)
+        external
+        view
+        returns (uint256 amount0, uint256 amount1)
+    {
+        (uint160 sqrtPriceX96, IAmmModule.AmmPosition[] memory positions) = getState();
+        uint256 totalSupply_ = totalSupply();
+        for (uint256 i = 0; i < positions.length; i++) {
+            uint256 liquidity = lpAmount.mulDiv(positions[i].liquidity, totalSupply_);
+            (uint256 amount0_, uint256 amount1_) = PositionMath.getAmountsForLiquidity(
+                liquidity, sqrtPriceX96, positions[i].tickLower, positions[i].tickUpper
+            );
+            amount0 += amount0_;
+            amount1 += amount1_;
+        }
+    }
+
+    /// @inheritdoc ILpWrapper
+    function previewDeposit(uint256 amount0Desired, uint256 amount1Desired)
+        external
+        view
+        returns (uint256 lpAmount)
+    {
+        uint256 amount0Total;
+        uint256 amount1Total;
+        (uint160 sqrtPriceX96, IAmmModule.AmmPosition[] memory positions) = getState();
+        uint256[] memory amount0 = new uint256[](positions.length);
+        uint256[] memory amount1 = new uint256[](positions.length);
+        /// @dev step #1: get amounts that are hold at current positions
+        for (uint256 i = 0; i < positions.length; i++) {
+            (amount0[i], amount1[i]) = PositionMath.getAmountsForLiquidityCeil(
+                positions[i].liquidity, sqrtPriceX96, positions[i].tickLower, positions[i].tickUpper
+            );
+            amount0Total += amount0[i];
+            amount1Total += amount1[i];
+        }
+        /// @dev step #2: adjust lpAmount based on desired amounts
+        lpAmount = type(uint256).max;
+        uint256 liquidity;
+        for (uint256 i = 0; i < positions.length; i++) {
+            liquidity = positions[i].liquidity;
+            liquidity = Math.min(
+                amount0[i] > 0
+                    ? liquidity.mulDiv(amount0Desired.mulDiv(amount0[i], amount0Total), amount0[i])
+                    : type(uint256).max,
+                amount1[i] > 0
+                    ? liquidity.mulDiv(amount1Desired.mulDiv(amount1[i], amount1Total), amount1[i])
+                    : type(uint256).max
+            );
+            lpAmount = Math.min(lpAmount, totalSupply().mulDiv(liquidity, positions[i].liquidity));
+        }
+    }
+
+    function getState()
+        internal
+        view
+        returns (uint160 sqrtPriceX96, IAmmModule.AmmPosition[] memory positions)
+    {
+        ICore.ManagedPositionInfo memory info = core.managedPositionAt(positionId);
+        (sqrtPriceX96,) = oracle.getOraclePrice(pool);
+        positions = new IAmmModule.AmmPosition[](info.ammPositionIds.length);
+        for (uint256 i = 0; i < info.ammPositionIds.length; i++) {
+            positions[i] = ammModule.getAmmPosition(info.ammPositionIds[i]);
         }
     }
 
@@ -302,29 +363,15 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
         uint256 lpAmount,
         uint256 totalSupply_,
         IAmmModule.AmmPosition memory position,
-        uint160 sqrtRatioX96
-    ) public pure returns (uint256 amount0, uint256 amount1) {
-        uint256 liquidity = lpAmount.mulDiv(position.liquidity, totalSupply_, Math.Rounding.Ceil);
+        uint160 sqrtPriceX96
+    ) public pure returns (uint256 amount0, uint256 amount1, uint256 liquidity) {
+        liquidity = lpAmount.mulDiv(position.liquidity, totalSupply_, Math.Rounding.Ceil);
         if (liquidity > type(uint128).max) {
             revert LiquidityOverflow();
         }
-        uint256 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(position.tickLower);
-        uint256 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(position.tickUpper);
-        if (sqrtRatioX96 < sqrtRatioBX96) {
-            uint256 sqrtRatioAX96_ = sqrtRatioAX96.max(sqrtRatioX96);
-            amount0 = Math.ceilDiv(
-                (liquidity << 96).mulDiv(
-                    sqrtRatioBX96 - sqrtRatioAX96_, sqrtRatioBX96, Math.Rounding.Ceil
-                ),
-                sqrtRatioAX96_
-            );
-        }
-
-        if (sqrtRatioX96 > sqrtRatioAX96) {
-            amount1 = liquidity.mulDiv(
-                sqrtRatioBX96.min(sqrtRatioX96) - sqrtRatioAX96, Q96, Math.Rounding.Ceil
-            );
-        }
+        (amount0, amount1) = PositionMath.getAmountsForLiquidityCeil(
+            liquidity, sqrtPriceX96, position.tickLower, position.tickUpper
+        );
     }
 
     /// ---------------------- INTERNAL MUTABLE FUNCTIONS ----------------------
@@ -343,12 +390,12 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
     ) private returns (uint256 actualAmount0, uint256 actualAmount1) {
         address sender = _msgSender();
         if (amount0 > 0) {
-            token0.safeTransferFrom(sender, address(this), amount0);
-            token0.safeIncreaseAllowance(address(core), amount0);
+            IERC20(token0).safeTransferFrom(sender, address(this), amount0);
+            IERC20(token0).safeIncreaseAllowance(address(core), amount0);
         }
         if (amount1 > 0) {
-            token1.safeTransferFrom(sender, address(this), amount1);
-            token1.safeIncreaseAllowance(address(core), amount1);
+            IERC20(token1).safeTransferFrom(sender, address(this), amount1);
+            IERC20(token1).safeIncreaseAllowance(address(core), amount1);
         }
 
         for (uint256 i = 0; i < positionsBefore.length; i++) {
@@ -363,11 +410,11 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
         }
 
         if (actualAmount0 != amount0) {
-            token0.safeTransfer(sender, amount0 - actualAmount0);
+            IERC20(token0).safeTransfer(sender, amount0 - actualAmount0);
         }
 
         if (actualAmount1 != amount1) {
-            token1.safeTransfer(sender, amount1 - actualAmount1);
+            IERC20(token1).safeTransfer(sender, amount1 - actualAmount1);
         }
     }
 
@@ -390,5 +437,18 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
             amount0 += actualAmount0;
             amount1 += actualAmount1;
         }
+    }
+
+    /// @dev override ERC20::allowance to have infinite allowance for lpStaker
+    function allowance(address owner, address spender)
+        public
+        view
+        override(ERC20Upgradeable, IERC20)
+        returns (uint256)
+    {
+        if (spender == lpStaker) {
+            return type(uint256).max;
+        }
+        return super.allowance(owner, spender);
     }
 }

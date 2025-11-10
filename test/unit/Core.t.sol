@@ -13,27 +13,43 @@ contract Unit is Fixture {
 
     function setUp() external {
         contracts = deployContracts();
-        (lpWrapper, deployParams) = deployLpWrapper(pool, contracts);
+        (lpWrapper, deployParams) =
+            deployLpWrapper(pool, IPulseStrategyModule.StrategyType.LazySyncing, contracts);
+
+        deal(Constants.OPTIMISM_WETH, address(this), 1e10 ether);
+        deal(Constants.OPTIMISM_OP, address(this), 1e10 ether);
     }
 
-    function testContructor() external {
-        vm.expectRevert(abi.encodeWithSignature("AddressZero()"));
+    function testConstructor() external {
         Core core = new Core(
             contracts.ammModule,
             contracts.depositWithdrawModule,
             contracts.strategyModule,
-            contracts.oracle,
+            contracts.oracle
+        );
+        vm.expectRevert(abi.encodeWithSignature("AddressZero()"));
+        core.initialize(
             address(0),
-            Constants.OPTIMISM_WETH
+            Constants.OPTIMISM_CORE_OPERATOR,
+            abi.encode(
+                IVeloAmmModule.ProtocolParams({
+                    treasury: Constants.OPTIMISM_MELLOW_TREASURY,
+                    feeD9: Constants.OPTIMISM_FEE_D9,
+                    extraData: ""
+                })
+            )
         );
 
-        core = new Core(
-            contracts.ammModule,
-            contracts.depositWithdrawModule,
-            contracts.strategyModule,
-            contracts.oracle,
-            Constants.OPTIMISM_DEPLOYER,
-            Constants.OPTIMISM_WETH
+        core.initialize(
+            Constants.OPTIMISM_MELLOW_ADMIN,
+            Constants.OPTIMISM_CORE_OPERATOR,
+            abi.encode(
+                IVeloAmmModule.ProtocolParams({
+                    treasury: Constants.OPTIMISM_MELLOW_TREASURY,
+                    feeD9: Constants.OPTIMISM_FEE_D9,
+                    extraData: ""
+                })
+            )
         );
 
         assertTrue(address(contracts.core) != address(0));
@@ -66,7 +82,7 @@ contract Unit is Fixture {
 
         vm.startPrank(info.owner);
 
-        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        vm.expectRevert(ICore.InvalidDepositParams.selector);
         core.directDeposit(positionId, tokenId + 1, 1 ether, 1 ether, 0, 0);
 
         IERC20(pool.token0()).approve(address(core), 1 ether);
@@ -81,16 +97,27 @@ contract Unit is Fixture {
     }
 
     function testDirectDepositWithdrawRevert() public {
-        VeloDepositWithdrawModuleMock module = new VeloDepositWithdrawModuleMock(positionManager);
+        VeloDepositWithdrawModuleMock module =
+            new VeloDepositWithdrawModuleMock(contracts.depositWithdrawModule);
         uint256 specificValueRevert = module.specificValueRevert();
 
         ICore coreBroken = new Core(
             contracts.ammModule,
-            IVeloDepositWithdrawModule(address(module)),
+            IAmmDepositWithdrawModule(address(module)),
             contracts.strategyModule,
-            contracts.oracle,
-            Constants.OPTIMISM_DEPLOYER,
-            Constants.OPTIMISM_WETH
+            contracts.oracle
+        );
+
+        coreBroken.initialize(
+            Constants.OPTIMISM_MELLOW_ADMIN,
+            Constants.OPTIMISM_CORE_OPERATOR,
+            abi.encode(
+                IVeloAmmModule.ProtocolParams({
+                    treasury: Constants.OPTIMISM_MELLOW_TREASURY,
+                    feeD9: Constants.OPTIMISM_FEE_D9,
+                    extraData: ""
+                })
+            )
         );
 
         uint256 tokenId = mint(
@@ -103,19 +130,21 @@ contract Unit is Fixture {
             Constants.OPTIMISM_DEPLOYER
         );
 
-        vm.startPrank(Constants.OPTIMISM_DEPLOYER);
-
+        vm.prank(Constants.OPTIMISM_DEPLOYER);
         positionManager.approve(address(coreBroken), tokenId);
 
+        vm.prank(Constants.OPTIMISM_MELLOW_ADMIN);
         coreBroken.setProtocolParams(
             abi.encode(
                 IVeloAmmModule.ProtocolParams({
                     treasury: Constants.OPTIMISM_MELLOW_TREASURY,
-                    feeD9: Constants.OPTIMISM_FEE_D9
+                    feeD9: Constants.OPTIMISM_FEE_D9,
+                    extraData: ""
                 })
             )
         );
 
+        vm.startPrank(Constants.OPTIMISM_DEPLOYER);
         ICore.DepositParams memory depositParams;
         depositParams.slippageD9 = 1 * 1e5;
         depositParams.ammPositionIds = new uint256[](1);
@@ -123,12 +152,25 @@ contract Unit is Fixture {
         depositParams.callbackParams = abi.encode(
             IVeloAmmModule.CallbackParams({
                 gauge: address(pool.gauge()),
-                farm: address(new VeloFarmMock())
+                farm: address(
+                    new VeloFarmMock(
+                        contracts.ammModule.getRewardToken(address(pool)),
+                        "VeloFarmMock",
+                        "VFM",
+                        address(coreBroken)
+                    )
+                ),
+                extraData: ""
             })
         );
 
         depositParams.securityParams = abi.encode(
-            IVeloOracle.SecurityParams({lookback: 100, maxAllowedDelta: 100, maxAge: 7 days})
+            IVeloOracle.SecurityParams({
+                lookback: 100,
+                maxAllowedDelta: 100,
+                maxAge: 7 days,
+                extraData: ""
+            })
         );
         depositParams.strategyParams = abi.encode(
             IPulseStrategyModule.StrategyParams({
@@ -136,6 +178,7 @@ contract Unit is Fixture {
                 width: 1000,
                 tickSpacing: 200,
                 tickNeighborhood: 100,
+                priceOracle: address(0), // The address of the custom price oracle used for market data
                 maxLiquidityRatioDeviationX96: 0
             })
         );
@@ -153,12 +196,12 @@ contract Unit is Fixture {
         IERC20(pool.token0()).approve(address(coreBroken), 1 ether);
         IERC20(pool.token1()).approve(address(coreBroken), 1 ether);
 
-        vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
+        vm.expectRevert(ICore.InvalidLength.selector);
         coreBroken.directDeposit(positionId, tokenId, specificValueRevert, 1 ether, 0, 0);
 
         coreBroken.directDeposit(positionId, tokenId, 1 ether, 1 ether, 0, 0);
 
-        vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
+        vm.expectRevert(ICore.InvalidLength.selector);
         coreBroken.directWithdraw(
             positionId, tokenId, specificValueRevert, Constants.OPTIMISM_DEPLOYER, 0, 0
         );
@@ -180,7 +223,7 @@ contract Unit is Fixture {
 
         vm.startPrank(info.owner);
 
-        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        vm.expectRevert(ICore.InvalidWithdrawParams.selector);
         core.directWithdraw(positionId, tokenId + 1, position.liquidity, address(this), 0, 0);
 
         vm.expectRevert(abi.encodeWithSignature("FailedCall()"));
@@ -209,10 +252,16 @@ contract Unit is Fixture {
         rebalanceParams.callback = address(new RebalancingBotMock(positionManager));
         rebalanceParams.data = new bytes(0); // count of position, if empty - ignore
 
-        vm.expectRevert(abi.encodeWithSignature("Forbidden()"));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
+                address(this),
+                core.OPERATOR_ROLE()
+            )
+        );
         core.rebalance(rebalanceParams);
 
-        vm.startPrank(params.mellowAdmin);
+        vm.startPrank(params.coreOperator);
         vm.expectRevert(abi.encodeWithSignature("NoRebalanceNeeded()"));
         core.rebalance(rebalanceParams);
         vm.stopPrank();
@@ -223,7 +272,7 @@ contract Unit is Fixture {
         (sqrtPriceX96, tick,,,,) = pool.slot0();
         movePrice(pool, TickMath.getSqrtRatioAtTick(tick + 1000));
 
-        vm.startPrank(params.mellowAdmin);
+        vm.startPrank(params.coreOperator);
         vm.expectRevert(abi.encodeWithSignature("PriceManipulationDetected()"));
         core.rebalance(rebalanceParams);
         vm.stopPrank();
@@ -237,40 +286,42 @@ contract Unit is Fixture {
             tickNeighborhood: 0, // Neighborhood of ticks to consider for rebalancing
             tickSpacing: pool.tickSpacing(), // tickSpacing of the corresponding amm pool
             width: pool.tickSpacing(), // Width of the interval
+            priceOracle: address(0), // The address of the custom price oracle used for market data
             maxLiquidityRatioDeviationX96: 0 // The maximum allowed deviation of the liquidity ratio for lower position.
         });
 
-        deployParams_.securityParams =
-            IVeloOracle.SecurityParams({lookback: 1, maxAge: 1 seconds, maxAllowedDelta: 10000});
+        deployParams_.securityParams = IVeloOracle.SecurityParams({
+            lookback: 1,
+            maxAge: 1 seconds,
+            maxAllowedDelta: 10000,
+            extraData: ""
+        });
 
-        deployParams_.pool = pool;
+        deployParams_.pool = address(pool);
         deployParams_.maxAmount0 = 100 ether;
         deployParams_.maxAmount1 = 1 ether;
         deployParams_.initialTotalSupply = 1000 wei;
         deployParams_.totalSupplyLimit = 1000 ether;
 
-        deal(pool.token0(), params.factoryOperator, 100 ether);
-        deal(pool.token1(), params.factoryOperator, 1 ether);
+        deal(pool.token0(), address(this), 100 ether);
+        deal(pool.token1(), address(this), 1 ether);
         deal(pool.token0(), address(contracts.deployFactory), 1 ether);
         deal(pool.token1(), address(contracts.deployFactory), 1 ether);
 
-        vm.startPrank(params.factoryOperator);
-        IERC20(pool.token0()).approve(address(contracts.deployFactory), 100 ether);
-        IERC20(pool.token1()).approve(address(contracts.deployFactory), 1 ether);
-        contracts.deployFactory.createStrategy(deployParams_);
+        deployLpWrapper(contracts, deployParams_);
 
         (sqrtPriceX96, tick,,,,) = pool.slot0();
         movePrice(pool, TickMath.getSqrtRatioAtTick(tick + 1000));
 
         rebalanceParams.id = 1;
-        vm.startPrank(params.mellowAdmin);
+        vm.startPrank(params.coreOperator);
 
         rebalanceParams.data = abi.encode(10);
-        vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
+        vm.expectRevert(ICore.InvalidLength.selector);
         core.rebalance(rebalanceParams);
 
         rebalanceParams.data = new bytes(0x40);
-        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        vm.expectRevert(ICore.InvalidRebalanceParams.selector);
         core.rebalance(rebalanceParams);
 
         rebalanceParams.data = new bytes(0);
@@ -283,9 +334,18 @@ contract Unit is Fixture {
             contracts.ammModule,
             contracts.depositWithdrawModule,
             contracts.strategyModule,
-            contracts.oracle,
-            Constants.OPTIMISM_DEPLOYER,
-            Constants.OPTIMISM_WETH
+            contracts.oracle
+        );
+        core.initialize(
+            Constants.OPTIMISM_MELLOW_ADMIN,
+            Constants.OPTIMISM_CORE_OPERATOR,
+            abi.encode(
+                IVeloAmmModule.ProtocolParams({
+                    treasury: Constants.OPTIMISM_MELLOW_TREASURY,
+                    feeD9: Constants.OPTIMISM_FEE_D9,
+                    extraData: ""
+                })
+            )
         );
 
         uint256 tokenId = mint(
@@ -344,30 +404,38 @@ contract Unit is Fixture {
         positionManager.approve(address(core), tokenId1);
         positionManager.approve(address(core), tokenId2);
         positionManager.approve(address(core), tokenIdEmpty);
+        vm.stopPrank();
 
+        vm.prank(Constants.OPTIMISM_MELLOW_ADMIN);
         core.setProtocolParams(
             abi.encode(
                 IVeloAmmModule.ProtocolParams({
                     treasury: Constants.OPTIMISM_MELLOW_TREASURY,
-                    feeD9: Constants.OPTIMISM_FEE_D9
+                    feeD9: Constants.OPTIMISM_FEE_D9,
+                    extraData: ""
                 })
             )
         );
 
+        vm.startPrank(Constants.OPTIMISM_DEPLOYER);
         ICore.DepositParams memory depositParams;
         depositParams.ammPositionIds = new uint256[](1);
         depositParams.owner = Constants.OPTIMISM_DEPLOYER;
         depositParams.callbackParams = new bytes(123);
 
         depositParams.ammPositionIds[0] = tokenId;
-        vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
+        vm.expectRevert(ICore.InvalidLength.selector);
         core.deposit(depositParams);
 
         depositParams.callbackParams = abi.encode(
-            IVeloAmmModule.CallbackParams({gauge: address(pool.gauge()), farm: address(1)})
+            IVeloAmmModule.CallbackParams({
+                gauge: address(pool.gauge()),
+                farm: address(1),
+                extraData: ""
+            })
         );
 
-        vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
+        vm.expectRevert(ICore.InvalidLength.selector);
         core.deposit(depositParams);
 
         depositParams.strategyParams = abi.encode(
@@ -376,37 +444,43 @@ contract Unit is Fixture {
                 width: 1000,
                 tickSpacing: 200,
                 tickNeighborhood: 100,
+                priceOracle: address(0), // The address of the custom price oracle used for market data
                 maxLiquidityRatioDeviationX96: 0
             })
         );
 
-        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        vm.expectRevert(ICore.InvalidSlippageParams.selector);
         core.deposit(depositParams);
 
         depositParams.slippageD9 = 1 * 1e5;
         depositParams.securityParams = new bytes(123);
 
-        vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
+        vm.expectRevert(ICore.InvalidLength.selector);
         core.deposit(depositParams);
 
         depositParams.securityParams = abi.encode(
-            IVeloOracle.SecurityParams({lookback: 100, maxAllowedDelta: 100, maxAge: 7 days})
+            IVeloOracle.SecurityParams({
+                lookback: 100,
+                maxAllowedDelta: 100,
+                maxAge: 7 days,
+                extraData: ""
+            })
         );
 
         assertEq(positionManager.ownerOf(tokenId), Constants.OPTIMISM_DEPLOYER);
 
         depositParams.owner = address(0);
-        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        vm.expectRevert(ICore.InvalidDepositParams.selector);
         core.deposit(depositParams);
 
         depositParams.owner = Constants.OPTIMISM_DEPLOYER;
 
         depositParams.ammPositionIds[0] = 0;
-        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        vm.expectRevert(ICore.InvalidPositionParams.selector);
         core.deposit(depositParams);
 
         depositParams.ammPositionIds[0] = tokenIdEmpty;
-        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        vm.expectRevert(ICore.InvalidPositionParams.selector);
         core.deposit(depositParams);
 
         depositParams.ammPositionIds[0] = tokenId2;
@@ -422,7 +496,7 @@ contract Unit is Fixture {
         depositParams.ammPositionIds[0] = tokenId1;
         depositParams.ammPositionIds[1] = tokenId2;
 
-        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        vm.expectRevert(ICore.InvalidPositionParams.selector);
         core.deposit(depositParams);
 
         vm.stopPrank();
@@ -440,7 +514,11 @@ contract Unit is Fixture {
         depositParams.ammPositionIds[0] = tokenId;
         depositParams.owner = owner;
         depositParams.callbackParams = abi.encode(
-            IVeloAmmModule.CallbackParams({gauge: address(pool.gauge()), farm: address(lpWrapper)})
+            IVeloAmmModule.CallbackParams({
+                gauge: address(pool.gauge()),
+                farm: address(lpWrapper),
+                extraData: ""
+            })
         );
         depositParams.strategyParams = abi.encode(
             IPulseStrategyModule.StrategyParams({
@@ -448,12 +526,18 @@ contract Unit is Fixture {
                 width: 1000,
                 tickSpacing: 200,
                 tickNeighborhood: 100,
+                priceOracle: address(0), // The address of the custom price oracle used for market data
                 maxLiquidityRatioDeviationX96: 0
             })
         );
         depositParams.slippageD9 = 1 * 1e5;
         depositParams.securityParams = abi.encode(
-            IVeloOracle.SecurityParams({lookback: 1, maxAllowedDelta: 100000, maxAge: 7 days})
+            IVeloOracle.SecurityParams({
+                lookback: 1,
+                maxAllowedDelta: 100000,
+                maxAge: 7 days,
+                extraData: ""
+            })
         );
 
         id = core.deposit(depositParams);
@@ -510,9 +594,9 @@ contract Unit is Fixture {
         core.setPositionParams(positionId, 0, new bytes(0), new bytes(0), new bytes(0));
 
         vm.startPrank(Constants.OPTIMISM_DEPLOYER);
-        vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
+        vm.expectRevert(ICore.InvalidLength.selector);
         core.setPositionParams(positionId, 1, new bytes(123), new bytes(0), new bytes(0));
-        vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
+        vm.expectRevert(ICore.InvalidLength.selector);
         core.setPositionParams(positionId, 1, new bytes(0), new bytes(123), new bytes(0));
 
         bytes memory defaultStrategyParams = abi.encode(
@@ -521,34 +605,44 @@ contract Unit is Fixture {
                 tickSpacing: 100,
                 tickNeighborhood: 100,
                 strategyType: IPulseStrategyModule.StrategyType.Original,
+                priceOracle: address(0), // The address of the custom price oracle used for market data
                 maxLiquidityRatioDeviationX96: 0
             })
         );
 
-        vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
+        vm.expectRevert(ICore.InvalidLength.selector);
         core.setPositionParams(positionId, 1, new bytes(0), defaultStrategyParams, new bytes(123));
 
-        vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
+        vm.expectRevert(ICore.InvalidLength.selector);
         core.setPositionParams(positionId, 0, new bytes(0), defaultStrategyParams, new bytes(0));
 
-        vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
+        vm.expectRevert(ICore.InvalidLength.selector);
         core.setPositionParams(
             positionId, uint32(D9 / 20 + 1), new bytes(0), defaultStrategyParams, new bytes(0)
         );
 
-        vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
+        vm.expectRevert(ICore.InvalidLength.selector);
         core.setPositionParams(
             positionId, uint32(D9 / 20), new bytes(0), defaultStrategyParams, new bytes(0)
         );
 
         bytes memory defaultCallbackParams = abi.encode(
-            IVeloAmmModule.CallbackParams({farm: address(lpWrapper), gauge: address(pool.gauge())})
+            IVeloAmmModule.CallbackParams({
+                farm: address(lpWrapper),
+                gauge: address(pool.gauge()),
+                extraData: ""
+            })
         );
         bytes memory defaultSecurityParams = abi.encode(
-            IVeloOracle.SecurityParams({lookback: 100, maxAllowedDelta: 100, maxAge: 7 days})
+            IVeloOracle.SecurityParams({
+                lookback: 100,
+                maxAllowedDelta: 100,
+                maxAge: 7 days,
+                extraData: ""
+            })
         );
 
-        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        vm.expectRevert(ICore.InvalidSlippageParams.selector);
         core.setPositionParams(
             positionId,
             uint32(D9 / 4 + 1),
@@ -569,11 +663,17 @@ contract Unit is Fixture {
     function testSetProtocolParams() external {
         ICore core = contracts.core;
 
-        vm.expectRevert(abi.encodeWithSignature("Forbidden()"));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
+                address(this),
+                core.MANAGER_ROLE()
+            )
+        );
         core.setProtocolParams(new bytes(123));
 
         vm.startPrank(params.mellowAdmin);
-        vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
+        vm.expectRevert(ICore.InvalidLength.selector);
         core.setProtocolParams(new bytes(123));
 
         vm.expectRevert(abi.encodeWithSignature("AddressZero()"));
@@ -581,20 +681,24 @@ contract Unit is Fixture {
             abi.encode(
                 IVeloAmmModule.ProtocolParams({
                     treasury: address(0),
-                    feeD9: Constants.OPTIMISM_FEE_D9
+                    feeD9: Constants.OPTIMISM_FEE_D9,
+                    extraData: ""
                 })
             )
         );
 
         vm.expectRevert(abi.encodeWithSignature("InvalidFee()"));
         core.setProtocolParams(
-            abi.encode(IVeloAmmModule.ProtocolParams({treasury: address(1), feeD9: 3e8 + 1}))
+            abi.encode(
+                IVeloAmmModule.ProtocolParams({treasury: address(1), feeD9: 3e8 + 1, extraData: ""})
+            )
         );
 
         bytes memory protocolParams = abi.encode(
             IVeloAmmModule.ProtocolParams({
                 treasury: Constants.OPTIMISM_MELLOW_TREASURY,
-                feeD9: Constants.OPTIMISM_FEE_D9
+                feeD9: Constants.OPTIMISM_FEE_D9,
+                extraData: ""
             })
         );
 
@@ -652,7 +756,11 @@ contract Unit is Fixture {
             owner: Constants.OPTIMISM_DEPLOYER,
             slippageD9: 1 * 1e5,
             callbackParams: abi.encode(
-                IVeloAmmModule.CallbackParams({gauge: address(pool.gauge()), farm: address(lpWrapper)})
+                IVeloAmmModule.CallbackParams({
+                    gauge: address(pool.gauge()),
+                    farm: address(lpWrapper),
+                    extraData: ""
+                })
             ),
             strategyParams: abi.encode(
                 IPulseStrategyModule.StrategyParams({
@@ -660,11 +768,17 @@ contract Unit is Fixture {
                     width: 1000,
                     tickSpacing: 200,
                     tickNeighborhood: 100,
+                    priceOracle: address(0), // The address of the custom price oracle used for market data
                     maxLiquidityRatioDeviationX96: 0
                 })
             ),
             securityParams: abi.encode(
-                IVeloOracle.SecurityParams({lookback: 100, maxAllowedDelta: 100, maxAge: 7 days})
+                IVeloOracle.SecurityParams({
+                    lookback: 100,
+                    maxAllowedDelta: 100,
+                    maxAge: 7 days,
+                    extraData: ""
+                })
             )
         });
 
@@ -673,7 +787,8 @@ contract Unit is Fixture {
             abi.encode(
                 IVeloAmmModule.ProtocolParams({
                     treasury: Constants.OPTIMISM_MELLOW_TREASURY,
-                    feeD9: Constants.OPTIMISM_FEE_D9
+                    feeD9: Constants.OPTIMISM_FEE_D9,
+                    extraData: ""
                 })
             )
         );

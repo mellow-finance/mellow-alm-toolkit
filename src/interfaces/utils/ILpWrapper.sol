@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.25;
 
-import "../../libraries/PositionLibrary.sol";
+import "../../libraries/PositionMath.sol";
 import "../modules/strategies/IPulseStrategyModule.sol";
 import "../modules/velo/IVeloAmmModule.sol";
 import "../oracles/IVeloOracle.sol";
@@ -57,6 +57,21 @@ interface ILpWrapper is IVeloFarm, IAccessControlEnumerable, IERC20 {
     error LiquidityOverflow();
 
     /**
+     * @dev Custom error for indicating that the zero address has been specified.
+     * This error is used in contexts where an operation requires a valid address,
+     * and the zero address is deemed invalid or inappropriate for the operation.
+     */
+    error AddressZero();
+
+    /**
+     * @dev Custom error for signaling that an operation is not allowed.
+     * This error is used in contexts where a user attempts to perform an action
+     * that is not permitted, typically due to insufficient permissions or
+     * other constraints defined within the contract.
+     */
+    error Forbidden();
+
+    /**
      * @notice Emitted when a deposit is made into the `LpWrapper`.
      * @param sender The address initiating the deposit.
      * @param recipient The address receiving the deposited LP tokens.
@@ -104,10 +119,7 @@ interface ILpWrapper is IVeloFarm, IAccessControlEnumerable, IERC20 {
      * @param securityParams The security parameters for managing oracle and risk controls.
      */
     event PositionParamsSet(
-        uint56 slippageD9,
-        IVeloAmmModule.CallbackParams callbackParams,
-        IPulseStrategyModule.StrategyParams strategyParams,
-        IVeloOracle.SecurityParams securityParams
+        uint56 slippageD9, bytes callbackParams, bytes strategyParams, bytes securityParams
     );
 
     /**
@@ -121,10 +133,22 @@ interface ILpWrapper is IVeloFarm, IAccessControlEnumerable, IERC20 {
     );
 
     /**
-     * @dev Returns corresponding position info
-     * @return data - PositionData struct containing the position's data
+     * @notice Emitted when the LP staker is set.
+     * @param lpStaker The address of the new LP staker.
      */
-    function getInfo() external view returns (PositionLibrary.Position[] memory data);
+    event LpStakerSet(address lpStaker);
+
+    /**
+     * @notice Emitted when the LP staker is already set.
+     * @param lpStaker The address of the LP staker.
+     */
+    event LpStakerAlreadySet(address lpStaker);
+
+    /**
+     * @dev Returns the manager role identifier.
+     * @return bytes32 - manager role identifier.
+     */
+    function MANAGER_ROLE() external view returns (bytes32);
 
     /**
      * @dev Returns protocol params of the corresponding Core.sol
@@ -133,12 +157,6 @@ interface ILpWrapper is IVeloFarm, IAccessControlEnumerable, IERC20 {
         external
         view
         returns (IVeloAmmModule.ProtocolParams memory params, uint256 d9);
-
-    /**
-     * @dev Returns the address of the position manager.
-     * @return Address of the position manager.
-     */
-    function positionManager() external view returns (address);
 
     /**
      * @dev Returns the core contract address.
@@ -150,7 +168,7 @@ interface ILpWrapper is IVeloFarm, IAccessControlEnumerable, IERC20 {
      * @dev Returns the address of the AMM module associated with this LP wrapper.
      * @return Address of the AMM module.
      */
-    function ammModule() external view returns (IVeloAmmModule);
+    function ammModule() external view returns (IAmmModule);
 
     /**
      * @dev Returns the oracle contract address.
@@ -170,18 +188,59 @@ interface ILpWrapper is IVeloFarm, IAccessControlEnumerable, IERC20 {
      */
     function totalSupplyLimit() external view returns (uint256);
 
+    /**
+     * @dev Returns the estimated amounts of underlying assets for a given LP token amount.
+     * @param lpAmount The amount of LP tokens to preview.
+     * @return amount0 The estimated amount of asset 0.
+     * @return amount1 The estimated amount of asset 1.
+     */
     function previewMint(uint256 lpAmount)
         external
         view
         returns (uint256 amount0, uint256 amount1);
 
+    /**
+     * @dev Returns the lower bounds of underlying asset amounts to be received for a given LP token amount when burning.
+     * @param lpAmount The amount of LP tokens to burn.
+     * @return amount0 The estimated amount of asset 0.
+     * @return amount1 The estimated amount of asset 1.
+     */
+    function previewBurn(uint256 lpAmount)
+        external
+        view
+        returns (uint256 amount0, uint256 amount1);
+
+    /**
+     * @dev Returns the estimated amounts of LP tokens for a given desired amount of underlying assets.
+     * @param amount0Desired The desired amount of asset 0.
+     * @param amount1Desired The desired amount of asset 1.
+     * @return lpAmount The estimated amount of LP tokens.
+     */
+    function previewDeposit(uint256 amount0Desired, uint256 amount1Desired)
+        external
+        view
+        returns (uint256 lpAmount);
+
+    /**
+     * @dev Returns the estimated amounts of underlying assets for a given LP token amount.
+     * @param lpAmount The amount of LP tokens to preview.
+     * @return amount0 The estimated amount of asset 0.
+     * @return amount1 The estimated amount of asset 1.
+     */
     function calculateAmountsForLp(
         uint256 lpAmount,
         uint256 totalSupply_,
         IAmmModule.AmmPosition memory position,
         uint160 sqrtPriceX96
-    ) external view returns (uint256 amount0, uint256 amount1);
+    ) external view returns (uint256 amount0, uint256 amount1, uint256 liquidity);
 
+    /**
+     * @dev Mints new LP tokens by depositing underlying assets.
+     * @param mintParams The parameters for the minting operation.
+     * @return actualAmount0 The actual amount of asset 0 deposited.
+     * @return actualAmount1 The actual amount of asset 1 deposited.
+     * @return actualLpAmount The actual amount of LP tokens minted.
+     */
     function mint(MintParams memory mintParams)
         external
         returns (uint256 actualAmount0, uint256 actualAmount1, uint256 actualLpAmount);
@@ -305,6 +364,15 @@ interface ILpWrapper is IVeloFarm, IAccessControlEnumerable, IERC20 {
     function setTotalSupplyLimit(uint256 totalSupplyLimitNew) external;
 
     /**
+     * @dev Sets the address of the LP staker.
+     * @param lpStaker The address of the LP staker.
+     * Requirements:
+     * - Caller must have the ADMIN_ROLE.
+     * - Can only be set once; subsequent calls will revert.
+     */
+    function setLpStaker(address lpStaker) external;
+
+    /**
      * @dev This function is used to perform an empty rebalance for a specific position.
      * @notice This function calls the `beforeRebalance` and `afterRebalance` functions of the `IAmmModule` contract for each tokenId of the position.
      * @notice If any of the delegate calls fail, the function will revert.
@@ -321,11 +389,17 @@ interface ILpWrapper is IVeloFarm, IAccessControlEnumerable, IERC20 {
      * @notice Returns the ERC20 token contract for token0 in the pool.
      * @return The IERC20 contract of token0.
      */
-    function token0() external view returns (IERC20);
+    function token0() external view returns (address);
 
     /**
      * @notice Returns the ERC20 token contract for token1 in the pool.
      * @return The IERC20 contract of token1.
      */
-    function token1() external view returns (IERC20);
+    function token1() external view returns (address);
+
+    /**
+     * @notice Returns the address of the LP staker.
+     * @return The address of the LP staker.
+     */
+    function lpStaker() external view returns (address);
 }

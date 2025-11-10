@@ -1,0 +1,815 @@
+// SPDX-License-Identifier: BSL-1.1
+pragma solidity ^0.8.0;
+
+import "./Fixture.sol";
+
+contract Unit is Fixture {
+    using SafeERC20 for IERC20;
+    using Math for uint256;
+
+    int24 constant MAX_ALLOWED_DELTA = 100;
+    uint32 constant MAX_AGE = 1 hours;
+    uint128 INITIAL_LIQUIDITY = 1 ether;
+
+    address public constant VELO = 0x9560e827aF36c94D2Ac33a39bCE1Fe78631088Db;
+
+    address immutable admin = vm.addr(uint256(keccak256("admin")));
+    address immutable operator = vm.addr(uint256(keccak256("operator")));
+    address immutable user = vm.addr(uint256(keccak256("user")));
+
+    address lpStakerImplementation;
+
+    uint32 constant defaultTimeLock = 1 days;
+
+    DeployScript.CoreDeployment contracts;
+
+    function setUp() external {
+        contracts = deployContracts();
+
+        lpStakerImplementation = address(new LpStaker(address(contracts.core)));
+
+        deal(Constants.OPTIMISM_WETH, address(this), 1e10 ether);
+        deal(Constants.OPTIMISM_OP, address(this), 1e10 ether);
+    }
+
+    function testStake(uint32 lpAmountX32) external {
+        vm.assume(lpAmountX32 > 0);
+        ICLPool pool = ICLPool(factory.getPool(Constants.OPTIMISM_WETH, Constants.OPTIMISM_OP, 200));
+        (ILpStaker lpStaker, ILpWrapper lpWrapper) = _initLpStaker(pool, defaultTimeLock);
+
+        uint256 lpAmount = uint256(lpAmountX32).mulDiv(1 ether, type(uint32).max);
+        (uint256 amount0, uint256 amount1) = lpWrapper.previewMint(lpAmount);
+
+        IERC20(Constants.OPTIMISM_WETH).safeIncreaseAllowance(address(lpWrapper), amount0);
+        IERC20(Constants.OPTIMISM_OP).safeIncreaseAllowance(address(lpWrapper), amount1);
+        (,, lpAmount) = lpWrapper.mint(
+            ILpWrapper.MintParams(lpAmount, amount0, amount1, user, type(uint256).max)
+        );
+
+        vm.startPrank(user);
+        uint256 shares = lpStaker.stake(lpAmount, user);
+        vm.stopPrank();
+
+        assertEq(IERC20(address(lpWrapper)).balanceOf(user), 0);
+        assertEq(IERC20(address(lpStaker)).balanceOf(user), shares);
+        assertEq(lpStaker.lpAmountOf(user), lpAmount);
+
+        skip(defaultTimeLock);
+
+        uint256 amountExpected = lpStaker.lpAmountOf(user);
+        vm.prank(user);
+        uint256 amount = lpStaker.unstake(shares, user);
+
+        assertEq(amount, amountExpected, "unstake amount mismatch");
+        assertEq(lpStaker.sharesOf(user), 0, "shares after unstake mismatch");
+        assertEq(lpStaker.lpAmountOf(user), 0, "assets after unstake mismatch");
+    }
+
+    function testMintAndStake() external {
+        uint32 lpAmountX32 = type(uint32).max; //vm.assume(lpAmountX32 > 0);
+        ICLPool pool = ICLPool(factory.getPool(Constants.OPTIMISM_WETH, Constants.OPTIMISM_OP, 200));
+        (ILpStaker lpStaker, ILpWrapper lpWrapper) = _initLpStaker(pool, defaultTimeLock);
+
+        uint256 lpAmount = uint256(lpAmountX32).mulDiv(1 ether, type(uint32).max);
+        (uint256 amount0, uint256 amount1) = lpWrapper.previewMint(lpAmount);
+        deal(Constants.OPTIMISM_WETH, user, amount0);
+        deal(Constants.OPTIMISM_OP, user, amount1);
+
+        vm.startPrank(user);
+        IERC20(Constants.OPTIMISM_WETH).safeIncreaseAllowance(address(lpStaker), amount0);
+        IERC20(Constants.OPTIMISM_OP).safeIncreaseAllowance(address(lpStaker), amount1);
+
+        uint256 lpAmountActual;
+        uint256 shares;
+
+        (amount0, amount1, lpAmountActual, shares) = lpStaker.mintAndStake(amount0, amount1, user);
+        vm.stopPrank();
+
+        assertEq(IERC20(address(lpWrapper)).balanceOf(user), 0);
+        assertEq(IERC20(address(lpWrapper)).balanceOf(address(lpStaker)), lpAmountActual);
+        assertEq(IERC20(address(lpStaker)).balanceOf(user), shares);
+        assertEq(lpStaker.lpAmountOf(user), lpAmountActual);
+
+        assertEq(
+            IERC20(Constants.OPTIMISM_WETH).balanceOf(address(lpStaker)),
+            0,
+            "token0 too much dust after mint"
+        );
+        assertEq(
+            IERC20(Constants.OPTIMISM_OP).balanceOf(address(lpStaker)),
+            0,
+            "token1 too much dust after mint"
+        );
+
+        skip(defaultTimeLock);
+
+        uint256 amountExpected = lpStaker.lpAmountOf(user);
+        vm.prank(user);
+        (uint256 actualAmount0, uint256 actualAmount1, uint256 actualLpAmount) =
+            lpStaker.unstakeAndWithdraw(shares, 0, 0, user);
+
+        assertApproxEqAbs(actualLpAmount, amountExpected, 1, "unstake lpAmount mismatch");
+        assertApproxEqAbs(amount0, actualAmount0, 1, "unstake amount0 mismatch");
+        assertApproxEqAbs(amount1, actualAmount1, 1, "unstake amount1 mismatch");
+        assertEq(lpStaker.sharesOf(user), 0, "shares after unstake mismatch");
+        assertEq(lpStaker.lpAmountOf(user), 0, "assets after unstake mismatch");
+        assertEq(lpStaker.lpAmountOf(user), 0, "assets after unstake mismatch");
+    }
+
+    function testQuoteSwap() external {
+        ICLPool pool = ICLPool(factory.getPool(Constants.OPTIMISM_WETH, Constants.OPTIMISM_OP, 200));
+        (ILpStaker lpStaker, ILpWrapper lpWrapper) = _initLpStaker(pool, defaultTimeLock);
+
+        (address token0, address token1) = contracts.ammModule.getPoolTokens(address(pool));
+
+        uint256 lpAmount = 1 ether;
+        (uint256 amount0, uint256 amount1) = lpWrapper.previewMint(lpAmount);
+
+        IERC20(Constants.OPTIMISM_WETH).safeIncreaseAllowance(address(lpWrapper), amount0);
+        IERC20(Constants.OPTIMISM_OP).safeIncreaseAllowance(address(lpWrapper), amount1);
+        (,, lpAmount) = lpWrapper.mint(
+            ILpWrapper.MintParams(lpAmount, amount0, amount1, user, type(uint256).max)
+        );
+
+        vm.startPrank(user);
+        uint256 shares = lpStaker.stake(lpAmount, user);
+        vm.stopPrank();
+
+        skip(30 days);
+
+        /// @dev collect rewards to have something to swap
+        lpWrapper.collectRewards();
+
+        ILpStaker.QuoteParams[2] memory quoteParams = lpStaker.quoteSwapAmounts();
+
+        uint256 earned = lpWrapper.earned(address(lpStaker));
+        uint256 swapRewardAmount;
+
+        for (uint256 index = 0; index < quoteParams.length; index++) {
+            assertEq(quoteParams[index].tokenIn, lpWrapper.rewardToken(), "tokenIn mismatch");
+            assertTrue(
+                quoteParams[index].tokenOut == token0 || quoteParams[index].tokenOut == token1,
+                "tokenOut mismatch"
+            );
+            swapRewardAmount += quoteParams[index].amountIn;
+        }
+        assertEq(swapRewardAmount, earned, "total amount rewards mismatch");
+
+        skip(defaultTimeLock);
+
+        uint256 amountExpected = lpStaker.lpAmountOf(user);
+        vm.prank(user);
+        uint256 amount = lpStaker.unstake(shares, user);
+
+        assertEq(amount, amountExpected, "unstake amount mismatch");
+        assertEq(lpStaker.sharesOf(user), 0, "shares after unstake mismatch");
+        assertEq(lpStaker.lpAmountOf(user), 0, "assets after unstake mismatch");
+    }
+
+    function testSwapRewards() external {
+        ICLPool pool = ICLPool(factory.getPool(Constants.OPTIMISM_WETH, Constants.OPTIMISM_OP, 200));
+        (ILpStaker lpStaker, ILpWrapper lpWrapper) = _initLpStaker(pool, defaultTimeLock);
+
+        (address token0, address token1) = contracts.ammModule.getPoolTokens(address(pool));
+
+        uint256 lpAmount = 1 ether;
+        (uint256 amount0, uint256 amount1) = lpWrapper.previewMint(lpAmount);
+
+        IERC20(Constants.OPTIMISM_WETH).safeIncreaseAllowance(address(lpWrapper), amount0);
+        IERC20(Constants.OPTIMISM_OP).safeIncreaseAllowance(address(lpWrapper), amount1);
+        (,, lpAmount) = lpWrapper.mint(
+            ILpWrapper.MintParams(lpAmount, amount0, amount1, user, type(uint256).max)
+        );
+
+        SwapRouterMock target = new SwapRouterMock();
+        /// 1 ETH = 5000 VELO
+        target.setPriceX96(token0, VELO, 5000 * Q96);
+        /// 1 OP = 15 VELO
+        target.setPriceX96(token1, VELO, 15 * Q96);
+
+        vm.startPrank(user);
+        uint256 shares = lpStaker.stake(lpAmount, user);
+        vm.stopPrank();
+
+        skip(30 days);
+
+        /// @dev collect rewards to have something to swap
+        lpWrapper.collectRewards();
+
+        ILpStaker.SwapParams[2] memory swapParams = _buildSwapData(lpStaker, target);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
+                address(this),
+                lpStaker.OPERATOR_ROLE()
+            )
+        );
+        lpStaker.compoundRewards(swapParams);
+
+        vm.prank(admin);
+        IAccessControlCalls(address(lpStaker)).allowTargetCall(
+            address(target), SwapRouterMock.swap.selector
+        );
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
+                address(this),
+                lpStaker.OPERATOR_ROLE()
+            )
+        );
+        lpStaker.compoundRewards(swapParams);
+
+        vm.prank(operator);
+        lpStaker.compoundRewards(swapParams);
+
+        uint256 lpTotal = IERC20(address(lpStaker)).totalSupply();
+        assertApproxEqAbs(
+            lpTotal.mulDiv(IERC20(address(lpWrapper)).balanceOf(address(lpStaker)), 1 ether),
+            lpStaker.lpPrice(),
+            1
+        );
+        assertApproxEqAbs(
+            lpStaker.lpAmountOf(user), IERC20(address(lpWrapper)).balanceOf(address(lpStaker)), 1
+        );
+
+        skip(defaultTimeLock);
+
+        uint256 amountExpected = lpStaker.lpAmountOf(user);
+        vm.prank(user);
+        uint256 amount = lpStaker.unstake(shares, user);
+
+        assertEq(amount, amountExpected, "unstake amount mismatch");
+        assertEq(lpStaker.sharesOf(user), 0, "shares after unstake mismatch");
+        assertEq(lpStaker.lpAmountOf(user), 0, "assets after unstake mismatch");
+    }
+
+    function testSwapRewardsFuzz() external {
+        ICLPool pool = ICLPool(factory.getPool(Constants.OPTIMISM_WETH, Constants.OPTIMISM_OP, 200));
+        (ILpStaker lpStaker, ILpWrapper lpWrapper) = _initLpStaker(pool, defaultTimeLock);
+
+        (address token0, address token1) = contracts.ammModule.getPoolTokens(address(pool));
+
+        uint256 lpAmount = 1 ether;
+        (uint256 amount0, uint256 amount1) = lpWrapper.previewMint(lpAmount);
+
+        IERC20(Constants.OPTIMISM_WETH).safeIncreaseAllowance(address(lpWrapper), amount0);
+        IERC20(Constants.OPTIMISM_OP).safeIncreaseAllowance(address(lpWrapper), amount1);
+        (,, lpAmount) = lpWrapper.mint(
+            ILpWrapper.MintParams(lpAmount, amount0, amount1, user, type(uint256).max)
+        );
+
+        SwapRouterMock target = new SwapRouterMock();
+        /// 1 ETH = 5000 VELO
+        target.setPriceX96(token0, VELO, 5000 * Q96);
+        /// 1 OP = 15 VELO
+        target.setPriceX96(token1, VELO, 15 * Q96);
+
+        vm.prank(admin);
+        IAccessControlCalls(address(lpStaker)).allowTargetCall(
+            address(target), SwapRouterMock.swap.selector
+        );
+
+        vm.startPrank(user);
+        lpStaker.stake(lpAmount, user);
+        vm.stopPrank();
+
+        for (uint256 index = 0; index < 42; index++) {
+            skip(4 hours);
+
+            /// @dev collect rewards to have something to swap
+            lpWrapper.collectRewards();
+
+            ILpStaker.SwapParams[2] memory swapParams = _buildSwapData(lpStaker, target);
+
+            vm.prank(operator);
+            lpStaker.compoundRewards(swapParams);
+
+            uint256 lpTotal = IERC20(address(lpStaker)).totalSupply();
+            assertApproxEqAbs(
+                lpTotal.mulDiv(IERC20(address(lpWrapper)).balanceOf(address(lpStaker)), 1 ether),
+                lpStaker.lpPrice(),
+                1
+            );
+            assertApproxEqAbs(
+                lpStaker.lpAmountOf(user),
+                IERC20(address(lpWrapper)).balanceOf(address(lpStaker)),
+                1
+            );
+        }
+    }
+
+    function testSetTimeLock() external {
+        ICLPool pool = ICLPool(factory.getPool(Constants.OPTIMISM_WETH, Constants.OPTIMISM_OP, 200));
+
+        uint32 timeLock = 2 days;
+        (ILpStaker lpStaker,) = _initLpStaker(pool, timeLock);
+
+        assertEq(lpStaker.timeLock(), timeLock);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
+                address(this),
+                lpStaker.MANAGER_ROLE()
+            )
+        );
+        lpStaker.setTimeLock(7 hours);
+        assertEq(lpStaker.timeLock(), timeLock);
+
+        uint32 minTimeLock = lpStaker.MIN_TIMELOCK_DURATION();
+        uint32 maxTimeLock = lpStaker.MAX_TIMELOCK_DURATION();
+
+        vm.startPrank(admin);
+
+        vm.expectRevert(abi.encodeWithSelector(ILpStaker.InvalidTimeLock.selector, minTimeLock - 1));
+        lpStaker.setTimeLock(minTimeLock - 1);
+
+        vm.expectRevert(abi.encodeWithSelector(ILpStaker.InvalidTimeLock.selector, maxTimeLock + 1));
+        lpStaker.setTimeLock(maxTimeLock + 1);
+
+        lpStaker.setTimeLock(minTimeLock);
+        assertEq(lpStaker.timeLock(), minTimeLock);
+
+        lpStaker.setTimeLock(maxTimeLock);
+        assertEq(lpStaker.timeLock(), maxTimeLock);
+
+        vm.stopPrank();
+    }
+
+    function testLockedAmountOneDeposit() external {
+        ICLPool pool = ICLPool(factory.getPool(Constants.OPTIMISM_WETH, Constants.OPTIMISM_OP, 200));
+
+        uint32 timeLock = 6 hours;
+        (ILpStaker lpStaker, ILpWrapper lpWrapper) = _initLpStaker(pool, timeLock);
+
+        address recipient = vm.addr(uint256(keccak256("recipient")));
+
+        uint256 lpAmount = 1 ether;
+        (uint256 amount0, uint256 amount1) = lpWrapper.previewMint(lpAmount);
+        deal(Constants.OPTIMISM_WETH, user, type(uint128).max);
+        deal(Constants.OPTIMISM_OP, user, type(uint128).max);
+
+        vm.startPrank(user);
+        IERC20(Constants.OPTIMISM_WETH).safeIncreaseAllowance(address(lpStaker), type(uint256).max);
+        IERC20(Constants.OPTIMISM_OP).safeIncreaseAllowance(address(lpStaker), type(uint256).max);
+
+        uint256 lpAmountActual;
+        uint256 shares;
+
+        (amount0, amount1, lpAmountActual, shares) = lpStaker.mintAndStake(amount0, amount1, user);
+
+        for (uint256 index = 0; index < 10; index++) {
+            uint256 sharesToTransfer = (index + 1) * shares / (10 + 1);
+            vm.expectRevert(
+                abi.encodeWithSelector(
+                    ILpStaker.InsufficientUnlockedShares.selector, user, shares, sharesToTransfer
+                )
+            );
+            ERC20(address(lpStaker)).transfer(recipient, sharesToTransfer);
+        }
+        vm.stopPrank();
+
+        {
+            skip(timeLock - 1);
+            (uint256 lockedShares, uint32 activeCheckpoints,) =
+                lpStaker.getLockedShares(user, uint32(block.timestamp));
+            assertEq(lockedShares, shares, "locked shares mismatch");
+            assertEq(activeCheckpoints, 1, "active checkpoints mismatch");
+
+            skip(1);
+
+            (lockedShares, activeCheckpoints,) =
+                lpStaker.getLockedShares(user, uint32(block.timestamp));
+            assertEq(lockedShares, 0, "locked shares mismatch");
+            assertEq(activeCheckpoints, 0, "active checkpoints mismatch");
+        }
+
+        {
+            vm.prank(user);
+            ERC20(address(lpStaker)).transfer(recipient, shares / 2);
+            assertEq(
+                ERC20(address(lpStaker)).balanceOf(recipient),
+                shares / 2,
+                "recipient shares mismatch"
+            );
+            assertEq(
+                ERC20(address(lpStaker)).balanceOf(user),
+                shares - shares / 2,
+                "user shares mismatch"
+            );
+
+            vm.prank(user);
+            lpStaker.unstake(shares - shares / 2, user);
+            assertEq(ERC20(address(lpStaker)).balanceOf(user), 0, "user shares mismatch");
+
+            vm.prank(recipient);
+            lpStaker.unstake(shares / 2, recipient);
+            assertEq(ERC20(address(lpStaker)).balanceOf(recipient), 0, "recipient shares mismatch");
+        }
+    }
+
+    function testLockedAmountSequence() external {
+        ICLPool pool = ICLPool(factory.getPool(Constants.OPTIMISM_WETH, Constants.OPTIMISM_OP, 200));
+
+        uint32 timeLock = 24 hours;
+        (ILpStaker lpStaker,) = _initLpStaker(pool, timeLock);
+
+        deal(Constants.OPTIMISM_WETH, user, type(uint128).max);
+        deal(Constants.OPTIMISM_OP, user, type(uint128).max);
+
+        vm.startPrank(user);
+        IERC20(Constants.OPTIMISM_WETH).safeIncreaseAllowance(address(lpStaker), type(uint256).max);
+        IERC20(Constants.OPTIMISM_OP).safeIncreaseAllowance(address(lpStaker), type(uint256).max);
+
+        uint256 totalShares;
+        uint256 firstHourShares;
+        {
+            /// @dev if some time has passed before, a new checkpoint is created
+            skip(1 hours);
+            (,,, uint256 sharesDelta) = lpStaker.mintAndStake(1 ether, 1 ether, user);
+            (uint256 lockedShares, uint32 activeCheckpoints, uint32 length) =
+                lpStaker.getLockedShares(user, uint32(block.timestamp));
+            totalShares += sharesDelta;
+            firstHourShares += sharesDelta;
+
+            assertEq(totalShares, lpStaker.sharesOf(user), "total shares mismatch");
+            assertEq(lockedShares, lpStaker.sharesOf(user), "locked shares mismatch");
+            assertEq(activeCheckpoints, 1, "active checkpoints mismatch");
+            assertEq(length, 1, "length mismatch");
+        }
+        {
+            /// @dev if some time has not passed before, a new checkpoint is not created
+            (,,, uint256 sharesDelta) = lpStaker.mintAndStake(1 ether, 1 ether, user);
+            (uint256 lockedShares, uint32 activeCheckpoints, uint32 length) =
+                lpStaker.getLockedShares(user, uint32(block.timestamp));
+            totalShares += sharesDelta;
+            firstHourShares += sharesDelta;
+
+            assertEq(totalShares, lpStaker.sharesOf(user), "total shares mismatch");
+            assertEq(lockedShares, lpStaker.sharesOf(user), "locked shares mismatch");
+            assertEq(activeCheckpoints, 1, "active checkpoints mismatch");
+            assertEq(length, 1, "length mismatch");
+        }
+        {
+            /// @dev if some time has passed before, a new checkpoint is created
+            skip(1 hours);
+            (,,, uint256 sharesDelta) = lpStaker.mintAndStake(1 ether, 1 ether, user);
+            (uint256 lockedShares, uint32 activeCheckpoints, uint32 length) =
+                lpStaker.getLockedShares(user, uint32(block.timestamp));
+            totalShares += sharesDelta;
+
+            assertEq(totalShares, lpStaker.sharesOf(user), "total shares mismatch");
+            assertEq(lockedShares, lpStaker.sharesOf(user), "locked shares mismatch");
+            assertEq(activeCheckpoints, 2, "active checkpoints mismatch");
+            assertEq(length, 2, "length mismatch");
+        }
+        {
+            /// @dev if some time has passed before, a new checkpoint is created
+            skip(timeLock - 2 hours + 1);
+            (,,, uint256 sharesDelta) = lpStaker.mintAndStake(1 ether, 1 ether, user);
+            (uint256 lockedShares, uint32 activeCheckpoints, uint32 length) =
+                lpStaker.getLockedShares(user, uint32(block.timestamp));
+            totalShares += sharesDelta;
+
+            assertEq(totalShares, lpStaker.sharesOf(user), "total shares mismatch");
+            assertEq(lockedShares, lpStaker.sharesOf(user), "locked shares mismatch");
+            assertEq(activeCheckpoints, 3, "active checkpoints mismatch");
+            assertEq(length, 3, "length mismatch");
+        }
+        {
+            /// @dev if some time has passed before, a new checkpoint is created
+            skip(1 hours);
+            (,,, uint256 sharesDelta) = lpStaker.mintAndStake(1 ether, 1 ether, user);
+            (uint256 lockedShares, uint32 activeCheckpoints, uint32 length) =
+                lpStaker.getLockedShares(user, uint32(block.timestamp));
+            totalShares += sharesDelta;
+
+            assertEq(totalShares, lpStaker.sharesOf(user), "total shares mismatch");
+            assertEq(
+                lockedShares, lpStaker.sharesOf(user) - firstHourShares, "locked shares mismatch"
+            );
+            assertEq(activeCheckpoints, 3, "active checkpoints mismatch");
+            assertEq(length, 4, "length mismatch");
+        }
+        vm.stopPrank();
+    }
+
+    function testRevertTooManyActiveLocks() external {
+        ICLPool pool = ICLPool(factory.getPool(Constants.OPTIMISM_WETH, Constants.OPTIMISM_OP, 200));
+
+        uint32 timeLock = 24 hours;
+        (ILpStaker lpStaker,) = _initLpStaker(pool, timeLock);
+
+        deal(Constants.OPTIMISM_WETH, user, type(uint128).max);
+        deal(Constants.OPTIMISM_OP, user, type(uint128).max);
+
+        vm.startPrank(user);
+        IERC20(Constants.OPTIMISM_WETH).safeIncreaseAllowance(address(lpStaker), type(uint256).max);
+        IERC20(Constants.OPTIMISM_OP).safeIncreaseAllowance(address(lpStaker), type(uint256).max);
+
+        uint256 shares;
+        for (uint256 index = 0; index < lpStaker.MAX_ACTIVE_LOCKS(); index++) {
+            skip(1);
+            (,,, uint256 sharesDelta) = lpStaker.mintAndStake(1 ether, 1 ether, user);
+            shares += sharesDelta;
+        }
+        (uint256 lockedShares, uint32 activeCheckpoints, uint32 length) =
+            lpStaker.getLockedShares(user, uint32(block.timestamp));
+
+        assertEq(lockedShares, shares, "locked shares mismatch");
+        assertEq(activeCheckpoints, lpStaker.MAX_ACTIVE_LOCKS(), "active checkpoints mismatch");
+        assertEq(length, lpStaker.MAX_ACTIVE_LOCKS(), "length mismatch");
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ILpStaker.TooManyActiveLocks.selector, user, lpStaker.MAX_ACTIVE_LOCKS()
+            )
+        );
+        lpStaker.mintAndStake(1 ether, 1 ether, user);
+
+        uint256 gas = gasleft();
+        (lockedShares, activeCheckpoints, length) =
+            lpStaker.getLockedShares(user, uint32(block.timestamp));
+        console2.log("gas for getLockedShares", gas - gasleft());
+
+        assertEq(lockedShares, shares, "locked shares mismatch");
+        assertEq(activeCheckpoints, lpStaker.MAX_ACTIVE_LOCKS(), "active checkpoints mismatch");
+        assertEq(length, lpStaker.MAX_ACTIVE_LOCKS(), "length mismatch");
+        vm.stopPrank();
+    }
+
+    function testStakeUnstakeRecipient() external {
+        ICLPool pool = ICLPool(factory.getPool(Constants.OPTIMISM_WETH, Constants.OPTIMISM_OP, 200));
+        (ILpStaker lpStaker, ILpWrapper lpWrapper) = _initLpStaker(pool, defaultTimeLock);
+
+        uint256 lpAmount = 1 ether;
+        (uint256 amount0, uint256 amount1) = lpWrapper.previewMint(lpAmount);
+
+        address recipient = vm.addr(uint256(keccak256("recipient")));
+        address target = vm.addr(uint256(keccak256("target")));
+
+        vm.startPrank(user);
+        deal(Constants.OPTIMISM_WETH, user, amount0);
+        deal(Constants.OPTIMISM_OP, user, amount1);
+        IERC20(Constants.OPTIMISM_WETH).safeIncreaseAllowance(address(lpWrapper), amount0);
+        IERC20(Constants.OPTIMISM_OP).safeIncreaseAllowance(address(lpWrapper), amount1);
+        (,, lpAmount) = lpWrapper.mint(
+            ILpWrapper.MintParams(lpAmount, amount0, amount1, user, type(uint256).max)
+        );
+
+        vm.expectRevert(IAccessControlCalls.AddressZero.selector);
+        lpStaker.stake(lpAmount, address(0));
+
+        uint256 shares = lpStaker.stake(lpAmount, recipient);
+        vm.stopPrank();
+
+        assertEq(IERC20(address(lpWrapper)).balanceOf(recipient), 0);
+        assertEq(IERC20(address(lpStaker)).balanceOf(recipient), shares);
+        assertEq(lpStaker.lpAmountOf(recipient), lpAmount);
+
+        assertEq(IERC20(address(lpWrapper)).balanceOf(user), 0);
+        assertEq(IERC20(address(lpStaker)).balanceOf(user), 0);
+        assertEq(lpStaker.lpAmountOf(user), 0);
+
+        vm.prank(user);
+        vm.expectRevert(
+            abi.encodeWithSelector(IERC20Errors.ERC20InsufficientBalance.selector, user, 0, shares)
+        );
+        lpStaker.unstake(shares, target);
+
+        vm.prank(recipient);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ILpStaker.InsufficientUnlockedShares.selector, recipient, shares, shares
+            )
+        );
+        lpAmount = lpStaker.unstake(shares, target);
+
+        skip(defaultTimeLock);
+
+        vm.prank(recipient);
+        lpAmount = lpStaker.unstake(shares, target);
+
+        assertEq(IERC20(address(lpWrapper)).balanceOf(recipient), 0);
+        assertEq(IERC20(address(lpStaker)).balanceOf(recipient), 0);
+        assertEq(lpStaker.lpAmountOf(recipient), 0);
+
+        assertEq(IERC20(address(lpWrapper)).balanceOf(target), lpAmount);
+        assertEq(IERC20(address(lpStaker)).balanceOf(target), 0);
+        assertEq(lpStaker.lpAmountOf(target), 0);
+    }
+
+    function testMintWithdrawRecipient() external {
+        ICLPool pool = ICLPool(factory.getPool(Constants.OPTIMISM_WETH, Constants.OPTIMISM_OP, 200));
+        (ILpStaker lpStaker, ILpWrapper lpWrapper) = _initLpStaker(pool, defaultTimeLock);
+
+        uint256 lpAmount = 1 ether;
+        (uint256 amount0, uint256 amount1) = lpWrapper.previewMint(lpAmount);
+
+        address recipient = vm.addr(uint256(keccak256("recipient")));
+        address target = vm.addr(uint256(keccak256("target")));
+
+        vm.startPrank(user);
+        deal(Constants.OPTIMISM_WETH, user, amount0);
+        deal(Constants.OPTIMISM_OP, user, amount1);
+        IERC20(Constants.OPTIMISM_WETH).safeIncreaseAllowance(address(lpStaker), amount0);
+        IERC20(Constants.OPTIMISM_OP).safeIncreaseAllowance(address(lpStaker), amount1);
+
+        vm.expectRevert(IAccessControlCalls.AddressZero.selector);
+        lpStaker.mintAndStake(amount0, amount1, address(0));
+
+        (uint256 actualAmount0, uint256 actualAmount1, uint256 actualLpAmount, uint256 shares) =
+            lpStaker.mintAndStake(amount0, amount1, recipient);
+        vm.stopPrank();
+
+        assertEq(IERC20(address(lpWrapper)).balanceOf(recipient), 0);
+        assertEq(IERC20(address(lpStaker)).balanceOf(recipient), shares);
+        assertEq(lpStaker.lpAmountOf(recipient), actualLpAmount);
+
+        assertEq(IERC20(address(lpWrapper)).balanceOf(user), 0);
+        assertEq(IERC20(address(lpStaker)).balanceOf(user), 0);
+        assertEq(lpStaker.lpAmountOf(user), 0);
+
+        vm.prank(user);
+        vm.expectRevert(
+            abi.encodeWithSelector(IERC20Errors.ERC20InsufficientBalance.selector, user, 0, shares)
+        );
+        lpStaker.unstakeAndWithdraw(shares, actualAmount0, actualAmount1, target);
+
+        vm.prank(recipient);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ILpStaker.InsufficientUnlockedShares.selector, recipient, shares, shares
+            )
+        );
+        lpStaker.unstakeAndWithdraw(shares, actualAmount0, actualAmount1, target);
+
+        skip(defaultTimeLock);
+
+        vm.prank(recipient);
+        (actualAmount0, actualAmount1, lpAmount) = lpStaker.unstakeAndWithdraw(shares, 0, 0, target);
+
+        assertEq(IERC20(lpStaker.token0()).balanceOf(recipient), 0);
+        assertEq(IERC20(lpStaker.token1()).balanceOf(recipient), 0);
+        assertEq(IERC20(address(lpWrapper)).balanceOf(recipient), 0);
+        assertEq(IERC20(address(lpStaker)).balanceOf(recipient), 0);
+        assertEq(lpStaker.lpAmountOf(recipient), 0);
+
+        assertEq(IERC20(lpStaker.token0()).balanceOf(target), actualAmount0);
+        assertEq(IERC20(lpStaker.token1()).balanceOf(target), actualAmount1);
+        assertEq(IERC20(address(lpWrapper)).balanceOf(target), 0);
+        assertEq(IERC20(address(lpStaker)).balanceOf(target), 0);
+        assertEq(lpStaker.lpAmountOf(target), 0);
+    }
+
+    function testInfiniteAllowance() external {
+        ICLPool pool = ICLPool(factory.getPool(Constants.OPTIMISM_WETH, Constants.OPTIMISM_OP, 200));
+        (ILpWrapper lpWrapper,) =
+            deployLpWrapper(pool, IPulseStrategyModule.StrategyType.LazySyncing, contracts);
+
+        ILpStaker lpStaker = ILpStaker(Clones.clone(lpStakerImplementation));
+        lpStaker.initialize(lpWrapper, admin, operator, 1 days, 1 wei);
+
+        (uint256 amount0, uint256 amount1) = lpWrapper.previewMint(1 ether);
+
+        vm.startPrank(user);
+        deal(Constants.OPTIMISM_WETH, user, amount0);
+        deal(Constants.OPTIMISM_OP, user, amount1);
+
+        IERC20(Constants.OPTIMISM_WETH).safeIncreaseAllowance(address(lpWrapper), amount0);
+        IERC20(Constants.OPTIMISM_OP).safeIncreaseAllowance(address(lpWrapper), amount1);
+
+        (,, uint256 lpAmount) = lpWrapper.mint(
+            ILpWrapper.MintParams({
+                lpAmount: 1 ether,
+                amount0Max: amount0,
+                amount1Max: amount1,
+                recipient: user,
+                deadline: type(uint256).max
+            })
+        );
+        vm.stopPrank();
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IERC20Errors.ERC20InsufficientAllowance.selector, address(lpStaker), 0, lpAmount
+            )
+        );
+        vm.prank(user);
+        lpStaker.stake(lpAmount, user);
+
+        assertEq(IERC20(address(lpWrapper)).balanceOf(user), lpAmount);
+        assertEq(IERC20(address(lpStaker)).balanceOf(user), 0);
+        assertEq(lpStaker.lpAmountOf(user), 0);
+
+        vm.prank(Constants.OPTIMISM_LP_WRAPPER_MANAGER);
+        lpWrapper.setLpStaker(address(lpStaker));
+
+        /// @dev lpStaker does not require allowance in lpWrapper now
+        vm.prank(user);
+        lpStaker.stake(lpAmount, user);
+
+        assertEq(IERC20(address(lpWrapper)).balanceOf(user), 0);
+        assertEq(IERC20(address(lpStaker)).balanceOf(user), lpAmount);
+        assertEq(lpStaker.lpAmountOf(user), lpAmount);
+    }
+
+    function testMinStakeAmount() external {
+        ICLPool pool = ICLPool(factory.getPool(Constants.OPTIMISM_WETH, Constants.OPTIMISM_OP, 200));
+        (ILpStaker lpStaker, ILpWrapper lpWrapper) = _initLpStaker(pool, defaultTimeLock);
+
+        uint256 lpAmount = 1 ether;
+        (uint256 amount0, uint256 amount1) = lpWrapper.previewMint(lpAmount);
+
+        vm.startPrank(user);
+        deal(Constants.OPTIMISM_WETH, user, amount0);
+        deal(Constants.OPTIMISM_OP, user, amount1);
+
+        IERC20(Constants.OPTIMISM_WETH).safeIncreaseAllowance(address(lpWrapper), amount0);
+        IERC20(Constants.OPTIMISM_OP).safeIncreaseAllowance(address(lpWrapper), amount1);
+
+        (,, lpAmount) = lpWrapper.mint(
+            ILpWrapper.MintParams({
+                lpAmount: lpAmount,
+                amount0Max: amount0,
+                amount1Max: amount1,
+                recipient: user,
+                deadline: type(uint256).max
+            })
+        );
+        vm.stopPrank();
+        assertEq(lpStaker.minStakeAmount(), 1 wei);
+
+        vm.prank(admin);
+        lpStaker.setMinStakeAmount(lpAmount);
+        assertEq(lpStaker.minStakeAmount(), lpAmount);
+
+        /// @dev first stake checkpoint always is successful
+        vm.prank(user);
+        lpStaker.stake(lpAmount / 2, user);
+
+        skip(1 seconds);
+
+        /// @dev if some time has passed, new checkpoint is created and min stake amount is checked
+        vm.prank(user);
+        vm.expectRevert(ILpStaker.TooLowStakeAmount.selector);
+        lpStaker.stake(lpAmount / 2, user);
+
+        vm.prank(admin);
+        lpStaker.setMinStakeAmount(lpAmount / 2);
+        assertEq(lpStaker.minStakeAmount(), lpAmount / 2);
+
+        vm.prank(user);
+        vm.expectRevert(ILpStaker.TooLowStakeAmount.selector);
+        lpStaker.stake(lpAmount / 2 - 1, user);
+
+        vm.prank(user);
+        lpStaker.stake(lpAmount / 2, user);
+
+        assertEq(lpStaker.lpAmountOf(user), lpAmount);
+    }
+
+    function _buildSwapData(ILpStaker lpStaker, SwapRouterMock target)
+        internal
+        view
+        returns (ILpStaker.SwapParams[2] memory swapParams)
+    {
+        ILpStaker.QuoteParams[2] memory quoteParams = lpStaker.quoteSwapAmounts();
+
+        for (uint256 index = 0; index < quoteParams.length; index++) {
+            uint256 amountOut = target.quote(
+                quoteParams[index].tokenIn, quoteParams[index].tokenOut, quoteParams[index].amountIn
+            );
+
+            swapParams[index] = ILpStaker.SwapParams({
+                target: address(target),
+                amountIn: quoteParams[index].amountIn,
+                tokenOut: quoteParams[index].tokenOut,
+                minAmountOut: amountOut * 999 / 1000,
+                data: abi.encodeWithSelector(
+                    target.swap.selector,
+                    quoteParams[index].amountIn,
+                    quoteParams[index].tokenIn,
+                    quoteParams[index].tokenOut,
+                    address(lpStaker)
+                )
+            });
+        }
+    }
+
+    function _initLpStaker(ICLPool pool, uint32 timeLock)
+        internal
+        returns (ILpStaker lpStaker, ILpWrapper lpWrapper)
+    {
+        (lpWrapper,) =
+            deployLpWrapper(pool, IPulseStrategyModule.StrategyType.LazySyncing, contracts);
+
+        lpStaker = ILpStaker(Clones.clone(lpStakerImplementation));
+        lpStaker.initialize(lpWrapper, admin, operator, timeLock, 1 wei);
+
+        vm.prank(Constants.OPTIMISM_LP_WRAPPER_MANAGER);
+        lpWrapper.setLpStaker(address(lpStaker));
+    }
+}

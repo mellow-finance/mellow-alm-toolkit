@@ -22,8 +22,9 @@ contract VeloOracle is IVeloOracle {
             ICLPool(poolAddress).observations(observationIndex);
         int24 nextTick = spotTick;
         int24 maxAllowedDelta = securityParams.maxAllowedDelta;
-        for (uint16 i = 1; i <= lookback; i++) {
-            uint256 index = (observationCardinality + observationIndex - i) % observationCardinality;
+        for (uint32 i = 1; i <= lookback; i++) {
+            uint256 index = (uint32(observationCardinality) + uint32(observationIndex) - i)
+                % observationCardinality;
             (uint32 timestamp, int56 tickCumulative,,) = ICLPool(poolAddress).observations(index);
             if (timestamp == 0) {
                 revert NotEnoughObservations();
@@ -58,7 +59,7 @@ contract VeloOracle is IVeloOracle {
         if (params.length == 0) {
             return;
         }
-        if (params.length != 0x60) {
+        if (params.length != 0xc0) {
             revert InvalidLength();
         }
         SecurityParams memory securityParams = abi.decode(params, (SecurityParams));

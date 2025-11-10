@@ -13,14 +13,20 @@ contract Unit is Fixture {
 
     function testValidateSecurityParams() external {
         oracle = new VeloOracle();
-        IVeloOracle.SecurityParams memory params =
-            IVeloOracle.SecurityParams({lookback: 0, maxAllowedDelta: 0, maxAge: 7 days});
-        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+
+        IVeloOracle.SecurityParams memory params = IVeloOracle.SecurityParams({
+            lookback: 0,
+            maxAllowedDelta: 0,
+            maxAge: 7 days,
+            extraData: ""
+        });
+
+        vm.expectRevert(IVeloOracle.InvalidParams.selector);
         oracle.validateSecurityParams(abi.encode(params));
         params.lookback = 1;
         oracle.validateSecurityParams(abi.encode(params));
         params.maxAllowedDelta = -1;
-        vm.expectRevert(abi.encodeWithSignature("InvalidParams()"));
+        vm.expectRevert(IVeloOracle.InvalidParams.selector);
         oracle.validateSecurityParams(abi.encode(params));
         oracle.validateSecurityParams(new bytes(0));
         vm.expectRevert();
@@ -31,11 +37,17 @@ contract Unit is Fixture {
         oracle = new VeloOracle();
 
         ICLPool pool = ICLPool(factory.getPool(Constants.OPTIMISM_WETH, Constants.OPTIMISM_OP, 200));
+
         assertEq(pool.tickSpacing(), 200);
         oracle.ensureNoMEV(
             address(pool),
             abi.encode(
-                IVeloOracle.SecurityParams({lookback: 0, maxAllowedDelta: 0, maxAge: 7 days})
+                IVeloOracle.SecurityParams({
+                    lookback: 0,
+                    maxAllowedDelta: 0,
+                    maxAge: 7 days,
+                    extraData: ""
+                })
             )
         );
         oracle.ensureNoMEV(address(pool), new bytes(0));
@@ -44,14 +56,24 @@ contract Unit is Fixture {
         oracle.ensureNoMEV(
             address(0),
             abi.encode(
-                IVeloOracle.SecurityParams({lookback: 0, maxAllowedDelta: 0, maxAge: 7 days})
+                IVeloOracle.SecurityParams({
+                    lookback: 0,
+                    maxAllowedDelta: 0,
+                    maxAge: 7 days,
+                    extraData: ""
+                })
             )
         );
         vm.expectRevert(abi.encodeWithSignature("NotEnoughObservations()"));
         oracle.ensureNoMEV(
             address(pool),
             abi.encode(
-                IVeloOracle.SecurityParams({lookback: 1000, maxAllowedDelta: 0, maxAge: 7 days})
+                IVeloOracle.SecurityParams({
+                    lookback: 1000,
+                    maxAllowedDelta: 0,
+                    maxAge: 7 days,
+                    extraData: ""
+                })
             )
         );
         pool.increaseObservationCardinalityNext(2);
@@ -59,7 +81,12 @@ contract Unit is Fixture {
         oracle.ensureNoMEV(
             address(pool),
             abi.encode(
-                IVeloOracle.SecurityParams({lookback: 1000, maxAllowedDelta: 0, maxAge: 7 days})
+                IVeloOracle.SecurityParams({
+                    lookback: 1000,
+                    maxAllowedDelta: 0,
+                    maxAge: 7 days,
+                    extraData: ""
+                })
             )
         );
         mint(
@@ -74,23 +101,42 @@ contract Unit is Fixture {
         oracle.ensureNoMEV(
             address(pool),
             abi.encode(
-                IVeloOracle.SecurityParams({lookback: 1, maxAllowedDelta: 0, maxAge: 7 days})
+                IVeloOracle.SecurityParams({
+                    lookback: 1,
+                    maxAllowedDelta: 0,
+                    maxAge: 7 days,
+                    extraData: ""
+                })
             )
         );
         vm.expectRevert(abi.encodeWithSignature("PriceManipulationDetected()"));
         oracle.ensureNoMEV(
             address(pool),
             abi.encode(
-                IVeloOracle.SecurityParams({lookback: 1, maxAllowedDelta: -1, maxAge: 7 days})
+                IVeloOracle.SecurityParams({
+                    lookback: 1,
+                    maxAllowedDelta: -1,
+                    maxAge: 7 days,
+                    extraData: ""
+                })
             )
         );
         vm.expectRevert(abi.encodeWithSignature("NotEnoughObservations()"));
         oracle.ensureNoMEV(
             address(pool),
             abi.encode(
-                IVeloOracle.SecurityParams({lookback: 1001, maxAllowedDelta: 0, maxAge: 7 days})
+                IVeloOracle.SecurityParams({
+                    lookback: 1001,
+                    maxAllowedDelta: 0,
+                    maxAge: 7 days,
+                    extraData: ""
+                })
             )
         );
+
+        deal(Constants.OPTIMISM_WETH, address(this), 1e10 ether);
+        deal(Constants.OPTIMISM_OP, address(this), 1e10 ether);
+
         vm.startPrank(Constants.OPTIMISM_DEPLOYER);
         (
             ,
@@ -105,7 +151,12 @@ contract Unit is Fixture {
         oracle.ensureNoMEV(
             address(pool),
             abi.encode(
-                IVeloOracle.SecurityParams({lookback: 1, maxAllowedDelta: 0, maxAge: 7 days})
+                IVeloOracle.SecurityParams({
+                    lookback: 1,
+                    maxAllowedDelta: 0,
+                    maxAge: 7 days,
+                    extraData: ""
+                })
             )
         );
         movePrice(pool, TickMath.getSqrtRatioAtTick(spotTick));
@@ -134,6 +185,9 @@ contract Unit is Fixture {
         );
 
         (, int24 spotTick,,,,) = pool.slot0();
+
+        deal(Constants.OPTIMISM_WETH, address(this), 1e10 ether);
+        deal(Constants.OPTIMISM_OP, address(this), 1e10 ether);
 
         vm.startPrank(Constants.OPTIMISM_DEPLOYER);
         movePrice(pool, TickMath.getSqrtRatioAtTick(spotTick));

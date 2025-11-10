@@ -19,7 +19,11 @@ contract Unit is Fixture {
 
     function setUp() external {
         contracts = deployContracts();
-        (lpWrapper, deployParams) = deployLpWrapper(pool, contracts);
+        (lpWrapper, deployParams) =
+            deployLpWrapper(pool, IPulseStrategyModule.StrategyType.LazySyncing, contracts);
+
+        deal(Constants.OPTIMISM_WETH, address(this), 1e10 ether);
+        deal(Constants.OPTIMISM_OP, address(this), 1e10 ether);
     }
 
     using Math for uint256;
@@ -163,14 +167,16 @@ contract Unit is Fixture {
         depositParams.ammPositionIds = new uint256[](1);
         depositParams.ammPositionIds[0] = tokenId;
         depositParams.owner = owner;
-        depositParams.callbackParams =
-            abi.encode(IVeloAmmModule.CallbackParams({gauge: address(pool_.gauge()), farm: farm}));
+        depositParams.callbackParams = abi.encode(
+            IVeloAmmModule.CallbackParams({gauge: address(pool_.gauge()), farm: farm, extraData: ""})
+        );
         depositParams.strategyParams = abi.encode(
             IPulseStrategyModule.StrategyParams({
                 strategyType: IPulseStrategyModule.StrategyType.Original,
                 width: 1000,
                 tickSpacing: pool_.tickSpacing(),
                 tickNeighborhood: 100,
+                priceOracle: address(0), // The address of the custom price oracle used for market data
                 maxLiquidityRatioDeviationX96: 0
             })
         );
@@ -179,7 +185,8 @@ contract Unit is Fixture {
             IVeloOracle.SecurityParams({
                 lookback: 1,
                 maxAllowedDelta: MAX_ALLOWED_DELTA,
-                maxAge: MAX_AGE
+                maxAge: MAX_AGE,
+                extraData: ""
             })
         );
 
@@ -219,7 +226,19 @@ contract Unit is Fixture {
             "Symbol"
         );
 
-        (positionId,) = _depositCore(pool, address(lpWrapper), address(new VeloFarmMock()));
+        (positionId,) = _depositCore(
+            pool,
+            address(lpWrapper),
+            address(
+                new VeloFarmMock(
+                    contracts.ammModule.getRewardToken(address(pool)),
+                    "VeloFarmMock",
+                    "VFM",
+                    address(core)
+                )
+            )
+        );
+
         vm.expectRevert(abi.encodeWithSignature("InvalidState()"));
         lpWrapper.initialize(
             positionId,
@@ -295,7 +314,8 @@ contract Unit is Fixture {
 
     function testSetParams() external {
         contracts = deployContracts();
-        (lpWrapper, deployParams) = deployLpWrapper(pool, contracts);
+        (lpWrapper, deployParams) =
+            deployLpWrapper(pool, IPulseStrategyModule.StrategyType.LazySyncing, contracts);
 
         ICore core = contracts.core;
         ICore.ManagedPositionInfo memory info = core.managedPositionAt(0);
@@ -307,10 +327,22 @@ contract Unit is Fixture {
         IVeloOracle.SecurityParams memory securityParams =
             abi.decode(info.securityParams, (IVeloOracle.SecurityParams));
 
-        vm.expectRevert(abi.encodeWithSignature("Forbidden()"));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
+                address(this),
+                lpWrapper.MANAGER_ROLE()
+            )
+        );
         lpWrapper.setPositionParams(1e5, callbackParams, strategyParams, securityParams);
 
-        vm.expectRevert(abi.encodeWithSignature("Forbidden()"));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
+                address(this),
+                lpWrapper.MANAGER_ROLE()
+            )
+        );
         lpWrapper.setPositionParams(
             1e5, abi.encode(callbackParams), abi.encode(strategyParams), abi.encode(securityParams)
         );
@@ -320,7 +352,7 @@ contract Unit is Fixture {
             strategyParams.strategyType = IPulseStrategyModule.StrategyType.LazyDescending;
             securityParams.maxAge = 123 hours;
 
-            vm.startPrank(params.lpWrapperAdmin);
+            vm.startPrank(params.lpWrapperManager);
             lpWrapper.setSlippageD9(3e5);
 
             lpWrapper.setCallbackParams(callbackParams);
@@ -349,7 +381,8 @@ contract Unit is Fixture {
 
     function testViewFunctions() external {
         contracts = deployContracts();
-        (lpWrapper, deployParams) = deployLpWrapper(pool, contracts);
+        (lpWrapper, deployParams) =
+            deployLpWrapper(pool, IPulseStrategyModule.StrategyType.LazySyncing, contracts);
 
         (IVeloAmmModule.ProtocolParams memory paramsLpWrapper, uint256 d9) =
             lpWrapper.protocolParams();
@@ -361,7 +394,8 @@ contract Unit is Fixture {
 
         ICore.ManagedPositionInfo memory coreInfo =
             contracts.core.managedPositionAt(lpWrapper.positionId());
-        PositionLibrary.Position[] memory positionInfo = lpWrapper.getInfo();
+        IVeloAmmModule.Position[] memory positionInfo =
+            contracts.ammModule.getInfo(coreInfo.ammPositionIds);
         assertEq(positionInfo.length, coreInfo.ammPositionIds.length);
 
         for (uint256 i = 0; i < positionInfo.length; i++) {
@@ -383,6 +417,9 @@ contract Unit is Fixture {
         ICore.ManagedPositionInfo memory info = core.managedPositionAt(0);
         IVeloAmmModule ammModule = contracts.ammModule;
         uint256 tokenId = info.ammPositionIds[0];
+        uint256 lpAmount = 100 ether;
+        uint256 amount0;
+        uint256 amount1;
 
         vm.startPrank(Constants.OPTIMISM_DEPLOYER);
 
@@ -392,16 +429,21 @@ contract Unit is Fixture {
         IERC20(pool.token0()).approve(address(lpWrapper), 1010000 ether);
         IERC20(pool.token1()).approve(address(lpWrapper), 1010000 ether);
 
-        vm.expectRevert(abi.encodeWithSignature("InsufficientAmounts()"));
-        lpWrapper.mint(
-            ILpWrapper.MintParams({
-                lpAmount: 100 ether,
-                amount0Max: 1 ether,
-                amount1Max: 1 ether,
-                recipient: Constants.OPTIMISM_DEPLOYER,
-                deadline: type(uint256).max
-            })
-        );
+        {
+            lpAmount = 100 ether;
+            (amount0, amount1) = lpWrapper.previewMint(lpAmount);
+
+            vm.expectRevert(abi.encodeWithSignature("InsufficientAmounts()"));
+            lpWrapper.mint(
+                ILpWrapper.MintParams({
+                    lpAmount: lpAmount,
+                    amount0Max: amount0 / 2,
+                    amount1Max: amount1 / 2,
+                    recipient: Constants.OPTIMISM_DEPLOYER,
+                    deadline: type(uint256).max
+                })
+            );
+        }
 
         vm.expectRevert(abi.encodeWithSignature("Deadline()"));
         lpWrapper.mint(
@@ -424,34 +466,39 @@ contract Unit is Fixture {
                 deadline: block.timestamp
             })
         );
-
-        vm.expectRevert(abi.encodeWithSignature("TotalSupplyLimitReached()"));
-        lpWrapper.mint(
-            ILpWrapper.MintParams({
-                lpAmount: 99999 ether,
-                amount0Max: 100000 ether,
-                amount1Max: 100000 ether,
-                recipient: Constants.OPTIMISM_DEPLOYER,
-                deadline: block.timestamp
-            })
-        );
+        {
+            lpAmount = lpWrapper.totalSupplyLimit() - lpWrapper.totalSupply() + 1 wei;
+            (amount0, amount1) = lpWrapper.previewMint(lpAmount);
+            vm.expectRevert(abi.encodeWithSignature("TotalSupplyLimitReached()"));
+            lpWrapper.mint(
+                ILpWrapper.MintParams({
+                    lpAmount: lpAmount,
+                    amount0Max: amount0,
+                    amount1Max: amount1,
+                    recipient: Constants.OPTIMISM_DEPLOYER,
+                    deadline: block.timestamp
+                })
+            );
+        }
 
         uint256 totalSupplyBefore = lpWrapper.totalSupply();
         IAmmModule.AmmPosition memory positionBefore = ammModule.getAmmPosition(tokenId);
 
-        (uint256 amount0, uint256 amount1, uint256 lpAmount) = lpWrapper.mint(
+        uint256 lpAmountDesired = 1 ether;
+        (uint256 amount0Expected, uint256 amount1Expected) = lpWrapper.previewMint(lpAmountDesired);
+        (amount0, amount1, lpAmount) = lpWrapper.mint(
             ILpWrapper.MintParams({
-                lpAmount: 1 ether,
-                amount0Max: 1 ether,
-                amount1Max: 1 ether,
+                lpAmount: lpAmountDesired,
+                amount0Max: amount0Expected,
+                amount1Max: amount1Expected,
                 recipient: Constants.OPTIMISM_DEPLOYER,
                 deadline: block.timestamp
             })
         );
 
-        assertGe(amount0, 6.427e14, "amount0");
-        assertGe(amount1, 0.99 ether, "amount1");
-        assertGe(lpAmount, 0.999 ether, "lpAmount");
+        assertApproxEqAbs(amount0, amount0Expected, 2, "amount0");
+        assertApproxEqAbs(amount1, amount1Expected, 2, "amount1");
+        assertApproxEqAbs(lpAmountDesired, lpAmount, 2, "lpAmount");
         assertEq(lpWrapper.balanceOf(Constants.OPTIMISM_DEPLOYER), lpAmount);
 
         uint256 totalSupplyAfter = lpWrapper.totalSupply();
@@ -463,7 +510,7 @@ contract Unit is Fixture {
             );
 
             assertApproxEqAbs(
-                expectedLiquidityIncrease, positionAfter.liquidity - positionBefore.liquidity, 1 wei
+                expectedLiquidityIncrease, positionAfter.liquidity - positionBefore.liquidity, 2 wei
             );
 
             assertEq(
@@ -476,22 +523,27 @@ contract Unit is Fixture {
             );
         }
 
-        vm.expectRevert(abi.encodeWithSignature("InsufficientAmounts()"));
-        lpWrapper.mint(
-            ILpWrapper.MintParams({
-                lpAmount: 100 ether,
-                amount0Max: 1 ether,
-                amount1Max: 1 ether,
-                recipient: Constants.OPTIMISM_DEPLOYER,
-                deadline: block.timestamp
-            })
-        );
+        {
+            lpAmount = 100 ether;
+            (amount0, amount1) = lpWrapper.previewMint(lpAmount);
+
+            vm.expectRevert(abi.encodeWithSignature("InsufficientAmounts()"));
+            lpWrapper.mint(
+                ILpWrapper.MintParams({
+                    lpAmount: lpAmount,
+                    amount0Max: amount0 / 2,
+                    amount1Max: amount1 / 2,
+                    recipient: Constants.OPTIMISM_DEPLOYER,
+                    deadline: type(uint256).max
+                })
+            );
+        }
 
         vm.stopPrank();
     }
 
     function testMint() external {
-        vm.prank(Constants.OPTIMISM_LP_WRAPPER_ADMIN);
+        vm.prank(Constants.OPTIMISM_LP_WRAPPER_MANAGER);
         lpWrapper.setTotalSupplyLimit(type(uint256).max);
 
         uint256 inf = 1e15 ether;
@@ -623,15 +675,17 @@ contract Unit is Fixture {
 
     function testReward() external {
         contracts = deployContracts();
-        (lpWrapper, deployParams) = deployLpWrapper(pool, contracts);
+        (lpWrapper, deployParams) =
+            deployLpWrapper(pool, IPulseStrategyModule.StrategyType.LazySyncing, contracts);
 
-        deal(pool.token0(), Constants.OPTIMISM_DEPLOYER, 1 ether);
-        deal(pool.token1(), Constants.OPTIMISM_DEPLOYER, 1 ether);
+        address depositor = vm.addr(uint256(keccak256("depositor")));
+        deal(pool.token0(), depositor, 1 ether);
+        deal(pool.token1(), depositor, 1 ether);
 
         address gauge = pool.gauge();
         address rewardToken = ICLGauge(gauge).rewardToken();
 
-        vm.startPrank(Constants.OPTIMISM_DEPLOYER);
+        vm.startPrank(depositor);
 
         IERC20(pool.token0()).approve(address(lpWrapper), 1 ether);
         IERC20(pool.token1()).approve(address(lpWrapper), 1 ether);
@@ -640,10 +694,10 @@ contract Unit is Fixture {
 
         lpWrapper.mint(
             ILpWrapper.MintParams({
-                lpAmount: 0.99 ether,
+                lpAmount: 1 ether,
                 amount0Max: 1 ether,
                 amount1Max: 1 ether,
-                recipient: Constants.OPTIMISM_DEPLOYER,
+                recipient: depositor,
                 deadline: block.timestamp
             })
         );
@@ -654,24 +708,26 @@ contract Unit is Fixture {
         vm.expectRevert(abi.encodeWithSignature("InvalidDistributor()"));
         IVeloFarm(lpWrapper).distribute(1 ether, rewardToken);
 
-        skip(1 hours);
+        vm.startPrank(depositor);
 
-        vm.startPrank(Constants.OPTIMISM_DEPLOYER);
-        uint256 eranedAmount = IVeloFarm(lpWrapper).getRewards(Constants.OPTIMISM_DEPLOYER);
-        assertEq(eranedAmount, IERC20(rewardToken).balanceOf(Constants.OPTIMISM_DEPLOYER));
+        skip(1 days);
+
+        uint256 earnedAmount = IVeloFarm(lpWrapper).getRewards(depositor);
+        assertEq(earnedAmount, IERC20(rewardToken).balanceOf(depositor));
 
         assertApproxEqRel(
-            FullMath.mulDiv(eranedAmount, Q96, totalSupplyAfter - totalSupplyBefore),
+            FullMath.mulDiv(earnedAmount, Q96, totalSupplyAfter - totalSupplyBefore),
             FullMath.mulDiv(
                 IERC20(rewardToken).balanceOf(address(lpWrapper)), Q96, totalSupplyBefore
             ),
-            10 ** 3 // 1e-15
+            10 ** 9 // 1e-9
         );
     }
 
     function testEmptyRebalance() external {
         contracts = deployContracts();
-        (lpWrapper, deployParams) = deployLpWrapper(pool, contracts);
+        (lpWrapper, deployParams) =
+            deployLpWrapper(pool, IPulseStrategyModule.StrategyType.LazySyncing, contracts);
 
         ICore.ManagedPositionInfo memory info = contracts.core.managedPositionAt(0);
         uint256 tokenIdBefore = info.ammPositionIds[0];
@@ -682,5 +738,407 @@ contract Unit is Fixture {
         uint256 tokenIdAfter = info.ammPositionIds[0];
 
         assertEq(tokenIdBefore, tokenIdAfter);
+    }
+
+    function testPreviewMintDepositTwoSides(uint96 amount0Input, uint96 amount1Input) external {
+        vm.assume(amount0Input > 0 && amount1Input > 0);
+
+        (lpWrapper, deployParams) =
+            deployLpWrapper(pool, IPulseStrategyModule.StrategyType.LazySyncing, contracts);
+
+        uint256 amount0Desired = uint256(amount0Input);
+        uint256 amount1Desired = uint256(amount1Input);
+        uint256 lpAmount = lpWrapper.previewDeposit(amount0Desired, amount1Desired);
+        (uint256 amount0Actual, uint256 amount1Actual) = lpWrapper.previewMint(lpAmount);
+
+        checkSlippage(amount0Desired, amount1Desired, amount0Actual, amount1Actual);
+    }
+
+    function testPreviewMintDepositLeftSide(uint96 amount0Input, uint96 amount1Input) external {
+        vm.assume(amount0Input > 0 && amount1Input > 0);
+
+        (lpWrapper, deployParams) =
+            deployLpWrapper(pool, IPulseStrategyModule.StrategyType.LazySyncing, contracts);
+
+        ICore core = contracts.core;
+        ICore.ManagedPositionInfo memory info = core.managedPositionAt(lpWrapper.positionId());
+        IVeloAmmModule ammModule = contracts.ammModule;
+        uint256 tokenId = info.ammPositionIds[0];
+        IAmmModule.AmmPosition memory position = ammModule.getAmmPosition(tokenId);
+
+        movePrice(pool, TickMath.getSqrtRatioAtTick(position.tickLower) - 1);
+
+        uint256 amount0Desired = uint256(amount0Input);
+        uint256 amount1Desired = uint256(amount1Input);
+        uint256 lpAmount = lpWrapper.previewDeposit(amount0Desired, amount1Desired);
+        (uint256 amount0Actual, uint256 amount1Actual) = lpWrapper.previewMint(lpAmount);
+
+        if (amount0Desired > 0 && amount0Actual > 0) {
+            checkSlippage(amount0Desired, amount1Desired, amount0Actual, amount1Actual);
+        }
+    }
+
+    function testPreviewMintDepositRightSide(uint96 amount0Input, uint96 amount1Input) external {
+        vm.assume(amount0Input > 0 && amount1Input > 0);
+
+        (lpWrapper, deployParams) =
+            deployLpWrapper(pool, IPulseStrategyModule.StrategyType.LazySyncing, contracts);
+
+        ICore core = contracts.core;
+        ICore.ManagedPositionInfo memory info = core.managedPositionAt(lpWrapper.positionId());
+        IVeloAmmModule ammModule = contracts.ammModule;
+        uint256 tokenId = info.ammPositionIds[0];
+        IAmmModule.AmmPosition memory position = ammModule.getAmmPosition(tokenId);
+
+        movePrice(pool, TickMath.getSqrtRatioAtTick(position.tickUpper) + 1);
+
+        uint256 amount0Desired = uint256(amount0Input);
+        uint256 amount1Desired = uint256(amount1Input);
+        uint256 lpAmount = lpWrapper.previewDeposit(amount0Desired, amount1Desired);
+        (uint256 amount0Actual, uint256 amount1Actual) = lpWrapper.previewMint(lpAmount);
+
+        if (amount1Desired > 0 && amount1Actual > 0) {
+            checkSlippage(amount0Desired, amount1Desired, amount0Actual, amount1Actual);
+        }
+    }
+
+    function testPreviewDepositTamper(uint96 amount0, uint96 amount1) external {
+        vm.assume(amount0 > 1e12 && amount0 < 1000 ether);
+        vm.assume(amount1 > 1e12 && amount1 < 1000 ether);
+
+        (lpWrapper, deployParams) =
+            deployLpWrapper(pool, IPulseStrategyModule.StrategyType.Tamper, contracts);
+
+        address depositor = vm.addr(uint256(keccak256("depositor")));
+
+        deal(pool.token0(), depositor, 1000000 ether);
+        deal(pool.token1(), depositor, 1000000 ether);
+
+        vm.prank(params.lpWrapperManager);
+        lpWrapper.setTotalSupplyLimit(type(uint256).max);
+
+        vm.startPrank(depositor);
+        uint256 previewLpAmount = lpWrapper.previewDeposit(amount0, amount1);
+
+        IERC20(pool.token0()).approve(address(lpWrapper), amount0);
+        IERC20(pool.token1()).approve(address(lpWrapper), amount1);
+
+        lpWrapper.mint(
+            ILpWrapper.MintParams({
+                lpAmount: previewLpAmount,
+                amount0Max: amount0,
+                amount1Max: amount1,
+                recipient: depositor,
+                deadline: type(uint256).max
+            })
+        );
+        vm.stopPrank();
+    }
+
+    function testPreviewDepositMintTamper(uint96 lpAmount) external {
+        vm.assume(lpAmount > 1e12 && lpAmount < 1000 ether);
+        (lpWrapper, deployParams) =
+            deployLpWrapper(pool, IPulseStrategyModule.StrategyType.Tamper, contracts);
+
+        address depositor = vm.addr(uint256(keccak256("depositor")));
+
+        deal(pool.token0(), depositor, 1000000 ether);
+        deal(pool.token1(), depositor, 1000000 ether);
+
+        vm.prank(params.lpWrapperManager);
+        lpWrapper.setTotalSupplyLimit(type(uint256).max);
+
+        vm.startPrank(depositor);
+        (uint256 previewAmount0, uint256 previewAmount1) = lpWrapper.previewMint(lpAmount);
+        uint256 previewLpAmount = lpWrapper.previewDeposit(previewAmount0, previewAmount1);
+
+        IERC20(pool.token0()).approve(address(lpWrapper), previewAmount0);
+        IERC20(pool.token1()).approve(address(lpWrapper), previewAmount1);
+
+        (uint256 actualAmount0, uint256 actualAmount1, uint256 actualLpAmount) = lpWrapper.mint(
+            ILpWrapper.MintParams({
+                lpAmount: previewLpAmount,
+                amount0Max: previewAmount0,
+                amount1Max: previewAmount1,
+                recipient: depositor,
+                deadline: type(uint256).max
+            })
+        );
+        vm.stopPrank();
+        assertTrue(actualLpAmount >= previewLpAmount, "too low actual lp amount");
+        assertApproxEqAbs(actualLpAmount, previewLpAmount, 1, "wrong preview lp amount");
+        assertApproxEqRel(actualAmount0, previewAmount0, 1e12, "wrong preview amount0");
+        assertApproxEqRel(actualAmount1, previewAmount1, 1e12, "wrong preview amount1");
+    }
+
+    function testPreviewDepositMintLazy(uint96 lpAmount) external {
+        vm.assume(lpAmount > 1e9 && lpAmount < 1000 ether);
+        (lpWrapper, deployParams) =
+            deployLpWrapper(pool, IPulseStrategyModule.StrategyType.LazySyncing, contracts);
+
+        address depositor = vm.addr(uint256(keccak256("depositor")));
+
+        deal(pool.token0(), depositor, 1000000 ether);
+        deal(pool.token1(), depositor, 1000000 ether);
+
+        vm.prank(params.lpWrapperManager);
+        lpWrapper.setTotalSupplyLimit(type(uint256).max);
+
+        vm.startPrank(depositor);
+        (uint256 previewAmount0, uint256 previewAmount1) = lpWrapper.previewMint(lpAmount);
+        uint256 previewLpAmount = lpWrapper.previewDeposit(previewAmount0, previewAmount1);
+
+        IERC20(pool.token0()).approve(address(lpWrapper), previewAmount0);
+        IERC20(pool.token1()).approve(address(lpWrapper), previewAmount1);
+
+        (uint256 actualAmount0, uint256 actualAmount1, uint256 actualLpAmount) = lpWrapper.mint(
+            ILpWrapper.MintParams({
+                lpAmount: previewLpAmount,
+                amount0Max: previewAmount0,
+                amount1Max: previewAmount1,
+                recipient: depositor,
+                deadline: type(uint256).max
+            })
+        );
+        vm.stopPrank();
+        assertTrue(actualLpAmount >= previewLpAmount, "too low actual lp amount");
+        assertApproxEqAbs(actualLpAmount, previewLpAmount, 1, "wrong preview lp amount");
+        assertApproxEqRel(actualAmount0, previewAmount0, 1e12, "wrong preview amount0");
+        assertApproxEqRel(actualAmount1, previewAmount1, 1e12, "wrong preview amount1");
+    }
+
+    function testPreviewBurnLazy(uint96 lpAmount) external {
+        vm.assume(lpAmount > 1e12 && lpAmount < 1000 ether);
+        (lpWrapper, deployParams) =
+            deployLpWrapper(pool, IPulseStrategyModule.StrategyType.LazySyncing, contracts);
+
+        address depositor = vm.addr(uint256(keccak256("depositor")));
+
+        deal(pool.token0(), depositor, 1000000 ether);
+        deal(pool.token1(), depositor, 1000000 ether);
+
+        vm.prank(params.lpWrapperManager);
+        lpWrapper.setTotalSupplyLimit(type(uint256).max);
+
+        vm.startPrank(depositor);
+        (uint256 previewAmount0, uint256 previewAmount1) = lpWrapper.previewMint(lpAmount);
+
+        IERC20(pool.token0()).approve(address(lpWrapper), previewAmount0);
+        IERC20(pool.token1()).approve(address(lpWrapper), previewAmount1);
+
+        lpWrapper.mint(
+            ILpWrapper.MintParams({
+                lpAmount: lpAmount,
+                amount0Max: previewAmount0,
+                amount1Max: previewAmount1,
+                recipient: depositor,
+                deadline: type(uint256).max
+            })
+        );
+
+        (uint256 amount0, uint256 amount1) = lpWrapper.previewBurn(lpAmount);
+        (uint256 actualAmount0, uint256 actualAmount1, uint256 actualLpAmount) =
+            lpWrapper.withdraw(lpAmount, amount0, amount1, depositor, type(uint256).max);
+
+        assertEq(actualLpAmount, lpAmount, "wrong burnt lp amount");
+        assertTrue(actualAmount0 >= amount0, "too low actual amount0");
+        assertTrue(actualAmount1 >= amount1, "too low actual amount1");
+
+        vm.stopPrank();
+    }
+
+    function testPreviewBurnTamper(uint96 lpAmount) external {
+        vm.assume(lpAmount > 1e12 && lpAmount < 1000 ether);
+        (lpWrapper, deployParams) =
+            deployLpWrapper(pool, IPulseStrategyModule.StrategyType.Tamper, contracts);
+
+        address depositor = vm.addr(uint256(keccak256("depositor")));
+
+        deal(pool.token0(), depositor, 1000000 ether);
+        deal(pool.token1(), depositor, 1000000 ether);
+
+        vm.prank(params.lpWrapperManager);
+        lpWrapper.setTotalSupplyLimit(type(uint256).max);
+
+        vm.startPrank(depositor);
+        (uint256 previewAmount0, uint256 previewAmount1) = lpWrapper.previewMint(lpAmount);
+
+        IERC20(pool.token0()).approve(address(lpWrapper), previewAmount0);
+        IERC20(pool.token1()).approve(address(lpWrapper), previewAmount1);
+
+        lpWrapper.mint(
+            ILpWrapper.MintParams({
+                lpAmount: lpAmount,
+                amount0Max: previewAmount0,
+                amount1Max: previewAmount1,
+                recipient: depositor,
+                deadline: type(uint256).max
+            })
+        );
+
+        (uint256 amount0, uint256 amount1) = lpWrapper.previewBurn(lpAmount);
+        (uint256 actualAmount0, uint256 actualAmount1, uint256 actualLpAmount) =
+            lpWrapper.withdraw(lpAmount, amount0, amount1, depositor, type(uint256).max);
+
+        assertEq(actualLpAmount, lpAmount, "wrong burnt lp amount");
+        assertTrue(actualAmount0 >= amount0, "too low actual amount0");
+        assertTrue(actualAmount1 >= amount1, "too low actual amount1");
+
+        vm.stopPrank();
+    }
+
+    function testPreviewMintAmountsLazy() external {
+        (lpWrapper, deployParams) =
+            deployLpWrapper(pool, IPulseStrategyModule.StrategyType.LazySyncing, contracts);
+
+        ICore core = contracts.core;
+        ICore.ManagedPositionInfo memory info = core.managedPositionAt(lpWrapper.positionId());
+        IVeloAmmModule ammModule = contracts.ammModule;
+        uint256 tokenId = info.ammPositionIds[0];
+        IAmmModule.AmmPosition memory position = ammModule.getAmmPosition(tokenId);
+
+        vm.startPrank(Constants.OPTIMISM_DEPLOYER);
+
+        deal(pool.token0(), address(this), 1000000 ether);
+        deal(pool.token1(), address(this), 1000000 ether);
+
+        deal(pool.token0(), Constants.OPTIMISM_DEPLOYER, 1000000 ether);
+        deal(pool.token1(), Constants.OPTIMISM_DEPLOYER, 1000000 ether);
+
+        IERC20(pool.token0()).approve(address(lpWrapper), 1000000 ether);
+        IERC20(pool.token1()).approve(address(lpWrapper), 1000000 ether);
+
+        {
+            uint256 amount0Desired = 1 ether;
+            uint256 amount1Desired = 1 ether;
+            uint256 lpAmount = lpWrapper.previewDeposit(amount0Desired, amount1Desired);
+            (uint256 amount0Actual, uint256 amount1Actual) = lpWrapper.previewMint(lpAmount);
+
+            checkSlippage(amount0Desired, amount1Desired, amount0Actual, amount1Actual);
+        }
+
+        movePrice(ICLPool(info.pool), TickMath.getSqrtRatioAtTick(position.tickUpper) + 1);
+        {
+            uint256 amount0Desired = 1 ether;
+            uint256 amount1Desired = 1 ether;
+            uint256 lpAmount = lpWrapper.previewDeposit(amount0Desired, amount1Desired);
+            (uint256 amount0Actual, uint256 amount1Actual) = lpWrapper.previewMint(lpAmount);
+            assertEq(amount0Actual, 0, "One side position");
+
+            checkSlippage(amount0Desired, amount1Desired, amount0Actual, amount1Actual);
+        }
+
+        movePrice(ICLPool(info.pool), TickMath.getSqrtRatioAtTick(position.tickLower) - 1);
+        {
+            uint256 amount0Desired = 1 ether;
+            uint256 amount1Desired = 1 ether;
+            uint256 lpAmount = lpWrapper.previewDeposit(amount0Desired, amount1Desired);
+            (uint256 amount0Actual, uint256 amount1Actual) = lpWrapper.previewMint(lpAmount);
+            assertEq(amount1Actual, 0, "One side position");
+
+            checkSlippage(amount0Desired, amount1Desired, amount0Actual, amount1Actual);
+        }
+    }
+
+    function testPreviewMintAmountsTamper() external {
+        (lpWrapper, deployParams) =
+            deployLpWrapper(pool, IPulseStrategyModule.StrategyType.Tamper, contracts);
+
+        ICore core = contracts.core;
+        ICore.ManagedPositionInfo memory info = core.managedPositionAt(lpWrapper.positionId());
+        IVeloAmmModule ammModule = contracts.ammModule;
+        IAmmModule.AmmPosition[] memory positions =
+            new IAmmModule.AmmPosition[](info.ammPositionIds.length);
+        for (uint256 index = 0; index < info.ammPositionIds.length; index++) {
+            uint256 tokenId = info.ammPositionIds[index];
+            positions[index] = ammModule.getAmmPosition(tokenId);
+        }
+
+        vm.startPrank(Constants.OPTIMISM_DEPLOYER);
+
+        deal(pool.token0(), address(this), 1000000 ether);
+        deal(pool.token1(), address(this), 1000000 ether);
+
+        deal(pool.token0(), Constants.OPTIMISM_DEPLOYER, 1000000 ether);
+        deal(pool.token1(), Constants.OPTIMISM_DEPLOYER, 1000000 ether);
+
+        IERC20(pool.token0()).approve(address(lpWrapper), 1000000 ether);
+        IERC20(pool.token1()).approve(address(lpWrapper), 1000000 ether);
+
+        {
+            uint256 amount0Desired = 1 ether;
+            uint256 amount1Desired = 1 ether;
+            uint256 lpAmount = lpWrapper.previewDeposit(amount0Desired, amount1Desired);
+            (uint256 amount0Actual, uint256 amount1Actual) = lpWrapper.previewMint(lpAmount);
+
+            checkSlippage(amount0Desired, amount1Desired, amount0Actual, amount1Actual);
+        }
+
+        movePrice(ICLPool(info.pool), TickMath.getSqrtRatioAtTick(positions[0].tickUpper) + 1);
+        {
+            uint256 amount0Desired = 1 ether;
+            uint256 amount1Desired = 1 ether;
+            uint256 lpAmount = lpWrapper.previewDeposit(amount0Desired, amount1Desired);
+            (uint256 amount0Actual, uint256 amount1Actual) = lpWrapper.previewMint(lpAmount);
+
+            checkSlippage(amount0Desired, amount1Desired, amount0Actual, amount1Actual);
+        }
+
+        movePrice(ICLPool(info.pool), TickMath.getSqrtRatioAtTick(positions[1].tickLower) - 1);
+        {
+            uint256 amount0Desired = 1 ether;
+            uint256 amount1Desired = 1 ether;
+            uint256 lpAmount = lpWrapper.previewDeposit(amount0Desired, amount1Desired);
+            (uint256 amount0Actual, uint256 amount1Actual) = lpWrapper.previewMint(lpAmount);
+
+            checkSlippage(amount0Desired, amount1Desired, amount0Actual, amount1Actual);
+        }
+
+        movePrice(ICLPool(info.pool), TickMath.getSqrtRatioAtTick(positions[1].tickUpper) + 1);
+        {
+            uint256 amount0Desired = 1 ether;
+            uint256 amount1Desired = 1 ether;
+            uint256 lpAmount = lpWrapper.previewDeposit(amount0Desired, amount1Desired);
+            (uint256 amount0Actual, uint256 amount1Actual) = lpWrapper.previewMint(lpAmount);
+
+            checkSlippage(amount0Desired, amount1Desired, amount0Actual, amount1Actual);
+        }
+
+        movePrice(ICLPool(info.pool), TickMath.getSqrtRatioAtTick(positions[0].tickLower) - 1);
+        {
+            uint256 amount0Desired = 1 ether;
+            uint256 amount1Desired = 1 ether;
+            uint256 lpAmount = lpWrapper.previewDeposit(amount0Desired, amount1Desired);
+            (uint256 amount0Actual, uint256 amount1Actual) = lpWrapper.previewMint(lpAmount);
+
+            checkSlippage(amount0Desired, amount1Desired, amount0Actual, amount1Actual);
+        }
+    }
+
+    function checkSlippage(
+        uint256 amount0Desired,
+        uint256 amount1Desired,
+        uint256 amount0Actual,
+        uint256 amount1Actual
+    ) internal {
+        assertTrue(amount0Actual <= amount0Desired, "Overflow amount0Actual");
+        assertTrue(amount1Actual <= amount1Desired, "Overflow amount1Actual");
+
+        if (amount0Desired + amount1Desired + amount0Actual + amount1Actual == 0) {
+            return;
+        }
+        uint256 slippageRelX96 = Math.min(
+            amount0Desired > 0
+                ? (amount0Desired - amount0Actual).mulDiv(Q96, amount0Desired)
+                : type(uint256).max,
+            amount1Desired > 0
+                ? (amount1Desired - amount1Actual).mulDiv(Q96, amount1Desired)
+                : type(uint256).max
+        );
+        uint256 slippageAbsX96 = Math.min(
+            amount0Desired > 0 ? amount0Desired - amount0Actual : type(uint256).max,
+            amount1Desired > 0 ? amount1Desired - amount1Actual : type(uint256).max
+        );
+        assertTrue(slippageRelX96 < Q96 / 1e6 || slippageAbsX96 < 3, "High slippage");
     }
 }

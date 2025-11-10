@@ -21,6 +21,36 @@ interface IAmmModule {
     }
 
     /**
+     * @notice Information about minting in a specified tick range.
+     * @param amount0 Amount of token0 for the mint operation.
+     * @param amount1 Amount of token1 for the mint operation.
+     * @param tickLower Lower bound of the tick range for minting.
+     * @param tickUpper Upper bound of the tick range for minting.
+     */
+    struct MintInfo {
+        address pool;
+        uint256 amount0;
+        uint256 amount1;
+        int24 tickLower;
+        int24 tickUpper;
+    }
+
+    /**
+     * @dev Returns the name of the AMM protocol.
+     */
+    function protocolName() external view returns (string memory);
+
+    /**
+     * @dev Returns the symbol of the AMM protocol.
+     */
+    function protocolSymbol() external view returns (string memory);
+
+    /**
+     * @dev Returns the letter of the AMM protocol.
+     */
+    function protocolLetter() external view returns (string memory);
+
+    /**
      * @dev Validates protocol parameters.
      * @param params The protocol parameters to be validated.
      */
@@ -34,36 +64,24 @@ interface IAmmModule {
     function validateCallbackParams(address pool, bytes memory params) external view;
 
     /**
-     * @dev Calculates token amounts for a given liquidity amount in a position.
-     * @param liquidity Liquidity amount.
-     * @param sqrtPriceX96 Square root of the current price in the pool.
-     * @param tickLower Lower tick of the position.
-     * @param tickUpper Upper tick of the position.
-     * @return amount0 Amount of token0.
-     * @return amount1 Amount of token1.
+     * @dev Returns the Total Value Locked (TVL) for a token and liquidity pool state.
+     * @param tokenId Token ID.
+     * @return amount0 Amount of token0 locked.
+     * @return amount1 Amount of token1 locked.
      */
-    function getAmountsForLiquidity(
-        uint128 liquidity,
-        uint160 sqrtPriceX96,
-        int24 tickLower,
-        int24 tickUpper
-    ) external pure returns (uint256 amount0, uint256 amount1);
+    function tvl(uint256 tokenId) external view returns (uint256 amount0, uint256 amount1);
 
     /**
      * @dev Returns the Total Value Locked (TVL) for a token and liquidity pool state.
      * @param tokenId Token ID.
-     * @param sqrtRatioX96 Square root of the current tick value in the pool.
-     * @param callbackParams Callback function parameters.
-     * @param protocolParams Protocol-specific parameters.
+     * @param sqrtPriceX96 Square root of the price for calculation.
      * @return amount0 Amount of token0 locked.
      * @return amount1 Amount of token1 locked.
      */
-    function tvl(
-        uint256 tokenId,
-        uint160 sqrtRatioX96,
-        bytes memory callbackParams,
-        bytes memory protocolParams
-    ) external view returns (uint256 amount0, uint256 amount1);
+    function tvl(uint256 tokenId, uint160 sqrtPriceX96)
+        external
+        view
+        returns (uint256 amount0, uint256 amount1);
 
     /**
      * @dev Retrieves the AMM position for a given token ID.
@@ -96,6 +114,50 @@ interface IAmmModule {
      * @return Property value of the pool.
      */
     function getProperty(address pool) external view returns (uint24);
+
+    /**
+     * @dev Returns the square root price for a given pool.
+     * @param pool Address of the pool.
+     */
+    function getSqrtPriceX96(address pool) external view returns (uint160);
+
+    /**
+     * @dev Returns the square root price and tick for a given pool.
+     * @param pool Address of the pool.
+     */
+    function getSqrtPriceX96AndTick(address pool) external view returns (uint160, int24);
+
+    /**
+     * @dev Returns the token0 address for a given pool.
+     * @param pool Address of the pool.
+     */
+    function getToken0(address pool) external view returns (address);
+
+    /**
+     * @dev Returns the token1 address for a given pool.
+     * @param pool Address of the pool.
+     */
+    function getToken1(address pool) external view returns (address);
+
+    /**
+     * @dev Returns the token addresses for a given pool.
+     * @param pool Address of the pool.
+     * @return token0 Address of the first token.
+     * @return token1 Address of the second token.
+     */
+    function getPoolTokens(address pool) external view returns (address, address);
+
+    /**
+     * @dev Returns the reward token address for the AMM.
+     * @param pool Address of the pool.
+     */
+    function getRewardToken(address pool) external view returns (address);
+
+    /**
+     * @dev Returns the gauge address for a given pool.
+     * @param pool Address of the pool.
+     */
+    function getGauge(address pool) external view returns (address);
 
     /**
      * @notice Collects accumulated rewards for a specific token ID.
@@ -144,7 +206,44 @@ interface IAmmModule {
     function transferFrom(address from, address to, uint256 tokenId) external;
 
     /**
+     * @dev Mints new tokens.
+     * @param depositor Address of the depositor.
+     * @param mintInfo Array of minting information.
+     * @return tokenIds Array of minted token IDs.
+     */
+    function mint(address depositor, MintInfo[] memory mintInfo)
+        external
+        returns (uint256[] memory tokenIds);
+
+    /**
+     * @dev Approves a token ID for a specific address.
+     * @param to Address to approve.
+     * @param tokenId Token ID to be approved.
+     */
+    function approveTokenId(address to, uint256 tokenId) external;
+
+    /**
      * @dev Returns the address of the position manager.
      */
     function positionManager() external view returns (address);
+
+    /**
+     * @dev Swaps tokens on a specified pool.
+     * @param pool Address of the pool to swap on.
+     * @param zeroForOne Boolean indicating the swap direction.
+     * @param amountIn Amount of tokens to swap.
+     * @return amount0 Amount of token0 received.
+     * @return amount1 Amount of token1 received.
+     */
+    function swapOnPool(address pool, bool zeroForOne, uint256 amountIn)
+        external
+        returns (int256 amount0, int256 amount1);
+
+    /**
+     * @dev Callback function for the pool.
+     * @param pool Address of the pool.
+     * @param selector Selector of the callback function.
+     * @param data Additional data for the callback.
+     */
+    function poolCallback(address pool, bytes4 selector, bytes memory data) external;
 }

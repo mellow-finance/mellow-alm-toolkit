@@ -13,15 +13,20 @@ contract Unit is Fixture {
 
     ICLPool public pool =
         ICLPool(factory.getPool(Constants.OPTIMISM_WETH, Constants.OPTIMISM_OP, 200));
-    address public VELO = ICLGauge(pool.gauge()).rewardToken();
+    address public VELO = module.getRewardToken(address(pool));
 
-    address farm = address(new VeloFarmMock());
+    address farm = address(new VeloFarmMock(VELO, "VeloFarmMock", "VFM", address(this)));
 
-    bytes public defaultCallbackParams =
-        abi.encode(IVeloAmmModule.CallbackParams({farm: farm, gauge: address(pool.gauge())}));
+    bytes public defaultCallbackParams = abi.encode(
+        IVeloAmmModule.CallbackParams({farm: farm, gauge: address(pool.gauge()), extraData: ""})
+    );
 
     bytes public defaultProtocolParams = abi.encode(
-        IVeloAmmModule.ProtocolParams({feeD9: 3e8, treasury: Constants.OPTIMISM_MELLOW_TREASURY})
+        IVeloAmmModule.ProtocolParams({
+            feeD9: 3e8,
+            treasury: Constants.OPTIMISM_MELLOW_TREASURY,
+            extraData: ""
+        })
     );
 
     function addRewardToGauge(uint256 amount, ICLGauge gauge) public {
@@ -55,7 +60,7 @@ contract Unit is Fixture {
             int24 tickLower = -1234;
             int24 tickUpper = 1234;
             (uint256 amount0, uint256 amount1) =
-                module.getAmountsForLiquidity(1000, sqrtRatioX96, tickLower, tickUpper);
+                PositionMath.getAmountsForLiquidity(1000, sqrtRatioX96, tickLower, tickUpper);
             assertTrue(amount0 == 0);
             assertTrue(amount1 > 0);
         }
@@ -65,7 +70,7 @@ contract Unit is Fixture {
             int24 tickLower = -1234;
             int24 tickUpper = 1234;
             (uint256 amount0, uint256 amount1) =
-                module.getAmountsForLiquidity(1000, sqrtRatioX96, tickLower, tickUpper);
+                PositionMath.getAmountsForLiquidity(1000, sqrtRatioX96, tickLower, tickUpper);
             assertTrue(amount0 > 0);
             assertTrue(amount1 == 0);
         }
@@ -75,7 +80,7 @@ contract Unit is Fixture {
             int24 tickLower = -1234;
             int24 tickUpper = 1234;
             (uint256 amount0, uint256 amount1) =
-                module.getAmountsForLiquidity(1000, sqrtRatioX96, tickLower, tickUpper);
+                PositionMath.getAmountsForLiquidity(1000, sqrtRatioX96, tickLower, tickUpper);
             assertTrue(amount0 == amount1);
             assertTrue(amount0 > 0);
         }
@@ -85,7 +90,7 @@ contract Unit is Fixture {
             int24 tickLower = -1234;
             int24 tickUpper = 1234;
             (uint256 amount0, uint256 amount1) =
-                module.getAmountsForLiquidity(1000, sqrtRatioX96, tickLower, tickUpper);
+                PositionMath.getAmountsForLiquidity(1000, sqrtRatioX96, tickLower, tickUpper);
             assertTrue(amount0 > 0);
             assertTrue(amount1 > 0);
             assertTrue(amount0 != amount1);
@@ -104,12 +109,15 @@ contract Unit is Fixture {
         );
         (uint160 sqrtPriceX96,,,,,) = pool.slot0();
 
+        deal(Constants.OPTIMISM_WETH, address(this), 1e10 ether);
+        deal(Constants.OPTIMISM_OP, address(this), 1e10 ether);
+
         {
-            (uint256 amount0, uint256 amount1) =
-                module.tvl(tokenId, sqrtPriceX96, defaultCallbackParams, defaultProtocolParams);
+            (uint256 amount0, uint256 amount1) = module.tvl(
+                tokenId, sqrtPriceX96 /*, defaultCallbackParams, defaultProtocolParams */
+            );
             assertTrue(amount0 > 0 && amount1 > 0);
-            (uint256 expected0, uint256 expected1) =
-                PositionValue.total(positionManager, tokenId, sqrtPriceX96);
+            (uint256 expected0, uint256 expected1) = module.total(tokenId, sqrtPriceX96);
 
             assertEq(amount0, expected0);
             assertEq(amount1, expected1);
@@ -121,11 +129,11 @@ contract Unit is Fixture {
 
             movePrice(pool, TickMath.getSqrtRatioAtTick(tick + int24(i - 5) * 100));
 
-            (uint256 amount0, uint256 amount1) =
-                module.tvl(tokenId, sqrtPriceX96, defaultCallbackParams, defaultProtocolParams);
+            (uint256 amount0, uint256 amount1) = module.tvl(
+                tokenId, sqrtPriceX96 /*, defaultCallbackParams, defaultProtocolParams */
+            );
             assertTrue(amount0 + amount1 > 0);
-            (uint256 expected0, uint256 expected1) =
-                PositionValue.total(positionManager, tokenId, sqrtPriceX96);
+            (uint256 expected0, uint256 expected1) = module.total(tokenId, sqrtPriceX96);
             assertEq(amount0, expected0);
             assertEq(amount1, expected1);
         }
@@ -142,8 +150,7 @@ contract Unit is Fixture {
             Constants.OPTIMISM_DEPLOYER
         );
         IAmmModule.AmmPosition memory position = module.getAmmPosition(tokenId);
-        PositionLibrary.Position memory position_ =
-            PositionLibrary.getPosition(address(positionManager), tokenId);
+        IVeloAmmModule.Position memory position_ = module.getPosition(tokenId);
         assertEq(position.tickLower, position_.tickLower, "tickLower should be equal");
         assertEq(position.tickUpper, position_.tickUpper, "tickUpper should be equal");
         assertEq(position.liquidity, position_.liquidity, "liquidity should be equal");
@@ -196,6 +203,8 @@ contract Unit is Fixture {
             address(this)
         );
 
+        VeloFarmMock(farm).mint(address(this), 100 ether);
+
         positionManager.approve(pool.gauge(), tokenId);
         (bool success,) = address(module).delegatecall(
             abi.encodeWithSelector(
@@ -205,7 +214,7 @@ contract Unit is Fixture {
                 defaultProtocolParams
             )
         );
-        assertTrue(success);
+        assertTrue(success, "beforeRebalance call failed");
         ICLGauge(pool.gauge()).deposit(tokenId);
 
         addRewardToGauge(10 ether, ICLGauge(pool.gauge()));
@@ -219,8 +228,7 @@ contract Unit is Fixture {
                 defaultProtocolParams
             )
         );
-        assertTrue(success);
-
+        assertTrue(success, "beforeRebalance call failed");
         assertTrue(IERC20(VELO).balanceOf(farm) > 0);
         assertTrue(IERC20(VELO).balanceOf(Constants.OPTIMISM_MELLOW_TREASURY) > 0);
         assertEq(positionManager.ownerOf(tokenId), address(this));
@@ -232,7 +240,9 @@ contract Unit is Fixture {
         vm.expectRevert("ERC721: owner query for nonexistent token");
         module.beforeRebalance(
             0,
-            abi.encode(IVeloAmmModule.CallbackParams({farm: address(0), gauge: address(0)})),
+            abi.encode(
+                IVeloAmmModule.CallbackParams({farm: address(0), gauge: address(0), extraData: ""})
+            ),
             defaultProtocolParams
         );
 
@@ -257,7 +267,8 @@ contract Unit is Fixture {
                 abi.encode(
                     IVeloAmmModule.CallbackParams({
                         farm: address(0),
-                        gauge: address(new GaugeMock(address(pool)))
+                        gauge: address(new GaugeMock(address(pool))),
+                        extraData: ""
                     })
                 ),
                 defaultProtocolParams
@@ -302,25 +313,33 @@ contract Unit is Fixture {
         vm.expectRevert(abi.encodeWithSignature("AddressZero()"));
         module.validateCallbackParams(
             address(0),
-            abi.encode(IVeloAmmModule.CallbackParams({farm: address(0), gauge: address(0)}))
+            abi.encode(
+                IVeloAmmModule.CallbackParams({farm: address(0), gauge: address(0), extraData: ""})
+            )
         );
         vm.expectRevert(abi.encodeWithSignature("AddressZero()"));
         module.validateCallbackParams(
             address(0),
-            abi.encode(IVeloAmmModule.CallbackParams({farm: address(1), gauge: address(0)}))
+            abi.encode(
+                IVeloAmmModule.CallbackParams({farm: address(1), gauge: address(0), extraData: ""})
+            )
         );
 
         address wrongGuauge = address(new GaugeMock(address(pool)));
         vm.expectRevert();
         module.validateCallbackParams(
             address(0),
-            abi.encode(IVeloAmmModule.CallbackParams({farm: address(1), gauge: wrongGuauge}))
+            abi.encode(
+                IVeloAmmModule.CallbackParams({farm: address(1), gauge: wrongGuauge, extraData: ""})
+            )
         );
 
         vm.expectRevert(abi.encodeWithSignature("InvalidGauge()"));
         module.validateCallbackParams(
             address(pool),
-            abi.encode(IVeloAmmModule.CallbackParams({farm: address(1), gauge: wrongGuauge}))
+            abi.encode(
+                IVeloAmmModule.CallbackParams({farm: address(1), gauge: wrongGuauge, extraData: ""})
+            )
         );
 
         vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
@@ -329,7 +348,11 @@ contract Unit is Fixture {
         module.validateCallbackParams(
             address(pool),
             abi.encode(
-                IVeloAmmModule.CallbackParams({farm: address(1), gauge: address(pool.gauge())})
+                IVeloAmmModule.CallbackParams({
+                    farm: address(1),
+                    gauge: address(pool.gauge()),
+                    extraData: ""
+                })
             )
         );
     }
@@ -337,17 +360,23 @@ contract Unit is Fixture {
     function testValidateProtocolParams() external {
         vm.expectRevert(abi.encodeWithSignature("AddressZero()"));
         module.validateProtocolParams(
-            abi.encode(IVeloAmmModule.ProtocolParams({feeD9: 3e8, treasury: address(0)}))
+            abi.encode(
+                IVeloAmmModule.ProtocolParams({feeD9: 3e8, treasury: address(0), extraData: ""})
+            )
         );
         vm.expectRevert(abi.encodeWithSignature("InvalidFee()"));
         module.validateProtocolParams(
-            abi.encode(IVeloAmmModule.ProtocolParams({feeD9: 3e8 + 1, treasury: address(1)}))
+            abi.encode(
+                IVeloAmmModule.ProtocolParams({feeD9: 3e8 + 1, treasury: address(1), extraData: ""})
+            )
         );
         vm.expectRevert(abi.encodeWithSignature("InvalidLength()"));
         module.validateProtocolParams(new bytes(123));
 
         module.validateProtocolParams(
-            abi.encode(IVeloAmmModule.ProtocolParams({feeD9: 3e8, treasury: address(1)}))
+            abi.encode(
+                IVeloAmmModule.ProtocolParams({feeD9: 3e8, treasury: address(1), extraData: ""})
+            )
         );
     }
 }

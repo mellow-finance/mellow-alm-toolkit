@@ -17,13 +17,13 @@ contract Unit is Fixture {
 
     function testDeposit() external {
         module = new VeloDepositWithdrawModule(positionManager);
+        IVeloAmmModule ammModule = new VeloAmmModule(positionManager, 0xe5e31b13);
 
         uint256 tokenId = mint(
             token0, token1, pool.tickSpacing(), pool.tickSpacing() * 2, 10000, pool, address(this)
         );
 
-        PositionLibrary.Position memory position_ =
-            PositionLibrary.getPosition(address(positionManager), tokenId);
+        IVeloAmmModule.Position memory position_ = ammModule.getPosition(tokenId);
 
         (uint160 sqrtPriceX96, int24 tick,,,,) = pool.slot0();
 
@@ -45,8 +45,7 @@ contract Unit is Fixture {
             (uint256 actualAmount0, uint256 actualAmount1) =
                 module.deposit(tokenId, 1 ether, 1 ether, address(this), token0, token1);
 
-            position_.liquidity =
-                PositionLibrary.getPosition(address(positionManager), tokenId).liquidity;
+            position_.liquidity = ammModule.getPosition(tokenId).liquidity;
 
             (uint256 after0, uint256 after1) = LiquidityAmounts.getAmountsForLiquidity(
                 sqrtPriceX96,
@@ -64,6 +63,7 @@ contract Unit is Fixture {
 
     function testWithdraw() external {
         module = new VeloDepositWithdrawModule(positionManager);
+        IVeloAmmModule ammModule = new VeloAmmModule(positionManager, 0xe5e31b13);
 
         uint256 tokenId = mint(
             pool.token0(),
@@ -82,8 +82,7 @@ contract Unit is Fixture {
         (uint160 sqrtPriceX96,,,,,) = pool.slot0();
 
         for (uint256 i = 0; i < 10; i++) {
-            PositionLibrary.Position memory position_ =
-                PositionLibrary.getPosition(address(positionManager), tokenId);
+            IVeloAmmModule.Position memory position_ = ammModule.getPosition(tokenId);
 
             (uint256 before0, uint256 before1) = LiquidityAmounts.getAmountsForLiquidity(
                 sqrtPriceX96,
@@ -97,8 +96,7 @@ contract Unit is Fixture {
             (uint256 actualAmount0, uint256 actualAmount1) =
                 module.withdraw(tokenId, liquidityForWithdraw, address(this));
 
-            uint128 liquidityAfter =
-                PositionLibrary.getPosition(address(positionManager), tokenId).liquidity;
+            uint128 liquidityAfter = ammModule.getPosition(tokenId).liquidity;
             (uint256 after0, uint256 after1) = LiquidityAmounts.getAmountsForLiquidity(
                 sqrtPriceX96,
                 TickMath.getSqrtRatioAtTick(position_.tickLower),
