@@ -22,6 +22,7 @@
     "coverage": "forge coverage -vv --fork-url $(grep OPTIMISM_RPC .env | cut -d '=' -f2,3,4,5) --gas-limit 1000000000000000 --fork-block-number 126785000",
     "coverage:report": "forge coverage -vv --fork-url $(grep OPTIMISM_RPC .env | cut -d '=' -f2,3,4,5) --gas-limit 1000000000000000 --fork-block-number 126785000 --report lcov && genhtml lcov.info --rc derive_function_end_line=0 -o report --branch-coverage && rm lcov.info",
     "sizes": "forge build --sizes --force",
-    "compile": "forge build"
-  }
+    "compile": "forge build",
+    "update:base": "forge script --use 0.8.25 scripts/deploy/UpdateStrategyParams.s.sol --rpc-url $(grep BASE_RPC .env | cut -d '=' -f2) --evm-version cancun"
+    }
 }
