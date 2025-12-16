@@ -241,12 +241,13 @@ contract Deploy is Script, DeployScript, PoolParameters {
         vm.startPrank(coreDeploymentParams.factoryOperator);
         IVeloDeployFactory.DeployParams[] memory params = getPoolDeployParams(contracts);
 
-        uint256 firstIndex = 0;
+        uint256 firstIndex = 69;
         uint256 lastIndex = params.length;
         string memory batchJson = '{"transactions":[';
         for (uint256 i = firstIndex; i < lastIndex; i++) {
             console2.log("-----------------------------------------------------");
-            ILpWrapper lpWrapper = ILpWrapper(contracts.deployFactory.poolToWrapper(address(params[i].pool)));
+            ILpWrapper lpWrapper =
+                ILpWrapper(contracts.deployFactory.poolToWrapper(address(params[i].pool)));
             if (address(lpWrapper) != address(0)) {
                 console2.log("[EXISTS] Strategy is deployed", address(lpWrapper));
                 continue; // already deployed
@@ -296,7 +297,6 @@ contract Deploy is Script, DeployScript, PoolParameters {
             ICLPool pool = params[i].pool;
             sendAssets(pool.token0(), coreDeploymentParams.factoryOperator);
             sendAssets(pool.token1(), coreDeploymentParams.factoryOperator);
-
         }
     }
 
@@ -314,7 +314,6 @@ contract Deploy is Script, DeployScript, PoolParameters {
 
         require(token != address(0), "token is zero address");
         require(to != address(0), "to is zero address");
-
 
         uint256 balance = IERC20(token).balanceOf(SENDER);
         if (balance > 0) {
