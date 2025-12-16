@@ -1959,7 +1959,7 @@ contract PoolParameters {
         _setInitialAndLimitSupply(200000, poolDeployParams[ID], contracts);
         ID++;
         //    [71]  0xb5a64b150730b6c475cdc9c40632ce1d1ebf3cec | 20000| 200 | CHECK  |  TOWER |  200k | lazySync |   30     | 1 hour |   1   |
-        poolDeployParams[ID].pool = ICLPool(0xb5a64b150730b6c475cdc9c40632ce1d1ebf3cec);
+        poolDeployParams[ID].pool = ICLPool(0xB5a64B150730b6c475CDC9C40632CE1D1ebf3ceC);
         poolDeployParams[ID].strategyParams.strategyType =
             IPulseStrategyModule.StrategyType.LazySyncing;
         poolDeployParams[ID].strategyParams.tickSpacing = poolDeployParams[ID].pool.tickSpacing();

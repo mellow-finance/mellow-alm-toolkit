@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.25;
 
-import "./DeployScript.sol";
+import "./DeployScript.s.sol";
 
 import "./RebalancingBot.sol";
 import "./RebalancingBotHelper.sol";
@@ -12,7 +12,7 @@ library Constants {
         0x63B6E180e86E845d47Ce34324F8409ea898AD13c;
 
     //==============================================================================================
-    address internal constant OPTIMISM_DEPLOYER = 0xBe440AeE8c8D54aC7bb7D93506460492Df5812ea; // actual deployer
+    address internal constant OPTIMISM_DEPLOYER = 0x0249C2b1F3090b2cAec1B0960A88D487Cc16c2B0; // actual deployer
     //==============================================================================================
 
     address internal constant OPTIMISM_MELLOW_ADMIN = 0x893df22649247AD4e57E4926731F9Cf0dA344829; // actual mellow msig
@@ -36,6 +36,8 @@ library Constants {
     address internal constant SUPERSEED_POSITION_MANAGER =
         0x991d5546C4B442B4c5fdc4c8B8b8d131DEB24702;
     address internal constant LISK_POSITION_MANAGER = 0x991d5546C4B442B4c5fdc4c8B8b8d131DEB24702;
+
+    address internal constant BASE_POSITION_MANAGER_2 = 0xa990C6a764b73BF43cee5Bb40339c3322FB9D55F;
 
     bytes4 internal constant IS_PAIR_SELECTOR = bytes4(keccak256("isPair(address)"));
     bytes4 internal constant IS_POOL_SELECTOR = bytes4(keccak256("isPool(address)"));
@@ -126,7 +128,7 @@ library Constants {
             return DeployScript.CoreDeploymentParams({
                 deployer: OPTIMISM_DEPLOYER,
                 mellowAdmin: OPTIMISM_MELLOW_ADMIN,
-                positionManager: BASE_POSITION_MANAGER,
+                positionManager: BASE_POSITION_MANAGER_2,
                 isPoolSelector: IS_POOL_SELECTOR,
                 weth: BASE_WETH,
                 lpWrapperAdmin: BASE_LP_WRAPPER_ADMIN,
