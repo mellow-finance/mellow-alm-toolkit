@@ -7,11 +7,11 @@ contract Unit is Fixture {
     using SafeERC20 for IERC20;
 
     VeloAmmModule public module = new VeloAmmModule(
-        INonfungiblePositionManager(Constants.OPTIMISM_POSITION_MANAGER), Constants.IS_PAIR_SELECTOR
+        INonfungiblePositionManager(Constants.BASE_POSITION_MANAGER_2), Constants.IS_POOL_SELECTOR
     );
 
     ICLPool public pool =
-        ICLPool(factory.getPool(Constants.OPTIMISM_WETH, Constants.OPTIMISM_OP, 200));
+        ICLPool(factory.getPool(Constants.BASE_WETH, Constants.BASE_ZRO, TICK_SPACING));
     address public VELO = ICLGauge(pool.gauge()).rewardToken();
 
     address farm = address(new VeloFarmMock());
@@ -43,8 +43,8 @@ contract Unit is Fixture {
 
     function testConstructor() external {
         module = new VeloAmmModule(
-            INonfungiblePositionManager(Constants.OPTIMISM_POSITION_MANAGER),
-            Constants.IS_PAIR_SELECTOR
+            INonfungiblePositionManager(Constants.BASE_POSITION_MANAGER_2),
+            Constants.IS_POOL_SELECTOR
         );
     }
 
@@ -96,9 +96,8 @@ contract Unit is Fixture {
             pool.token0(),
             pool.token1(),
             pool.tickSpacing(),
-            pool.tickSpacing() * 2,
-            10000,
-            pool,
+            pool.tickSpacing() * 10,
+            1 ether,
             Constants.OPTIMISM_DEPLOYER
         );
         (uint160 sqrtPriceX96,,,,,) = pool.slot0();
@@ -106,12 +105,12 @@ contract Unit is Fixture {
         {
             (uint256 amount0, uint256 amount1) =
                 module.tvl(tokenId, sqrtPriceX96, defaultCallbackParams, defaultProtocolParams);
-            assertTrue(amount0 > 0 && amount1 > 0);
+            assertTrue(amount0 > 0 && amount1 > 0, "both amounts should be greater than 0");
             (uint256 expected0, uint256 expected1) =
                 PositionValue.total(positionManager, tokenId, sqrtPriceX96);
 
-            assertEq(amount0, expected0);
-            assertEq(amount1, expected1);
+            assertEq(amount0, expected0, "amount0 should be equal");
+            assertEq(amount1, expected1, "amount1 should be equal");
         }
 
         (, int24 tick,,,,) = pool.slot0();
@@ -122,11 +121,11 @@ contract Unit is Fixture {
 
             (uint256 amount0, uint256 amount1) =
                 module.tvl(tokenId, sqrtPriceX96, defaultCallbackParams, defaultProtocolParams);
-            assertTrue(amount0 + amount1 > 0);
+            assertTrue(amount0 + amount1 > 0, "both amounts should be greater than 0");
             (uint256 expected0, uint256 expected1) =
                 PositionValue.total(positionManager, tokenId, sqrtPriceX96);
-            assertEq(amount0, expected0);
-            assertEq(amount1, expected1);
+            assertEq(amount0, expected0, "amount0 should be equal");
+            assertEq(amount1, expected1, "amount1 should be equal");
         }
     }
 
@@ -137,7 +136,6 @@ contract Unit is Fixture {
             pool.tickSpacing(),
             pool.tickSpacing() * 2,
             10000,
-            pool,
             Constants.OPTIMISM_DEPLOYER
         );
         IAmmModule.AmmPosition memory position = module.getAmmPosition(tokenId);
@@ -158,8 +156,8 @@ contract Unit is Fixture {
         address[6] memory pools = [
             address(0),
             address(0),
+            address(0x717e174d5dAe280802D1a2c15C1C0976561A3f61),
             address(0),
-            address(0x4DC22588Ade05C40338a9D95A6da9dCeE68Bcd60),
             address(0),
             address(0)
         ];
@@ -167,17 +165,15 @@ contract Unit is Fixture {
         for (uint256 i = 0; i < 5; i++) {
             assertEq(
                 pools[i],
-                module.getPool(
-                    Constants.OPTIMISM_WETH, Constants.OPTIMISM_OP, uint24(tickSpacings[i])
-                )
+                module.getPool(Constants.BASE_WETH, Constants.BASE_ZRO, uint24(tickSpacings[i]))
             );
         }
     }
 
     function testGetProperty() external {
-        int24[1] memory tickSpacings = [int24(200)];
+        int24[1] memory tickSpacings = [int24(TICK_SPACING)];
 
-        address[1] memory pools = [0x4DC22588Ade05C40338a9D95A6da9dCeE68Bcd60];
+        address[1] memory pools = [0x717e174d5dAe280802D1a2c15C1C0976561A3f61];
 
         for (uint256 i = 0; i < pools.length; i++) {
             assertEq(uint24(tickSpacings[i]), module.getProperty(pools[i]));
@@ -191,7 +187,6 @@ contract Unit is Fixture {
             pool.tickSpacing(),
             pool.tickSpacing() * 2,
             10000,
-            pool,
             address(this)
         );
 
@@ -241,7 +236,6 @@ contract Unit is Fixture {
             pool.tickSpacing(),
             pool.tickSpacing() * 2,
             10000,
-            pool,
             Constants.OPTIMISM_DEPLOYER
         );
 
@@ -284,7 +278,6 @@ contract Unit is Fixture {
             pool.tickSpacing(),
             pool.tickSpacing() * 2,
             10000,
-            pool,
             Constants.OPTIMISM_DEPLOYER
         );
 

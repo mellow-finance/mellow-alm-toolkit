@@ -415,7 +415,8 @@ contract PulseStrategyModuleTestV1 is Fixture {
     function testGetTargets() external {
         ICore.ManagedPositionInfo memory info;
 
-        ICLPool pool = ICLPool(factory.getPool(Constants.OPTIMISM_WETH, Constants.OPTIMISM_OP, 200));
+        ICLPool pool =
+            ICLPool(factory.getPool(Constants.BASE_WETH, Constants.BASE_ZRO, TICK_SPACING));
         info.pool = address(pool);
         VeloOracle oracle = new VeloOracle();
         {
@@ -439,7 +440,6 @@ contract PulseStrategyModuleTestV1 is Fixture {
                 pool.tickSpacing(),
                 pool.tickSpacing() * 2,
                 10000,
-                pool,
                 address(this)
             );
 
@@ -447,8 +447,8 @@ contract PulseStrategyModuleTestV1 is Fixture {
             info.ammPositionIds[0] = tokenId;
 
             VeloAmmModule ammModule = new VeloAmmModule(
-                INonfungiblePositionManager(Constants.OPTIMISM_POSITION_MANAGER),
-                Constants.IS_PAIR_SELECTOR
+                INonfungiblePositionManager(Constants.BASE_POSITION_MANAGER_2),
+                Constants.IS_POOL_SELECTOR
             );
 
             (bool isRebalanceRequired, ICore.TargetPositionInfo memory target) =
@@ -492,8 +492,8 @@ contract PulseStrategyModuleTestV1 is Fixture {
 
             IVeloAmmModule ammModule = IVeloAmmModule(
                 new VeloAmmModule(
-                    INonfungiblePositionManager(Constants.OPTIMISM_POSITION_MANAGER),
-                    Constants.IS_PAIR_SELECTOR
+                    INonfungiblePositionManager(Constants.BASE_POSITION_MANAGER_2),
+                    Constants.IS_POOL_SELECTOR
                 )
             );
 

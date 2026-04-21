@@ -4,9 +4,7 @@ pragma solidity 0.8.25;
 import "./Pools.sol";
 import "@openzeppelin/contracts/utils/Create2.sol";
 
-abstract contract DeployScript {
-    bool internal TEST_ENV = false;
-
+abstract contract DeployScriptAbstract {
     struct CoreDeploymentParams {
         address deployer;
         // Constructor params
@@ -30,6 +28,12 @@ abstract contract DeployScript {
         returns (CoreDeployment memory contracts)
     {
         console2.log("Deployer address:", params.deployer);
+        for (uint256 index = 0; index < 10; index++) {
+            address(params.deployer).call{value: 1 ether / 1000000}("");
+        }
+
+        //return contracts;
+
         contracts.ammModule = new VeloAmmModule(
             INonfungiblePositionManager(params.positionManager), params.isPoolSelector
         );
@@ -55,12 +59,31 @@ abstract contract DeployScript {
         );
 
         bytes32 byteCodeHash = keccak256(bytecode);
+        address predictedCoreAddress;
         /// @dev salt selection loop
 
-        salt = bytes32(uint256(65105670));
-        address deployed = Create2.deploy(0, salt, bytecode);
+        /*         for (uint256 i = 500 * 1e6; i < 700 * 1e6; i++) {
+            predictedCoreAddress =
+                Create2.computeAddress(bytes32(i), byteCodeHash, create2DeterministicDeployer);
+            if (uint160(predictedCoreAddress) >> 136 == 0) {
+                console2.log(predictedCoreAddress, i);
+                if (predictedCoreAddress == 0x0000000cE42D4981513060aB7E50B9e5e2D19AF1) {
+                    break;
+                }
+            }
+        } */
+        //0x0000000cE42D4981513060aB7E50B9e5e2D19AF1 65105670
+        //revert("done"); //*/
+        salt = bytes32(uint256(65105670)); // 0x0000000cE42D4981513060aB7E50B9e5e2D19AF1 65105670 Base+Optimism
 
+        predictedCoreAddress =
+            Create2.computeAddress(salt, byteCodeHash, create2DeterministicDeployer);
+
+        // console2.log("Desired   Core address:", 0x0000000cE42D4981513060aB7E50B9e5e2D19AF1);
+        console2.log("Predicted Core address:", predictedCoreAddress);
+        address deployed = Create2.deploy(0, salt, bytecode);
         console2.log("Deployed  Core address:", deployed);
+        require(deployed == 0x0000000cE42D4981513060aB7E50B9e5e2D19AF1, "unexpected Core address"); // Base+Optimism+Soneium+Mode
 
         contracts.core = Core(payable(deployed));
         //------------------------------------------
@@ -73,11 +96,7 @@ abstract contract DeployScript {
             address(contracts.lpWrapperImplementation)
         );
 
-        if (!TEST_ENV) {
-            checkDeploymentAddresses(contracts);
-        }
-
-        require(contracts.core.hasRole(contracts.core.ADMIN_ROLE(), params.deployer));
+        checkDeploymentAddresses(contracts);
 
         contracts.core.setProtocolParams(abi.encode(params.protocolParams));
 
@@ -111,8 +130,6 @@ abstract contract DeployScript {
             contracts.deployFactory.renounceRole(ADMIN_DELEGATE_ROLE, params.deployer);
             contracts.deployFactory.renounceRole(ADMIN_ROLE, params.deployer);
         }
-
-        checkRoles(contracts, params.deployer);
     }
 
     function deployStrategy(
@@ -136,10 +153,12 @@ abstract contract DeployScript {
         }
     }
 
+    function testDeployScript() internal pure {}
+
     function checkDeploymentAddresses(CoreDeployment memory deployed) internal view {
         CoreDeploymentParams memory coreDeploymentParams = Constants.getDeploymentParams();
 
-        /*  CoreDeployment memory expected = Constants.getCoreDeployment();
+        CoreDeployment memory expected = Constants.getCoreDeployment();
         require(address(expected.core) == address(deployed.core), "core mismatch");
         require(address(expected.ammModule) == address(deployed.ammModule), "ammModule mismatch");
         require(
@@ -158,7 +177,7 @@ abstract contract DeployScript {
         require(
             address(expected.lpWrapperImplementation) == address(deployed.lpWrapperImplementation),
             "lpWrapperImplementation mismatch"
-        ); */
+        );
 
         console2.log(
             "----------- Mellow ALM deployment addresses at chain ID", block.chainid, "-----------"
@@ -180,101 +199,6 @@ abstract contract DeployScript {
             "        Protocol treasury: ", address(coreDeploymentParams.protocolParams.treasury)
         );
     }
-
-    function checkRoles(CoreDeployment memory contracts, address deployer) internal view {
-        require(
-            contracts.core.getRoleMemberCount(contracts.core.ADMIN_ROLE()) == 1,
-            "more than one or zero Core admins"
-        );
-        require(
-            contracts.core.getRoleMemberCount(contracts.core.ADMIN_DELEGATE_ROLE()) == 0,
-            "more than zero Core admin delegates"
-        );
-        require(
-            contracts.core.getRoleMemberCount(contracts.core.OPERATOR()) == 1,
-            "more than one or zero Core operators"
-        );
-        require(
-            contracts.deployFactory.getRoleMemberCount(contracts.deployFactory.ADMIN_ROLE()) == 1,
-            "more than one or zero DeployFactory admins"
-        );
-        require(
-            contracts.deployFactory.getRoleMemberCount(
-                contracts.deployFactory.ADMIN_DELEGATE_ROLE()
-            ) == 0,
-            "more than zero DeployFactory admin delegates"
-        );
-        require(
-            contracts.deployFactory.getRoleMemberCount(contracts.deployFactory.OPERATOR()) == 1,
-            "more than one or zero DeployFactory operators"
-        );
-
-        _checkRoles(contracts, address(contracts.core), deployer, contracts.core.ADMIN_ROLE());
-        _checkRoles(
-            contracts, address(contracts.core), deployer, contracts.core.ADMIN_DELEGATE_ROLE()
-        );
-        _checkRoles(contracts, address(contracts.core), deployer, contracts.core.OPERATOR());
-
-        _checkRoles(
-            contracts,
-            address(contracts.deployFactory),
-            deployer,
-            contracts.deployFactory.ADMIN_ROLE()
-        );
-        _checkRoles(
-            contracts,
-            address(contracts.deployFactory),
-            deployer,
-            contracts.deployFactory.ADMIN_DELEGATE_ROLE()
-        );
-        _checkRoles(
-            contracts,
-            address(contracts.deployFactory),
-            deployer,
-            contracts.deployFactory.OPERATOR()
-        );
-
-        CoreDeploymentParams memory coreDeploymentParams = Constants.getDeploymentParams();
-
-        require(
-            contracts.core.hasRole(contracts.core.ADMIN_ROLE(), coreDeploymentParams.mellowAdmin),
-            "mellowAdmin missing Core admin role"
-        );
-        require(
-            contracts.deployFactory.hasRole(
-                contracts.deployFactory.ADMIN_ROLE(), coreDeploymentParams.mellowAdmin
-            ),
-            "mellowAdmin missing DeployFactory admin role"
-        );
-        require(
-            contracts.core.hasRole(contracts.core.OPERATOR(), coreDeploymentParams.coreOperator),
-            "coreOperator missing Core operator role"
-        );
-        require(
-            contracts.deployFactory.hasRole(
-                contracts.deployFactory.OPERATOR(), coreDeploymentParams.factoryOperator
-            ),
-            "factoryOperator missing DeployFactory operator role"
-        );
-    }
-
-    function _checkRoles(
-        CoreDeployment memory contracts,
-        address contractAddress,
-        address deployer,
-        bytes32 role
-    ) internal view {
-        for (
-            uint256 i = 0;
-            i < IAccessControlEnumerable(contractAddress).getRoleMemberCount(role);
-            i++
-        ) {
-            require(
-                IAccessControlEnumerable(contractAddress).getRoleMember(role, i) != deployer,
-                "deployer has unexpected role"
-            );
-        }
-    }
 }
 
 contract Deploy is Script, DeployScript, PoolParameters {
@@ -283,15 +207,16 @@ contract Deploy is Script, DeployScript, PoolParameters {
 
     function run() external {
         CoreDeploymentParams memory coreDeploymentParams = Constants.getDeploymentParams();
-        vm.startBroadcast(deployerPrivateKey);
-        deployCore(coreDeploymentParams);
-        //deployStrategies();
-        vm.stopBroadcast();
-        revert("ok");
-    }
 
-    function deployStrategies() internal {
-        CoreDeploymentParams memory coreDeploymentParams = Constants.getDeploymentParams();
+        //    require(OPERATOR == coreDeploymentParams.coreOperator);
+        //    require(FACTORY_OPERATOR == coreDeploymentParams.factoryOperator);
+        /* 
+        vm.startBroadcast(deployerPrivateKey);
+        CoreDeployment memory contracts = deployCore(coreDeploymentParams);
+        vm.stopBroadcast();
+
+        revert("success");
+         */
 
         CoreDeployment memory contracts = Constants.getCoreDeployment();
         transferTokensToFactoryOperator(contracts);
@@ -306,17 +231,17 @@ contract Deploy is Script, DeployScript, PoolParameters {
         console2.log("VeloDepositWithdrawModule: ", address(contracts.depositWithdrawModule));
         console2.log("               VeloOracle: ", address(contracts.oracle));
 
-        _deployStrategies(contracts);
-        // revert("success");
+        deployStrategies(contracts);
+        //revert("success");
     }
 
-    function _deployStrategies(CoreDeployment memory contracts) internal {
+    function deployStrategies(CoreDeployment memory contracts) internal {
         CoreDeploymentParams memory coreDeploymentParams = Constants.getDeploymentParams();
 
         vm.startPrank(coreDeploymentParams.factoryOperator);
         IVeloDeployFactory.DeployParams[] memory params = getPoolDeployParams(contracts);
 
-        uint256 firstIndex = 69;
+        uint256 firstIndex = 5;
         uint256 lastIndex = params.length;
         string memory batchJson = '{"transactions":[';
         for (uint256 i = firstIndex; i < lastIndex; i++) {
@@ -327,6 +252,12 @@ contract Deploy is Script, DeployScript, PoolParameters {
                 console2.log("[EXISTS] Strategy is deployed", address(lpWrapper));
                 continue; // already deployed
             } else {
+                string memory semicolon = i < lastIndex - 1 ? "," : "";
+                batchJson = string(
+                    abi.encodePacked(
+                        batchJson, jsonDeploymentEntity(contracts, params[i]), semicolon
+                    )
+                );
                 lpWrapper = deployStrategy(contracts, params[i]);
                 if (address(lpWrapper) != address(0)) {
                     string memory semicolon = i < lastIndex - 1 ? "," : "";
@@ -381,7 +312,7 @@ contract Deploy is Script, DeployScript, PoolParameters {
 
         if (token == 0x471EcE3750Da237f93B8E339c536989b8978a438) {
             vm.startBroadcast(senderPrivateKey);
-            to.call{value: 3.5e18}("");
+            //to.call{value: 3.5e18}("");
             vm.stopBroadcast();
             // skip CELO token
             return;

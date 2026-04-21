@@ -63,7 +63,7 @@ contract MockVeloFarm is VeloFarm {
 contract IntegrationTest is Test {
     using SafeERC20 for IERC20;
 
-    address public constant rewardToken = 0x9560e827aF36c94D2Ac33a39bCE1Fe78631088Db;
+    address public constant rewardToken = Constants.BASE_REWARD_AERO;
 
     uint256 seed_ = 123;
 

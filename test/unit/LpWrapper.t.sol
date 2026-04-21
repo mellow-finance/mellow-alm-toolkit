@@ -12,12 +12,13 @@ contract Unit is Fixture {
 
     ILpWrapper public lpWrapper;
 
-    ICLPool pool = ICLPool(factory.getPool(Constants.OPTIMISM_WETH, Constants.OPTIMISM_OP, 200));
+    ICLPool pool = ICLPool(factory.getPool(Constants.BASE_WETH, Constants.BASE_ZRO, TICK_SPACING));
 
     CoreDeployment contracts;
     IVeloDeployFactory.DeployParams deployParams;
 
     function setUp() external {
+        TEST_ENV = true;
         contracts = deployContracts();
         (lpWrapper, deployParams) = deployLpWrapper(pool, contracts);
     }
@@ -449,7 +450,7 @@ contract Unit is Fixture {
             })
         );
 
-        assertGe(amount0, 6.427e14, "amount0");
+        assertGe(amount0, 6.281597e14, "amount0");
         assertGe(amount1, 0.99 ether, "amount1");
         assertGe(lpAmount, 0.999 ether, "lpAmount");
         assertEq(lpWrapper.balanceOf(Constants.OPTIMISM_DEPLOYER), lpAmount);

@@ -10,11 +10,12 @@ contract SolvencyRunner is Test, DeployScript {
 
     uint256 private constant Q96 = 2 ** 96;
     uint256 private constant ROUNDING_ERROR = 1e4;
+    int24 internal constant TICK_SPACING = 100;
 
     ICore private _core;
     ILpWrapper private _wrapper;
     RebalancingBot private _bot =
-        new RebalancingBot(INonfungiblePositionManager(Constants.OPTIMISM_POSITION_MANAGER));
+        new RebalancingBot(INonfungiblePositionManager(Constants.BASE_POSITION_MANAGER_2));
     RandomLib.Storage internal rnd;
     uint256 internal _iteration;
 
@@ -209,7 +210,7 @@ contract SolvencyRunner is Test, DeployScript {
     }
 
     function transitionRandomSwap() internal {
-        ISwapRouter swapRouter = ISwapRouter(Constants.OPTIMISM_SWAP_ROUTER);
+        ISwapRouter swapRouter = ISwapRouter(Constants.BASE_SWAP_ROUTER);
 
         address swapper = rnd.randAddress();
         vm.startPrank(swapper);
@@ -234,7 +235,11 @@ contract SolvencyRunner is Test, DeployScript {
 
         (uint256 balance0Before, uint256 balance1Before,) = calculateTvl();
 
-        swapRouter.exactOutputSingle(params);
+        try swapRouter.exactOutputSingle(params) {
+
+        } catch {
+            revert("SwapRouter::exactOutputSingle has reverted");
+        }
 
         {
             (uint256 balance0After, uint256 balance1After,) = calculateTvl();
@@ -310,7 +315,10 @@ contract SolvencyRunner is Test, DeployScript {
             vm.expectRevert();
         }
 
-        _core.rebalance(rebalanceParams);
+        try _core.rebalance(rebalanceParams) {
+        } catch {
+            revert("Core::rebalance has reverted");
+        }
         vm.stopPrank();
 
         if (!isRevertExpected) {
@@ -332,7 +340,7 @@ contract SolvencyRunner is Test, DeployScript {
                 rnd.randInt(uint256(type(IPulseStrategyModule.StrategyType).max))
             );
         }
-        params.width = int24(int256(rnd.randInt(1, 25) * 2));
+        params.width = int24(int256(rnd.randInt(1, 25))) * TICK_SPACING * 2;
         if (params.strategyType != IPulseStrategyModule.StrategyType.Tamper) {
             params.maxLiquidityRatioDeviationX96 = 0;
         } else {
@@ -345,8 +353,17 @@ contract SolvencyRunner is Test, DeployScript {
         }
 
         address wrapperAdmin = _wrapper.getRoleMember(keccak256("admin"), 0);
+
         vm.prank(wrapperAdmin);
-        _wrapper.setStrategyParams(params);
+        try _wrapper.setStrategyParams(params) {
+        } catch {
+            console2.log("strategyType: %s", uint256(params.strategyType));
+            console2.log("tickSpacing: %s", uint24(params.tickSpacing));
+            console2.log("width: %s", uint24(params.width));
+            console2.log("maxLiquidityRatioDeviationX96: %s", uint256(params.maxLiquidityRatioDeviationX96));
+            console2.log("tickNeighborhood: %s", uint24(params.tickNeighborhood));
+            revert("Wrapper::setStrategyParams has reverted");
+        }
     }
 
     function transitionRandomSkip() internal {

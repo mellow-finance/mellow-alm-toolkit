@@ -7,7 +7,7 @@ contract Unit is Fixture {
     using SafeERC20 for IERC20;
 
     VeloDepositWithdrawModule public module;
-    ICLPool pool = ICLPool(factory.getPool(Constants.OPTIMISM_WETH, Constants.OPTIMISM_OP, 200));
+    ICLPool pool = ICLPool(factory.getPool(Constants.BASE_WETH, Constants.BASE_ZRO, TICK_SPACING));
     address token0 = pool.token0();
     address token1 = pool.token1();
 
@@ -19,7 +19,7 @@ contract Unit is Fixture {
         module = new VeloDepositWithdrawModule(positionManager);
 
         uint256 tokenId = mint(
-            token0, token1, pool.tickSpacing(), pool.tickSpacing() * 2, 10000, pool, address(this)
+            token0, token1, pool.tickSpacing(), pool.tickSpacing() * 2, 10000, address(this)
         );
 
         PositionLibrary.Position memory position_ =
@@ -71,7 +71,6 @@ contract Unit is Fixture {
             pool.tickSpacing(),
             pool.tickSpacing() * 2,
             1000000,
-            pool,
             Constants.OPTIMISM_DEPLOYER
         );
 

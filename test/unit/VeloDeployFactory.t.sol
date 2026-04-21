@@ -6,12 +6,15 @@ import "./Fixture.sol";
 contract Unit is Fixture {
     using SafeERC20 for IERC20;
 
-    ICLPool public pool =
-        ICLPool(factory.getPool(Constants.OPTIMISM_OP, Constants.OPTIMISM_WETH, 200));
+    ICLPool pool = ICLPool(factory.getPool(Constants.BASE_WETH, Constants.BASE_ZRO, TICK_SPACING));
 
     IERC20 token0 = IERC20(pool.token0());
     IERC20 token1 = IERC20(pool.token1());
     int24 tickSpacing = pool.tickSpacing();
+
+    function setUp() external {
+        TEST_ENV = true;
+    }
 
     function testConstructor() external {
         vm.expectRevert();

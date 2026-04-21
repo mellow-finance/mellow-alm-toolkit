@@ -15,6 +15,9 @@ library Constants {
     address internal constant OPTIMISM_DEPLOYER = 0x0249C2b1F3090b2cAec1B0960A88D487Cc16c2B0; // actual deployer
     //==============================================================================================
 
+    address internal constant OPTIMISM_REWARD_VELO = 0x9560e827aF36c94D2Ac33a39bCE1Fe78631088Db;
+    address internal constant BASE_REWARD_AERO = 0x940181a94A35A4569E4529A3CDfB74e38FD98631;
+
     address internal constant OPTIMISM_MELLOW_ADMIN = 0x893df22649247AD4e57E4926731F9Cf0dA344829; // actual mellow msig
     address internal constant SONEIUM_MELLOW_ADMIN = 0x978ba0e402e5Da4110D7243412887986cEf35e8c; // actual mellow msig
     address internal constant MODE_MELLOW_ADMIN = 0x978ba0e402e5Da4110D7243412887986cEf35e8c; // actual mellow msig
@@ -37,17 +40,22 @@ library Constants {
         0x991d5546C4B442B4c5fdc4c8B8b8d131DEB24702;
     address internal constant LISK_POSITION_MANAGER = 0x991d5546C4B442B4c5fdc4c8B8b8d131DEB24702;
 
-    address internal constant BASE_POSITION_MANAGER_2 = 0xa990C6a764b73BF43cee5Bb40339c3322FB9D55F;
+    // https://github.com/aerodrome-finance/slipstream?tab=readme-ov-file#gauges-v3-deployment
+    address internal constant BASE_POSITION_MANAGER_2 = 0xe1f8cd9AC4e4A65F54f38a5CdAfCA44f6dD68b53;
 
     bytes4 internal constant IS_PAIR_SELECTOR = bytes4(keccak256("isPair(address)"));
     bytes4 internal constant IS_POOL_SELECTOR = bytes4(keccak256("isPool(address)"));
 
     address internal constant OPTIMISM_SWAP_ROUTER = 0x0792a633F0c19c351081CF4B211F68F79bCc9676;
+    address internal constant BASE_SWAP_ROUTER = 0x698Cb2b6dd822994581fEa6eA4Fc755d1363A92F;
 
     address internal constant OPTIMISM_OP = 0x4200000000000000000000000000000000000042;
 
     address internal constant OPTIMISM_WETH = 0x4200000000000000000000000000000000000006;
     address internal constant BASE_WETH = 0x4200000000000000000000000000000000000006;
+    address internal constant BASE_ZRO = 0x6985884C4392D348587B19cb9eAAf157F13271cd;
+    address internal constant BASE_USDC = 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913;
+    address internal constant BASE_DRV = 0x9d0E8f5b25384C7310CB8C6aE32C8fbeb645d083;
     address internal constant SONEIUM_WETH = 0x4200000000000000000000000000000000000006;
     address internal constant MODE_WETH = 0x4200000000000000000000000000000000000006;
     address internal constant INK_WETH = 0x4200000000000000000000000000000000000006;
