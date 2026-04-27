@@ -207,9 +207,9 @@ contract LpWrapper is ILpWrapper, VeloFarm, DefaultAccessControl {
 
         emit PositionParamsSet(
             slippageD9,
-            callbackParams,
-            strategyParams,
-            securityParams
+            abi.decode(callbackParams, (IVeloAmmModule.CallbackParams)),
+            abi.decode(strategyParams, (IPulseStrategyModule.StrategyParams)),
+            abi.decode(securityParams, (IVeloOracle.SecurityParams))
         );
     }
 

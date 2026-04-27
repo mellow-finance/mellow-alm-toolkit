@@ -105,9 +105,9 @@ interface ILpWrapper is IVeloFarm, IAccessControlEnumerable, IERC20 {
      */
     event PositionParamsSet(
         uint56 slippageD9,
-        bytes callbackParams,
-        bytes strategyParams,
-        bytes securityParams
+        IVeloAmmModule.CallbackParams callbackParams,
+        IPulseStrategyModule.StrategyParams strategyParams,
+        IVeloOracle.SecurityParams securityParams
     );
 
     /**
