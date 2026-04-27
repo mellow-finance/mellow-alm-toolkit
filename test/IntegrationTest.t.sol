@@ -61,12 +61,8 @@ contract IntegrationTest is Test, DeployScript {
         deal(Constants.BASE_WETH, user, wethAmount);
         deal(Constants.BASE_ZRO, user, zroAmount);
 
-        IERC20(Constants.BASE_WETH).safeIncreaseAllowance(
-            address(wstethWeth1Wrapper), wethAmount
-        );
-        IERC20(Constants.BASE_ZRO).safeIncreaseAllowance(
-            address(wstethWeth1Wrapper), zroAmount
-        );
+        IERC20(Constants.BASE_WETH).safeIncreaseAllowance(address(wstethWeth1Wrapper), wethAmount);
+        IERC20(Constants.BASE_ZRO).safeIncreaseAllowance(address(wstethWeth1Wrapper), zroAmount);
 
         uint256 n = 20;
         for (uint256 i = 0; i < n; i++) {

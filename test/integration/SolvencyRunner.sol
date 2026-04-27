@@ -235,9 +235,8 @@ contract SolvencyRunner is Test, DeployScript {
 
         (uint256 balance0Before, uint256 balance1Before,) = calculateTvl();
 
-        try swapRouter.exactOutputSingle(params) {
-
-        } catch {
+        try swapRouter.exactOutputSingle(params) {}
+        catch {
             revert("SwapRouter::exactOutputSingle has reverted");
         }
 
@@ -315,8 +314,8 @@ contract SolvencyRunner is Test, DeployScript {
             vm.expectRevert();
         }
 
-        try _core.rebalance(rebalanceParams) {
-        } catch {
+        try _core.rebalance(rebalanceParams) {}
+        catch {
             revert("Core::rebalance has reverted");
         }
         vm.stopPrank();
@@ -355,12 +354,14 @@ contract SolvencyRunner is Test, DeployScript {
         address wrapperAdmin = _wrapper.getRoleMember(keccak256("admin"), 0);
 
         vm.prank(wrapperAdmin);
-        try _wrapper.setStrategyParams(params) {
-        } catch {
+        try _wrapper.setStrategyParams(params) {}
+        catch {
             console2.log("strategyType: %s", uint256(params.strategyType));
             console2.log("tickSpacing: %s", uint24(params.tickSpacing));
             console2.log("width: %s", uint24(params.width));
-            console2.log("maxLiquidityRatioDeviationX96: %s", uint256(params.maxLiquidityRatioDeviationX96));
+            console2.log(
+                "maxLiquidityRatioDeviationX96: %s", uint256(params.maxLiquidityRatioDeviationX96)
+            );
             console2.log("tickNeighborhood: %s", uint24(params.tickNeighborhood));
             revert("Wrapper::setStrategyParams has reverted");
         }

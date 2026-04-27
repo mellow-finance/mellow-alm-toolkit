@@ -307,12 +307,7 @@ contract Unit is Fixture {
         );
 
         uint256 tokenId2 = mint(
-            Constants.BASE_WETH,
-            Constants.BASE_DRV,
-            200,
-            2000,
-            1 ether,
-            Constants.OPTIMISM_DEPLOYER
+            Constants.BASE_WETH, Constants.BASE_DRV, 200, 2000, 1 ether, Constants.OPTIMISM_DEPLOYER
         );
 
         uint256 tokenIdEmpty = mint(

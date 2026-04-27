@@ -385,9 +385,8 @@ contract Fixture is DeployScript, Test {
         if (token0 > token1) {
             (token0, token1) = (token1, token0);
         }
-        ICLPool pool = ICLPool(
-            ICLFactory(positionManager.factory()).getPool(token0, token1, tickSpacing)
-        );
+        ICLPool pool =
+            ICLPool(ICLFactory(positionManager.factory()).getPool(token0, token1, tickSpacing));
         (uint160 sqrtRatioX96, int24 spotTick,,,,) = pool.slot0();
         {
             int24 remainder = spotTick % tickSpacing;

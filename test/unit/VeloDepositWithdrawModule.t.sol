@@ -18,9 +18,8 @@ contract Unit is Fixture {
     function testDeposit() external {
         module = new VeloDepositWithdrawModule(positionManager);
 
-        uint256 tokenId = mint(
-            token0, token1, pool.tickSpacing(), pool.tickSpacing() * 2, 10000, address(this)
-        );
+        uint256 tokenId =
+            mint(token0, token1, pool.tickSpacing(), pool.tickSpacing() * 2, 10000, address(this));
 
         PositionLibrary.Position memory position_ =
             PositionLibrary.getPosition(address(positionManager), tokenId);
