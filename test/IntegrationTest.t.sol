@@ -13,6 +13,7 @@ contract IntegrationTest is Test, DeployScript {
     int24 internal constant TICK_SPACING = 100;
 
     function setUp() external {
+        TEST_ENV = true;
         coreParams = Constants.getDeploymentParams();
         vm.startPrank(coreParams.deployer);
         contracts = deployCore(coreParams);

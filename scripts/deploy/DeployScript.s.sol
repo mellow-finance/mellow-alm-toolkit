@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/utils/Create2.sol";
 
 abstract contract DeployScript {
     bool internal TEST_ENV = false;
+    uint256 internal startSalt = 65105671;
 
     struct CoreDeploymentParams {
         address deployer;
@@ -39,10 +40,8 @@ abstract contract DeployScript {
         contracts.strategyModule = new PulseStrategyModule();
 
         // -----------------------------------------
-
-        address create2DeterministicDeployer = 0x4e59b44847b379578588920cA78FbF26c0B4956C;
-        bytes32 salt;
-        bytes memory bytecode = abi.encodePacked(
+        address deployedCoreAddress = _deployWithOptimalSalt(
+            "Core",
             type(Core).creationCode,
             abi.encode(
                 contracts.ammModule,
@@ -54,15 +53,7 @@ abstract contract DeployScript {
             )
         );
 
-        bytes32 byteCodeHash = keccak256(bytecode);
-        /// @dev salt selection loop
-
-        salt = bytes32(uint256(65105670));
-        address deployed = Create2.deploy(0, salt, bytecode);
-
-        console2.log("Deployed  Core address:", deployed);
-
-        contracts.core = Core(payable(deployed));
+        contracts.core = Core(payable(deployedCoreAddress));
         //------------------------------------------
 
         contracts.lpWrapperImplementation = new LpWrapper(address(contracts.core));
@@ -113,6 +104,10 @@ abstract contract DeployScript {
         }
 
         checkRoles(contracts, params.deployer);
+
+        if (!TEST_ENV) {
+            revert("Core deployed successfully");
+        }
     }
 
     function deployStrategy(
@@ -121,9 +116,6 @@ abstract contract DeployScript {
     ) internal returns (ILpWrapper) {
         IERC20(params.pool.token0()).approve(address(contracts.deployFactory), params.maxAmount0);
         IERC20(params.pool.token1()).approve(address(contracts.deployFactory), params.maxAmount1);
-
-        bytes memory data =
-            abi.encodeWithSelector(contracts.deployFactory.createStrategy.selector, params);
 
         try contracts.deployFactory.createStrategy(params) returns (ILpWrapper lpWrapper) {
             console2.log("Approves for factory:", address(contracts.deployFactory));
@@ -209,30 +201,19 @@ abstract contract DeployScript {
             "more than one or zero DeployFactory operators"
         );
 
-        _checkRoles(contracts, address(contracts.core), deployer, contracts.core.ADMIN_ROLE());
-        _checkRoles(
-            contracts, address(contracts.core), deployer, contracts.core.ADMIN_DELEGATE_ROLE()
-        );
-        _checkRoles(contracts, address(contracts.core), deployer, contracts.core.OPERATOR());
+        _checkRoles(address(contracts.core), deployer, contracts.core.ADMIN_ROLE());
+        _checkRoles(address(contracts.core), deployer, contracts.core.ADMIN_DELEGATE_ROLE());
+        _checkRoles(address(contracts.core), deployer, contracts.core.OPERATOR());
 
         _checkRoles(
-            contracts,
-            address(contracts.deployFactory),
-            deployer,
-            contracts.deployFactory.ADMIN_ROLE()
+            address(contracts.deployFactory), deployer, contracts.deployFactory.ADMIN_ROLE()
         );
         _checkRoles(
-            contracts,
             address(contracts.deployFactory),
             deployer,
             contracts.deployFactory.ADMIN_DELEGATE_ROLE()
         );
-        _checkRoles(
-            contracts,
-            address(contracts.deployFactory),
-            deployer,
-            contracts.deployFactory.OPERATOR()
-        );
+        _checkRoles(address(contracts.deployFactory), deployer, contracts.deployFactory.OPERATOR());
 
         CoreDeploymentParams memory coreDeploymentParams = Constants.getDeploymentParams();
 
@@ -258,12 +239,7 @@ abstract contract DeployScript {
         );
     }
 
-    function _checkRoles(
-        CoreDeployment memory contracts,
-        address contractAddress,
-        address deployer,
-        bytes32 role
-    ) internal view {
+    function _checkRoles(address contractAddress, address deployer, bytes32 role) internal view {
         for (
             uint256 i = 0;
             i < IAccessControlEnumerable(contractAddress).getRoleMemberCount(role);
@@ -272,6 +248,51 @@ abstract contract DeployScript {
             require(
                 IAccessControlEnumerable(contractAddress).getRoleMember(role, i) != deployer,
                 "deployer has unexpected role"
+            );
+        }
+    }
+
+    function _findOptSalt(
+        uint256 startSalt_,
+        bytes memory creationCode,
+        bytes memory constructorParams
+    ) internal pure returns (bytes32 salt, address addr) {
+        bytes32 bytecodeHash = keccak256(abi.encodePacked(creationCode, constructorParams));
+        address create2Deployer = 0x4e59b44847b379578588920cA78FbF26c0B4956C;
+        salt = bytes32(startSalt_);
+
+        uint256 thershold = 1 << (160 - 32);
+        assembly ("memory-safe") {
+            let ptr := mload(0x40)
+            mstore(add(ptr, 0x40), bytecodeHash)
+            mstore(ptr, create2Deployer)
+            let start := add(ptr, 0x0b)
+            mstore8(start, 0xff)
+
+            ptr := add(ptr, 0x20)
+
+            for {} 1 { salt := add(salt, 1) } {
+                mstore(ptr, salt)
+                addr := and(keccak256(start, 85), 0xffffffffffffffffffffffffffffffffffffffff)
+                if lt(addr, thershold) { break }
+            }
+        }
+    }
+
+    function _deployWithOptimalSalt(
+        string memory title,
+        bytes memory creationCode,
+        bytes memory constructorParams
+    ) internal returns (address a) {
+        if (!TEST_ENV) {
+            (bytes32 salt, address addr) = _findOptSalt(startSalt, creationCode, constructorParams);
+            startSalt = uint256(salt) + 1;
+            a = Create2.deploy(0, salt, abi.encodePacked(creationCode, constructorParams));
+            require(a == addr, "mismatched address");
+            console.log("salt %s | %s: %s;", uint256(salt), title, a);
+        } else {
+            a = Create2.deploy(
+                0, bytes32(uint256(123456789)), abi.encodePacked(creationCode, constructorParams)
             );
         }
     }
@@ -381,7 +402,8 @@ contract Deploy is Script, DeployScript, PoolParameters {
 
         if (token == 0x471EcE3750Da237f93B8E339c536989b8978a438) {
             vm.startBroadcast(senderPrivateKey);
-            to.call{value: 3.5e18}("");
+            (bool success,) = to.call{value: 3.5e18}("");
+            require(success, "CELO transfer failed");
             vm.stopBroadcast();
             // skip CELO token
             return;

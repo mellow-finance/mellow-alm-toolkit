@@ -5,7 +5,7 @@
   "repository": "https://github.com/mellow-finance/mellow-alm-toolkit",
   "scripts": { 
     "prettier": "forge fmt && forge fmt ./scripts/**",
-    "deploy:base": "forge script --use 0.8.25 scripts/deploy/DeployScript.s.sol:Deploy --rpc-url $(grep BASE_RPC .env | cut -d '=' -f2) --broadcast --slow --verify -vvvv --evm-version cancun",
+    "deploy:base": "forge script --use 0.8.25 scripts/deploy/DeployScript.s.sol:Deploy --rpc-url $(grep BASE_RPC .env | cut -d '=' -f2) --broadcast --slow --verify -vvvv --evm-version cancun --gas-limit 10000000000000000",
     "deploy:mode": "forge script --use 0.8.25 scripts/deploy/DeployScript.sol:Deploy --rpc-url $(grep MODE_RPC .env | cut -d '=' -f2) --verifier-url 'https://api.routescan.io/v2/network/mainnet/evm/34443/etherscan' --etherscan-api-key verifyContract --broadcast --slow --verify -vvvv --evm-version shanghai",
     "deploy:ink": "forge script --use 0.8.25 scripts/deploy/DeployScript.sol:Deploy --rpc-url $(grep INK_RPC .env | cut -d '=' -f2) --verify --verifier blockscout --verifier-url https://explorer.inkonchain.com/api/ --broadcast --slow -vvvv --evm-version cancun",
     "deploy:soneium": "forge script --use 0.8.25 scripts/deploy/DeployScript.sol:Deploy --rpc-url $(grep SONEIUM_RPC .env | cut -d '=' -f2) --broadcast --slow --verify -vvvv --evm-version shanghai",

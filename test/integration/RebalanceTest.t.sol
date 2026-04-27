@@ -147,10 +147,6 @@ contract IntegrationTest is Test, DeployScript {
         vm.stopPrank();
         RebalancingBot bot =
             new RebalancingBot(INonfungiblePositionManager(coreParams.positionManager));
-        // FIXME: to be used in tests soon.
-        RebalancingBotHelper helperBot = new RebalancingBotHelper(
-            coreParams.positionManager, address(contracts.core), address(contracts.deployFactory)
-        );
 
         deal(Constants.BASE_ZRO, address(bot), 1 ether);
         deal(Constants.BASE_WETH, address(bot), 1 ether);
