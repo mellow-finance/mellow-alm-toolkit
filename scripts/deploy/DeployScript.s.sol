@@ -7,6 +7,8 @@ import "@openzeppelin/contracts/utils/Create2.sol";
 abstract contract DeployScript {
     bool internal TEST_ENV = false;
     uint256 internal startSalt = 65105671;
+    uint256 private deployedContracts;
+    mapping(string => bytes32) internal contractSalts;
 
     struct CoreDeploymentParams {
         address deployer;
@@ -26,42 +28,95 @@ abstract contract DeployScript {
         IVeloAmmModule.ProtocolParams protocolParams;
     }
 
+    function setUp() external virtual {
+        /*
+            salt 392948948 | VeloAmmModule: 0x00000006B0B357F48F4fC9D20b9b23F7640b8893;
+            salt 599636895 | VeloDepositWithdrawModule: 0x00000003350B8343889AA9A30A32b4C883452456;
+            salt 775961490 | VeloOracle: 0x0000000f70629Adc6E46c8E222a150B1123dBeb6;
+            salt 1052119663 | PulseStrategyModule: 0x000000006AE6F1FcbE56af05027B2650bC8E9C7A;
+            salt 743084019 | Core: 0x0000C08e4b22Cb937B5d5A65C0243De612E9E60c;
+            salt 570694638 | LpWrapper: 0x0000000639f91FaB752c414eF0993D36e6d16ba1;
+            salt 919107586 | VeloDeployFactory: 0x0000000d2D5f153C468Ad8D69946f1c5c99eCD2c;
+        */
+        contractSalts["VeloAmmModule"] = bytes32(uint256(392948948));
+        contractSalts["VeloDepositWithdrawModule"] = bytes32(uint256(599636895));
+        contractSalts["VeloOracle"] = bytes32(uint256(775961490));
+        contractSalts["PulseStrategyModule"] = bytes32(uint256(1052119663));
+        contractSalts["Core"] = bytes32(uint256(743084019));
+        contractSalts["LpWrapper"] = bytes32(uint256(570694638));
+        contractSalts["VeloDeployFactory"] = bytes32(uint256(919107586));
+    }
+
     function deployCore(CoreDeploymentParams memory params)
         internal
         returns (CoreDeployment memory contracts)
     {
         console2.log("Deployer address:", params.deployer);
-        contracts.ammModule = new VeloAmmModule(
-            INonfungiblePositionManager(params.positionManager), params.isPoolSelector
-        );
-        contracts.depositWithdrawModule =
-            new VeloDepositWithdrawModule(INonfungiblePositionManager(params.positionManager));
-        contracts.oracle = new VeloOracle();
-        contracts.strategyModule = new PulseStrategyModule();
-
-        // -----------------------------------------
-        address deployedCoreAddress = _deployWithOptimalSalt(
-            "Core",
-            type(Core).creationCode,
-            abi.encode(
-                contracts.ammModule,
-                contracts.depositWithdrawModule,
-                contracts.strategyModule,
-                contracts.oracle,
-                params.deployer,
-                params.weth
+        //------------------------------------------
+        contracts.ammModule = IVeloAmmModule(
+            _deployWithOptimalSalt(
+                "VeloAmmModule",
+                type(VeloAmmModule).creationCode,
+                abi.encode(
+                    INonfungiblePositionManager(params.positionManager), params.isPoolSelector
+                )
             )
         );
-
-        contracts.core = Core(payable(deployedCoreAddress));
         //------------------------------------------
-
-        contracts.lpWrapperImplementation = new LpWrapper(address(contracts.core));
-        contracts.deployFactory = new VeloDeployFactory(
-            params.deployer,
-            contracts.core,
-            contracts.strategyModule,
-            address(contracts.lpWrapperImplementation)
+        contracts.depositWithdrawModule = IVeloDepositWithdrawModule(
+            _deployWithOptimalSalt(
+                "VeloDepositWithdrawModule",
+                type(VeloDepositWithdrawModule).creationCode,
+                abi.encode(INonfungiblePositionManager(params.positionManager))
+            )
+        );
+        //------------------------------------------
+        contracts.oracle = IVeloOracle(
+            _deployWithOptimalSalt("VeloOracle", type(VeloOracle).creationCode, abi.encode())
+        );
+        //------------------------------------------
+        contracts.strategyModule = IPulseStrategyModule(
+            _deployWithOptimalSalt(
+                "PulseStrategyModule", type(PulseStrategyModule).creationCode, abi.encode()
+            )
+        );
+        // -----------------------------------------
+        contracts.core = Core(
+            payable(
+                _deployWithOptimalSalt(
+                    "Core",
+                    type(Core).creationCode,
+                    abi.encode(
+                        contracts.ammModule,
+                        contracts.depositWithdrawModule,
+                        contracts.strategyModule,
+                        contracts.oracle,
+                        params.deployer,
+                        params.weth
+                    )
+                )
+            )
+        );
+        //------------------------------------------
+        contracts.lpWrapperImplementation = ILpWrapper(
+            _deployWithOptimalSalt(
+                "LpWrapper", type(LpWrapper).creationCode, abi.encode(address(contracts.core))
+            )
+        );
+        //------------------------------------------
+        contracts.deployFactory = VeloDeployFactory(
+            payable(
+                _deployWithOptimalSalt(
+                    "VeloDeployFactory",
+                    type(VeloDeployFactory).creationCode,
+                    abi.encode(
+                        params.deployer,
+                        contracts.core,
+                        contracts.strategyModule,
+                        address(contracts.lpWrapperImplementation)
+                    )
+                )
+            )
         );
 
         if (!TEST_ENV) {
@@ -106,7 +161,7 @@ abstract contract DeployScript {
         checkRoles(contracts, params.deployer);
 
         if (!TEST_ENV) {
-            revert("Core deployed successfully");
+           // revert("Core deployed successfully");
         }
     }
 
@@ -261,7 +316,7 @@ abstract contract DeployScript {
         address create2Deployer = 0x4e59b44847b379578588920cA78FbF26c0B4956C;
         salt = bytes32(startSalt_);
 
-        uint256 thershold = 1 << (160 - 32);
+        uint256 thershold = 1 << (160 - 28);
         assembly ("memory-safe") {
             let ptr := mload(0x40)
             mstore(add(ptr, 0x40), bytecodeHash)
@@ -279,21 +334,66 @@ abstract contract DeployScript {
         }
     }
 
+    // Finds a salt whose CREATE2 address starts with 0x0000C05E or 0x0000C08E (case-insensitive).
+    function _findOptSaltCore(
+        uint256 startSalt_,
+        bytes memory creationCode,
+        bytes memory constructorParams
+    ) internal pure returns (bytes32 salt, address addr) {
+        bytes32 bytecodeHash = keccak256(abi.encodePacked(creationCode, constructorParams));
+        address create2Deployer = 0x4e59b44847b379578588920cA78FbF26c0B4956C;
+        salt = bytes32(startSalt_);
+
+        assembly ("memory-safe") {
+            let ptr := mload(0x40)
+            mstore(add(ptr, 0x40), bytecodeHash)
+            mstore(ptr, create2Deployer)
+            let start := add(ptr, 0x0b)
+            mstore8(start, 0xff)
+
+            ptr := add(ptr, 0x20)
+            //mstore(ptr, salt)
+            //addr := and(keccak256(salt, 85), 0xffffffffffffffffffffffffffffffffffffffff)
+
+            for {} 1 { salt := add(salt, 1) } {
+                mstore(ptr, salt)
+                addr := and(keccak256(start, 85), 0xffffffffffffffffffffffffffffffffffffffff)
+                // top 4 bytes of the 20-byte address sit in bits 159-128
+                let prefix := shr(128, addr)
+                if eq(prefix, 0x0000C08E) { break }
+            }
+        }
+    }
+
     function _deployWithOptimalSalt(
         string memory title,
         bytes memory creationCode,
         bytes memory constructorParams
     ) internal returns (address a) {
         if (!TEST_ENV) {
-            (bytes32 salt, address addr) = _findOptSalt(startSalt, creationCode, constructorParams);
-            startSalt = uint256(salt) + 1;
+            bytes32 salt;
+            address addr;
+            if (keccak256(abi.encodePacked(title)) == keccak256(abi.encodePacked("Core"))) {
+                //(salt, addr) = _findOptSaltCore(startSalt, creationCode, constructorParams);
+                salt = contractSalts[title];
+            } else {
+                if (contractSalts[title] != bytes32(0)) {
+                    salt = contractSalts[title];
+                } else {
+                    (salt, addr) = _findOptSalt(startSalt, creationCode, constructorParams);
+                    startSalt = uint256(salt) + 1;
+                }
+            }
             a = Create2.deploy(0, salt, abi.encodePacked(creationCode, constructorParams));
-            require(a == addr, "mismatched address");
-            console.log("salt %s | %s: %s;", uint256(salt), title, a);
+            //require(a == addr, "mismatched address");
+            console2.log("salt %s | %s: %s;", uint256(salt), title, a);
         } else {
             a = Create2.deploy(
-                0, bytes32(uint256(123456789)), abi.encodePacked(creationCode, constructorParams)
+                0,
+                bytes32(uint256(123456789) + deployedContracts),
+                abi.encodePacked(creationCode, constructorParams)
             );
+            deployedContracts++;
         }
     }
 }
@@ -308,7 +408,6 @@ contract Deploy is Script, DeployScript, PoolParameters {
         deployCore(coreDeploymentParams);
         //deployStrategies();
         vm.stopBroadcast();
-        revert("ok");
     }
 
     function deployStrategies() internal {

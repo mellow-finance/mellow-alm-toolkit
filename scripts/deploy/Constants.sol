@@ -42,6 +42,7 @@ library Constants {
 
     // https://github.com/aerodrome-finance/slipstream?tab=readme-ov-file#gauges-v3-deployment
     address internal constant BASE_POSITION_MANAGER_2 = 0xe1f8cd9AC4e4A65F54f38a5CdAfCA44f6dD68b53;
+    address internal constant BASE_GAUGE_FACTORY = 0x385293CaE378C813F16f0C1334d774AdDDf56AbB;
 
     bytes4 internal constant IS_PAIR_SELECTOR = bytes4(keccak256("isPair(address)"));
     bytes4 internal constant IS_POOL_SELECTOR = bytes4(keccak256("isPool(address)"));
@@ -96,7 +97,7 @@ library Constants {
     uint256 internal constant OPTIMISM_MIN_INITIAL_TOTAL_SUPPLY = 1000 wei;
     address internal constant FACTORY_OPERATOR_1 = 0x41416bd2c3559456C77b814E6dD44C2406082572; // Base/Optimism/Ink/Unichain/Celo
     address internal constant FACTORY_OPERATOR_2 = 0x17228ae446D6ECE826f86E300C2D0AC6a3390EE7; // Mode/Soneium/Swell/Superseed/Lisk
-    address internal constant CORE_OPERATOR = 0x0A16Bc694EeA56cbFc808a271178556d3f8c23aD; // actual
+    address internal constant CORE_OPERATOR = 0xe12DE564CC5eB1551a7C297907c8598D51Dffccb; // actual
 
     address internal constant OPTIMISM_MELLOW_TREASURY = 0xf0E36e9186Dbe927505d2588a6E6D56083Dd4a56; // actual msig mellow
     address internal constant BASE_MELLOW_TREASURY = 0xf0E36e9186Dbe927505d2588a6E6D56083Dd4a56; // actual msig mellow
@@ -146,7 +147,7 @@ library Constants {
                 coreOperator: CORE_OPERATOR,
                 protocolParams: IVeloAmmModule.ProtocolParams({
                     treasury: BASE_MELLOW_TREASURY,
-                    feeD9: FEE_D9
+                    feeD9: uint32(0)
                 })
             });
         } else if (block.chainid == 34443) {

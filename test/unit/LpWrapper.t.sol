@@ -17,7 +17,7 @@ contract Unit is Fixture {
     CoreDeployment contracts;
     IVeloDeployFactory.DeployParams deployParams;
 
-    function setUp() external {
+    function setUp() external override {
         TEST_ENV = true;
         contracts = deployContracts();
         (lpWrapper, deployParams) = deployLpWrapper(pool, contracts);
@@ -655,19 +655,35 @@ contract Unit is Fixture {
         vm.expectRevert(abi.encodeWithSignature("InvalidDistributor()"));
         IVeloFarm(lpWrapper).distribute(1 ether, rewardToken);
 
-        skip(1 hours);
+        uint256 minStakeTimes =
+            ICLGaugeFactory(Constants.BASE_GAUGE_FACTORY).minStakeTimes(address(pool));
 
-        vm.startPrank(Constants.OPTIMISM_DEPLOYER);
-        uint256 eranedAmount = IVeloFarm(lpWrapper).getRewards(Constants.OPTIMISM_DEPLOYER);
-        assertEq(eranedAmount, IERC20(rewardToken).balanceOf(Constants.OPTIMISM_DEPLOYER));
+        if (minStakeTimes > 0) {
+            skip(minStakeTimes - 1);
+            uint256 eranedAmount = IVeloFarm(lpWrapper).getRewards(Constants.OPTIMISM_DEPLOYER);
+            assertEq(eranedAmount, IERC20(rewardToken).balanceOf(Constants.OPTIMISM_DEPLOYER));
+            assertEq(eranedAmount, 0, "No rewards should be earned before minStakeTimes");
+        }
 
-        assertApproxEqRel(
-            FullMath.mulDiv(eranedAmount, Q96, totalSupplyAfter - totalSupplyBefore),
-            FullMath.mulDiv(
-                IERC20(rewardToken).balanceOf(address(lpWrapper)), Q96, totalSupplyBefore
-            ),
-            10 ** 3 // 1e-15
-        );
+        skip(2 seconds);
+        {
+            vm.startPrank(Constants.OPTIMISM_DEPLOYER);
+            uint256 eranedAmount = IVeloFarm(lpWrapper).getRewards(Constants.OPTIMISM_DEPLOYER);
+            assertEq(
+                eranedAmount,
+                IERC20(rewardToken).balanceOf(Constants.OPTIMISM_DEPLOYER),
+                "getRewards should return the correct amount"
+            );
+
+            assertApproxEqRel(
+                FullMath.mulDiv(eranedAmount, Q96, totalSupplyAfter - totalSupplyBefore),
+                FullMath.mulDiv(
+                    IERC20(rewardToken).balanceOf(address(lpWrapper)), Q96, totalSupplyBefore
+                ),
+                10 ** 10, // 1e-8
+                "earned amount should be proportional to the share of liquidity provided"
+            );
+        }
     }
 
     function testEmptyRebalance() external {

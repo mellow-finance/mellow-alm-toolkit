@@ -11,7 +11,7 @@ contract Unit is Fixture {
     ILpWrapper lpWrapper;
     IVeloDeployFactory.DeployParams deployParams;
 
-    function setUp() external {
+    function setUp() external override {
         TEST_ENV = true;
         contracts = deployContracts();
         (lpWrapper, deployParams) = deployLpWrapper(pool, contracts);

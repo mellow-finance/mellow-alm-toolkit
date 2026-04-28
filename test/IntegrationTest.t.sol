@@ -12,7 +12,7 @@ contract IntegrationTest is Test, DeployScript {
     ILpWrapper private wstethWeth1Wrapper;
     int24 internal constant TICK_SPACING = 100;
 
-    function setUp() external {
+    function setUp() external override {
         TEST_ENV = true;
         coreParams = Constants.getDeploymentParams();
         vm.startPrank(coreParams.deployer);

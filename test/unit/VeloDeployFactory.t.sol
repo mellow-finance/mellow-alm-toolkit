@@ -12,7 +12,7 @@ contract Unit is Fixture {
     IERC20 token1 = IERC20(pool.token1());
     int24 tickSpacing = pool.tickSpacing();
 
-    function setUp() external {
+    function setUp() external override {
         TEST_ENV = true;
     }
 
