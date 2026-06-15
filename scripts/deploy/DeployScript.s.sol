@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.25;
 
-import "./Pools.sol";
+import "./PoolsV2.sol";
 import "@openzeppelin/contracts/utils/Create2.sol";
 
 abstract contract DeployScript {
@@ -404,9 +404,9 @@ contract Deploy is Script, DeployScript, PoolParameters {
 
     function run() external {
         CoreDeploymentParams memory coreDeploymentParams = Constants.getDeploymentParams();
+        deployStrategies();
         vm.startBroadcast(deployerPrivateKey);
-        deployCore(coreDeploymentParams);
-        //deployStrategies();
+        //deployCore(coreDeploymentParams);
         vm.stopBroadcast();
     }
 
@@ -427,7 +427,7 @@ contract Deploy is Script, DeployScript, PoolParameters {
         console2.log("               VeloOracle: ", address(contracts.oracle));
 
         _deployStrategies(contracts);
-        // revert("success");
+        revert("success");
     }
 
     function _deployStrategies(CoreDeployment memory contracts) internal {
@@ -436,7 +436,7 @@ contract Deploy is Script, DeployScript, PoolParameters {
         vm.startPrank(coreDeploymentParams.factoryOperator);
         IVeloDeployFactory.DeployParams[] memory params = getPoolDeployParams(contracts);
 
-        uint256 firstIndex = 69;
+        uint256 firstIndex = 0;
         uint256 lastIndex = params.length;
         string memory batchJson = '{"transactions":[';
         for (uint256 i = firstIndex; i < lastIndex; i++) {

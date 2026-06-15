@@ -310,15 +310,15 @@ library Constants {
     function getCoreDeployment() internal pure returns (CoreDeployment memory) {
         /// @notice Core deployment addresses are the same on all chains
         return CoreDeployment({
-            core: Core(payable(0x0000000cE42D4981513060aB7E50B9e5e2D19AF1)),
-            ammModule: IVeloAmmModule(0x3240847946E112Db9C7D3BBB4FC3CDc38Cb6bFB5),
+            core: Core(payable(0x0000C08e4b22Cb937B5d5A65C0243De612E9E60c)),
+            ammModule: IVeloAmmModule(0x00000006B0B357F48F4fC9D20b9b23F7640b8893),
             depositWithdrawModule: IVeloDepositWithdrawModule(
-                0x794070c3CB9366F066D837BFdCDe67fD981CDA56
+                0x00000003350B8343889AA9A30A32b4C883452456
             ),
-            oracle: IVeloOracle(0xc96ED9f6C8f546DCf7953c9df8Ff270330F45213),
-            strategyModule: IPulseStrategyModule(0xdebea4AF183d323132AD5AB7C0b7Cd2091094eee),
-            deployFactory: VeloDeployFactory(payable(0xE46EC96906fc6dEC53De25F013639969Fe10180d)),
-            lpWrapperImplementation: ILpWrapper(0xfd61E98a352ed8cA2C364DCd5B6C21dc126959F5)
+            oracle: IVeloOracle(0x0000000f70629Adc6E46c8E222a150B1123dBeb6),
+            strategyModule: IPulseStrategyModule(0x000000006AE6F1FcbE56af05027B2650bC8E9C7A),
+            deployFactory: VeloDeployFactory(payable(0x0000000d2D5f153C468Ad8D69946f1c5c99eCD2c)),
+            lpWrapperImplementation: ILpWrapper(0x0000000639f91FaB752c414eF0993D36e6d16ba1)
         });
     }
 
