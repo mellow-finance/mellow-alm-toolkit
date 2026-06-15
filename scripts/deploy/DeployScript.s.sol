@@ -161,7 +161,7 @@ abstract contract DeployScript {
         checkRoles(contracts, params.deployer);
 
         if (!TEST_ENV) {
-           // revert("Core deployed successfully");
+            // revert("Core deployed successfully");
         }
     }
 
