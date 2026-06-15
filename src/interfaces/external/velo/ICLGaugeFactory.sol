@@ -39,4 +39,15 @@ interface ICLGaugeFactory {
         address _rewardToken,
         bool _isPool
     ) external returns (address);
+
+    /// @notice Denominator for emission calculations (as basis points)
+    function MAX_BPS() external view returns (uint256);
+
+    /// @notice Penalty rate (in basis points) applied to rewards on early claim or withdrawal
+    function penaltyRate() external view returns (uint256);
+
+    /// @notice Returns the effective minimum stake time for a pool
+    /// @dev Returns the per-pool override if set (> 0), otherwise returns defaultMinStakeTime
+    /// @param _pool The pool address to query
+    function minStakeTimes(address _pool) external view returns (uint256);
 }

@@ -283,7 +283,7 @@ contract Fixture is DeployScript, Test {
 
     ILpWrapper private wstethWeth1Wrapper;
 
-    int24 public constant TICK_SPACING = 200;
+    int24 public constant TICK_SPACING = 100;
     uint256 public constant Q96 = 2 ** 96;
     uint256 public constant D9 = 1e9;
     DeployScript.CoreDeploymentParams public params = Constants.getDeploymentParams();
@@ -291,13 +291,13 @@ contract Fixture is DeployScript, Test {
         INonfungiblePositionManager(params.positionManager);
     ICLFactory public factory = ICLFactory(positionManager.factory());
 
-    function deployContracts() public returns (DeployScript.CoreDeployment memory contracts) {
+    function deployContracts() public returns (CoreDeployment memory contracts) {
         vm.startPrank(params.deployer);
         contracts = deployCore(params);
         vm.stopPrank();
     }
 
-    function deployLpWrapper(ICLPool pool, DeployScript.CoreDeployment memory contracts)
+    function deployLpWrapper(ICLPool pool, CoreDeployment memory contracts)
         public
         returns (ILpWrapper lpWrapper, IVeloDeployFactory.DeployParams memory deployParams)
     {
@@ -311,7 +311,7 @@ contract Fixture is DeployScript, Test {
         });
 
         deployParams.securityParams =
-            IVeloOracle.SecurityParams({lookback: 100, maxAge: 5 days, maxAllowedDelta: 10});
+            IVeloOracle.SecurityParams({lookback: 10, maxAge: 5 days, maxAllowedDelta: 100});
 
         deployParams.pool = pool;
         deployParams.maxAmount0 = 1 ether;
@@ -378,7 +378,6 @@ contract Fixture is DeployScript, Test {
         int24 tickSpacing,
         int24 width,
         uint128 liquidity,
-        ICLPool pool,
         address recipient
     ) public returns (uint256) {
         vm.startPrank(recipient);
@@ -386,6 +385,8 @@ contract Fixture is DeployScript, Test {
         if (token0 > token1) {
             (token0, token1) = (token1, token0);
         }
+        ICLPool pool =
+            ICLPool(ICLFactory(positionManager.factory()).getPool(token0, token1, tickSpacing));
         (uint160 sqrtRatioX96, int24 spotTick,,,,) = pool.slot0();
         {
             int24 remainder = spotTick % tickSpacing;
@@ -472,14 +473,14 @@ contract Fixture is DeployScript, Test {
         );
         amount0 *= 2;
         amount1 *= 2;
-        deal(Constants.OPTIMISM_WETH, params.deployer, amount0);
-        deal(Constants.OPTIMISM_OP, params.deployer, amount1);
-        IERC20(Constants.OPTIMISM_WETH).safeIncreaseAllowance(address(positionManager), amount0);
-        IERC20(Constants.OPTIMISM_OP).safeIncreaseAllowance(address(positionManager), amount1);
+        deal(Constants.BASE_WETH, params.deployer, amount0);
+        deal(Constants.BASE_ZRO, params.deployer, amount1);
+        IERC20(Constants.BASE_WETH).safeIncreaseAllowance(address(positionManager), amount0);
+        IERC20(Constants.BASE_ZRO).safeIncreaseAllowance(address(positionManager), amount1);
         positionManager.mint(
             INonfungiblePositionManager.MintParams({
-                token0: Constants.OPTIMISM_WETH,
-                token1: Constants.OPTIMISM_OP,
+                token0: Constants.BASE_WETH,
+                token1: Constants.BASE_ZRO,
                 tickSpacing: TICK_SPACING,
                 tickLower: tickLower,
                 tickUpper: tickUpper,

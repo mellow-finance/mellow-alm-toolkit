@@ -6,12 +6,15 @@ import "./Fixture.sol";
 contract Unit is Fixture {
     using SafeERC20 for IERC20;
 
-    ICLPool public pool =
-        ICLPool(factory.getPool(Constants.OPTIMISM_OP, Constants.OPTIMISM_WETH, 200));
+    ICLPool pool = ICLPool(factory.getPool(Constants.BASE_WETH, Constants.BASE_ZRO, TICK_SPACING));
 
     IERC20 token0 = IERC20(pool.token0());
     IERC20 token1 = IERC20(pool.token1());
     int24 tickSpacing = pool.tickSpacing();
+
+    function setUp() external override {
+        TEST_ENV = true;
+    }
 
     function testConstructor() external {
         vm.expectRevert();
@@ -19,7 +22,7 @@ contract Unit is Fixture {
             address(0), ICore(address(0)), IPulseStrategyModule(address(0)), address(0)
         );
 
-        DeployScript.CoreDeployment memory contracts = deployContracts();
+        CoreDeployment memory contracts = deployContracts();
         VeloDeployFactory factory;
 
         vm.expectRevert(abi.encodeWithSignature("AddressZero()"));
@@ -47,7 +50,7 @@ contract Unit is Fixture {
     }
 
     function testRemoveWrapperForPool() public {
-        DeployScript.CoreDeployment memory contracts = deployContracts();
+        CoreDeployment memory contracts = deployContracts();
 
         vm.prank(params.mellowAdmin);
         contracts.deployFactory.removeWrapperForPool(address(pool));
@@ -67,7 +70,7 @@ contract Unit is Fixture {
     }
 
     function testSetLpWrapperAdmin() public {
-        DeployScript.CoreDeployment memory contracts = deployContracts();
+        CoreDeployment memory contracts = deployContracts();
 
         vm.expectRevert(abi.encodeWithSignature("Forbidden()"));
         contracts.deployFactory.setLpWrapperAdmin(address(1234));
@@ -81,7 +84,7 @@ contract Unit is Fixture {
     }
 
     function testSetMinInitialTotalSupply() public {
-        DeployScript.CoreDeployment memory contracts = deployContracts();
+        CoreDeployment memory contracts = deployContracts();
 
         vm.expectRevert(abi.encodeWithSignature("Forbidden()"));
         contracts.deployFactory.setMinInitialTotalSupply(123);
@@ -99,7 +102,7 @@ contract Unit is Fixture {
     }
 
     function testCreateStrategyRevert() public {
-        DeployScript.CoreDeployment memory contracts = deployContracts();
+        CoreDeployment memory contracts = deployContracts();
 
         ICLPool poolBad =
             ICLPool(address(new CLPoolMock(pool.token0(), pool.token1(), pool.tickSpacing())));
@@ -138,7 +141,7 @@ contract Unit is Fixture {
     }
 
     function testCreateStrategy() public {
-        DeployScript.CoreDeployment memory contracts = deployContracts();
+        CoreDeployment memory contracts = deployContracts();
 
         (ILpWrapper lpWrapper, IVeloDeployFactory.DeployParams memory deployParams) =
             deployLpWrapper(pool, contracts);
@@ -184,7 +187,7 @@ contract Unit is Fixture {
     }
 
     function testCreateStrategyTamper() public {
-        DeployScript.CoreDeployment memory contracts = deployContracts();
+        CoreDeployment memory contracts = deployContracts();
 
         IVeloDeployFactory.DeployParams memory deployParams;
         deployParams.slippageD9 = 1e6;

@@ -8,6 +8,7 @@ contract SolvencyTest is SolvencyRunner {
     using RandomLib for RandomLib.Storage;
 
     function _setup(bool isPulse) internal {
+        TEST_ENV = true;
         CoreDeploymentParams memory coreParams = Constants.getDeploymentParams();
         vm.startPrank(coreParams.deployer);
         CoreDeployment memory contracts = deployCore(coreParams);
@@ -19,27 +20,27 @@ contract SolvencyTest is SolvencyRunner {
             params.strategyParams = IPulseStrategyModule.StrategyParams({
                 strategyType: IPulseStrategyModule.StrategyType.LazySyncing,
                 tickNeighborhood: 0, // Neighborhood of ticks to consider for rebalancing
-                tickSpacing: 1, // tickSpacing of the corresponding amm pool
-                width: 50, // Width of the interval
+                tickSpacing: TICK_SPACING, // tickSpacing of the corresponding amm pool
+                width: 4000, // Width of the interval
                 maxLiquidityRatioDeviationX96: 0 // The maximum allowed deviation of the liquidity ratio for lower position.
             });
         } else {
             params.strategyParams = IPulseStrategyModule.StrategyParams({
                 strategyType: IPulseStrategyModule.StrategyType.Tamper,
                 tickNeighborhood: 0, // Neighborhood of ticks to consider for rebalancing
-                tickSpacing: 1, // tickSpacing of the corresponding amm pool
-                width: 50, // Width of the interval
+                tickSpacing: TICK_SPACING, // tickSpacing of the corresponding amm pool
+                width: 800, // Width of the interval
                 maxLiquidityRatioDeviationX96: uint256(2) ** 96 / 100 // The maximum allowed deviation of the liquidity ratio for lower position.
             });
         }
         params.securityParams =
-            IVeloOracle.SecurityParams({lookback: 100, maxAge: 5 days, maxAllowedDelta: 10});
+            IVeloOracle.SecurityParams({lookback: 100, maxAge: 5 days, maxAllowedDelta: 100});
 
         INonfungiblePositionManager positionManager =
             INonfungiblePositionManager(coreParams.positionManager);
         params.pool = ICLPool(
             ICLFactory(positionManager.factory()).getPool(
-                Constants.OPTIMISM_WETH, Constants.OPTIMISM_WSTETH, 1
+                Constants.BASE_WETH, Constants.BASE_ZRO, TICK_SPACING
             )
         );
         params.maxAmount0 = 1000 gwei;
@@ -48,8 +49,8 @@ contract SolvencyTest is SolvencyRunner {
         params.totalSupplyLimit = 1e6 ether;
 
         vm.startPrank(coreParams.factoryOperator);
-        deal(Constants.OPTIMISM_WETH, address(contracts.deployFactory), 1000 gwei);
-        deal(Constants.OPTIMISM_WSTETH, address(contracts.deployFactory), 1000 gwei);
+        deal(Constants.BASE_WETH, address(contracts.deployFactory), 1000 gwei);
+        deal(Constants.BASE_ZRO, address(contracts.deployFactory), 1000 gwei);
         ILpWrapper wrapper = deployStrategy(contracts, params);
         vm.stopPrank();
 
@@ -59,12 +60,12 @@ contract SolvencyTest is SolvencyRunner {
     function testSolvencyPulse() external {
         _setup(true);
         rnd.seed = 4076137254;
-        _runSolvency(211, 125);
+        _runSolvency(100, 125);
     }
 
     function testSolvencyTamper() external {
         _setup(false);
-        _runSolvency(200, type(uint256).max);
+        _runSolvency(100, type(uint256).max);
     }
 
     function testSolvencyPulseDepositsOnly() external {

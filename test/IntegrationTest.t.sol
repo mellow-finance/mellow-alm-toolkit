@@ -2,7 +2,7 @@
 pragma solidity 0.8.25;
 
 import "../scripts/deploy/Constants.sol";
-import "../scripts/deploy/DeployScript.sol";
+import {DeployScript} from "../scripts/deploy/DeployScript.s.sol";
 
 contract IntegrationTest is Test, DeployScript {
     using SafeERC20 for IERC20;
@@ -10,8 +10,10 @@ contract IntegrationTest is Test, DeployScript {
     CoreDeploymentParams private coreParams;
     CoreDeployment private contracts;
     ILpWrapper private wstethWeth1Wrapper;
+    int24 internal constant TICK_SPACING = 100;
 
-    function setUp() external {
+    function setUp() external override {
+        TEST_ENV = true;
         coreParams = Constants.getDeploymentParams();
         vm.startPrank(coreParams.deployer);
         contracts = deployCore(coreParams);
@@ -21,8 +23,8 @@ contract IntegrationTest is Test, DeployScript {
         params.strategyParams = IPulseStrategyModule.StrategyParams({
             strategyType: IPulseStrategyModule.StrategyType.LazySyncing,
             tickNeighborhood: 0, // Neighborhood of ticks to consider for rebalancing
-            tickSpacing: 1, // tickSpacing of the corresponding amm pool
-            width: 50, // Width of the interval
+            tickSpacing: TICK_SPACING, // tickSpacing of the corresponding amm pool
+            width: 200, // Width of the interval
             maxLiquidityRatioDeviationX96: 0 // The maximum allowed deviation of the liquidity ratio for lower position.
         });
 
@@ -33,7 +35,7 @@ contract IntegrationTest is Test, DeployScript {
             INonfungiblePositionManager(coreParams.positionManager);
         params.pool = ICLPool(
             ICLFactory(positionManager.factory()).getPool(
-                Constants.OPTIMISM_WETH, Constants.OPTIMISM_WSTETH, 1
+                Constants.BASE_WETH, Constants.BASE_ZRO, TICK_SPACING
             )
         );
         params.maxAmount0 = 1000 wei;
@@ -43,8 +45,8 @@ contract IntegrationTest is Test, DeployScript {
 
         vm.stopPrank();
         vm.startPrank(coreParams.factoryOperator);
-        deal(Constants.OPTIMISM_WETH, address(contracts.deployFactory), 1 ether);
-        deal(Constants.OPTIMISM_WSTETH, address(contracts.deployFactory), 1 ether);
+        deal(Constants.BASE_WETH, address(contracts.deployFactory), 1 ether);
+        deal(Constants.BASE_ZRO, address(contracts.deployFactory), 1 ether);
         wstethWeth1Wrapper = deployStrategy(contracts, params);
         vm.stopPrank();
     }
@@ -55,24 +57,20 @@ contract IntegrationTest is Test, DeployScript {
         vm.startPrank(user);
 
         uint256 wethAmount = 1 ether;
-        uint256 wstethAmount = 1.5 ether;
+        uint256 zroAmount = 1.5 ether;
 
-        deal(Constants.OPTIMISM_WETH, user, wethAmount);
-        deal(Constants.OPTIMISM_WSTETH, user, wstethAmount);
+        deal(Constants.BASE_WETH, user, wethAmount);
+        deal(Constants.BASE_ZRO, user, zroAmount);
 
-        IERC20(Constants.OPTIMISM_WETH).safeIncreaseAllowance(
-            address(wstethWeth1Wrapper), wethAmount
-        );
-        IERC20(Constants.OPTIMISM_WSTETH).safeIncreaseAllowance(
-            address(wstethWeth1Wrapper), wstethAmount
-        );
+        IERC20(Constants.BASE_WETH).safeIncreaseAllowance(address(wstethWeth1Wrapper), wethAmount);
+        IERC20(Constants.BASE_ZRO).safeIncreaseAllowance(address(wstethWeth1Wrapper), zroAmount);
 
         uint256 n = 20;
         for (uint256 i = 0; i < n; i++) {
             wstethWeth1Wrapper.mint(
                 ILpWrapper.MintParams({
-                    lpAmount: Math.min(wstethAmount, wethAmount) / n * 99 / 100,
-                    amount0Max: wstethAmount / n,
+                    lpAmount: Math.min(zroAmount, wethAmount) / n * 99 / 100,
+                    amount0Max: zroAmount / n,
                     amount1Max: wethAmount / n,
                     recipient: user,
                     deadline: block.timestamp

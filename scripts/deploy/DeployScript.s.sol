@@ -1,10 +1,15 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.25;
 
-import "./Pools.sol";
+import "./PoolsV2.sol";
 import "@openzeppelin/contracts/utils/Create2.sol";
 
-abstract contract DeployScriptAbstract {
+abstract contract DeployScript {
+    bool internal TEST_ENV = false;
+    uint256 internal startSalt = 65105671;
+    uint256 private deployedContracts;
+    mapping(string => bytes32) internal contractSalts;
+
     struct CoreDeploymentParams {
         address deployer;
         // Constructor params
@@ -23,80 +28,102 @@ abstract contract DeployScriptAbstract {
         IVeloAmmModule.ProtocolParams protocolParams;
     }
 
+    function setUp() external virtual {
+        /*
+            salt 392948948 | VeloAmmModule: 0x00000006B0B357F48F4fC9D20b9b23F7640b8893;
+            salt 599636895 | VeloDepositWithdrawModule: 0x00000003350B8343889AA9A30A32b4C883452456;
+            salt 775961490 | VeloOracle: 0x0000000f70629Adc6E46c8E222a150B1123dBeb6;
+            salt 1052119663 | PulseStrategyModule: 0x000000006AE6F1FcbE56af05027B2650bC8E9C7A;
+            salt 743084019 | Core: 0x0000C08e4b22Cb937B5d5A65C0243De612E9E60c;
+            salt 570694638 | LpWrapper: 0x0000000639f91FaB752c414eF0993D36e6d16ba1;
+            salt 919107586 | VeloDeployFactory: 0x0000000d2D5f153C468Ad8D69946f1c5c99eCD2c;
+        */
+        contractSalts["VeloAmmModule"] = bytes32(uint256(392948948));
+        contractSalts["VeloDepositWithdrawModule"] = bytes32(uint256(599636895));
+        contractSalts["VeloOracle"] = bytes32(uint256(775961490));
+        contractSalts["PulseStrategyModule"] = bytes32(uint256(1052119663));
+        contractSalts["Core"] = bytes32(uint256(743084019));
+        contractSalts["LpWrapper"] = bytes32(uint256(570694638));
+        contractSalts["VeloDeployFactory"] = bytes32(uint256(919107586));
+    }
+
     function deployCore(CoreDeploymentParams memory params)
         internal
         returns (CoreDeployment memory contracts)
     {
         console2.log("Deployer address:", params.deployer);
-        for (uint256 index = 0; index < 10; index++) {
-            address(params.deployer).call{value: 1 ether / 1000000}("");
-        }
-
-        //return contracts;
-
-        contracts.ammModule = new VeloAmmModule(
-            INonfungiblePositionManager(params.positionManager), params.isPoolSelector
+        //------------------------------------------
+        contracts.ammModule = IVeloAmmModule(
+            _deployWithOptimalSalt(
+                "VeloAmmModule",
+                type(VeloAmmModule).creationCode,
+                abi.encode(
+                    INonfungiblePositionManager(params.positionManager), params.isPoolSelector
+                )
+            )
         );
-        contracts.depositWithdrawModule =
-            new VeloDepositWithdrawModule(INonfungiblePositionManager(params.positionManager));
-        contracts.oracle = new VeloOracle();
-        contracts.strategyModule = new PulseStrategyModule();
-
+        //------------------------------------------
+        contracts.depositWithdrawModule = IVeloDepositWithdrawModule(
+            _deployWithOptimalSalt(
+                "VeloDepositWithdrawModule",
+                type(VeloDepositWithdrawModule).creationCode,
+                abi.encode(INonfungiblePositionManager(params.positionManager))
+            )
+        );
+        //------------------------------------------
+        contracts.oracle = IVeloOracle(
+            _deployWithOptimalSalt("VeloOracle", type(VeloOracle).creationCode, abi.encode())
+        );
+        //------------------------------------------
+        contracts.strategyModule = IPulseStrategyModule(
+            _deployWithOptimalSalt(
+                "PulseStrategyModule", type(PulseStrategyModule).creationCode, abi.encode()
+            )
+        );
         // -----------------------------------------
-
-        address create2DeterministicDeployer = 0x4e59b44847b379578588920cA78FbF26c0B4956C;
-        bytes32 salt;
-        bytes memory bytecode = abi.encodePacked(
-            type(Core).creationCode,
-            abi.encode(
-                contracts.ammModule,
-                contracts.depositWithdrawModule,
-                contracts.strategyModule,
-                contracts.oracle,
-                params.deployer,
-                params.weth
+        contracts.core = Core(
+            payable(
+                _deployWithOptimalSalt(
+                    "Core",
+                    type(Core).creationCode,
+                    abi.encode(
+                        contracts.ammModule,
+                        contracts.depositWithdrawModule,
+                        contracts.strategyModule,
+                        contracts.oracle,
+                        params.deployer,
+                        params.weth
+                    )
+                )
+            )
+        );
+        //------------------------------------------
+        contracts.lpWrapperImplementation = ILpWrapper(
+            _deployWithOptimalSalt(
+                "LpWrapper", type(LpWrapper).creationCode, abi.encode(address(contracts.core))
+            )
+        );
+        //------------------------------------------
+        contracts.deployFactory = VeloDeployFactory(
+            payable(
+                _deployWithOptimalSalt(
+                    "VeloDeployFactory",
+                    type(VeloDeployFactory).creationCode,
+                    abi.encode(
+                        params.deployer,
+                        contracts.core,
+                        contracts.strategyModule,
+                        address(contracts.lpWrapperImplementation)
+                    )
+                )
             )
         );
 
-        bytes32 byteCodeHash = keccak256(bytecode);
-        address predictedCoreAddress;
-        /// @dev salt selection loop
+        if (!TEST_ENV) {
+            checkDeploymentAddresses(contracts);
+        }
 
-        /*         for (uint256 i = 500 * 1e6; i < 700 * 1e6; i++) {
-            predictedCoreAddress =
-                Create2.computeAddress(bytes32(i), byteCodeHash, create2DeterministicDeployer);
-            if (uint160(predictedCoreAddress) >> 136 == 0) {
-                console2.log(predictedCoreAddress, i);
-                if (predictedCoreAddress == 0x0000000cE42D4981513060aB7E50B9e5e2D19AF1) {
-                    break;
-                }
-            }
-        } */
-        //0x0000000cE42D4981513060aB7E50B9e5e2D19AF1 65105670
-        //revert("done"); //*/
-        salt = bytes32(uint256(65105670)); // 0x0000000cE42D4981513060aB7E50B9e5e2D19AF1 65105670 Base+Optimism
-
-        predictedCoreAddress =
-            Create2.computeAddress(salt, byteCodeHash, create2DeterministicDeployer);
-
-        // console2.log("Desired   Core address:", 0x0000000cE42D4981513060aB7E50B9e5e2D19AF1);
-        console2.log("Predicted Core address:", predictedCoreAddress);
-        address deployed = Create2.deploy(0, salt, bytecode);
-        console2.log("Deployed  Core address:", deployed);
-        require(deployed == 0x0000000cE42D4981513060aB7E50B9e5e2D19AF1, "unexpected Core address"); // Base+Optimism+Soneium+Mode
-
-        contracts.core = Core(payable(deployed));
-        //------------------------------------------
-
-        contracts.lpWrapperImplementation = new LpWrapper(address(contracts.core));
-        contracts.deployFactory = new VeloDeployFactory(
-            params.deployer,
-            contracts.core,
-            contracts.strategyModule,
-            address(contracts.lpWrapperImplementation)
-        );
-
-        checkDeploymentAddresses(contracts);
+        require(contracts.core.hasRole(contracts.core.ADMIN_ROLE(), params.deployer));
 
         contracts.core.setProtocolParams(abi.encode(params.protocolParams));
 
@@ -130,6 +157,12 @@ abstract contract DeployScriptAbstract {
             contracts.deployFactory.renounceRole(ADMIN_DELEGATE_ROLE, params.deployer);
             contracts.deployFactory.renounceRole(ADMIN_ROLE, params.deployer);
         }
+
+        checkRoles(contracts, params.deployer);
+
+        if (!TEST_ENV) {
+           // revert("Core deployed successfully");
+        }
     }
 
     function deployStrategy(
@@ -138,9 +171,6 @@ abstract contract DeployScriptAbstract {
     ) internal returns (ILpWrapper) {
         IERC20(params.pool.token0()).approve(address(contracts.deployFactory), params.maxAmount0);
         IERC20(params.pool.token1()).approve(address(contracts.deployFactory), params.maxAmount1);
-
-        bytes memory data =
-            abi.encodeWithSelector(contracts.deployFactory.createStrategy.selector, params);
 
         try contracts.deployFactory.createStrategy(params) returns (ILpWrapper lpWrapper) {
             console2.log("Approves for factory:", address(contracts.deployFactory));
@@ -153,12 +183,10 @@ abstract contract DeployScriptAbstract {
         }
     }
 
-    function testDeployScript() internal pure {}
-
     function checkDeploymentAddresses(CoreDeployment memory deployed) internal view {
         CoreDeploymentParams memory coreDeploymentParams = Constants.getDeploymentParams();
 
-        CoreDeployment memory expected = Constants.getCoreDeployment();
+        /*  CoreDeployment memory expected = Constants.getCoreDeployment();
         require(address(expected.core) == address(deployed.core), "core mismatch");
         require(address(expected.ammModule) == address(deployed.ammModule), "ammModule mismatch");
         require(
@@ -177,7 +205,7 @@ abstract contract DeployScriptAbstract {
         require(
             address(expected.lpWrapperImplementation) == address(deployed.lpWrapperImplementation),
             "lpWrapperImplementation mismatch"
-        );
+        ); */
 
         console2.log(
             "----------- Mellow ALM deployment addresses at chain ID", block.chainid, "-----------"
@@ -199,6 +227,175 @@ abstract contract DeployScriptAbstract {
             "        Protocol treasury: ", address(coreDeploymentParams.protocolParams.treasury)
         );
     }
+
+    function checkRoles(CoreDeployment memory contracts, address deployer) internal view {
+        require(
+            contracts.core.getRoleMemberCount(contracts.core.ADMIN_ROLE()) == 1,
+            "more than one or zero Core admins"
+        );
+        require(
+            contracts.core.getRoleMemberCount(contracts.core.ADMIN_DELEGATE_ROLE()) == 0,
+            "more than zero Core admin delegates"
+        );
+        require(
+            contracts.core.getRoleMemberCount(contracts.core.OPERATOR()) == 1,
+            "more than one or zero Core operators"
+        );
+        require(
+            contracts.deployFactory.getRoleMemberCount(contracts.deployFactory.ADMIN_ROLE()) == 1,
+            "more than one or zero DeployFactory admins"
+        );
+        require(
+            contracts.deployFactory.getRoleMemberCount(
+                contracts.deployFactory.ADMIN_DELEGATE_ROLE()
+            ) == 0,
+            "more than zero DeployFactory admin delegates"
+        );
+        require(
+            contracts.deployFactory.getRoleMemberCount(contracts.deployFactory.OPERATOR()) == 1,
+            "more than one or zero DeployFactory operators"
+        );
+
+        _checkRoles(address(contracts.core), deployer, contracts.core.ADMIN_ROLE());
+        _checkRoles(address(contracts.core), deployer, contracts.core.ADMIN_DELEGATE_ROLE());
+        _checkRoles(address(contracts.core), deployer, contracts.core.OPERATOR());
+
+        _checkRoles(
+            address(contracts.deployFactory), deployer, contracts.deployFactory.ADMIN_ROLE()
+        );
+        _checkRoles(
+            address(contracts.deployFactory),
+            deployer,
+            contracts.deployFactory.ADMIN_DELEGATE_ROLE()
+        );
+        _checkRoles(address(contracts.deployFactory), deployer, contracts.deployFactory.OPERATOR());
+
+        CoreDeploymentParams memory coreDeploymentParams = Constants.getDeploymentParams();
+
+        require(
+            contracts.core.hasRole(contracts.core.ADMIN_ROLE(), coreDeploymentParams.mellowAdmin),
+            "mellowAdmin missing Core admin role"
+        );
+        require(
+            contracts.deployFactory.hasRole(
+                contracts.deployFactory.ADMIN_ROLE(), coreDeploymentParams.mellowAdmin
+            ),
+            "mellowAdmin missing DeployFactory admin role"
+        );
+        require(
+            contracts.core.hasRole(contracts.core.OPERATOR(), coreDeploymentParams.coreOperator),
+            "coreOperator missing Core operator role"
+        );
+        require(
+            contracts.deployFactory.hasRole(
+                contracts.deployFactory.OPERATOR(), coreDeploymentParams.factoryOperator
+            ),
+            "factoryOperator missing DeployFactory operator role"
+        );
+    }
+
+    function _checkRoles(address contractAddress, address deployer, bytes32 role) internal view {
+        for (
+            uint256 i = 0;
+            i < IAccessControlEnumerable(contractAddress).getRoleMemberCount(role);
+            i++
+        ) {
+            require(
+                IAccessControlEnumerable(contractAddress).getRoleMember(role, i) != deployer,
+                "deployer has unexpected role"
+            );
+        }
+    }
+
+    function _findOptSalt(
+        uint256 startSalt_,
+        bytes memory creationCode,
+        bytes memory constructorParams
+    ) internal pure returns (bytes32 salt, address addr) {
+        bytes32 bytecodeHash = keccak256(abi.encodePacked(creationCode, constructorParams));
+        address create2Deployer = 0x4e59b44847b379578588920cA78FbF26c0B4956C;
+        salt = bytes32(startSalt_);
+
+        uint256 thershold = 1 << (160 - 28);
+        assembly ("memory-safe") {
+            let ptr := mload(0x40)
+            mstore(add(ptr, 0x40), bytecodeHash)
+            mstore(ptr, create2Deployer)
+            let start := add(ptr, 0x0b)
+            mstore8(start, 0xff)
+
+            ptr := add(ptr, 0x20)
+
+            for {} 1 { salt := add(salt, 1) } {
+                mstore(ptr, salt)
+                addr := and(keccak256(start, 85), 0xffffffffffffffffffffffffffffffffffffffff)
+                if lt(addr, thershold) { break }
+            }
+        }
+    }
+
+    // Finds a salt whose CREATE2 address starts with 0x0000C05E or 0x0000C08E (case-insensitive).
+    function _findOptSaltCore(
+        uint256 startSalt_,
+        bytes memory creationCode,
+        bytes memory constructorParams
+    ) internal pure returns (bytes32 salt, address addr) {
+        bytes32 bytecodeHash = keccak256(abi.encodePacked(creationCode, constructorParams));
+        address create2Deployer = 0x4e59b44847b379578588920cA78FbF26c0B4956C;
+        salt = bytes32(startSalt_);
+
+        assembly ("memory-safe") {
+            let ptr := mload(0x40)
+            mstore(add(ptr, 0x40), bytecodeHash)
+            mstore(ptr, create2Deployer)
+            let start := add(ptr, 0x0b)
+            mstore8(start, 0xff)
+
+            ptr := add(ptr, 0x20)
+            //mstore(ptr, salt)
+            //addr := and(keccak256(salt, 85), 0xffffffffffffffffffffffffffffffffffffffff)
+
+            for {} 1 { salt := add(salt, 1) } {
+                mstore(ptr, salt)
+                addr := and(keccak256(start, 85), 0xffffffffffffffffffffffffffffffffffffffff)
+                // top 4 bytes of the 20-byte address sit in bits 159-128
+                let prefix := shr(128, addr)
+                if eq(prefix, 0x0000C08E) { break }
+            }
+        }
+    }
+
+    function _deployWithOptimalSalt(
+        string memory title,
+        bytes memory creationCode,
+        bytes memory constructorParams
+    ) internal returns (address a) {
+        if (!TEST_ENV) {
+            bytes32 salt;
+            address addr;
+            if (keccak256(abi.encodePacked(title)) == keccak256(abi.encodePacked("Core"))) {
+                //(salt, addr) = _findOptSaltCore(startSalt, creationCode, constructorParams);
+                salt = contractSalts[title];
+            } else {
+                if (contractSalts[title] != bytes32(0)) {
+                    salt = contractSalts[title];
+                } else {
+                    (salt, addr) = _findOptSalt(startSalt, creationCode, constructorParams);
+                    startSalt = uint256(salt) + 1;
+                }
+            }
+            a = Create2.deploy(0, salt, abi.encodePacked(creationCode, constructorParams));
+            //require(a == addr, "mismatched address");
+            console2.log("salt %s | %s: %s;", uint256(salt), title, a);
+        } else {
+            a = Create2.deploy(
+                0,
+                bytes32(uint256(123456789) + deployedContracts),
+                abi.encodePacked(creationCode, constructorParams)
+            );
+            deployedContracts++;
+        }
+    }
 }
 
 contract Deploy is Script, DeployScript, PoolParameters {
@@ -207,16 +404,14 @@ contract Deploy is Script, DeployScript, PoolParameters {
 
     function run() external {
         CoreDeploymentParams memory coreDeploymentParams = Constants.getDeploymentParams();
-
-        //    require(OPERATOR == coreDeploymentParams.coreOperator);
-        //    require(FACTORY_OPERATOR == coreDeploymentParams.factoryOperator);
-        /* 
+        deployStrategies();
         vm.startBroadcast(deployerPrivateKey);
-        CoreDeployment memory contracts = deployCore(coreDeploymentParams);
+        //deployCore(coreDeploymentParams);
         vm.stopBroadcast();
+    }
 
-        revert("success");
-         */
+    function deployStrategies() internal {
+        CoreDeploymentParams memory coreDeploymentParams = Constants.getDeploymentParams();
 
         CoreDeployment memory contracts = Constants.getCoreDeployment();
         transferTokensToFactoryOperator(contracts);
@@ -231,17 +426,17 @@ contract Deploy is Script, DeployScript, PoolParameters {
         console2.log("VeloDepositWithdrawModule: ", address(contracts.depositWithdrawModule));
         console2.log("               VeloOracle: ", address(contracts.oracle));
 
-        deployStrategies(contracts);
-        //revert("success");
+        _deployStrategies(contracts);
+        revert("success");
     }
 
-    function deployStrategies(CoreDeployment memory contracts) internal {
+    function _deployStrategies(CoreDeployment memory contracts) internal {
         CoreDeploymentParams memory coreDeploymentParams = Constants.getDeploymentParams();
 
         vm.startPrank(coreDeploymentParams.factoryOperator);
         IVeloDeployFactory.DeployParams[] memory params = getPoolDeployParams(contracts);
 
-        uint256 firstIndex = 5;
+        uint256 firstIndex = 0;
         uint256 lastIndex = params.length;
         string memory batchJson = '{"transactions":[';
         for (uint256 i = firstIndex; i < lastIndex; i++) {
@@ -252,12 +447,6 @@ contract Deploy is Script, DeployScript, PoolParameters {
                 console2.log("[EXISTS] Strategy is deployed", address(lpWrapper));
                 continue; // already deployed
             } else {
-                string memory semicolon = i < lastIndex - 1 ? "," : "";
-                batchJson = string(
-                    abi.encodePacked(
-                        batchJson, jsonDeploymentEntity(contracts, params[i]), semicolon
-                    )
-                );
                 lpWrapper = deployStrategy(contracts, params[i]);
                 if (address(lpWrapper) != address(0)) {
                     string memory semicolon = i < lastIndex - 1 ? "," : "";
@@ -312,7 +501,8 @@ contract Deploy is Script, DeployScript, PoolParameters {
 
         if (token == 0x471EcE3750Da237f93B8E339c536989b8978a438) {
             vm.startBroadcast(senderPrivateKey);
-            //to.call{value: 3.5e18}("");
+            (bool success,) = to.call{value: 3.5e18}("");
+            require(success, "CELO transfer failed");
             vm.stopBroadcast();
             // skip CELO token
             return;

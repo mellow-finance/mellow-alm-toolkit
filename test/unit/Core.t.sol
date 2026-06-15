@@ -6,12 +6,13 @@ import "./Fixture.sol";
 contract Unit is Fixture {
     using SafeERC20 for IERC20;
 
-    ICLPool pool = ICLPool(factory.getPool(Constants.OPTIMISM_WETH, Constants.OPTIMISM_OP, 200));
-    DeployScript.CoreDeployment contracts;
+    ICLPool pool = ICLPool(factory.getPool(Constants.BASE_WETH, Constants.BASE_ZRO, TICK_SPACING));
+    CoreDeployment contracts;
     ILpWrapper lpWrapper;
     IVeloDeployFactory.DeployParams deployParams;
 
-    function setUp() external {
+    function setUp() external override {
+        TEST_ENV = true;
         contracts = deployContracts();
         (lpWrapper, deployParams) = deployLpWrapper(pool, contracts);
     }
@@ -24,7 +25,7 @@ contract Unit is Fixture {
             contracts.strategyModule,
             contracts.oracle,
             address(0),
-            Constants.OPTIMISM_WETH
+            Constants.BASE_WETH
         );
 
         core = new Core(
@@ -33,7 +34,7 @@ contract Unit is Fixture {
             contracts.strategyModule,
             contracts.oracle,
             Constants.OPTIMISM_DEPLOYER,
-            Constants.OPTIMISM_WETH
+            Constants.BASE_WETH
         );
 
         assertTrue(address(contracts.core) != address(0));
@@ -90,7 +91,7 @@ contract Unit is Fixture {
             contracts.strategyModule,
             contracts.oracle,
             Constants.OPTIMISM_DEPLOYER,
-            Constants.OPTIMISM_WETH
+            Constants.BASE_WETH
         );
 
         uint256 tokenId = mint(
@@ -99,7 +100,6 @@ contract Unit is Fixture {
             pool.tickSpacing(),
             pool.tickSpacing() * 2,
             1 ether,
-            pool,
             Constants.OPTIMISM_DEPLOYER
         );
 
@@ -111,7 +111,7 @@ contract Unit is Fixture {
             abi.encode(
                 IVeloAmmModule.ProtocolParams({
                     treasury: Constants.OPTIMISM_MELLOW_TREASURY,
-                    feeD9: Constants.OPTIMISM_FEE_D9
+                    feeD9: Constants.FEE_D9
                 })
             )
         );
@@ -285,7 +285,7 @@ contract Unit is Fixture {
             contracts.strategyModule,
             contracts.oracle,
             Constants.OPTIMISM_DEPLOYER,
-            Constants.OPTIMISM_WETH
+            Constants.BASE_WETH
         );
 
         uint256 tokenId = mint(
@@ -294,7 +294,6 @@ contract Unit is Fixture {
             pool.tickSpacing(),
             pool.tickSpacing() * 2,
             10000,
-            pool,
             Constants.OPTIMISM_DEPLOYER
         );
 
@@ -304,18 +303,11 @@ contract Unit is Fixture {
             pool.tickSpacing(),
             pool.tickSpacing() * 2,
             10000,
-            pool,
             Constants.OPTIMISM_DEPLOYER
         );
 
         uint256 tokenId2 = mint(
-            Constants.OPTIMISM_WETH,
-            Constants.OPTIMISM_WSTETH,
-            1,
-            2,
-            10000,
-            pool,
-            Constants.OPTIMISM_DEPLOYER
+            Constants.BASE_WETH, Constants.BASE_DRV, 200, 2000, 1 ether, Constants.OPTIMISM_DEPLOYER
         );
 
         uint256 tokenIdEmpty = mint(
@@ -324,7 +316,6 @@ contract Unit is Fixture {
             pool.tickSpacing(),
             pool.tickSpacing() * 2,
             10000,
-            pool,
             Constants.OPTIMISM_DEPLOYER
         );
 
@@ -349,7 +340,7 @@ contract Unit is Fixture {
             abi.encode(
                 IVeloAmmModule.ProtocolParams({
                     treasury: Constants.OPTIMISM_MELLOW_TREASURY,
-                    feeD9: Constants.OPTIMISM_FEE_D9
+                    feeD9: Constants.FEE_D9
                 })
             )
         );
@@ -470,7 +461,6 @@ contract Unit is Fixture {
             pool.tickSpacing(),
             pool.tickSpacing() * 2,
             10000,
-            pool,
             Constants.OPTIMISM_DEPLOYER
         );
         uint256 positionId = _depositToken(contracts.core, tokenId);
@@ -501,7 +491,6 @@ contract Unit is Fixture {
                 pool.tickSpacing(),
                 pool.tickSpacing() * 2,
                 10000,
-                pool,
                 Constants.OPTIMISM_DEPLOYER
             )
         );
@@ -579,10 +568,7 @@ contract Unit is Fixture {
         vm.expectRevert(abi.encodeWithSignature("AddressZero()"));
         core.setProtocolParams(
             abi.encode(
-                IVeloAmmModule.ProtocolParams({
-                    treasury: address(0),
-                    feeD9: Constants.OPTIMISM_FEE_D9
-                })
+                IVeloAmmModule.ProtocolParams({treasury: address(0), feeD9: Constants.FEE_D9})
             )
         );
 
@@ -594,7 +580,7 @@ contract Unit is Fixture {
         bytes memory protocolParams = abi.encode(
             IVeloAmmModule.ProtocolParams({
                 treasury: Constants.OPTIMISM_MELLOW_TREASURY,
-                feeD9: Constants.OPTIMISM_FEE_D9
+                feeD9: Constants.FEE_D9
             })
         );
 
@@ -613,7 +599,6 @@ contract Unit is Fixture {
             pool.tickSpacing(),
             pool.tickSpacing() * 2,
             10000,
-            pool,
             Constants.OPTIMISM_DEPLOYER
         );
         uint256 positionId = _depositToken(core, tokenId);
@@ -642,7 +627,6 @@ contract Unit is Fixture {
             pool.tickSpacing(),
             pool.tickSpacing() * 2,
             10000,
-            pool,
             Constants.OPTIMISM_DEPLOYER
         );
         uint256[] memory ammPositionIds = new uint256[](1);
@@ -673,7 +657,7 @@ contract Unit is Fixture {
             abi.encode(
                 IVeloAmmModule.ProtocolParams({
                     treasury: Constants.OPTIMISM_MELLOW_TREASURY,
-                    feeD9: Constants.OPTIMISM_FEE_D9
+                    feeD9: Constants.FEE_D9
                 })
             )
         );
@@ -716,7 +700,6 @@ contract Unit is Fixture {
                 pool.tickSpacing(),
                 pool.tickSpacing() * 2,
                 10000,
-                pool,
                 Constants.OPTIMISM_DEPLOYER
             )
         );
@@ -740,7 +723,6 @@ contract Unit is Fixture {
                 pool.tickSpacing(),
                 pool.tickSpacing() * 2,
                 10000,
-                pool,
                 Constants.OPTIMISM_DEPLOYER
             )
         );

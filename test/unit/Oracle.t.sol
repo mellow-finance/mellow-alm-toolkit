@@ -30,8 +30,9 @@ contract Unit is Fixture {
     function testEnsureNoMEV() external {
         oracle = new VeloOracle();
 
-        ICLPool pool = ICLPool(factory.getPool(Constants.OPTIMISM_WETH, Constants.OPTIMISM_OP, 200));
-        assertEq(pool.tickSpacing(), 200);
+        ICLPool pool =
+            ICLPool(factory.getPool(Constants.BASE_WETH, Constants.BASE_ZRO, TICK_SPACING));
+        assertEq(pool.tickSpacing(), TICK_SPACING);
         oracle.ensureNoMEV(
             address(pool),
             abi.encode(
@@ -68,7 +69,6 @@ contract Unit is Fixture {
             pool.tickSpacing(),
             pool.tickSpacing() * 2,
             1000000,
-            pool,
             address(this)
         );
         oracle.ensureNoMEV(
@@ -118,7 +118,8 @@ contract Unit is Fixture {
 
     function testGetOraclePrice() external {
         oracle = new VeloOracle();
-        ICLPool pool = ICLPool(factory.getPool(Constants.OPTIMISM_WETH, Constants.OPTIMISM_OP, 200));
+        ICLPool pool =
+            ICLPool(factory.getPool(Constants.BASE_WETH, Constants.BASE_ZRO, TICK_SPACING));
 
         oracle.getOraclePrice(address(pool));
 
@@ -129,7 +130,6 @@ contract Unit is Fixture {
             pool.tickSpacing(),
             pool.tickSpacing() * 2,
             1000000,
-            pool,
             address(this)
         );
 

@@ -5,15 +5,14 @@
   "repository": "https://github.com/mellow-finance/mellow-alm-toolkit",
   "scripts": { 
     "prettier": "forge fmt && forge fmt ./scripts/**",
-    "deploy:base": "forge script --use 0.8.25 scripts/deploy/DeployScript.sol:Deploy --rpc-url $(grep BASE_RPC .env | cut -d '=' -f2) --etherscan-api-key $(grep API_KEY_BASE .env | cut -d '=' -f2,3,4,5) --broadcast --slow --verify -vvvv --evm-version shanghai",
-    "deploy:base:test": "forge script --use 0.8.25 scripts/deploy/DeployScript.sol:Deploy --rpc-url $(grep BASE_RPC .env | cut -d '=' -f2) --gas-limit 10000000000000000 --fork-block-number 23826065 --evm-version shanghai",
-    "deploy:optimism": "forge script --use 0.8.25 scripts/deploy/DeployScript.sol:Deploy --rpc-url $(grep OPTIMISM_RPC .env | cut -d '=' -f2) --etherscan-api-key $(grep API_KEY_OP .env | cut -d '=' -f2,3,4,5) --broadcast --slow --verify -vvvv --evm-version shanghai",
-    "deploy:optimism:test": "forge script --use 0.8.25 scripts/deploy/DeployScript.sol:Deploy --rpc-url $(grep OPTIMISM_RPC .env | cut -d '=' -f2) --gas-limit 10000000000000000 --fork-block-number 130401785 --evm-version shanghai",
-    "test": "forge test -vv --fork-url $(grep OPTIMISM_RPC .env | cut -d '=' -f2,3,4,5) --gas-limit 1000000000000000 --fork-block-number 126785000",
-    "test:solvency": "forge test -vv --fork-url $(grep OPTIMISM_RPC .env | cut -d '=' -f2,3,4,5) --gas-limit 1000000000000000 --fork-block-number 126785000 --match-path test/integration/SolvencyTest.t.sol",
-    "coverage": "forge coverage -vv --fork-url $(grep OPTIMISM_RPC .env | cut -d '=' -f2,3,4,5) --gas-limit 1000000000000000 --fork-block-number 126785000",
-    "coverage:report": "forge coverage -vv --fork-url $(grep OPTIMISM_RPC .env | cut -d '=' -f2,3,4,5) --gas-limit 1000000000000000 --fork-block-number 126785000 --report lcov && genhtml lcov.info --rc derive_function_end_line=0 -o report --branch-coverage && rm lcov.info",
+    "deploy:base": "forge script --use 0.8.25 scripts/deploy/DeployScript.s.sol:Deploy --rpc-url $(grep BASE_RPC .env | cut -d '=' -f2) --broadcast --slow -vvvv --evm-version cancun --verify --etherscan-api-key $(grep ETHERSCAN_API_KEY .env | cut -d '=' -f2) --gas-limit 10000000000000",
+    "test": "forge test -vv --fork-url $(grep BASE_RPC .env | cut -d '=' -f2,3,4,5) --gas-limit 1000000000000000 --fork-block-number 44984226",
+    "test:unit": "forge test --match-path 'test/unit/**/*.t.sol' -vv --fork-url $(grep BASE_RPC .env | cut -d '=' -f2,3,4,5) --gas-limit 1000000000000000 --fork-block-number 44984226",
+    "test:solvency": "forge test -vv --fork-url $(grep BASE_RPC .env | cut -d '=' -f2,3,4,5) --gas-limit 1000000000000000 --fork-block-number 44984226 --match-path test/integration/SolvencyTest.t.sol",
+    "coverage": "forge coverage -vv --fork-url $(grep BASE_RPC .env | cut -d '=' -f2,3,4,5) --gas-limit 1000000000000000 --fork-block-number 44984226",
+    "coverage:report": "forge coverage -vv --fork-url $(grep BASE_RPC .env | cut -d '=' -f2,3,4,5) --gas-limit 1000000000000000 --fork-block-number 44984226 --report lcov && genhtml lcov.info --rc derive_function_end_line=0 -o report --branch-coverage && rm lcov.info",
     "sizes": "forge build --sizes --force",
-    "compile": "forge build"
-  }
+    "compile": "forge build",
+    "update:base": "forge script --use 0.8.25 scripts/deploy/UpdateStrategyParams.s.sol --rpc-url $(grep BASE_RPC .env | cut -d '=' -f2) --evm-version cancun"
+    }
 }
